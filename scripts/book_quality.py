@@ -320,8 +320,8 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
         text = chapter_path.read_text(encoding='utf-8')
         texts[1] = text
     elif chapter_path.is_dir():
-        # 章节目录
-        for f in sorted(chapter_path.glob('*.txt')):
+        # 章节目录（递归，兼容 chapters/arc-N/chapter-NNN.txt 的嵌套结构）
+        for f in sorted(chapter_path.rglob('*.txt')):
             m = re.search(r'(\d+)', f.stem)
             if m:
                 ch_num = int(m.group(1))
@@ -387,7 +387,15 @@ def main():
     args = ap.parse_args()
     
     result = book_quality_check(args.chapter_dir, args.voice)
-    
+
+    # 未找到章节文件时优雅退出（避免 KeyError）
+    if "error" in result:
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"[X] {result['error']}")
+        sys.exit(1)
+
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:

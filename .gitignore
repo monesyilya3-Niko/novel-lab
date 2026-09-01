@@ -10,3 +10,6 @@ corpus/
 .cache/
 __pycache__/
 *.pyc
+
+# 端到端写作测试产物（本地验证用，不入库）
+novel_test/

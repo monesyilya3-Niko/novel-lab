@@ -17,6 +17,7 @@ M2.2 章节生成 + 入库 — 资产驱动创作的正式入口
 """
 import argparse
 import json
+import re
 import sys
 import time
 from datetime import datetime
@@ -246,8 +247,6 @@ def main():
         qa_ok = len(qa_issues) == 0
         if consistency_ok and quality_ok and qa_ok:
             print("      ✅ 三维度达标，无需改写")
-            break
-            print("      ✅ 达到质量线，无需改写")
             break
         if attempt < 3:
             # 提取扣分点作为改写指令（一致性 + 质量双维度）
