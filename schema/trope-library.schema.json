@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "trope-library.schema.json",
   "title": "桥段模式库",
-  "description": "跨书累积的可复用桥段。与前两者的区别：声线卡绑定单本，题材包绑定单题材，桥段库是跨书跨题材持续增长的公共资产——用得越久越值钱。",
+  "description": "跨书累积的可复用桥段。与前两者的区别：声线卡绑定单本，题材包绑定单题材，桥段库是跨书跨题材持续增长的公共资产——用得越久越值钱。⚠️ 规划中（2026-09-01）：本 schema 已定义但尚未产出任何 trope-library 资产实例，能力未落地。落地需 AI 跨书读语料产出桥段并经人工校验，预计在拆满更多书目后启动。",
   "type": "object",
   "required": ["meta", "tropes"],
   "properties": {

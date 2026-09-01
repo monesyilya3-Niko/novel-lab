@@ -88,7 +88,7 @@
 |---|---|
 | `assets/` | 拆书资产（14 个 JSON：3 本书的 voice/craft/structure/commercial 4 类卡共 12 张 + 题材包 1 + 合成测试卡 1）|
 | `reports/` | 可交付报告（6 份：3 本书 × 拆书报告+笔法分析）|
-| `schema/` | 6 个 JSON Schema（voice-card / craft-card / structure-obs / commercial-obs / genre-pack / trope-library；纯文档用途，实际校验逻辑在 validate.py）|
+| `schema/` | 6 个 JSON Schema（voice-card / craft-card / structure-obs / commercial-obs / genre-pack / trope-library；纯文档用途，实际校验逻辑在 validate.py）。⚠️ trope-library 仅定义 schema，**尚无资产实例（规划中，2026-09-01 标注）** |
 | `prompts/` | pass1-5 分析 prompt + analysis-pipeline.md（设计文档）+ generated/（生成的写作 prompt）|
 | `corpus/` | 语料库：**根目录**放原书 TXT（chireng/qingning/sangshi_chosen.txt 等 5 本）；raw/（五遍扫描原始输出 + AI接管任务.md，不含原书）、sampled/（采样切片）、metrics/（量化指标）、fanqie/（番茄抓取工具，需 fontTools）|
 | `docs/` | 项目评估报告 4 份 + 指纹拆书使用说明 + archive/（过期计划 v1-v3）|

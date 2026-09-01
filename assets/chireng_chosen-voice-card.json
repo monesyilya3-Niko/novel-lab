@@ -2,7 +2,7 @@
   "meta": {
     "source_title": "chireng_chosen",
     "genre": "campus-redemption",
-    "extracted_at": "2026-08-11",
+    "extracted_at": "2026-09-01",
     "sample_chapters": [
       1,
       2,
@@ -39,7 +39,7 @@
       "avg_length": 0,
       "short_ratio": 0,
       "long_ratio": 0,
-      "burst_pattern": ""
+      "burst_pattern": "主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。"
     },
     "paragraph": {},
     "chapter_opening_patterns": [
@@ -153,11 +153,17 @@
       "手指都捏白了",
       "心跳如鼓"
     ],
-    "examples": []
+    "examples": [
+      {
+        "emotion": "通用",
+        "pattern": "日常互动场景偏向「体感式」（如心跳如鼓、手指捏白）和「动作外化式」（如撸脑袋、小跑）；内心独白或情绪爆发时，偶尔使用「直陈式」（如‘简直可爱死了’）进行强调，但整体以具象化描写为主。",
+        "anti_pattern": "避免使用：华丽辞藻堆砌、复杂心理学术语、冗长环境描写、抽象哲理思辨"
+      }
+    ]
   },
   "imagery": {
     "high_freq_metaphor_domains": [
-      "动物/宠物行为",
+      "宠物行为",
       "日常身体反应"
     ],
     "sensory_preference": {
@@ -168,7 +174,7 @@
       "gustatory": 0.018
     },
     "signature_devices": [
-      "将人物行为动物化/幼态化（如‘跟撸小动物似的揉揉她的脑袋’、‘那脑袋都缩进脖子里去了’）",
+      "将人物行为动物化/幼态化（如、‘那脑袋都缩进脖子里去了’）",
       "用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）"
     ]
   },
@@ -184,6 +190,6 @@
   },
   "provenance": {
     "contains_verbatim": false,
-    "abstraction_note": "v2"
+    "abstraction_note": "四遍扫描产物，经 compliance.py 扫描，连续12字匹配原文已拒收"
   }
 }

@@ -26,16 +26,29 @@ import compliance as comp
 def clean_string(s: str, ngram: set, path: str) -> tuple:
     """清洗单个字符串，返回 (清洗后, 是否改动)。"""
     orig = s
+    # 引号字符集：中文引号 + 英文引号（2026-09-01 补齐英文单/双引号，
+    # sangshi 的 pass2 用英文单引号 ' 夹带原文，此前漏检导致 compliance REJECT）
+    OPEN = "「『“‘'\""
+    CLOSE = "」』”’'\""
     # 1. 删除「例如/比如/如」后引号内 >8 字的片段（模型常把原文当示例）
-    s = re.sub(r'(例如|比如|如)\s*[：:]\s*[「『“‘]([^」』”’]{9,})[」』”’]', r'\1', s)
+    s = re.sub(r'(例如|比如|如)\s*[：:]\s*[' + OPEN + r']([^' + CLOSE + r']{9,})[' + CLOSE + r']', r'\1', s)
     # 2. 删除引号内 >12 字且与原文匹配的片段（保留短的、非原文的引号短语）
     def drop_quoted(m):
         frag = m.group(2)
         frag_c = re.sub(r'\s+', '', frag)
         if len(frag_c) > 12 and frag_c[:12] in ngram:
-            return m.group(1)  # 删掉引号内容，保留前缀
+            # 2026-09-01 修复：整组删除（含前后引号），避免残留孤立引号
+            # 与相邻片段形成错误配对（sangshi 曾因此产生 26 字误报）。
+            return ""
         return m.group(0)
-    s = re.sub(r'([「『“‘])([^」』”’]{1,40})([」』”’])', drop_quoted, s)
+    s = re.sub(r'([' + OPEN + r'])([^' + CLOSE + r']{1,40})([' + CLOSE + r'])', drop_quoted, s)
+    # 3. 清理清洗后可能残留的孤立引号（连续两个引号中间无内容，或句读旁的单引号）
+    s = re.sub(r'[' + OPEN + r'][' + CLOSE + r']{2,}', lambda m: m.group(0)[0], s)
+    s = re.sub(r'[、，,]\s*[' + OPEN + r']\s*[' + CLOSE + r']\s*[、，,]', '、', s)
+    s = re.sub(r'[、，,]\s*[' + OPEN + r']\s*[' + CLOSE + r']', '', s)
+    # 4. 清理删除片段后产生的标点冗余（如"、。"、"、、"、"，，"）
+    s = re.sub(r'[、，,]\s*[。；;]', '。', s)
+    s = re.sub(r'[、，,]{2,}', '、', s)
     return s, s != orig
 
 

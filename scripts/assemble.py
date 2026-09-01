@@ -21,11 +21,13 @@ voice-card / structure-obs / commercial-obs / craft-card 四类资产，写入 a
 """
 import argparse
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
 
 import normalize as norm
+import compliance as comp
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = ROOT / "assets"
@@ -64,6 +66,41 @@ def _confidence(n_chapters: int) -> float:
     return 0.6 if n_chapters < 10 else min(0.9, 0.65 + n_chapters / 80)
 
 
+def _clean_verbatim(asset: dict, book_text: str) -> tuple:
+    """用 clean_verbatim 的清洗规则清除资产中夹带的原文引用，返回 (清洗后资产, 清洗处数)。
+
+    2026-09-01 集成：组装流程此前不包含清洗，导致 pass2 归一化重新带入原文台词
+    （如 refusal_pattern 里的"例如'不弔了…'"），compliance 复扫 REJECT。
+    """
+    import clean_verbatim as cv
+    ngram = comp.build_ngram_index(book_text)
+    changed = 0
+
+    def walk(node):
+        nonlocal changed
+        if isinstance(node, dict):
+            for k, v in list(node.items()):
+                if isinstance(v, str):
+                    cleaned, ch = cv.clean_string(v, ngram, k)
+                    if ch:
+                        node[k] = cleaned
+                        changed += 1
+                else:
+                    walk(v)
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                if isinstance(v, str):
+                    cleaned, ch = cv.clean_string(v, ngram, "")
+                    if ch:
+                        node[i] = cleaned
+                        changed += 1
+                else:
+                    walk(v)
+
+    walk(asset)
+    return asset, changed
+
+
 def assemble_voice_card(name: str, genre: str, manifest: dict, metrics: dict,
                         voices: list, narration: dict, dialogue: dict,
                         emotion: dict, imagery: dict, banned: dict) -> dict:
@@ -95,6 +132,15 @@ def assemble_voice_card(name: str, genre: str, manifest: dict, metrics: dict,
 def assemble_obs(kind: str, name: str, genre: str, pass_out: dict) -> dict:
     """结构/商业观测：单本数据，标注待聚合。"""
     body = {k: v for k, v in pass_out.items() if not k.startswith("_")}
+    # 2026-09-01 修复：structure-obs 的 chapter_analyses 若用 title 表达章节（如
+    # "第1章 晨光与侧影"）而缺 chapter 字段，从 title 提取章节号补上，
+    # 消除 validate 的"缺少 'chapter'"警告（qingning 曾报 22 条）。
+    if kind == "structure" and isinstance(body.get("chapter_analyses"), list):
+        for c in body["chapter_analyses"]:
+            if isinstance(c, dict) and "chapter" not in c and c.get("title"):
+                m = re.match(r"第\s*([0-9一二三四五六七八九十百千]+)\s*章", str(c["title"]))
+                if m:
+                    c["chapter"] = m.group(1)
     return {
         "meta": {
             "source_title": name,
@@ -258,6 +304,13 @@ def main():
     dialogue["dialogue_ratio"] = metrics.get("dialogue_ratio", 0)
     voice = assemble_voice_card(name, args.genre, manifest, metrics,
                                 voices, narration, dialogue, emotion, imagery, banned)
+    # 2026-09-01 集成：组装后自动清洗原文引用（若原文 TXT 存在），
+    # 避免 pass2 归一化重新带入原文台词导致 compliance REJECT。
+    book_path = ROOT / "corpus" / f"{name}.txt"
+    if book_path.exists():
+        voice, cleaned = _clean_verbatim(voice, book_path.read_text(encoding="utf-8"))
+        if cleaned:
+            print(f"  ⚠ 已清洗 {cleaned} 处原文引用（corpus/{name}.txt）")
     vc_path = ASSETS_DIR / f"{name}-voice-card.json"
     vc_path.write_text(json.dumps(voice, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  ✓ {vc_path.name}")

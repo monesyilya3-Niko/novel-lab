@@ -421,6 +421,47 @@ BURST_KEY_GROUPS = (
 )
 
 
+def _shorten_domains(domains) -> list:
+    """把比喻领域标签截成 ≤6 字简短标签，去掉括号内例子。
+
+    例如「日常生活物件/场景（如'手机'、'保证书'）」→「日常物件」。
+    策略：去括号例子 → 斜杠取更具体的一段 → 去冗余后缀 → 保底截断 6 字。
+    """
+    result = []
+    for d in as_list(domains):
+        s = str(d)
+        # 去掉括号内例子
+        s = s.split("（")[0].split("(")[0].strip()
+        # 斜杠：取「具体语义更强」的一段（优先后段，因后段常是限定词如"行为/反应"）
+        if "/" in s:
+            segs = [x.strip() for x in s.split("/") if x.strip()]
+            # 后段若只是"场景/描写/行为/反应"这类泛化词，则取前段；否则取后段（更具体）
+            generic_tail = {"场景", "描写", "行为", "反应", "意象", "细节"}
+            if segs and segs[-1] in generic_tail and len(segs) >= 2:
+                s = segs[-2]
+            elif segs:
+                s = segs[-1]
+        s = s.strip()
+        # "X与Y"并列结构：取前段（"身体动作与反应" → "身体动作"）
+        if "与" in s:
+            s = s.split("与")[0].strip()
+        # 精简常见冗余前缀
+        s = s.replace("日常生活", "日常").strip()
+        # 保底：仍超 6 字则截断
+        if len(s) > 6:
+            s = s[:6]
+        if s:
+            result.append(s)
+    # 去重保序
+    seen = set()
+    out = []
+    for d in result:
+        if d not in seen:
+            seen.add(d)
+            out.append(d)
+    return out
+
+
 def extract_burst_pattern(pass3: dict) -> str:
     """按优先级提取「短句爆发出现在什么场景」。
 
@@ -505,7 +546,9 @@ def extract_emotion_examples(pass3: dict, mode: str) -> list:
         examples.insert(0, {
             "emotion": "通用",
             "pattern": generic_str,
-            "anti_pattern": "",
+            # 2026-09-01 修复：通用总纲也带上反例（取自 anti/banned），
+            # 否则触发 validate 的"缺 anti_pattern"警告（qingning 曾因此 WARN）。
+            "anti_pattern": _anti_text(anti, banned_words),
         })
 
     # 仍为空：用 banned 词表兜底一条
@@ -520,7 +563,9 @@ def normalize_pass3(pass3: dict) -> tuple:
     pov_raw = as_str(fuzzy_find(pass3, "视角", "pov") or "")
     pov = next((v for k, v in POV_MAP.items() if k in pov_raw), "第三人称限知")
 
-    burst = fuzzy_find(pass3, "节奏", "短句", "句法") or ""
+    # 2026-09-01 修复：改用 extract_burst_pattern() 而非旧的中文关键词 fuzzy_find，
+    # 否则英文键结构（chireng 的 sentence_rhythm_pattern / sangshi 的 rhythm_pattern）提取为空。
+    burst = extract_burst_pattern(pass3)
 
     # tense_feel：从多个可能位置提取叙述距离感
     tense_feel = as_str(
@@ -647,20 +692,9 @@ def normalize_pass3(pass3: dict) -> tuple:
         "body_reaction_vocabulary": body_vocab[:20],
         "examples": [],
     }
-    # 模式切换规律 + anti_pattern 合成 examples（若存在）
-    switch_rule = as_str(fuzzy_find(pass3, "切换规律", "混合规律", "模式特征", "规律") or "")
-    # anti_pattern：优先取真正的反例描述；次选「负空间」dict 里的「规律/anti」字段
-    ap = as_str(fuzzy_find(pass3, "anti_pattern", "反例") or "")
-    if not ap:
-        neg = fuzzy_find(pass3, "负空间", "banned", "禁忌", "回避")
-        if isinstance(neg, dict):
-            ap = as_str(neg.get("规律") or neg.get("anti_pattern") or "")
-    if ap or switch_rule:
-        emotion_handling["examples"] = [{
-            "emotion": "通用",
-            "pattern": switch_rule or "见 mode",
-            "anti_pattern": ap,
-        }]
+    # 2026-09-01 修复：改用 extract_emotion_examples() 而非旧的 fuzzy_find 单键提取，
+    # 否则三本书的「情绪→写法」examples 全部落空（函数已兼容四种 pass3 结构但从未接线）。
+    emotion_handling["examples"] = extract_emotion_examples(pass3, mode)
 
     # 意象系统：多种路径查找（pass3 输出结构不稳定）
     # 1. 顶层 imagery_system / imagery
@@ -677,6 +711,9 @@ def normalize_pass3(pass3: dict) -> tuple:
 
     # high_freq_metaphor_domains
     domains = img_raw.get("high_freq_metaphor_domains") or as_list(fuzzy_find(pass3, "比喻", "意象", "metaphor"))
+    # 2026-09-01 修复：把带例子的长标签（如"日常生活物件/场景（如'手机'…）"）截成 ≤6 字简短标签，
+    # 否则触发 validate 的"比喻领域过长"警告（sangshi 曾报 28 字/19 字）。
+    domains = _shorten_domains(domains)
 
     # sensory_preference：兼容中文键（视觉/听觉/触觉/嗅觉/味觉）和英文键
     sensory_raw = img_raw.get("sensory_preference") or {}
