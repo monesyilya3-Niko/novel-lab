@@ -1,0 +1,253 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "voice-card.schema.json",
+  "title": "作者声线卡",
+  "description": "从单本范文提取的文风资产。设计原则：每个字段都必须能反向指导写作，纯描述性指标一律不收。",
+  "type": "object",
+  "required": ["meta", "narration", "dialogue", "emotion_handling", "banned"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["source_title", "genre", "extracted_at", "sample_chapters", "confidence"],
+      "properties": {
+        "source_title": { "type": "string", "description": "范文书名" },
+        "author": { "type": "string" },
+        "genre": { "type": "string", "description": "题材标签，对应 genre-pack 的 id" },
+        "platform": { "type": "string", "description": "首发平台，影响商业层判断基准" },
+        "extracted_at": { "type": "string", "format": "date" },
+        "sample_chapters": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "实际分析了哪几章。必须记录，否则无法判断样本代表性"
+        },
+        "total_sample_words": { "type": "integer" },
+        "confidence": {
+          "type": "number", "minimum": 0, "maximum": 1,
+          "description": "自评置信度。样本<3万字或<10章时不得高于0.6"
+        },
+        "human_reviewed": {
+          "type": "boolean", "default": false,
+          "description": "是否经人工校验。未校验的资产不允许注入创作引擎"
+        }
+      }
+    },
+
+    "narration": {
+      "type": "object",
+      "description": "叙述层特征",
+      "required": ["pov", "tense_feel", "sentence_rhythm", "paragraph"],
+      "properties": {
+        "pov": {
+          "type": "string",
+          "enum": ["第一人称", "第三人称限知", "第三人称全知", "多视角轮换"]
+        },
+        "pov_switch_rule": {
+          "type": "string",
+          "description": "视角切换的时机规律，如「仅在卷首切换」「每章固定单一视角」"
+        },
+        "tense_feel": {
+          "type": "string",
+          "description": "叙述距离感，如「贴身跟随，几乎无叙述者介入」「作者时常跳出点评」"
+        },
+        "sentence_rhythm": {
+          "type": "object",
+          "properties": {
+            "avg_length": { "type": "number", "description": "平均句长（字）" },
+            "short_ratio": { "type": "number", "description": "≤15字短句占比" },
+            "long_ratio": { "type": "number", "description": "≥40字长句占比" },
+            "burst_pattern": {
+              "type": "string",
+              "description": "关键：短句爆发出现在什么场景。如「打斗时连续3-5个短句，日常回落长句」。这是能指导写作的部分，单纯的平均值不能"
+            }
+          }
+        },
+        "paragraph": {
+          "type": "object",
+          "properties": {
+            "avg_lines": { "type": "number" },
+            "single_line_para_ratio": {
+              "type": "number",
+              "description": "单句成段占比。网文强节奏感的核心指标"
+            },
+            "usage_of_single_line": {
+              "type": "string",
+              "description": "单句成段用在什么位置，如「转折前的静默」「打脸台词」"
+            }
+          }
+        },
+        "chapter_opening_patterns": {
+          "type": "array",
+          "description": "章节开头手法及其出现频次，按频次降序",
+          "items": {
+            "type": "object",
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "enum": ["直入对话", "场景白描", "承接上章悬念", "时间跳跃", "内心独白", "旁白点题"]
+              },
+              "frequency": { "type": "number" },
+              "example_structure": {
+                "type": "string",
+                "description": "抽象出的句式骨架，不得摘抄原文。如「[环境状态]+[人物动作]+[一句话冲突]」"
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "dialogue": {
+      "type": "object",
+      "properties": {
+        "dialogue_ratio": { "type": "number", "description": "对话占正文字数比例" },
+        "tag_style": {
+          "type": "string",
+          "description": "对话标签习惯，如「大量使用『说』的替代词」「几乎只用『道』」「靠动作代替标签」"
+        },
+        "subtext_level": {
+          "type": "string",
+          "enum": ["直白", "偶有潜台词", "大量潜台词"]
+        },
+        "character_voices": {
+          "type": "array",
+          "description": "角色声线，这是拆书最难也最值钱的产出",
+          "items": {
+            "type": "object",
+            "required": ["name", "role", "speech_signature"],
+            "properties": {
+              "name": { "type": "string" },
+              "role": {
+                "type": "string",
+                "enum": ["主角", "女主", "反派", "导师", "配角", "工具人"]
+              },
+              "speech_signature": {
+                "type": "object",
+                "description": "可执行的说话特征，不是性格形容词",
+                "properties": {
+                  "avg_utterance_length": { "type": "number", "description": "单次发言平均字数" },
+                  "verbal_tics": {
+                    "type": "array", "items": { "type": "string" },
+                    "description": "口头禅、语气词习惯"
+                  },
+                  "refusal_pattern": {
+                    "type": "string",
+                    "description": "怎么拒绝别人。区分角色最有效的单一维度"
+                  },
+                  "anger_pattern": { "type": "string", "description": "生气时的表达方式" },
+                  "never_says": {
+                    "type": "array", "items": { "type": "string" },
+                    "description": "这个角色绝不会说的话/词。反向约束比正向描述更能防串味"
+                  },
+                  "physical_habit": {
+                    "type": "array", "items": { "type": "string" },
+                    "description": "说话时的固定小动作"
+                  }
+                }
+              },
+              "arc": {
+                "type": "object",
+                "properties": {
+                  "start_state": { "type": "string" },
+                  "end_state": { "type": "string" },
+                  "turning_chapters": {
+                    "type": "array", "items": { "type": "integer" },
+                    "description": "发生质变的章节号"
+                  },
+                  "arc_type": {
+                    "type": "string",
+                    "enum": ["正向成长", "负向堕落", "平坦型", "先扬后抑", "先抑后扬"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "emotion_handling": {
+      "type": "object",
+      "description": "情绪怎么写。这一项决定成稿是否有AI味，权重最高",
+      "required": ["mode", "examples"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["直陈式", "体感式", "动作外化式", "环境投射式", "混合式"],
+          "description": "直陈式=『他很愤怒』；体感式=『后颈汗毛立起来』；动作外化=『把杯子攥出了裂纹』"
+        },
+        "body_reaction_vocabulary": {
+          "type": "array", "items": { "type": "string" },
+          "description": "作者惯用的身体反应词库，如 指节发白/喉结滚动/后槽牙咬紧"
+        },
+        "examples": {
+          "type": "array",
+          "description": "情绪→写法的映射范式。必须是抽象骨架，禁止摘抄原句",
+          "items": {
+            "type": "object",
+            "properties": {
+              "emotion": { "type": "string" },
+              "pattern": { "type": "string", "description": "抽象写法骨架" },
+              "anti_pattern": { "type": "string", "description": "该作者不会这么写的反例" }
+            }
+          }
+        }
+      }
+    },
+
+    "imagery": {
+      "type": "object",
+      "properties": {
+        "high_freq_metaphor_domains": {
+          "type": "array", "items": { "type": "string" },
+          "description": "比喻取材领域，如「刀兵」「野兽」「天象」。领域比具体喻体更可复用"
+        },
+        "sensory_preference": {
+          "type": "object",
+          "description": "五感描写占比，反映作者的感官偏好",
+          "properties": {
+            "visual": { "type": "number" },
+            "auditory": { "type": "number" },
+            "tactile": { "type": "number" },
+            "olfactory": { "type": "number" },
+            "gustatory": { "type": "number" }
+          }
+        },
+        "signature_devices": {
+          "type": "array", "items": { "type": "string" },
+          "description": "标志性修辞手法"
+        }
+      }
+    },
+
+    "banned": {
+      "type": "object",
+      "description": "反面清单。实践中约束力强于正面描述",
+      "properties": {
+        "never_used_words": {
+          "type": "array", "items": { "type": "string" },
+          "description": "全书未出现或极低频的常见词。这是文风指纹的负空间"
+        },
+        "avoided_structures": {
+          "type": "array", "items": { "type": "string" },
+          "description": "作者回避的句式结构"
+        },
+        "genre_taboos": {
+          "type": "array", "items": { "type": "string" },
+          "description": "题材层面的禁忌，如都市文里的修真术语"
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "版权合规追踪。抽象模式可留存，原文不可",
+      "properties": {
+        "contains_verbatim": {
+          "type": "boolean", "default": false,
+          "description": "必须恒为 false。校验脚本会拒绝 true 的资产"
+        },
+        "abstraction_note": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# API 密钥绝不进版本库
+config/.secrets.json
+**/.secrets.json
+
+# 范文原文（版权材料，只在本地留存）
+corpus/
+*.txt
+
+# 拆书中间产物
+.cache/
+__pycache__/
+*.pyc

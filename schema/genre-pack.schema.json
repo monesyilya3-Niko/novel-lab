@@ -1,0 +1,295 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "genre-pack.schema.json",
+  "title": "题材规则包",
+  "description": "由同题材多本范文聚合而成的写作规则。单本出声线卡，多本出题材包——这是两者的分工。商业层数据全部落在这里。",
+  "type": "object",
+  "required": ["meta", "structure", "commercial", "language_rules"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["id", "name", "source_books"],
+      "properties": {
+        "id": { "type": "string", "description": "如 xuanhuan-system、urban-revenge" },
+        "name": { "type": "string" },
+        "sub_tags": {
+          "type": "array", "items": { "type": "string" },
+          "description": "细分标签，如 系统流/扮猪吃虎/重生"
+        },
+        "source_books": {
+          "type": "array",
+          "description": "聚合来源。少于3本时置信度不得超过0.5",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "platform": { "type": "string" },
+              "performance": { "type": "string", "description": "市场表现，如「站内月票榜前10」" },
+              "voice_card_ref": { "type": "string", "description": "对应声线卡文件名" }
+            }
+          }
+        },
+        "target_platform": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "structure": {
+      "type": "object",
+      "description": "故事怎么走。这是所有同类项目最薄的一层",
+      "properties": {
+        "chapter_word_range": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "integer" },
+            "typical": { "type": "integer" },
+            "max": { "type": "integer" }
+          }
+        },
+        "chapter_roles": {
+          "type": "array",
+          "description": "章节功能类型及其占比与排布规律",
+          "items": {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": ["铺垫", "推进", "转折", "爆发", "缓冲", "过渡"]
+              },
+              "ratio": { "type": "number", "description": "在全书中的占比" },
+              "typical_position": {
+                "type": "string",
+                "description": "惯常出现位置，如「每5章一个爆发」"
+              },
+              "beats": {
+                "type": "array", "items": { "type": "string" },
+                "description": "该类型章节的标准节拍序列"
+              }
+            }
+          }
+        },
+        "hook_system": {
+          "type": "object",
+          "description": "钩子系统。决定读者翻不翻下一章，比句长方差重要一万倍",
+          "properties": {
+            "hook_types": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["悬念揭示", "危机降临", "身份反转", "实力展示", "情感冲击", "信息断点", "对手登场"]
+                  },
+                  "frequency": { "type": "number" },
+                  "strength": { "type": "integer", "minimum": 1, "maximum": 10 },
+                  "skeleton": {
+                    "type": "string",
+                    "description": "钩子的抽象句式骨架，非原文"
+                  }
+                }
+              }
+            },
+            "hook_density_curve": {
+              "type": "array",
+              "description": "钩子强度随章节的变化曲线。采样点用于反推节奏设计",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chapter": { "type": "integer" },
+                  "strength": { "type": "integer" },
+                  "type": { "type": "string" }
+                }
+              }
+            },
+            "anti_repetition_rule": {
+              "type": "string",
+              "description": "同类钩子的最小间隔要求，防止连续几章用同一招"
+            }
+          }
+        },
+        "foreshadow_pattern": {
+          "type": "object",
+          "properties": {
+            "avg_span": { "type": "number", "description": "埋设到回收的平均章节跨度" },
+            "max_span": { "type": "number" },
+            "concurrent_open": {
+              "type": "number",
+              "description": "同时挂起的伏笔条数。超过这个数读者会记不住"
+            },
+            "plant_technique": {
+              "type": "array", "items": { "type": "string" },
+              "description": "埋设手法，如「借配角闲聊带出」「作为背景道具一笔带过」"
+            }
+          }
+        },
+        "arc_rhythm": {
+          "type": "object",
+          "properties": {
+            "chapters_per_arc": { "type": "integer" },
+            "arc_template": {
+              "type": "array", "items": { "type": "string" },
+              "description": "单卷的标准起伏模板"
+            },
+            "climax_position": {
+              "type": "number",
+              "description": "高潮在卷内的相对位置（0-1）"
+            }
+          }
+        }
+      }
+    },
+
+    "commercial": {
+      "type": "object",
+      "description": "钱怎么来。市面上没有任何一个同类项目做这层——这是本项目的核心差异化",
+      "required": ["payoff_density", "opening_analysis"],
+      "properties": {
+        "payoff_density": {
+          "type": "object",
+          "description": "爽点密度",
+          "properties": {
+            "per_thousand_words": {
+              "type": "number",
+              "description": "每千字爽点次数"
+            },
+            "payoff_types": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": ["打脸", "升级", "收益兑现", "身份揭露", "他人认可", "情感回应", "反杀"]
+                  },
+                  "ratio": { "type": "number" },
+                  "buildup_length": {
+                    "type": "integer",
+                    "description": "该类爽点前的铺垫字数。铺垫不足则爽点无力，过长则读者流失"
+                  },
+                  "skeleton": { "type": "string", "description": "抽象执行骨架" }
+                }
+              }
+            },
+            "dry_spell_tolerance": {
+              "type": "integer",
+              "description": "连续无爽点的最大章数上限。超过就是留存杀手"
+            }
+          }
+        },
+        "opening_analysis": {
+          "type": "object",
+          "description": "前3章决定点击率，必须逐段拆",
+          "properties": {
+            "chapter_1": {
+              "type": "object",
+              "properties": {
+                "first_300_words_task": {
+                  "type": "string",
+                  "description": "开篇300字承担的功能"
+                },
+                "hook_position": { "type": "integer", "description": "第一个钩子出现在第几字" },
+                "protagonist_intro_method": { "type": "string" },
+                "conflict_intro_position": { "type": "integer" },
+                "golden_finger_reveal": {
+                  "type": "string",
+                  "description": "金手指出现时机与方式"
+                }
+              }
+            },
+            "chapter_2_3_task": { "type": "string", "description": "第2-3章承担的留存任务" },
+            "common_mistakes": {
+              "type": "array", "items": { "type": "string" },
+              "description": "对标作品刻意规避的开篇错误"
+            }
+          }
+        },
+        "paywall": {
+          "type": "object",
+          "properties": {
+            "position_chapter": { "type": "integer", "description": "付费卡点章节位置" },
+            "cliffhanger_technique": { "type": "string", "description": "卡点手法" },
+            "pre_paywall_buildup": {
+              "type": "string",
+              "description": "卡点前几章的蓄力策略"
+            }
+          }
+        },
+        "update_rhythm": {
+          "type": "object",
+          "properties": {
+            "chapters_per_day": { "type": "number" },
+            "burst_timing": { "type": "string", "description": "爆更时机策略" }
+          }
+        },
+        "retention_risk_points": {
+          "type": "array",
+          "description": "该题材公认的流失高危位置",
+          "items": {
+            "type": "object",
+            "properties": {
+              "position": { "type": "string" },
+              "reason": { "type": "string" },
+              "mitigation": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "language_rules": {
+      "type": "object",
+      "description": "题材语言铁律。inkos 的 ✗→✓ 对照格式验证有效，直接采用",
+      "properties": {
+        "iron_rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["rule", "bad_example", "good_example"],
+            "properties": {
+              "rule": { "type": "string" },
+              "bad_example": { "type": "string", "description": "✗ 反例（自造，非摘抄）" },
+              "good_example": { "type": "string", "description": "✓ 正例（自造，非摘抄）" },
+              "rationale": { "type": "string" }
+            }
+          }
+        },
+        "banned_phrases": {
+          "type": "array", "items": { "type": "string" },
+          "description": "题材禁用词"
+        },
+        "fatigue_words": {
+          "type": "array",
+          "description": "疲劳词：用多了读者腻的词，需要频次上限",
+          "items": {
+            "type": "object",
+            "properties": {
+              "word": { "type": "string" },
+              "max_per_chapter": { "type": "integer" }
+            }
+          }
+        },
+        "required_elements": {
+          "type": "array", "items": { "type": "string" },
+          "description": "该题材必须具备的要素，缺失即不像本类型"
+        },
+        "forbidden_elements": {
+          "type": "array", "items": { "type": "string" }
+        }
+      }
+    },
+
+    "world_conventions": {
+      "type": "object",
+      "description": "题材通用设定惯例，非具体某本书的设定",
+      "properties": {
+        "power_system_type": { "type": "string" },
+        "progression_granularity": {
+          "type": "string",
+          "description": "升级颗粒度，如「每10章一个小境界」"
+        },
+        "naming_conventions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

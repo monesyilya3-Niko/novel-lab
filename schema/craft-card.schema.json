@@ -1,0 +1,257 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "craft-card.schema.json",
+  "title": "写作技法卡",
+  "description": "从单本范文深度拆解的写作技法资产。设计原则：每个技法都必须是可执行的写作模式，含骨架+反例+效果说明。",
+  "type": "object",
+  "required": ["meta", "craft_analysis", "craft_summary"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["source_title", "genre", "extracted_at", "sample_chapters", "confidence"],
+      "properties": {
+        "source_title": { "type": "string", "description": "范文书名" },
+        "author": { "type": "string" },
+        "genre": { "type": "string" },
+        "platform": { "type": "string" },
+        "extracted_at": { "type": "string", "format": "date" },
+        "sample_chapters": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "description": "实际分析了哪几章"
+        },
+        "total_sample_words": { "type": "integer" },
+        "confidence": {
+          "type": "number", "minimum": 0, "maximum": 1,
+          "description": "自评置信度"
+        },
+        "pass5_version": {
+          "type": "string",
+          "description": "Pass5 prompt 版本号"
+        }
+      }
+    },
+
+    "craft_analysis": {
+      "type": "object",
+      "description": "8 维写作技法深度拆解",
+      "required": ["foreshadowing", "information_release", "pov_control", "scene_transition", "tension_building", "dialogue_craft", "rhythm_control", "sensory_craft"],
+      "properties": {
+        "foreshadowing": {
+          "type": "object",
+          "description": "伏笔技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string", "description": "技法名称" },
+                  "description": { "type": "string", "description": "在什么场景下用什么手法" },
+                  "effect": { "type": "string", "description": "达到什么效果" },
+                  "skeleton": { "type": "string", "description": "抽象可复用骨架" },
+                  "anti_pattern": { "type": "string", "description": "该作者不会这么写的反例" }
+                }
+              }
+            },
+            "buried_payoff_ratio": {
+              "type": "number", "minimum": 0, "maximum": 1,
+              "description": "已回收伏笔/总伏笔数"
+            },
+            "note": { "type": "string" }
+          }
+        },
+
+        "information_release": {
+          "type": "object",
+          "description": "信息释放技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "suspense_maintenance": { "type": "string", "description": "悬念维持的核心手法" }
+          }
+        },
+
+        "pov_control": {
+          "type": "object",
+          "description": "视角控制技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "info_asymmetry": { "type": "string", "description": "角色间信息差的运用方式" }
+          }
+        },
+
+        "scene_transition": {
+          "type": "object",
+          "description": "场景转换技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "dominant_style": { "type": "string", "description": "主要转场风格" }
+          }
+        },
+
+        "tension_building": {
+          "type": "object",
+          "description": "张力构建技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "peak_valley_pattern": { "type": "string", "description": "张力起伏的典型模式" }
+          }
+        },
+
+        "dialogue_craft": {
+          "type": "object",
+          "description": "对话技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "subtext_ratio": {
+              "type": "number", "minimum": 0, "maximum": 1,
+              "description": "含潜台词对话占比估算"
+            }
+          }
+        },
+
+        "rhythm_control": {
+          "type": "object",
+          "description": "节奏控制技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "tempo_shift_triggers": { "type": "string", "description": "节奏切换的触发条件" }
+          }
+        },
+
+        "sensory_craft": {
+          "type": "object",
+          "description": "感官运用技法",
+          "properties": {
+            "techniques": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "description", "effect", "skeleton"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "effect": { "type": "string" },
+                  "skeleton": { "type": "string" },
+                  "anti_pattern": { "type": "string" }
+                }
+              }
+            },
+            "dominant_sense": { "type": "string", "description": "最常用感官" },
+            "rare_sense_usage": { "type": "string", "description": "罕见感官的特殊用法" }
+          }
+        }
+      }
+    },
+
+    "craft_summary": {
+      "type": "object",
+      "description": "技法总结",
+      "required": ["top_3_strengths", "unique_techniques", "reusable_patterns"],
+      "properties": {
+        "top_3_strengths": {
+          "type": "array", "items": { "type": "string" },
+          "description": "最强的 3 个技法"
+        },
+        "unique_techniques": {
+          "type": "array", "items": { "type": "string" },
+          "description": "该作者独有/少见的技法"
+        },
+        "reusable_patterns": {
+          "type": "array", "items": { "type": "string" },
+          "description": "最值得学习复用的 3 个模式"
+        }
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "版权合规追踪",
+      "properties": {
+        "contains_verbatim": {
+          "type": "boolean", "default": false
+        },
+        "abstraction_note": { "type": "string" }
+      }
+    }
+  }
+}

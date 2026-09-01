@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "trope-library.schema.json",
+  "title": "桥段模式库",
+  "description": "跨书累积的可复用桥段。与前两者的区别：声线卡绑定单本，题材包绑定单题材，桥段库是跨书跨题材持续增长的公共资产——用得越久越值钱。",
+  "type": "object",
+  "required": ["meta", "tropes"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "string" },
+        "updated_at": { "type": "string", "format": "date" },
+        "total_count": { "type": "integer" },
+        "contributing_books": {
+          "type": "array", "items": { "type": "string" },
+          "description": "贡献来源书目"
+        }
+      }
+    },
+    "tropes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category", "skeleton", "abstraction_level"],
+        "properties": {
+          "id": { "type": "string", "description": "如 T-FACE-001" },
+          "name": { "type": "string", "description": "桥段名，如「拍卖会撞脸」" },
+          "category": {
+            "type": "string",
+            "enum": ["打脸", "机缘", "危机", "情感", "身份", "试炼", "阵营转换", "日常"]
+          },
+          "applicable_genres": {
+            "type": "array", "items": { "type": "string" },
+            "description": "适用题材。跨题材可用的桥段价值更高"
+          },
+
+          "skeleton": {
+            "type": "object",
+            "description": "桥段骨架。核心资产，必须抽象到「换个世界观也能用」的程度",
+            "required": ["setup", "escalation", "payoff"],
+            "properties": {
+              "setup": { "type": "string", "description": "前置条件与铺垫" },
+              "escalation": {
+                "type": "array", "items": { "type": "string" },
+                "description": "递进步骤。层数决定爽感强度"
+              },
+              "payoff": { "type": "string", "description": "兑现方式" },
+              "aftermath": { "type": "string", "description": "余波处理，常被忽略但影响真实感" }
+            }
+          },
+
+          "abstraction_level": {
+            "type": "string",
+            "enum": ["structural", "scenic", "verbal"],
+            "description": "抽象层级。仅 structural 与 scenic 可入库；verbal 级过于贴近原文表达，法律风险高，一律拒收"
+          },
+
+          "parameters": {
+            "type": "array",
+            "description": "可变参数。填不同值就是不同故事，这是复用的关键",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "description": "如 轻视者身份 / 打脸场合" },
+                "options": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+
+          "effectiveness": {
+            "type": "object",
+            "properties": {
+              "payoff_strength": { "type": "integer", "minimum": 1, "maximum": 10 },
+              "word_cost": { "type": "integer", "description": "完整执行所需字数" },
+              "reader_fatigue_risk": {
+                "type": "string",
+                "enum": ["low", "medium", "high"],
+                "description": "重复使用的腻味风险"
+              },
+              "min_interval_chapters": {
+                "type": "integer",
+                "description": "同一桥段的最小复用间隔"
+              }
+            }
+          },
+
+          "variations": {
+            "type": "array", "items": { "type": "string" },
+            "description": "变体手法，用于打破套路感"
+          },
+          "common_failures": {
+            "type": "array", "items": { "type": "string" },
+            "description": "常见执行失误，如「铺垫不足导致打脸无力」"
+          },
+          "source_note": {
+            "type": "string",
+            "description": "来源说明。只记『在哪类作品中常见』，不记具体章节位置"
+          }
+        }
+      }
+    }
+  }
+}

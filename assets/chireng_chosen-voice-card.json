@@ -1,0 +1,189 @@
+{
+  "meta": {
+    "source_title": "chireng_chosen",
+    "genre": "campus-redemption",
+    "extracted_at": "2026-08-11",
+    "sample_chapters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      20,
+      21,
+      22,
+      23,
+      26,
+      27
+    ],
+    "total_sample_words": 26363,
+    "confidence": 0.9,
+    "human_reviewed": false
+  },
+  "narration": {
+    "pov": "第三人称限知",
+    "pov_switch_rule": "",
+    "tense_feel": "贴身跟随主角，几乎无叙述者介入",
+    "sentence_rhythm": {
+      "avg_length": 0,
+      "short_ratio": 0,
+      "long_ratio": 0,
+      "burst_pattern": ""
+    },
+    "paragraph": {},
+    "chapter_opening_patterns": [
+      {
+        "pattern": "场景白描",
+        "frequency": 3,
+        "example_structure": "[环境状态]+[人物动作]"
+      },
+      {
+        "pattern": "内心独白",
+        "frequency": 2,
+        "example_structure": "[心理活动]+[场景引入]"
+      }
+    ]
+  },
+  "dialogue": {
+    "dialogue_ratio": 0.2978,
+    "tag_style": "",
+    "subtext_level": "直白",
+    "character_voices": [
+      {
+        "name": "孟诗蕊",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "用威胁性反问句拒绝（如‘你还跑！让你跑！’），并附加具体惩罚（如‘拍裸照’‘弄死你’）。",
+          "never_says": [
+            "对不起，我错了。",
+            "这件事是我做得不对。",
+            "你比我优秀，我服气。"
+          ],
+          "verbal_tics": [
+            "寻文哥哥",
+            "蕊姐",
+            "狐狸精",
+            "贱民",
+            "浪货",
+            "臭婊子"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "边炀",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用不耐烦的反问句或陈述句拒绝（如‘关你屁事’‘我为什么要帮你’），并伴随肢体动作（如‘舌尖抵了抵腮帮’‘嗤笑一声’）。",
+          "never_says": [
+            "请、谢谢、对不起（连贯使用，表示真诚歉意或请求）。",
+            "这件事我需要你们帮忙，请大家支持我。",
+            "我很担心你的安全，请你务必小心。"
+          ],
+          "verbal_tics": [
+            "老子",
+            "关你屁事",
+            "唐小雨",
+            "嗯？",
+            "你丫的",
+            "特么",
+            "懂？"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "唐雨",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "极少直接拒绝，通常以沉默、低头、声音细弱或转移话题（如‘我…我没有’）来回应，拒绝意愿通过身体语言（如‘攥紧笔’‘缩脖子’）表达。",
+          "never_says": [
+            "你给我滚开，别碰我！",
+            "这件事我绝对不会原谅你。",
+            "我凭什么要听你的？"
+          ],
+          "verbal_tics": [
+            "对不起",
+            "谢谢",
+            "没事",
+            "我没事",
+            "真的不太疼",
+            "我不是…"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "周寻文",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "样本中未出现直接拒绝场景。拒绝倾向可能表现为温和地转移话题或提出替代方案。",
+          "never_says": [
+            "你给我闭嘴，听我说。",
+            "这件事没得商量，必须按我说的做。",
+            "我瞧不起你。"
+          ],
+          "verbal_tics": [
+            "唐雨同学",
+            "寻文哥哥"
+          ]
+        },
+        "arc": {}
+      }
+    ]
+  },
+  "emotion_handling": {
+    "mode": "混合式",
+    "body_reaction_vocabulary": [
+      "体感式",
+      "动作外化式",
+      "直陈式",
+      "简直可爱死了",
+      "手指都捏白了",
+      "心跳如鼓"
+    ],
+    "examples": []
+  },
+  "imagery": {
+    "high_freq_metaphor_domains": [
+      "动物/宠物行为",
+      "日常身体反应"
+    ],
+    "sensory_preference": {
+      "visual": 0.535,
+      "auditory": 0.289,
+      "tactile": 0.132,
+      "olfactory": 0.026,
+      "gustatory": 0.018
+    },
+    "signature_devices": [
+      "将人物行为动物化/幼态化（如‘跟撸小动物似的揉揉她的脑袋’、‘那脑袋都缩进脖子里去了’）",
+      "用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）"
+    ]
+  },
+  "banned": {
+    "never_used_words": [
+      "华丽辞藻堆砌",
+      "复杂心理学术语",
+      "冗长环境描写",
+      "抽象哲理思辨"
+    ],
+    "avoided_structures": [],
+    "genre_taboos": []
+  },
+  "provenance": {
+    "contains_verbatim": false,
+    "abstraction_note": "v2"
+  }
+}

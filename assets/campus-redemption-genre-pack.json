@@ -1,0 +1,287 @@
+{
+  "meta": {
+    "id": "genre-campus-redemption",
+    "name": "校园救赎",
+    "sub_tags": [
+      "青春",
+      "救赎",
+      "成长",
+      "校园"
+    ],
+    "source_books": [
+      {
+        "title": "chireng_chosen",
+        "platform": "番茄",
+        "performance": "未知",
+        "voice_card_ref": "chireng_chosen"
+      },
+      {
+        "title": "qingning_chosen",
+        "platform": "番茄",
+        "performance": "未知",
+        "voice_card_ref": "qingning_chosen"
+      },
+      {
+        "title": "sangshi_chosen",
+        "platform": "番茄",
+        "performance": "未知",
+        "voice_card_ref": "sangshi_chosen"
+      }
+    ],
+    "target_platform": "番茄",
+    "confidence": 0.85
+  },
+  "structure": {
+    "chapter_word_range": {
+      "min": 1500,
+      "typical": 2500,
+      "max": 3500
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.5,
+        "typical_position": "章首至章中",
+        "beats": [
+          "建立困境",
+          "展示日常",
+          "埋设伏笔"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.3,
+        "typical_position": "章中",
+        "beats": [
+          "提供线索",
+          "角色互动",
+          "小冲突"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.15,
+        "typical_position": "章末",
+        "beats": [
+          "情绪释放",
+          "关键揭露",
+          "小高潮"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.05,
+        "typical_position": "章末后",
+        "beats": [
+          "余韵处理",
+          "情绪消化"
+        ]
+      }
+    ],
+    "hook_system": {
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "frequency": 0.4,
+          "strength": 0.8,
+          "skeleton": "在章末揭示一个关于角色或事件的未知信息。"
+        },
+        {
+          "type": "危机降临",
+          "frequency": 0.3,
+          "strength": 0.9,
+          "skeleton": "主角面临来自同学、环境或内在的巨大压力或危险。"
+        },
+        {
+          "type": "情感冲击",
+          "frequency": 0.2,
+          "strength": 0.85,
+          "skeleton": "通过直白的内心描写或对话，引发强烈的情感共鸣。"
+        },
+        {
+          "type": "身份反转",
+          "frequency": 0.1,
+          "strength": 0.95,
+          "skeleton": "揭露主角或关键配角隐藏的真实身份或过往。"
+        }
+      ],
+      "hook_density_curve": [
+        "低开",
+        "中段平稳",
+        "章末拉高"
+      ],
+      "anti_repetition_rule": "连续两章不得使用同一类型的钩子，危机类钩子后需接情感或悬念钩子。"
+    },
+    "foreshadow_pattern": {
+      "avg_span": 5,
+      "max_span": 15,
+      "concurrent_open": 3,
+      "plant_technique": [
+        "日常对话中的细微异常",
+        "角色不经意的回避行为",
+        "环境中的象征性细节"
+      ]
+    },
+    "arc_rhythm": {
+      "chapters_per_arc": 8,
+      "arc_template": [
+        "困境建立",
+        "缓慢积蓄",
+        "意外转折",
+        "危机爆发",
+        "解决与成长"
+      ],
+      "climax_position": 0.75
+    }
+  },
+  "commercial": {
+    "payoff_density": {
+      "per_thousand_words": 0.8,
+      "payoff_types": [
+        {
+          "type": "情感回应",
+          "ratio": 0.5,
+          "buildup_length": 3,
+          "skeleton": "主角压抑的情绪在章末通过内心独白或关键对话得到释放。"
+        },
+        {
+          "type": "身份揭露",
+          "ratio": 0.2,
+          "buildup_length": 5,
+          "skeleton": "铺垫多章的秘密在关键时刻被主角或他人主动揭开。"
+        },
+        {
+          "type": "他人认可",
+          "ratio": 0.2,
+          "buildup_length": 4,
+          "skeleton": "主角的努力或特质被重要的同伴或长辈真诚地肯定。"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.1,
+          "buildup_length": 2,
+          "skeleton": "针对主角的恶意质疑或污蔑，被无可辩驳的事实或表现迅速反击。"
+        }
+      ],
+      "dry_spell_tolerance": 2
+    },
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "快速建立主角的孤立或困境状态，展现其核心性格特质。",
+        "hook_position": 300,
+        "protagonist_intro_method": "通过一个具体的困境或日常细节来展现其处境与内心，而非直接描述。",
+        "conflict_intro_position": 500,
+        "golden_finger_reveal": "第1章末或第2章初，以隐晦方式暗示主角拥有的特殊潜质或关键线索。"
+      },
+      "chapter_2_3_task": "深化矛盾，引入第一个明确的对手或挑战，并让主角做出首次尝试性反抗或突破。",
+      "common_mistakes": [
+        "大段心理描写介绍过去",
+        "开篇即高强度冲突",
+        "角色背景信息倾泻"
+      ]
+    },
+    "paywall": {
+      "position_chapter": 10,
+      "cliffhanger_technique": "在重大身份揭露或危机爆发的瞬间戛然而止。",
+      "pre_paywall_buildup": "通过3-5章逐步积累一个核心矛盾，使其在付费点前达到临界状态。"
+    },
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "周末或节假日可增加至3章，用于关键情节爆发。"
+    },
+    "retention_risk_points": [
+      {
+        "position": "第4-6章",
+        "reason": "初期铺垫完成后，若主线推进过慢，读者易失去耐心。",
+        "mitigation": "在第5章左右安排一个小型但明确的打脸或情感回应事件。"
+      },
+      {
+        "position": "每个小高潮后1-2章",
+        "reason": "情绪释放后的平淡期容易造成读者流失。",
+        "mitigation": "在缓冲章节中立即埋下下一个悬念的种子。"
+      }
+    ]
+  },
+  "language_rules": {
+    "iron_rules": [
+      {
+        "rule": "必须采用第三人称限知视角。",
+        "bad_example": "我知道他心里一定在嘲笑我。",
+        "good_example": "她看到他的嘴角似乎微微上扬了一下。",
+        "rationale": "所有样本均严格遵守此视角，以确保叙事代入感与信息控制。"
+      },
+      {
+        "rule": "情绪或动作爆发点必须使用短句或单句成段来强化。",
+        "bad_example": "一阵极其强烈难以言喻的悲伤与愤怒交织的情绪猛地冲击了她的内心。",
+        "good_example": "她愣住了。\n\n然后，笑了。",
+        "rationale": "跨书分析显示，情绪高潮的句式均明显短于叙述段落，这是制造节奏张力的铁律。"
+      },
+      {
+        "rule": "情绪写法以体感式为主，禁止大量直陈式情绪词。",
+        "bad_example": "她很愤怒，非常难过，感到害怕。",
+        "good_example": "后槽牙咬得发酸。指尖掐进掌心。呼吸卡在喉咙里。",
+        "rationale": "3/4本书采用混合式（体感为主），直陈式是AI味重灾区。"
+      },
+      {
+        "rule": "比喻必须从日常物件或自然现象取材，禁止宏大比喻。",
+        "bad_example": "她的灵魂像一颗坠落的星辰，在无垠的宇宙中寻找归宿。",
+        "good_example": "那根旧围巾像一个沉默的老朋友，围在脖子上暖暖的。",
+        "rationale": "所有样本的比喻领域均为日常物件/自然现象，无宏大比喻。"
+      }
+    ],
+    "banned_phrases": [
+      "恍若",
+      "霎时",
+      "眸",
+      "幽幽",
+      "宛如",
+      "仿佛",
+      "深邃",
+      "凝视",
+      "嘴角上扬",
+      "眸光",
+      "薄唇"
+    ],
+    "fatigue_words": [
+      {
+        "word": "深吸一口气",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "心跳漏了一拍",
+        "max_per_chapter": 1
+      },
+      {
+        "word": "她不知道",
+        "max_per_chapter": 3
+      },
+      {
+        "word": "像是",
+        "max_per_chapter": 4
+      },
+      {
+        "word": "她忽然",
+        "max_per_chapter": 3
+      }
+    ],
+    "required_elements": [
+      "直白的内心活动描写",
+      "日常校园生活细节",
+      "至少一个具象化的情感物件（旧物/信/草稿纸等）",
+      "短句爆发点（每章至少2处单句成段）"
+    ],
+    "forbidden_elements": [
+      "冗长的心理学术语分析",
+      "抽象的哲学思辨",
+      "华丽的辞藻堆砌"
+    ]
+  },
+  "world_conventions": {
+    "power_system_type": "无超自然力量，基于现实校园的社交关系、个人能力与心理成长。",
+    "progression_granularity": "通过解决具体事件、获得关键人际关系认可、克服特定心理障碍来体现。",
+    "naming_conventions": [
+      "真实感较强的中文人名",
+      "外号需符合学生群体特征"
+    ]
+  }
+}

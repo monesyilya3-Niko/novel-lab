@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "source_title": "sangshi_chosen",
+    "genre": "campus-redemption",
+    "extracted_at": "2026-08-11",
+    "sample_chapters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      20,
+      21,
+      22,
+      23,
+      26,
+      27
+    ],
+    "total_sample_words": 33899,
+    "confidence": 0.9,
+    "human_reviewed": false
+  },
+  "narration": {
+    "pov": "第三人称限知",
+    "pov_switch_rule": "",
+    "tense_feel": "贴身跟随主角感官，叙述者几乎不介入",
+    "sentence_rhythm": {
+      "avg_length": 0,
+      "short_ratio": 0,
+      "long_ratio": 0,
+      "burst_pattern": ""
+    },
+    "paragraph": {},
+    "chapter_opening_patterns": [
+      {
+        "pattern": "场景白描",
+        "frequency": 3,
+        "example_structure": "[环境状态]+[人物动作]"
+      },
+      {
+        "pattern": "内心独白",
+        "frequency": 2,
+        "example_structure": "[心理活动]+[场景引入]"
+      }
+    ]
+  },
+  "dialogue": {
+    "dialogue_ratio": 0.1947,
+    "tag_style": "",
+    "subtext_level": "直白",
+    "character_voices": [
+      {
+        "name": "教官",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "当队伍纪律涣散时",
+          "never_says": [
+            "我理解你的感受",
+            "要不我们商量一下",
+            "可能我错了"
+          ],
+          "verbal_tics": [
+            "二十五中队",
+            "操"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "周砚",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用简短、陈述事实的方式拒绝，或直接中断对话。如拒绝帮拿杯子时说'不去，撒手'；被要求帮忙时，用'你有病？'表达不耐烦。",
+          "never_says": [
+            "我也不知道该怎么办",
+            "也许你是对的",
+            "让我们再讨论一下吧"
+          ],
+          "verbal_tics": [
+            "嗯？",
+            "深更半夜不睡觉出去打篮球...你觉得只是发烧后脑子不行？",
+            "帮你把杯子洗一下，顺便帮我去医务室拿根体温计，余姐让我每隔半小时测一次，温度过高就拖进医院，靠。",
+            "想法不错。",
+            "慢慢说，不急。",
+            "以后别叫小学妹了。"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "桑幼",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "在感到被冒犯或不公时，会强硬地反问和质问，如对齐缘说'关你什用反问句回应'、'要求对方当面沟通。'。面对不想回答的问题（如成绩），选择沉默或模糊回应（'忘了'）。",
+          "never_says": [
+            "我觉得你说得对",
+            "对不起，都是我的错",
+            "我放弃吧"
+          ],
+          "verbal_tics": [
+            "学长",
+            "报告教官",
+            "我近视八百度",
+            "谢谢学长",
+            "学长拜拜",
+            "关你什么事"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "桑落",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用单字'滚'直接拒绝，或用冷嘲热讽的方式回应，如当被威胁时说'我怎么不知道我早恋？'。",
+          "never_says": [
+            "我服了你了",
+            "行行行，都听你的",
+            "我们好好谈谈"
+          ],
+          "verbal_tics": [
+            "滚",
+            "妈——",
+            "你去美黑了吗？",
+            "你们军训练习下跪吗？",
+            "你的飞行轨迹。"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "简栎城",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用带脏字的玩笑话拒绝，或直接说'滚'。",
+          "never_says": [
+            "我错了，请原谅我",
+            "让我们冷静一下",
+            "也许你的想法更有道理"
+          ],
+          "verbal_tics": [
+            "困死老子了",
+            "靠",
+            "我本来就有病，我感冒了你不知道吗？",
+            "滚，别逼我打你",
+            "小学妹找你干啥？"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "校医",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用带有歉意的解释来暂缓请求，如'不好意思啊小同学，你先等等……'。",
+          "never_says": [
+            "这不行，没得商量",
+            "你必须听我的",
+            "我很忙，别烦我"
+          ],
+          "verbal_tics": [
+            "不好意思啊小同学",
+            "你先等等，我先给你拿一瓶碘伏，你先自己消一下毒好吗？"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "宁冽",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "样本中未出现明确拒绝场景。",
+          "never_says": [
+            "我觉得不太合适",
+            "我们再想想",
+            "也许他不喜欢你"
+          ],
+          "verbal_tics": [
+            "我靠",
+            "幼幼",
+            "妈呀，好帅啊",
+            "你快上啊！冲！"
+          ]
+        },
+        "arc": {}
+      }
+    ]
+  },
+  "emotion_handling": {
+    "mode": "混合式",
+    "body_reaction_vocabulary": [
+      "不好意思",
+      "惊奇",
+      "没忍住",
+      "尖叫",
+      "截图",
+      "龙眼树",
+      "走！",
+      "总分",
+      "桑幼：【图片】",
+      "手机",
+      "保证书",
+      "换鞋",
+      "边换鞋边接电话",
+      "好好好，知道了。",
+      "狼嚎般的哭声"
+    ],
+    "examples": []
+  },
+  "imagery": {
+    "high_freq_metaphor_domains": [
+      "日常生活物件/场景（如'手机'、'保证书'、'龙眼树'）",
+      "身体动作与反应（如'尖叫'、'换鞋'）"
+    ],
+    "sensory_preference": {
+      "visual": 0.54,
+      "auditory": 0.336,
+      "tactile": 0.097,
+      "olfactory": 0.009,
+      "gustatory": 0.018
+    },
+    "signature_devices": [
+      "用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。",
+      "在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。"
+    ]
+  },
+  "banned": {
+    "never_used_words": [
+      "深邃",
+      "眸",
+      "幽幽",
+      "仿佛",
+      "宛如"
+    ],
+    "avoided_structures": [],
+    "genre_taboos": []
+  },
+  "provenance": {
+    "contains_verbatim": false,
+    "abstraction_note": "v2"
+  }
+}

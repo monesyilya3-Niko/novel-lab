@@ -1,0 +1,205 @@
+{
+  "meta": {
+    "source_title": "qingning_chosen",
+    "genre": "campus-redemption",
+    "extracted_at": "2026-08-11",
+    "sample_chapters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      13,
+      14,
+      15,
+      16,
+      19,
+      20,
+      21,
+      22,
+      23,
+      26,
+      27
+    ],
+    "total_sample_words": 35714,
+    "confidence": 0.9,
+    "human_reviewed": false
+  },
+  "narration": {
+    "pov": "第三人称限知",
+    "pov_switch_rule": "",
+    "tense_feel": "贴身跟随主角感官，叙述者几乎不介入",
+    "sentence_rhythm": {
+      "avg_length": 0,
+      "short_ratio": 0,
+      "long_ratio": 0,
+      "burst_pattern": "叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。"
+    },
+    "paragraph": {},
+    "chapter_opening_patterns": [
+      {
+        "pattern": "场景白描",
+        "frequency": 3,
+        "example_structure": "[环境状态]+[人物动作]"
+      },
+      {
+        "pattern": "内心独白",
+        "frequency": 2,
+        "example_structure": "[心理活动]+[场景引入]"
+      }
+    ]
+  },
+  "dialogue": {
+    "dialogue_ratio": 0.1077,
+    "tag_style": "",
+    "subtext_level": "直白",
+    "character_voices": [
+      {
+        "name": "苏念",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "当被要求直接向陆星辞求助时，会找借口回避，例如‘用婉转的借口回避帮助’。",
+          "never_says": [
+            "直接说‘我喜欢陆星辞’",
+            "公开表达对陆星辞的醋意",
+            "用命令或强硬的语气对陆星辞说话"
+          ],
+          "verbal_tics": [
+            "谢谢啊",
+            "哪有那么夸张",
+            "不弔了",
+            "麻烦彵了",
+            "我先走了",
+            "别胡说",
+            "我就是不知道穿什么",
+            "妈！",
+            "嗯？"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "陆星辞",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "面对他人的告白或不感兴趣的社交请求，使用礼貌但疏离的固定句式拒绝，如‘谢谢，不弔’或‘抱歉，影响学习’，然后直接转身离开，不给予任何进一步回应的空间。",
+          "never_says": [
+            "直接说出‘我喜欢苏念’",
+            "对苏念说软话或明显安慰的话（如‘你很好，不要难过’）",
+            "在外人面前主动表现出对苏念的特别关心"
+          ],
+          "verbal_tics": [
+            "嗯？",
+            "谢谢，不弔",
+            "抱歉，影响学习",
+            "我家近",
+            "别哭",
+            "喝水",
+            "别听她胡说",
+            "自己能想明白",
+            "懂了吗",
+            "哪里不会",
+            "早",
+            "不弔，我都准备好了"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "夏栀",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "（样本中未出现明确拒绝情境，置信度较低）",
+          "never_says": [
+            "严肃地、长时间地谈论自己的烦恼或心事",
+            "对苏念的暗恋心态进行理性、冷静的分析",
+            "用低调、含蓄的方式说话"
+          ],
+          "verbal_tics": [
+            "念念",
+            "哇哦",
+            "陆大神",
+            "走走走",
+            "男友力，简直max",
+            "别瞎说",
+            "这待遇",
+            "就跟你说个事儿"
+          ]
+        },
+        "arc": {}
+      },
+      {
+        "name": "江辰",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "（样本中未出现明确拒绝情境，置信度较低）",
+          "never_says": [
+            "说任何正经、严肃、带有深刻情感的话",
+            "安静地独处或长时间不说话"
+          ],
+          "verbal_tics": [
+            "陆哥",
+            "可以啊陆星辞",
+            "哇",
+            "切，装什么装"
+          ]
+        },
+        "arc": {}
+      }
+    ]
+  },
+  "emotion_handling": {
+    "mode": "直陈式",
+    "body_reaction_vocabulary": [
+      "她的心猛地一跳",
+      "是的，她怀孕了",
+      "八月初",
+      "九月初",
+      "婚后第二年春天",
+      "巷口",
+      "高铁站",
+      "书房",
+      "她很紧张/开心",
+      "时光飞逝"
+    ],
+    "examples": []
+  },
+  "imagery": {
+    "high_freq_metaphor_domains": [
+      "时间物理化",
+      "日常感官物件"
+    ],
+    "sensory_preference": {
+      "visual": 0.457,
+      "auditory": 0.241,
+      "tactile": 0.19,
+      "olfactory": 0.043,
+      "gustatory": 0.069
+    },
+    "signature_devices": [
+      "用具体、微小的感官细节（如斑驳光影、茉莉花香、汗味混杂油炸味）瞬间锚定场景情绪，替代直接抒情。"
+    ]
+  },
+  "banned": {
+    "never_used_words": [
+      "恍若",
+      "顿时",
+      "霎时",
+      "心中一震",
+      "不由得",
+      "倏地"
+    ],
+    "avoided_structures": [],
+    "genre_taboos": []
+  },
+  "provenance": {
+    "contains_verbatim": false,
+    "abstraction_note": "v2"
+  }
+}

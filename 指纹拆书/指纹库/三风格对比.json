@@ -1,0 +1,471 @@
+{
+  "source_corpus": "00_书库/样本测试",
+  "note": "仅含统计特征，不含任何原文；用于个人风格分析。",
+  "files_scanned": 3,
+  "files_analyzed": 3,
+  "files_skipped_short": 0,
+  "aggregate": {
+    "files_valid": 3,
+    "avg_sentence_cjk_len": 13.56,
+    "sentence_len_variance": 216.393,
+    "short_sentence_ratio(<15)": 0.734,
+    "connective_per_100_sent": 4.46,
+    "dialogue_sentence_ratio": 0.673,
+    "lexical_diversity_ttr": 0.378,
+    "avg_paragraph_cjk_len": 22.067,
+    "sentence_len_buckets_ratio": {
+      "<15": 0.766,
+      "15-30": 0.152,
+      "30-60": 0.06,
+      ">60": 0.022
+    },
+    "punctuation_per_100_sent": {
+      "comma": 80.29,
+      "period": 91.36,
+      "exclaim": 1.23,
+      "question": 6.55,
+      "ellipsis": 0.0
+    },
+    "pov": {
+      "first_person_per_100cjk": 0.72,
+      "second_person_per_100cjk": 1.12,
+      "third_person_per_100cjk": 2.34,
+      "demonstrative_per_100cjk": 1.41
+    },
+    "top_sentence_heads": [
+      [
+        "第一章",
+        3
+      ],
+      [
+        "他知道",
+        2
+      ],
+      [
+        "他想起",
+        2
+      ],
+      [
+        "那时候",
+        2
+      ],
+      [
+        "山风穿",
+        2
+      ],
+      [
+        "柳如霜",
+        2
+      ],
+      [
+        "陈默站",
+        1
+      ],
+      [
+        "灯牌坏",
+        1
+      ],
+      [
+        "他觉得",
+        1
+      ],
+      [
+        "陈默没",
+        1
+      ],
+      [
+        "他放下",
+        1
+      ],
+      [
+        "老周的",
+        1
+      ],
+      [
+        "雨点砸",
+        1
+      ],
+      [
+        "陈默摇",
+        1
+      ],
+      [
+        "老周自",
+        1
+      ],
+      [
+        "雨水顺",
+        1
+      ],
+      [
+        "他其实",
+        1
+      ],
+      [
+        "四十箱",
+        1
+      ],
+      [
+        "他在意",
+        1
+      ],
+      [
+        "一个干",
+        1
+      ],
+      [
+        "刚出生",
+        1
+      ],
+      [
+        "手心全",
+        1
+      ],
+      [
+        "你跟老",
+        1
+      ],
+      [
+        "你站住",
+        1
+      ],
+      [
+        "这事儿",
+        1
+      ]
+    ]
+  },
+  "per_file": [
+    {
+      "file": "风格A_短句快节奏.txt",
+      "sentences": 81,
+      "cjk_chars": 579,
+      "avg_sentence_cjk_len": 7.15,
+      "sentence_len_variance": 32.35,
+      "sentence_len_buckets_ratio": {
+        "<15": 0.877,
+        "15-30": 0.111,
+        "30-60": 0.012,
+        ">60": 0.0
+      },
+      "short_sentence_ratio(<15)": 0.877,
+      "connective_per_100_sent": 0.0,
+      "dialogue_sentence_ratio": 0.716,
+      "punctuation_per_100_sent": {
+        "comma": 33.33,
+        "period": 92.59,
+        "exclaim": 3.7,
+        "question": 3.7,
+        "ellipsis": 0.0
+      },
+      "pov": {
+        "first_person_per_100cjk": 1.21,
+        "second_person_per_100cjk": 1.73,
+        "third_person_per_100cjk": 2.25,
+        "demonstrative_per_100cjk": 1.21
+      },
+      "lexical_diversity_ttr": 0.3731,
+      "avg_paragraph_cjk_len": 11.6,
+      "top_sentence_heads": [
+        [
+          "第一章",
+          1
+        ],
+        [
+          "陈默站",
+          1
+        ],
+        [
+          "灯牌坏",
+          1
+        ],
+        [
+          "他觉得",
+          1
+        ],
+        [
+          "陈默没",
+          1
+        ],
+        [
+          "他知道",
+          1
+        ],
+        [
+          "他放下",
+          1
+        ],
+        [
+          "老周的",
+          1
+        ],
+        [
+          "雨点砸",
+          1
+        ],
+        [
+          "陈默摇",
+          1
+        ],
+        [
+          "老周自",
+          1
+        ],
+        [
+          "雨水顺",
+          1
+        ],
+        [
+          "他其实",
+          1
+        ],
+        [
+          "四十箱",
+          1
+        ],
+        [
+          "他在意",
+          1
+        ],
+        [
+          "一个干",
+          1
+        ],
+        [
+          "刚出生",
+          1
+        ],
+        [
+          "手心全",
+          1
+        ],
+        [
+          "你跟老",
+          1
+        ],
+        [
+          "你站住",
+          1
+        ],
+        [
+          "这事儿",
+          1
+        ],
+        [
+          "他走得",
+          1
+        ],
+        [
+          "他想起",
+          1
+        ],
+        [
+          "那时候",
+          1
+        ]
+      ]
+    },
+    {
+      "file": "风格B_长句重描写.txt",
+      "sentences": 39,
+      "cjk_chars": 895,
+      "avg_sentence_cjk_len": 22.95,
+      "sentence_len_variance": 546.46,
+      "sentence_len_buckets_ratio": {
+        "<15": 0.59,
+        "15-30": 0.103,
+        "30-60": 0.205,
+        ">60": 0.103
+      },
+      "short_sentence_ratio(<15)": 0.59,
+      "connective_per_100_sent": 10.26,
+      "dialogue_sentence_ratio": 0.615,
+      "punctuation_per_100_sent": {
+        "comma": 151.28,
+        "period": 84.62,
+        "exclaim": 0.0,
+        "question": 12.82,
+        "ellipsis": 0.0
+      },
+      "pov": {
+        "first_person_per_100cjk": 0.22,
+        "second_person_per_100cjk": 0.45,
+        "third_person_per_100cjk": 1.68,
+        "demonstrative_per_100cjk": 2.12
+      },
+      "lexical_diversity_ttr": 0.3911,
+      "avg_paragraph_cjk_len": 38.9,
+      "top_sentence_heads": [
+        [
+          "第一章",
+          1
+        ],
+        [
+          "那是一",
+          1
+        ],
+        [
+          "厚重的",
+          1
+        ],
+        [
+          "初升的",
+          1
+        ],
+        [
+          "他站在",
+          1
+        ],
+        [
+          "三年的",
+          1
+        ],
+        [
+          "他知道",
+          1
+        ],
+        [
+          "再深的",
+          1
+        ],
+        [
+          "山风穿",
+          1
+        ],
+        [
+          "他忽然",
+          1
+        ],
+        [
+          "它记得",
+          1
+        ],
+        [
+          "青石的",
+          1
+        ],
+        [
+          "周执事",
+          1
+        ],
+        [
+          "云海在",
+          1
+        ],
+        [
+          "远处的",
+          1
+        ]
+      ]
+    },
+    {
+      "file": "风格C_三章结构验证.txt",
+      "sentences": 64,
+      "cjk_chars": 677,
+      "avg_sentence_cjk_len": 10.58,
+      "sentence_len_variance": 70.37,
+      "sentence_len_buckets_ratio": {
+        "<15": 0.734,
+        "15-30": 0.234,
+        "30-60": 0.031,
+        ">60": 0.0
+      },
+      "short_sentence_ratio(<15)": 0.734,
+      "connective_per_100_sent": 3.12,
+      "dialogue_sentence_ratio": 0.688,
+      "punctuation_per_100_sent": {
+        "comma": 56.25,
+        "period": 96.88,
+        "exclaim": 0.0,
+        "question": 3.12,
+        "ellipsis": 0.0
+      },
+      "pov": {
+        "first_person_per_100cjk": 0.74,
+        "second_person_per_100cjk": 1.18,
+        "third_person_per_100cjk": 3.1,
+        "demonstrative_per_100cjk": 0.89
+      },
+      "lexical_diversity_ttr": 0.3708,
+      "avg_paragraph_cjk_len": 15.7,
+      "top_sentence_heads": [
+        [
+          "柳如霜",
+          2
+        ],
+        [
+          "第一章",
+          1
+        ],
+        [
+          "石阶很",
+          1
+        ],
+        [
+          "数到第",
+          1
+        ],
+        [
+          "外门弟",
+          1
+        ],
+        [
+          "台顶有",
+          1
+        ],
+        [
+          "他走到",
+          1
+        ],
+        [
+          "那是他",
+          1
+        ],
+        [
+          "她穿着",
+          1
+        ],
+        [
+          "沈砚之",
+          1
+        ],
+        [
+          "第三章",
+          1
+        ],
+        [
+          "看懂一",
+          1
+        ],
+        [
+          "山风穿",
+          1
+        ],
+        [
+          "这个问",
+          1
+        ],
+        [
+          "山下不",
+          1
+        ],
+        [
+          "玉是温",
+          1
+        ],
+        [
+          "他想起",
+          1
+        ],
+        [
+          "那时候",
+          1
+        ],
+        [
+          "现在他",
+          1
+        ]
+      ]
+    }
+  ]
+}

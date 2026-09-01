@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "commercial-obs.schema.json",
+  "title": "商业观测",
+  "description": "从单本范文拆解的商业节奏观测资产。注意：正文字段跨书变体大（skeleton/buildup_length 等形态不一），本 schema 为文档用途，实际校验逻辑在 scripts/validate.py 的 validate_commercial_obs（2026-09-01 起支持）：meta 严格 + 核心结构存在性 + 变体字段仅警告。",
+  "type": "object",
+  "required": ["meta", "payoff_density", "opening_analysis", "paywall"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["source_title", "genre", "scope"],
+      "properties": {
+        "source_title": { "type": "string", "description": "范文书名" },
+        "genre": { "type": "string" },
+        "scope": { "type": "string" },
+        "awaiting_aggregation": { "type": "boolean" },
+        "min_books_required": { "type": "integer" }
+      }
+    },
+    "payoff_density": {
+      "type": "object",
+      "description": "爽点密度（跨书内部结构有变体：per_chapter/per_thousand_words/ratio 等形态）"
+    },
+    "opening_analysis": {
+      "type": "object",
+      "description": "开篇商业分析（chapter_1 钩子位置、前 300 字任务等）",
+      "properties": {
+        "chapter_1": { "type": "object" },
+        "chapter_2_3_task": { "type": "string" }
+      }
+    },
+    "paywall": {
+      "type": "object",
+      "description": "付费墙设计（位置/断章技巧/前置铺垫）",
+      "properties": {
+        "position_chapter": { "type": "integer" },
+        "cliffhanger_technique": { "type": "string" },
+        "pre_paywall_buildup": { "type": "string" }
+      }
+    },
+    "skeleton": { "description": "开篇骨架（str 或 dict，变体字段，可缺省）" },
+    "dry_spell_tolerance": { "description": "平淡期容忍度（str 或 dict，变体字段，可缺省）" },
+    "update_rhythm": { "type": "object", "description": "更新节奏（可缺省）" },
+    "retention_risk_points": { "type": "array", "description": "流失风险点（可缺省）" },
+    "common_mistakes": { "description": "常见错误（str 或 list，变体字段，可缺省）" }
+  }
+}

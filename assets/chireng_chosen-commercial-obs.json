@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "source_title": "chireng_chosen",
+    "genre": "campus-redemption",
+    "scope": "single-book-observation",
+    "awaiting_aggregation": true,
+    "min_books_required": 3
+  },
+  "payoff_density": {
+    "per_chapter": 3,
+    "per_thousand_words": 1.5,
+    "payoff_types": [
+      {
+        "type": "打脸",
+        "ratio": 40
+      },
+      {
+        "type": "升级",
+        "ratio": 10
+      },
+      {
+        "type": "收益兑现",
+        "ratio": 30
+      },
+      {
+        "type": "情感回应",
+        "ratio": 20
+      }
+    ],
+    "buildup_length": 3000
+  },
+  "skeleton": "第一阶段（1-3章）：校园欺凌+男主英雄救美+转学生身份揭秘；第二阶段（4-10章）：女主求助被拒+用行动证明价值+男主胃痛关怀+同居契约；第三阶段（11-26章）：两人感情升温+女主逆袭+男主背景揭露+大结局。",
+  "dry_spell_tolerance": "2章（约6000字）",
+  "opening_analysis": {
+    "chapter_1": {
+      "first_300_words_task": "前300字必须完成：1.展现女主被欺凌的惨状（身体伤害、尊严践踏）；2.树立反派孟诗蕊的嚣张气焰（语言侮辱、暴力威胁）；3.埋下“裸照”危机作为核心冲突。",
+      "hook_position": "第1章中段（约500字处），当孟诗蕊下令“涉及人身威胁的命令”时，冲突升级，制造强烈危机感。",
+      "protagonist_intro_method": "通过被欺凌的场景，被动展现女主唐雨的“隐忍”特质（“一声不吭，静静等待”），而非主动介绍。",
+      "conflict_intro_position": "第1章开头第一句即进入冲突场景（巴掌落下），无任何铺垫。",
+      "golden_finger_reveal": "第1章末尾，男主边炀以“报警”为威胁，展现其第一次干预能力，但未揭示真实身份。"
+    },
+    "chapter_2_3_task": "第2-3章任务：1.巩固校园阶级对立（周寻文、孟诗蕊、唐雨的三角关系）；2.引入转学生边炀，制造神秘感和压迫感；3.通过课堂场景，展现孟诗蕊的报复和边炀的第二次干预（签字笔威胁）。"
+  },
+  "common_mistakes": "1.开篇不直接进入冲突，而是铺垫背景；2.男主救美后立刻“天降”，缺乏身份铺垫；3.反派动机单一（仅为嫉妒），缺乏家族势力等深层原因。",
+  "paywall": {
+    "position_chapter": 10,
+    "cliffhanger_technique": "第10章结尾，唐雨离开后，边炀独自吃着西红柿炒蛋，接到父亲电话却不接，暗示其家庭背景复杂，同时两人关系刚有进展即分离，制造悬念。",
+    "pre_paywall_buildup": "前9章累计铺垫：1.唐雨的绝望处境（被欺凌、无家可归）；2.边炀从拒绝到逐渐软化的过程；3.两人从对立到试探的互动。铺垫总字数约25000字。"
+  },
+  "update_rhythm": {
+    "chapters_per_day": 1,
+    "burst_timing": "周末可加更2章，重点放在感情转折点（如第一次同居、第一次共同面对反派）。"
+  },
+  "retention_risk_points": [
+    {
+      "position": "第5-6章",
+      "reason": "边炀多次拒绝唐雨，可能导致读者失去耐心，认为男主冷漠无情。",
+      "mitigation": "通过边炀的内心独白或后续行动（如涂药、给伞）展现其口是心非，维持读者对男主好感。"
+    },
+    {
+      "position": "第8-9章",
+      "reason": "唐雨主动献身被拒，可能让部分读者感到不适或节奏拖沓。",
+      "mitigation": "强调唐雨的绝望和边炀的克制，并在后续快速推进关系（如做饭、关怀），平衡节奏。"
+    }
+  ]
+}

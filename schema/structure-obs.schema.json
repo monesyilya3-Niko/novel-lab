@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "structure-obs.schema.json",
+  "title": "结构观测",
+  "description": "从单本范文拆解的章节级结构观测资产。注意：本 schema 为文档用途，实际校验逻辑在 scripts/validate.py 的 validate_structure_obs（2026-09-01 起支持）。",
+  "type": "object",
+  "required": ["meta", "chapter_analyses", "aggregate"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["source_title", "genre", "scope"],
+      "properties": {
+        "source_title": { "type": "string", "description": "范文书名" },
+        "genre": { "type": "string" },
+        "scope": { "type": "string", "description": "观测范围（如 全书/前X章）" },
+        "awaiting_aggregation": { "type": "boolean" },
+        "min_books_required": { "type": "integer" }
+      }
+    },
+    "chapter_analyses": {
+      "type": "array",
+      "minItems": 1,
+      "description": "逐章结构分析。role 必填；chapter/beats/hook/foreshadow 建议提供（跨书可能缺 chapter，以 title 表达）。",
+      "items": {
+        "type": "object",
+        "required": ["role"],
+        "properties": {
+          "chapter": { "type": "integer", "description": "章号（部分书以 title 表达，可缺省）" },
+          "title": { "type": "string" },
+          "role": { "type": "string", "enum": ["铺垫", "推进", "转折", "爆发", "缓冲", "过渡"] },
+          "beats": { "type": ["array", "string"], "description": "节拍序列" },
+          "hook": { "type": ["object", "string"], "description": "章末钩子类型与位置" },
+          "foreshadow": { "type": ["array", "object", "string"], "description": "伏笔埋设/回收" }
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "required": ["hook_type_freq", "hook_min_interval", "foreshadow_avg_span", "foreshadow_max_span", "foreshadow_concurrent_open"],
+      "properties": {
+        "hook_type_freq": { "type": "object", "description": "钩子类型频次表" },
+        "hook_min_interval": { "type": "integer", "description": "钩子最小间隔（章）" },
+        "climax_cycle": { "description": "高潮周期（跨书类型不稳定：dict/list/str 均出现过，校验仅要求存在）" },
+        "foreshadow_avg_span": { "type": "number", "description": "伏笔平均跨度（章）" },
+        "foreshadow_max_span": { "type": "integer" },
+        "foreshadow_concurrent_open": { "type": "integer", "description": "同时在线伏笔数" }
+      }
+    }
+  }
+}
