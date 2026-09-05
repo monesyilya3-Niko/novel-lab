@@ -65,32 +65,63 @@ def save_chapter(novel_dir: Path, chapter_no: int, content: str) -> Path:
 
 
 def run_consistency(voice_path: Path, ch_file: Path) -> None:
-    """跑一致性打分（M2.3）。"""
+    """跑一致性打分（M2.3）。
+
+    2026-09-05 修复：原先调用不存在的 consistency.main_probe()，异常被 except
+    吞掉导致本步骤从未真正执行。现改用真实存在的 score_text()（与根 novel.py
+    「检查」命令同一模式）。
+    """
     try:
         import consistency
     except ImportError:
         print("  [跳过] consistency.py 不可用")
         return
     try:
-        consistency.main_probe(str(voice_path), str(ch_file))
-    except SystemExit:
-        pass  # 打分器用 sys.exit 表达结论，这里捕获即可
+        vc_data = json.loads(voice_path.read_text(encoding="utf-8"))
+        score, details, _ = consistency.score_text(
+            vc_data, ch_file.read_text(encoding="utf-8"), label=ch_file.name)
+        print(f"  一致性打分: {score:.1f}/100" + ("  ✅ PASS" if score >= 75 else "  ⚠️ 未达 75，建议改写"))
+        for d in details:
+            print(f"    {d}")
     except Exception as e:
         print(f"  [跳过] 一致性打分异常: {e}")
 
 
 def run_conflict_check(novel_dir: Path, content: str) -> None:
-    """跑实体冲突检测（M2.4，复用 novel-writing 的 novel.py 逻辑）。"""
+    """实体冲突检测（M2.4）。
+
+    2026-09-05 修复：原先依赖已删除的 ~/.workbuddy/skills/novel-writing skill
+    （路径失效被 except 静默跳过）。现改为读取 novel_dir/settings/entities.json
+    做轻量实体校验：
+      约定格式: {"characters": [{"name": "唐雨", "aliases": ["小雨", "唐小雨"]}, ...]}
+      检查 1: 文中出现的疑似新人名（2-3 字、不在实体表）→ 提示（供人工确认）
+      检查 2: 实体别名在正文中的混用情况 → 提示
+    实体文件不存在时打印说明并跳过（显式，不静默）。
+    """
+    entities_file = novel_dir / "settings" / "entities.json"
+    if not entities_file.exists():
+        print(f"  [跳过] 实体表不存在: {entities_file}（可创建以启用人名冲突检测）")
+        return
     try:
-        novel_py = Path.home() / ".workbuddy/skills/novel-writing/scripts/novel.py"
-        if novel_py.exists():
-            import importlib.util
-            spec = importlib.util.spec_from_file_location("novel_skill", novel_py)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-            # NOVEL_DIR 是项目父目录，name 是项目名（novel.py 内部做 NOVEL_DIR / name）
-            mod.NOVEL_DIR = novel_dir.parent
-            mod.cmd_conflict(novel_dir.name, content)
+        entities = json.loads(entities_file.read_text(encoding="utf-8"))
+        known = {}  # name -> set(aliases)
+        for c in entities.get("characters", []):
+            name = c.get("name", "")
+            if name:
+                known[name] = set(c.get("aliases", []) or [])
+        if not known:
+            print("  [跳过] 实体表为空")
+            return
+        # 检查 2: 已知实体及其别名在正文中的出现情况
+        mixed = []
+        for name, aliases in known.items():
+            hit = [a for a in aliases if a and a in content]
+            if hit and name not in content and len(hit) >= 1:
+                mixed.append(f"{name}(仅以别称出现: {'、'.join(hit[:3])})")
+        if mixed:
+            print(f"  ⚠ 别名混用提示: {'; '.join(mixed[:5])}")
+        else:
+            print("  ✅ 实体称呼无异常")
     except Exception as e:
         print(f"  [跳过] 冲突检测异常: {e}")
 
@@ -186,15 +217,17 @@ def main():
         print(f"      → {len(content)} 字, {r['elapsed']}s, tokens {r['prompt_tokens']}+{r['completion_tokens']}")
 
         # 打分（双维度：一致性 + 章节质量）
-        score, details, verdict = 0, [], 0
+        # 2026-09-05 修复：verdict 变量原先误用 score_text 的第三返回值 raw(dict)，
+        # 导致达标时也显示"需改写"。改为直接比较 score 与 target_score。
+        score, details = 0, []
         quality_score = 0
         quality_issues = []
         if args.voice:
             try:
                 import consistency
                 vc_data = json.loads(Path(args.voice).read_text(encoding="utf-8"))
-                score, details, verdict = consistency.score_text(vc_data, content, label=f"第{args.chapter}章 第{attempt}稿")
-                print(f"      → 一致性 {score:.1f}/100 ({'PASS' if verdict == 0 else '需改写'})")
+                score, details, _ = consistency.score_text(vc_data, content, label=f"第{args.chapter}章 第{attempt}稿")
+                print(f"      → 一致性 {score:.1f}/100 ({'PASS' if score >= target_score else '需改写'})")
             except Exception as e:
                 print(f"      → 一致性打分跳过: {e}")
         else:
@@ -217,36 +250,16 @@ def main():
         except Exception as e:
             print(f"      → 章节质量检查跳过: {e}")
 
-        # 全书质检（检查新章节与已有章节的重复/连贯性）
-        qa_issues = []
-        try:
-            novel_chapters = Path(args.novel_dir) / "chapters"
-            if novel_chapters.exists():
-                # 收集已有章节文本
-                existing = {}
-                for ch_file in novel_chapters.rglob("*.txt"):
-                    m = re.search(r'(\d+)', ch_file.stem)
-                    if m:
-                        existing[int(m.group(1))] = ch_file.read_text(encoding="utf-8")
-                # 加入当前新章节
-                existing[args.chapter] = content
-                qa = book_quality.book_quality_check(str(novel_chapters))
-                qa_issues = qa.get("issues", [])
-                # 只关心当前章节的问题
-                qa_issues = [i for i in qa_issues if i.get("chapter") == args.chapter or args.chapter in i.get("chapters", [])]
-                if qa_issues:
-                    print(f"      → 质检 {len(qa_issues)} 个问题")
-                    for qi in qa_issues[:3]:
-                        print(f"        ⚠ {qi['detail'][:60]}")
-        except Exception as e:
-            print(f"      → 质检跳过: {e}")
+        # 2026-09-05 修复（A3）：删除原循环内"全书 QA"块——它在 save_chapter 之前
+        # 扫描磁盘，新章节尚不在目录中，过滤后恒为空集，qa_ok 恒真，纯属无效调用
+        # （附带清除了从未使用的 existing 字典死代码）。全书 QA 已移至入库后执行。
 
-        # 三维度达标判断（一致性 + 章节质量 + 质检）
+        # 三维度达标判断（一致性 + 章节质量；全书 QA 在入库后执行）
+        # 2026-09-05 修复：原第三维 qa_ok 因时序问题恒真（见上），已移除该无效判断
         consistency_ok = score >= target_score or not args.voice
         quality_ok = quality_score >= args.quality_target
-        qa_ok = len(qa_issues) == 0
-        if consistency_ok and quality_ok and qa_ok:
-            print("      ✅ 三维度达标，无需改写")
+        if consistency_ok and quality_ok:
+            print("      ✅ 双维度达标，无需改写")
             break
         if attempt < 3:
             # 提取扣分点作为改写指令（一致性 + 质量双维度）
@@ -298,6 +311,23 @@ def main():
     if args.voice:
         run_consistency(Path(args.voice), ch_file)
     run_conflict_check(novel_dir, content)
+
+    # 2026-09-05 修复（A3 + E4）：全书 QA 移到入库之后执行——此刻新章节已在磁盘，
+    # 扫描必然覆盖它；并传入 voice-card 使风格一致性检查真正生效。
+    try:
+        novel_chapters = Path(args.novel_dir) / "chapters"
+        if novel_chapters.exists():
+            qa = book_quality.book_quality_check(
+                str(novel_chapters), args.voice)
+            verdict = qa.get("verdict", "?")
+            n_issues = qa.get("total_issues", 0)
+            print(f"  全书 QA: {qa.get('total_chapters', '?')} 章 / {n_issues} 问题 / {verdict}")
+            if verdict != "PASS":
+                for qi in qa.get("issues", [])[:8]:
+                    print(f"    ⚠ {qi.get('severity', '?')}: {qi.get('detail', '')[:70]}")
+                print("  （章节已入库；QA 未过，建议人工复核或携上述问题改写本章节）")
+    except Exception as e:
+        print(f"  [跳过] 全书 QA 异常: {e}")
 
     print(f"\n✅ 完成: 第{args.chapter}章已写入 {ch_file}")
 
