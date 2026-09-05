@@ -11,8 +11,11 @@
   2. 情节连贯性（人物状态/时间线/逻辑矛盾）
   3. 文笔风格一致性（句式/比喻/情绪写法）
   4. 凑字数检测（废话/重复描写/无意义堆砌）
-  5. 乱编检测（人名错误/地名错误/数字矛盾）
+  5. 乱编检测（人名错误——读 settings/entities.json 实体表；数字矛盾）
   6. AI味检测（模板句/过度排比/作者旁白）
+
+⚠️ 局限性说明（2026-09-05 标注）：情节连贯/凑字数/AI味检测基于固定模板
+匹配，覆盖面有限，输出结果需人工复核，不能直接采信。
 """
 import argparse
 import json
@@ -231,30 +234,45 @@ def check_word_padding(texts: dict) -> list:
 # 5. 乱编检测
 # --------------------------------------------------------------------------
 
-def check_fabrication(texts: dict) -> list:
-    """检测乱编内容"""
+def check_fabrication(texts: dict, entities: dict = None) -> list:
+    """检测乱编内容。
+
+    2026-09-05 修复（C2）：人名检测改为实体表驱动——原硬编码「温霜禾/江春屿/
+    周敏/林悦」是历史旧书角色，对任何新书无效且会误报（如新书角色"小周"被误判
+    为旧角色"周敏"笔误）。现在：
+      - entities 格式: {"characters": [{"name": "唐雨", "aliases": ["小雨"]}, ...]}
+      - 无实体表 → 跳过人名检查并提示（宁可少报不误报）
+    """
     issues = []
     chapters = sorted(texts.keys())
-    
-    # 检测人名错误（同一人物不同称呼）
-    name_variants = {
-        "温霜禾": ["温霜", "霜禾", "温禾"],
-        "江春屿": ["江春", "春屿", "江屿"],
-        "周敏": ["周敏敏", "小周"],
-        "林悦": ["林悦悦", "小林"],
-    }
-    for ch in chapters:
-        text = texts[ch]
-        for correct, wrongs in name_variants.items():
-            for wrong in wrongs:
+
+    # 检测人名错误（实体表驱动）
+    if not entities or not entities.get("characters"):
+        # 无实体表时不再做硬编码人名检查（旧版误报根源，已移除）
+        pass
+    else:
+        known_names = set()
+        alias_map = {}  # alias/变体 -> 正确名
+        for c in entities.get("characters", []):
+            name = c.get("name", "")
+            if not name:
+                continue
+            known_names.add(name)
+            for alias in (c.get("aliases", []) or []):
+                if alias:
+                    alias_map[alias] = name
+        for ch in chapters:
+            text = texts[ch]
+            for wrong, correct in alias_map.items():
+                # 别名出现但正确名全程未出现 → 可能是漏写或乱编
                 if wrong in text and correct not in text:
                     issues.append({
                         "type": "name_error",
-                        "severity": "high",
+                        "severity": "medium",
                         "chapter": ch,
-                        "detail": f"Ch{ch} 出现「{wrong}」但未出现正确名「{correct}」，可能是乱编"
+                        "detail": f"Ch{ch} 出现「{wrong}」但未出现实体表中的「{correct}」，请人工确认"
                     })
-    
+
     # 检测数字矛盾（同一章内同一数字不同值）
     for ch in chapters:
         text = texts[ch]
@@ -266,7 +284,7 @@ def check_fabrication(texts: dict) -> list:
                 "chapter": ch,
                 "detail": f"Ch{ch} 出现多个不同手机号 {set(phone_nums)}，可能矛盾"
             })
-    
+
     return issues
 
 
@@ -310,9 +328,14 @@ def check_ai_flavor(texts: dict) -> list:
 # --------------------------------------------------------------------------
 
 def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapters_dir: str = None) -> dict:
-    """全书内容质检"""
+    """全书内容质检。
+
+    2026-09-05: 人名检测支持实体表——自动探测章节目录上两级/同级的
+    settings/entities.json（write.py 入库结构为 novel_dir/settings/），
+    也可由调用方通过 prev_chapters_dir 之外的方式扩展。
+    """
     chapter_path = Path(chapter_dir)
-    
+
     # 加载章节文本
     texts = {}
     if chapter_path.is_file():
@@ -326,30 +349,42 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
             if m:
                 ch_num = int(m.group(1))
                 texts[ch_num] = f.read_text(encoding='utf-8')
-    
+
     if not texts:
         return {"error": "未找到章节文件"}
-    
+
     # 加载 voice-card（可选）
     voice_card = None
     if voice_card_path:
         voice_card = json.loads(Path(voice_card_path).read_text(encoding='utf-8'))
-    
+
+    # 自动探测实体表（可选）：chapters/ 的父目录下 settings/entities.json
+    entities = None
+    probe_base = chapter_path.parent if chapter_path.is_dir() else chapter_path.parent
+    for candidate in (probe_base / "settings" / "entities.json",
+                      probe_base / "entities.json"):
+        if candidate.exists():
+            try:
+                entities = json.loads(candidate.read_text(encoding='utf-8'))
+            except Exception:
+                entities = None
+            break
+
     # 运行所有检查
     all_issues = []
-    
+
     if len(texts) >= 2:
         all_issues.extend(check_duplicate_chapters(texts))
         all_issues.extend(check_duplicate_paragraphs(texts))
         all_issues.extend(check_duplicate_sentences(texts))
-    
+
     for ch, text in texts.items():
         single = {ch: text}
         all_issues.extend(check_plot_continuity(single))
         all_issues.extend(check_word_padding(single))
-        all_issues.extend(check_fabrication(single))
+        all_issues.extend(check_fabrication(single, entities))
         all_issues.extend(check_ai_flavor(single))
-    
+
     all_issues.extend(check_style_consistency(texts, voice_card))
     
     # 统计
