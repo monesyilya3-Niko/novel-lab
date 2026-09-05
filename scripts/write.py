@@ -58,6 +58,11 @@ def save_chapter(novel_dir: Path, chapter_no: int, content: str) -> Path:
     state = json.loads(state_file.read_text(encoding="utf-8"))
     state["current_chapter"] = chapter_no
     state["current_arc"] = arc
+    # 2026-09-05 修复（C4）：word_count_today 跨日清零（原版只累加永不清零，长期失真）
+    today = datetime.now().strftime("%Y-%m-%d")
+    if state.get("last_write_date") != today:
+        state["word_count_today"] = 0
+        state["last_write_date"] = today
     state["word_count_today"] = state.get("word_count_today", 0) + len(content)
     state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
     state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")

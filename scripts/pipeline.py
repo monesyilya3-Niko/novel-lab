@@ -282,14 +282,14 @@ def main():
     sampled_dir.mkdir(parents=True, exist_ok=True)
     (sampled_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     (sampled_dir / "slices.json").write_text(json.dumps(slices, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[1/6] 采样: {len(chapters)} 章 → {len(sel)} 章（manifest.json / slices.json）")
+    print(f"[1/7] 采样: {len(chapters)} 章 → {len(sel)} 章（manifest.json / slices.json）")
 
     # 2. 量化（对整本跑，指标更稳）
     m = metrics_mod.compute(text)
     metrics_dir = ROOT / "corpus" / "metrics"
     metrics_dir.mkdir(parents=True, exist_ok=True)
     (metrics_dir / f"{name}.json").write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"[2/6] 量化: {m['total_chars']} 字, 均句长 {m['avg_sentence_len']}, "
+    print(f"[2/7] 量化: {m['total_chars']} 字, 均句长 {m['avg_sentence_len']}, "
           f"对话占比 {m['dialogue_ratio']}, TTR {m['char_ttr']}")
 
     # 3. 五遍扫描（Pass1-4 + Pass5 笔法分析）

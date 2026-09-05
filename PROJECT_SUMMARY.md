@@ -240,3 +240,42 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 - 工作区干净：暮冬念春全部数据已清出（终稿归档在 D 盘，_TRASH 可还原）
 - 《暮冬念春》终稿最新精修版：`D:\fanqie-auto\终稿_最新精修版_2026-09-01\`（159 章最新版 + 第 160 章双版本 + 底层规则包）
 - LLM 模式：WorkBuddy 内置智能（无外部模型/密钥/API）
+
+---
+
+## 八、深度诊断与修复记录（2026-09-05）
+
+> 诊断报告 + 修复计划存档于 `C:/Users/monesy/WorkBuddy/2026-09-05-10-21-22/`（novel-lab_诊断报告 / novel-lab_深度修复计划）。
+> 本次共 6 个提交：`0d59039` `b998648` `153388e` `66812d1` `9e07980` + 本文档同步。
+
+### 修复的问题（诊断报告 A/B/C 级）
+
+| 级 | 问题 | 修复 |
+|---|---|---|
+| A1 | write.py 调用不存在的 `consistency.main_probe()`，入库后一致性打分从未执行（异常被吞） | 改调真实存在的 `score_text()` |
+| A2 | write.py 冲突检测依赖已删除的 novel-writing skill，静默跳过 | 改读 `settings/entities.json` 实体表做轻量校验 |
+| A3 | 改写循环内全书 QA 在 save_chapter 之前扫描，永远不含新章节（恒空集） | QA 移到入库后执行；删除死代码 |
+| B1/B3 | consistency 5 维中 4 维不读资产（硬编码词表）；键名错位 `emotion` vs `emotion_handling` | 键名统一；情绪/视角/意象三维接资产词表（内置兜底） |
+| B2 | refusal/anger_pattern 因 10 字上限永不参与声线打分 | 长描述抽取引号片段作关键词 |
+| C1 | chapter_check 12 维实际满分 120 被 min(sum,100) 截断 | 分值降回 docstring 权重合计恰 100；PASS 线 75 与 quality-target 对齐 |
+| C2 | book_quality 硬编码旧书人名（温霜禾/江春屿/周敏/林悦），新书误报 | 改实体表驱动，无实体表跳过不误报 |
+| C3 | write.py 把 score_text 第三返回值 raw(dict) 当 verdict 用，达标也显示"需改写" | 直接比较 score 与 target |
+| C4 | word_count_today 只累加永不清零 | 跨日自动归零 |
+| E1 | pipeline 步骤编号 [1/6][2/6]+[3/7]~[7/7] 混用 | 统一 [1/7]~[7/7] |
+
+### 明确不修（决策留档）
+
+- **禁忌拦截**：2026-09-02 用户确认"禁忌不用拦截"，consistency 禁忌维跳过给满分属预期行为（已在 check_banned 处标注）
+- **无模型降级**：核心特性非 bug
+- **评分阈值题材适配**（男频快爽 vs 言情慢热）：需配置化，列为后续方向
+
+### 样章回归对照
+
+| 检查 | 改前 | 改后 | 说明 |
+|---|---|---|---|
+| consistency (chireng) | 100 | 94.7 | 声线词表 6-7→9-10 个，满分门槛提高，预期效果 |
+| consistency (qingning/sangshi) | 65 | 65 | 零回归（角色不在章内，声线 0 属预期） |
+| chapter_check | 88 | 75 | 真 100 分制；短段略多/让字3处/了字密度过高等真实短板不再被虚高掩盖 |
+| book_quality | PASS | PASS | 零回归；"小周"误报根因消除 |
+| 14 资产 validate | 12 PASS + 2 WARN | 12 PASS + 2 WARN | 零回归 |
+
