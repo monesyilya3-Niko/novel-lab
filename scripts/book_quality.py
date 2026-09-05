@@ -358,11 +358,18 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
     if voice_card_path:
         voice_card = json.loads(Path(voice_card_path).read_text(encoding='utf-8'))
 
-    # 自动探测实体表（可选）：chapters/ 的父目录下 settings/entities.json
+    # 自动探测实体表（可选）。章节传入路径可能是 novel_dir/chapters（目录）或
+    # 单章文件，实体表约定位于 novel_dir/settings/entities.json：
+    #   目录 → <dir>/settings/ 与 <dir.parent>/settings/ 都探测
+    #   文件 → <file.parent>/settings/ 与 <file.parent.parent>/settings/
     entities = None
-    probe_base = chapter_path.parent if chapter_path.is_dir() else chapter_path.parent
-    for candidate in (probe_base / "settings" / "entities.json",
-                      probe_base / "entities.json"):
+    bases = []
+    if chapter_path.is_dir():
+        bases = [chapter_path, chapter_path.parent]
+    else:
+        bases = [chapter_path.parent, chapter_path.parent.parent]
+    for base in bases:
+        candidate = base / "settings" / "entities.json"
         if candidate.exists():
             try:
                 entities = json.loads(candidate.read_text(encoding='utf-8'))
