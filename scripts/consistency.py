@@ -16,11 +16,31 @@ DIRECT_EMOTION = ["很愤怒", "很生气", "感到难过", "非常开心", "很
 POV_MARKERS = ["他", "她", "她和他", "他心里", "她心里"]
 
 def extract_keywords(desc: str, max_kws: int = 8) -> list:
-    """从声线卡描述中提取可匹配的关键词"""
+    """从声线卡描述中提取可匹配的关键词。
+
+    2026-09-05 修复（B2）：原先只收录 len<=10 的整段字符串——导致
+    refusal_pattern/anger_pattern 这类长描述永远不会进入核心词集合。
+    现对长描述改为抽取其中引号片段（「…」/''/""/“…”）作为关键词；
+    短字符串（≤10 字）仍整段收录；无引号片段的长描述跳过。
+    """
     kws = []
-    # 使用简单的字符串匹配，而不是正则表达式
     if len(desc) >= 2 and len(desc) <= 10:
         kws.append(desc)
+    else:
+        # 长描述：抽取引号内的具体词语作为可匹配关键词
+        for op, cl in [("「", "」"), ("『", "』"), ("“", "”"), ("‘", "’"), ('"', '"'), ("'", "'")]:
+            start = 0
+            while True:
+                i = desc.find(op, start)
+                if i < 0:
+                    break
+                j = desc.find(cl, i + len(op))
+                if j < 0:
+                    break
+                frag = desc[i + len(op):j].strip()
+                if 2 <= len(frag) <= 10:
+                    kws.append(frag)
+                start = j + len(cl)
     return kws[:max_kws]
 
 def _vt_to_str(item) -> str:
@@ -74,15 +94,24 @@ def check_voices(text, voices):
     return min(total, 35), details
 
 def check_emotion(text, emotion):
-    """情绪写法"""
-    sensation_words = [
+    """情绪写法。
+
+    2026-09-05 修复（B1-情绪）：体感词表改为「资产词表 ∪ 内置兜底」——
+    优先使用 voice-card.emotion_handling.body_reaction_vocabulary 的真实资产词，
+    内置 58 词仅作兜底（保证无资产词时敏感性不回退）。
+    """
+    asset_words = []
+    if isinstance(emotion, dict):
+        asset_words = [w for w in (emotion.get("body_reaction_vocabulary") or [])
+                       if isinstance(w, str) and len(w) >= 2]
+    sensation_words = list(dict.fromkeys(asset_words + [
         "心跳", "呼吸", "手指", "手心", "掌心", "喉咙", "眼眶", "鼻尖", "耳根", "脖子",
         "后背", "肩膀", "膝盖", "脚趾", "指尖", "脉搏", "太阳穴", "胸口", "胃里", "肚子",
         "发紧", "发酸", "发麻", "发凉", "发烫", "发热", "发抖", "发软", "发硬", "发胀",
         "渗出", "冒出", "涌起", "收紧", "松开", "攥紧", "掐住", "捏住", "握住", "抱住",
         "凉凉的", "暖暖的", "热热的", "冰冰的", "辣辣的", "咸咸的", "甜甜的", "酸酸的",
         "沙沙的", "嗡嗡的", "咚咚的", "砰砰的", "啪啪的", "哗哗的", "淅淅的", "簌簌的"
-    ]
+    ]))
     direct_emotion_words = DIRECT_EMOTION
     hit_sensation = sum(1 for w in sensation_words if w in text)
     hit_direct = sum(1 for w in direct_emotion_words if w in text)
@@ -94,20 +123,35 @@ def check_emotion(text, emotion):
         sensation_score = 20
     direct_penalty = min(hit_direct * 2, 10)
     score = max(0, sensation_score - direct_penalty)
-    details = [f"  体感词命中 {hit_sensation} 个(+{sensation_score}), 直陈式情绪词 {hit_direct} 个(-{direct_penalty}) → {score:.1f}/20"]
+    src = f"（资产词 {len(asset_words)} + 兜底）" if asset_words else "（内置兜底）"
+    details = [f"  体感词命中 {hit_sensation} 个{src}(+{sensation_score}), 直陈式情绪词 {hit_direct} 个(-{direct_penalty}) → {score:.1f}/20"]
     return score, details
 
 def check_narration(text, narration):
-    """叙述层"""
+    """叙述层。
+
+    2026-09-05 修复（B1-叙述）：视角检查读资产 narration.pov——
+    「第三人称」→ 检查「他/她」；「第一人称」→ 检查「我」；缺失 → 维持旧行为。
+    该项由"恒真"变为"与资产声明一致才得分"。
+    """
     score = 0
     details = []
-    pov_markers = POV_MARKERS
+    pov = ""
+    if isinstance(narration, dict):
+        pov = str(narration.get("pov") or "")
+    if "第一人称" in pov:
+        pov_markers = ["我", "我们"]
+        pov_label = "第一人称"
+    else:
+        # 资产缺失或声明第三人称 → 检查第三人称标记
+        pov_markers = POV_MARKERS
+        pov_label = pov or "第三人称"
     hit_pov = sum(1 for m in pov_markers if m in text)
     if hit_pov > 0:
         score += 5
-        details.append("  视角第三人称 ✓(+5)")
+        details.append(f"  视角{pov_label} ✓(+5)")
     else:
-        details.append("  视角第三人称 ✗(+0)")
+        details.append(f"  视角{pov_label} ✗(+0)")
     lines = [l.strip() for l in text.split(chr(10)) if l.strip()]
     short_streak = 0
     max_streak = 0
@@ -134,9 +178,16 @@ def check_narration(text, narration):
     return score, details
 
 def check_banned(text, banned):
-    """禁忌词"""
+    """禁忌词。
+
+    ⚠️ 产品决策留档（2026-09-02 用户确认，勿当 bug 修复）：
+    禁忌不做拦截——真实禁忌数据在 voice-card.banned.never_used_words 与
+    genre-pack.language_rules.banned_phrases，写作时靠 inject 注入的 prompt
+    约束，不靠评分拦截。本函数读到的顶层 banned_words 为 null → 跳过给满分，
+    属预期行为。
+    """
     if not banned:
-        return 20, ["  禁忌词表为空，跳过检查"]
+        return 20, ["  禁忌词表为空，跳过检查（决策留档：禁忌不拦截，2026-09-02 确认）"]
     hit_banned = []
     for word in banned:
         if word in text:
@@ -149,33 +200,42 @@ def check_banned(text, banned):
         return score, [f"  禁忌词命中 {len(hit_banned)} 个({hit_banned[:3]}) → {score}/20"]
 
 def check_imagery(text, imagery):
-    """意象"""
-    if not imagery:
-        return 3, ["  意象表为空，给基础分"]
-    domains = [
+    """意象。
+
+    2026-09-05 修复（B1-意象）：领域表改为「资产领域 ∪ 内置兜底」——
+    优先使用 voice-card.imagery.high_freq_metaphor_domains 的真实取材领域，
+    按资产命中数给分；内置 28 领域仅兜底。权重不变（0→3, 1-2→6, ≥3→10）。
+    """
+    asset_domains = []
+    if isinstance(imagery, dict):
+        asset_domains = [d for d in (imagery.get("high_freq_metaphor_domains") or [])
+                         if isinstance(d, str) and len(d) >= 2]
+    domains = list(dict.fromkeys(asset_domains + [
         "天气", "季节", "光线", "声音", "气味", "味道", "触感",
         "植物", "动物", "水", "火", "风", "雪", "雨", "云",
         "道路", "建筑", "房间", "窗户", "门", "镜子", "照片",
         "音乐", "颜色", "数字", "时间", "记忆", "梦境"
-    ]
+    ]))
     hit_domains = []
     for domain in domains:
         if domain in text:
             hit_domains.append(domain)
+    asset_hits = sum(1 for d in asset_domains if d in text)
     if len(hit_domains) == 0:
         score = 3
     elif len(hit_domains) <= 2:
         score = 6
     else:
         score = 10
-    return score, [f"  意象领域命中 {len(hit_domains)} 个 → {score}/10"]
+    src = f"，含资产领域 {asset_hits} 个" if asset_domains else ""
+    return score, [f"  意象领域命中 {len(hit_domains)} 个{src} → {score}/10"]
 
 def consistency_check(voice_card_path: str, chapter_path: str):
     """主函数：一致性打分。"""
     voice_card = json.loads(Path(voice_card_path).read_text(encoding="utf-8"))
     chapter_text = Path(chapter_path).read_text(encoding="utf-8")
     voices = voice_card.get("dialogue", {}).get("character_voices", [])
-    emotion = voice_card.get("emotion", {})
+    emotion = voice_card.get("emotion_handling", {})
     narration = voice_card.get("narration", {})
     banned = voice_card.get("banned_words", [])
     imagery = voice_card.get("imagery", {})
@@ -232,7 +292,7 @@ def score_text(voice_card: dict, text: str, label: str = ""):
     """供 novel.py 调用的接口：返回 (score, details, raw)"""
     # 提取voice-card中的各个维度
     voices = voice_card.get("dialogue", {}).get("character_voices", [])
-    emotion = voice_card.get("emotion", {})
+    emotion = voice_card.get("emotion_handling", {})
     narration = voice_card.get("narration", {})
     banned = voice_card.get("banned_words", [])
     imagery = voice_card.get("imagery", {})
