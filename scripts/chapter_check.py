@@ -61,20 +61,20 @@ AI_TICS = [
 
 
 def check_word_count(text: str) -> tuple:
-    """1. 字数检查（10 分）"""
+    """1. 字数检查（8 分）— 2026-09-05 由 10 分降回 docstring 权重"""
     cn = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if cn >= 1500:
-        return 10, f"字数 {cn} ✓"
+        return 8, f"字数 {cn} ✓"
     elif cn >= 1200:
-        return 7, f"字数 {cn}（略短）"
+        return 6, f"字数 {cn}（略短）"
     elif cn >= 1000:
-        return 4, f"字数 {cn}（偏短）"
+        return 3, f"字数 {cn}（偏短）"
     else:
         return 0, f"字数 {cn}（严重不足）"
 
 
 def check_dialogue_ratio(text: str) -> tuple:
-    """2. 对话占比（15 分）"""
+    """2. 对话占比（12 分）— 2026-09-05 由 15 分降回 docstring 权重"""
     # 统计引号内文本
     quotes = re.findall(r'["\u201c\u201d]([^"\u201c\u201d]{1,})["\u201c\u201d]', text)
     dialogue_chars = sum(len(q) for q in quotes)
@@ -84,21 +84,21 @@ def check_dialogue_ratio(text: str) -> tuple:
     ratio = dialogue_chars / total
 
     if 0.15 <= ratio <= 0.40:
-        return 15, f"对话占比 {ratio:.1%} ✓"
+        return 12, f"对话占比 {ratio:.1%} ✓"
     elif 0.10 <= ratio < 0.15:
-        return 10, f"对话占比 {ratio:.1%}（略低）"
+        return 8, f"对话占比 {ratio:.1%}（略低）"
     elif 0.40 < ratio <= 0.55:
-        return 10, f"对话占比 {ratio:.1%}（略高）"
+        return 8, f"对话占比 {ratio:.1%}（略高）"
     elif ratio < 0.05:
-        return 3, f"对话占比 {ratio:.1%}（几乎无对话）"
+        return 2, f"对话占比 {ratio:.1%}（几乎无对话）"
     elif ratio > 0.60:
-        return 5, f"对话占比 {ratio:.1%}（对话过多）"
+        return 4, f"对话占比 {ratio:.1%}（对话过多）"
     else:
-        return 8, f"对话占比 {ratio:.1%}"
+        return 6, f"对话占比 {ratio:.1%}"
 
 
 def check_hook(text: str) -> tuple:
-    """3. 章末钩子（15 分）"""
+    """3. 章末钩子（12 分）— 2026-09-05 由 15 分降回 docstring 权重"""
     tail = text[-300:] if len(text) > 300 else text
     score = 0
     notes = []
@@ -108,35 +108,35 @@ def check_hook(text: str) -> tuple:
         if re.search(pat, tail):
             score += 3
             notes.append(pat[:15])
-            if score >= 15:
+            if score >= 12:
                 break
 
     # 检查章末是否有有效收束（非截断）
     last_line = [l.strip() for l in text.split('\n') if l.strip()][-1] if text.strip() else ""
     if last_line and re.search(r'[。！？…"\u201d]$', last_line):
-        score = min(score + 2, 15)
+        score = min(score + 2, 12)
         notes.append("有效收束")
     elif last_line and len(last_line) > 4:
         score = max(score - 3, 0)
         notes.append("截断风险")
 
-    score = min(score, 15)
-    return score, f"钩子 {score}/15: {', '.join(notes[:3])}"
+    score = min(score, 12)
+    return score, f"钩子 {score}/12: {', '.join(notes[:3])}"
 
 
 def check_opening(text: str) -> tuple:
-    """4. 开头吸引力（10 分）"""
+    """4. 开头吸引力（8 分）— 2026-09-05 由 10 分降回 docstring 权重"""
     opening = text[:400] if len(text) > 400 else text
     score = 0
     notes = []
 
     # 场景建立（有具体地点/时间/动作）
     if re.search(r'(教室|走廊|操场|宿舍|食堂|图书馆|医院|车站|家里)', opening):
-        score += 3
+        score += 2
         notes.append("场景建立")
     # 冲突/悬念引入
     if re.search(r'(吵架|争执|矛盾|意外|突然|忽然|紧张|害怕|担心)', opening):
-        score += 3
+        score += 2
         notes.append("冲突引入")
     # 对话开场
     if re.search(r'["\u201c].{2,20}["\u201d]', opening[:200]):
@@ -147,12 +147,12 @@ def check_opening(text: str) -> tuple:
         score += 2
         notes.append("动作开场")
 
-    score = min(score, 10)
-    return score, f"开头 {score}/10: {', '.join(notes)}"
+    score = min(score, 8)
+    return score, f"开头 {score}/8: {', '.join(notes)}"
 
 
 def check_emotion_density(text: str) -> tuple:
-    """5. 情绪密度（15 分）— 每 400 字≥1 处体感词"""
+    """5. 情绪密度（12 分）— 每 400 字≥1 处体感词；2026-09-05 由 15 分降回 docstring 权重"""
     cn = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if cn == 0:
         return 0, "无文本"
@@ -165,28 +165,28 @@ def check_emotion_density(text: str) -> tuple:
     ratio = hits / expected if expected > 0 else 0
 
     if ratio >= 1.0:
-        return 15, f"体感词 {hits} 处（期望≥{expected}）✓"
+        return 12, f"体感词 {hits} 处（期望≥{expected}）✓"
     elif ratio >= 0.7:
-        return 10, f"体感词 {hits} 处（期望≥{expected}，略少）"
+        return 8, f"体感词 {hits} 处（期望≥{expected}，略少）"
     elif ratio >= 0.4:
-        return 5, f"体感词 {hits} 处（期望≥{expected}，偏少）"
+        return 4, f"体感词 {hits} 处（期望≥{expected}，偏少）"
     else:
         return 0, f"体感词 {hits} 处（期望≥{expected}，严重不足）"
 
 
 def check_direct_emotion(text: str) -> tuple:
-    """6. 直陈式情绪词（10 分）— 零出现满分"""
+    """6. 直陈式情绪词（8 分）— 零出现满分；2026-09-05 由 10 分降回 docstring 权重"""
     hits = sum(1 for w in DIRECT_EMOTION if w in text)
     if hits == 0:
-        return 10, "直陈式情绪词 0 ✓"
+        return 8, "直陈式情绪词 0 ✓"
     elif hits <= 2:
-        return 5, f"直陈式情绪词 {hits} 个（扣 5 分）"
+        return 4, f"直陈式情绪词 {hits} 个（扣 4 分）"
     else:
         return 0, f"直陈式情绪词 {hits} 个（严重扣分）"
 
 
 def check_paragraph_rhythm(text: str) -> tuple:
-    """7. 段落节奏（10 分）— 短段占比"""
+    """7. 段落节奏（8 分）— 短段占比；2026-09-05 由 10 分降回 docstring 权重"""
     paras = [p.strip() for p in text.split('\n') if p.strip()]
     if not paras:
         return 0, "无段落"
@@ -194,19 +194,19 @@ def check_paragraph_rhythm(text: str) -> tuple:
     ratio = short / len(paras)
 
     if 0.10 <= ratio <= 0.40:
-        return 10, f"短段占比 {ratio:.1%} ✓"
+        return 8, f"短段占比 {ratio:.1%} ✓"
     elif 0.05 <= ratio < 0.10:
-        return 7, f"短段占比 {ratio:.1%}（略少）"
+        return 6, f"短段占比 {ratio:.1%}（略少）"
     elif 0.40 < ratio <= 0.55:
-        return 7, f"短段占比 {ratio:.1%}（略多）"
+        return 6, f"短段占比 {ratio:.1%}（略多）"
     elif ratio > 0.55:
-        return 3, f"短段占比 {ratio:.1%}（过度精炼）"
+        return 2, f"短段占比 {ratio:.1%}（过度精炼）"
     else:
-        return 5, f"短段占比 {ratio:.1%}（段落过长）"
+        return 4, f"短段占比 {ratio:.1%}（段落过长）"
 
 
 def check_structure(text: str) -> tuple:
-    """8. 结构完整性（10 分）— 有开头/发展/收束"""
+    """8. 结构完整性（8 分）— 有开头/发展/收束；2026-09-05 由 10 分降回 docstring 权重"""
     paras = [p.strip() for p in text.split('\n') if p.strip()]
     if len(paras) < 3:
         return 0, "段落过少"
@@ -216,7 +216,7 @@ def check_structure(text: str) -> tuple:
     # 开头（前 1/4 有场景/人物引入）
     opening = '\n'.join(paras[:max(1, len(paras)//4)])
     if len(opening) > 50:
-        score += 3
+        score += 2
         notes.append("有开头")
 
     # 发展（中段有变化/推进）
@@ -228,15 +228,15 @@ def check_structure(text: str) -> tuple:
     # 收束（后 1/4 有明确结尾）
     ending = '\n'.join(paras[3*len(paras)//4:])
     if len(ending) > 30 and re.search(r'[。！？…"\u201d]', ending[-50:]):
-        score += 3
+        score += 2
         notes.append("有收束")
 
-    return score, f"结构 {score}/10: {', '.join(notes)}"
+    return score, f"结构 {score}/8: {', '.join(notes)}"
 
 
 def check_ai_tics(text: str) -> tuple:
-    """9. AI 味检测（5 分）— 高频模板句式扣分"""
-    score = 5
+    """9. AI 味检测（4 分）— 高频模板句式扣分（分值与显示标签 /4 对齐）"""
+    score = 4
     notes = []
     for pat, label in AI_TICS:
         matches = re.findall(pat, text)
@@ -322,7 +322,12 @@ def check_emotion_tags(text: str) -> tuple:
 
 
 def chapter_check(text: str, genre_pack: dict = None) -> dict:
-    """综合章节质量检查，返回评分报告。"""
+    """综合章节质量检查，返回评分报告。
+
+    2026-09-05 修复（C1）：12 维分值回归文件头 docstring 权重，合计恰好 100
+    （原函数内部满分 120，被 min(sum,100) 截断导致高分失真）。
+    判定线调整: PASS≥75 / WARN≥60，与 write.py --quality-target 默认 75 对齐。
+    """
     checks = [
         check_word_count(text),       # 8分
         check_dialogue_ratio(text),   # 12分
@@ -338,7 +343,7 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
         check_emotion_tags(text),     # 7分
     ]
 
-    total = min(sum(s for s, _ in checks), 100)  # 上限 100
+    total = min(sum(s for s, _ in checks), 100)  # 上限 100（各维满分合计恰为 100）
     details = [d for _, d in checks]
     issues = []
     for s, d in checks:
@@ -347,10 +352,10 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
         if "严重" in d or "不足" in d or "截断" in d:
             issues.append(d)
 
-    # 判定
-    if total >= 80:
+    # 判定（PASS 线与 write.py --quality-target 默认值对齐）
+    if total >= 75:
         verdict = "PASS"
-    elif total >= 65:
+    elif total >= 60:
         verdict = "WARN"
     else:
         verdict = "FAIL"
