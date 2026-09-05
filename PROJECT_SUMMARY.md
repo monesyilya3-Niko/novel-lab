@@ -80,13 +80,14 @@
 | `scripts/clean_verbatim.py` | 清除资产中夹带的原文台词 |
 | `scripts/llm_client.py` | 外部模型统一调用层（当前无配置不使用；`any_model_configured()` 供 pipeline 检测）|
 | `scripts/model_config.py` | 外部模型配置 CLI（仅恢复外部模型时用）|
-| `fix_quotes.py` / `test_regex.py` | 历史修复/测试工具 |
+
+> 2026-09-05 清理：`fix_quotes.py` / `test_regex.py` 历史工具已删除（备份在 `_TRASH/novel-lab清理备份_2026-09-05/`）
 
 ### 3.2 目录职责
 
 | 目录 | 内容 |
 |---|---|
-| `assets/` | 拆书资产（14 个 JSON：3 本书的 voice/craft/structure/commercial 4 类卡共 12 张 + 题材包 1 + 合成测试卡 1）|
+| `assets/` | 拆书资产（13 个 JSON：3 本书的 voice/craft/structure/commercial 4 类卡共 12 张 + 题材包 1。合成测试卡已于 2026-09-05 退役删除）|
 | `reports/` | 可交付报告（6 份：3 本书 × 拆书报告+笔法分析）|
 | `schema/` | 6 个 JSON Schema（voice-card / craft-card / structure-obs / commercial-obs / genre-pack / trope-library；纯文档用途，实际校验逻辑在 validate.py）。⚠️ trope-library 仅定义 schema，**尚无资产实例（规划中，2026-09-01 标注）** |
 | `prompts/` | pass1-5 分析 prompt + analysis-pipeline.md（设计文档）+ generated/（生成的写作 prompt）|
@@ -101,13 +102,13 @@
 
 ## 四、交付物清单
 
-### 4.1 数据资产（校验状态：2026-09-01 全量实测，14 个资产硬错误 0）
+### 4.1 数据资产（校验状态：2026-09-05 全量实测，13 个资产：12 PASS + 1 WARN，硬错误 0）
 
 - 3 × voice-card（chireng / qingning / sangshi，置信 90%）→ WARN（burst_pattern 等历史警告，可入库）
 - 3 × craft-card → **PASS**（0 错 0 警）
 - 3 × structure-obs + 3 × commercial-obs → **2026-09-01 起可校验**（此前无校验器被误判 voice-card 而假性 REJECT）：全 0 硬错误，qingning structure-obs / sangshi commercial-obs 有真实数据特征的 WARN，其余 PASS
 - 1 × campus-redemption-genre-pack（PASS；铁律4条/必需要素4条/禁用词11条/疲劳词5条）
-- 1 × synthetic_book_c-voice-card（合成测试用，WARN）
+- ~~1 × synthetic_book_c-voice-card（合成测试用）~~ → 2026-09-05 随项目清理退役删除（备份在 _TRASH）
 - 6 份可交付报告（reports/）
 
 ### 4.2 配置文件
@@ -279,3 +280,20 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 | book_quality | PASS | PASS | 零回归；"小周"误报根因消除 |
 | 14 资产 validate | 12 PASS + 2 WARN | 12 PASS + 2 WARN | 零回归 |
 
+
+---
+
+## 九、项目清理记录（2026-09-05）
+
+> 全部删除项已备份至 `_TRASH/novel-lab清理备份_2026-09-05/`（48 文件/689K，可随时还原）。
+
+| 类 | 清理内容 |
+|---|---|
+| A 缓存 | `__pycache__/`（根+scripts，445K 字节码缓存） |
+| B 测试产物 | `novel/`（验收空骨架）、`novel_test/`（端到端验证，样章已在桌面快照留存）、`corpus/batch_test/`、测试书 A/B 与 synth_book 的 sampled/raw/metrics、smoketest 遗留、旧注入测试 prompt |
+| C 废弃代码 | `fix_quotes.py`、`test_regex.py`（git rm）、`corpus/fanqie/decode_test.py`（调试脚本；正式抓书工具链保留） |
+| X1 合成测试退役 | `corpus/synth_book.txt` + `assets/synthetic_book_c-voice-card.json`（文档引用已同步修正） |
+| D 文档归档 | 4 份 2026-08 阶段报告移入 `docs/archive/` |
+
+**清理后结构**：corpus/ 收敛为 3 本书的 raw/sampled/metrics 对称结构 + 3 本原文 + fanqie 工具链；assets/ 13 个正式资产；根目录仅 novel.py + 4 个 md；脚本 21→19 个。
+**清理后校验**：py_compile 全绿；资产 12 PASS + 1 WARN（sangshi commercial，合理保留）；`novel.py 状态` 正常识别 3 本书。

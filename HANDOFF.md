@@ -34,8 +34,8 @@
 
 ### 产出文件
 
-**assets/**（14 个资产文件，全部通过校验+合规）
-- 3 × voice-card.json（声线卡）+ 1 × synthetic_book_c-voice-card.json（合成测试）
+**assets/**（13 个资产文件，全部通过校验+合规；2026-09-05 起合成测试卡已退役删除）
+- 3 × voice-card.json（声线卡）
 - 3 × craft-card.json（笔法卡）
 - 3 × structure-obs.json（结构观测）
 - 3 × commercial-obs.json（商业观测）
