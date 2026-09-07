@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "structure-obs",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-07T14:04:43",
+    "distilled_at": "2026-09-07T14:22:10",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -70,8 +70,8 @@
           }
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -155,8 +155,8 @@
           "value": "开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -245,7 +245,7 @@
     "hard_rules": 6,
     "soft_rules": 0,
     "personal_styles": 0,
-    "conflicts": 0,
+    "conflicts": 2,
     "blindspots": 0
   }
 }

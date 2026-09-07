@@ -254,5 +254,104 @@ class TestRenderDistilled(unittest.TestCase):
         self.assertEqual(RENDER.render_distilled({"rules": [], "blindspots": []}), "")
 
 
+class TestBug1PayoffTypes(unittest.TestCase):
+    """Bug1 回归：sangshi 比例式 ratio 不应误解析为类型清单。"""
+
+    def test_ratio_with_equals_not_parsed(self):
+        # 「铺垫:爆发 = 10:1」是配比描述，不应被当成「类型:数字」清单。
+        result = CORE._parse_payoff_types("铺垫:爆发 = 10:1 (按章计算...)")
+        self.assertIsNone(result)
+
+    def test_type_list_downgrades_directly(self):
+        # type 是 list 时应直接降级为 [{'type':t,'ratio':None}]，保留 3 个真实类型。
+        asset = {
+            "payoff_density": {
+                "type": ["情感回应", "身份揭露", "他人认可"],
+                "ratio": "铺垫:爆发 = 10:1 (按章计算...)",
+            }
+        }
+        result = CORE._extract_payoff_types_from_asset(asset)
+        self.assertEqual(len(result), 3)
+        self.assertEqual(
+            [r["type"] for r in result],
+            ["情感回应", "身份揭露", "他人认可"],
+        )
+        # ratio 全部为 None（比例式不参与「类型:数字」解析）。
+        self.assertTrue(all(r["ratio"] is None for r in result))
+
+    def test_plain_type_ratio_still_parses(self):
+        # qingning 的普通「类型:数字」字符串仍应正常解析。
+        result = CORE._parse_payoff_types("情感回应:7，他人认可:2，反杀:1")
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0]["type"], "情感回应")
+        self.assertEqual(result[0]["ratio"], 7.0)
+
+
+class TestBug2FreqDivergence(unittest.TestCase):
+    """Bug2 回归：string-freq 众数占比 <100% 时应标记分歧。"""
+
+    def test_freq_full_marks_divergence(self):
+        value, has_div = CORE._freq_aggregate_strings_full(["混合式", "直陈式", "混合式"])
+        # 众数「混合式」占 2/3，仍返回众数，但必须标记分歧。
+        self.assertEqual(value, "混合式")
+        self.assertTrue(has_div)
+
+    def test_freq_full_all_same_no_divergence(self):
+        value, has_div = CORE._freq_aggregate_strings_full(["混合式", "混合式", "混合式"])
+        self.assertEqual(value, "混合式")
+        self.assertFalse(has_div)
+
+    def test_aggregate_field_median_string_conflict(self):
+        # emotion_handling.mode 三本「混合式/直陈式/混合式」经 median(非数值)分支
+        # 聚合后应标 conflict=True（不再静默丢弃「直陈式」）。
+        rule = CORE._aggregate_field(
+            dimension="voice-card",
+            field="emotion_handling.mode",
+            book_vals={"a": "混合式", "b": "直陈式", "c": "混合式"},
+            books=["a", "b", "c"],
+            aggregator="median",
+        )
+        self.assertEqual(rule.value, "混合式")
+        self.assertTrue(rule.conflict)
+
+
+class TestBug3ListUnionNoIntersection(unittest.TestCase):
+    """Bug3 回归：list-union 无交集（三本各说各话）不应标 hard。"""
+
+    def test_list_union_no_intersection_downgrades(self):
+        rule = CORE._aggregate_field(
+            dimension="craft-card",
+            field="craft_summary.top_3_strengths",
+            book_vals={
+                "a": ["甲技能", "乙技能"],
+                "b": ["丙技能", "丁技能"],
+                "c": ["戊技能", "己技能"],
+            },
+            books=["a", "b", "c"],
+            aggregator="list-union",
+        )
+        # 三本零交集 → 降级为 soft 并标记 conflict。
+        self.assertEqual(rule.kind, "soft")
+        self.assertTrue(rule.conflict)
+        # 并集仍保留全部来源。
+        self.assertEqual(len(rule.value), 6)
+
+    def test_list_union_with_intersection_stays_hard(self):
+        rule = CORE._aggregate_field(
+            dimension="craft-card",
+            field="craft_summary.top_3_strengths",
+            book_vals={
+                "a": ["共技", "甲"],
+                "b": ["共技", "乙"],
+                "c": ["共技", "丙"],
+            },
+            books=["a", "b", "c"],
+            aggregator="list-union",
+        )
+        # 有交集「共技」→ 仍标 hard，不标 conflict。
+        self.assertEqual(rule.kind, "hard")
+        self.assertFalse(rule.conflict)
+
+
 if __name__ == "__main__":
     unittest.main()

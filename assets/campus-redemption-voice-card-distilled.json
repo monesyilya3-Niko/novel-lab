@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "voice-card",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-07T14:04:43",
+    "distilled_at": "2026-09-07T14:22:10",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -60,8 +60,8 @@
           "value": "贴身跟随主角感官，叙述者几乎不介入"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -164,8 +164,8 @@
           "value": "叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -612,8 +612,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -638,8 +638,8 @@
           "value": "混合式"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -698,8 +698,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -767,8 +767,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -802,8 +802,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -966,8 +966,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -975,7 +975,7 @@
       "id": "voice-card-banned-never_used_words-0001",
       "dimension": "voice-card",
       "field": "banned.never_used_words",
-      "kind": "hard",
+      "kind": "soft",
       "books_count": 3,
       "value": [
         "华丽辞藻堆砌",
@@ -1026,7 +1026,7 @@
           ]
         }
       ],
-      "confidence": 0.7,
+      "confidence": 0.5,
       "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
@@ -1035,10 +1035,10 @@
   "blindspots": [],
   "stats": {
     "total_rules": 21,
-    "hard_rules": 21,
-    "soft_rules": 0,
+    "hard_rules": 20,
+    "soft_rules": 1,
     "personal_styles": 0,
-    "conflicts": 1,
+    "conflicts": 9,
     "blindspots": 0
   }
 }

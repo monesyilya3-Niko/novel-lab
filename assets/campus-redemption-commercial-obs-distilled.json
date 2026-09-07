@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "commercial-obs",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-07T14:04:43",
+    "distilled_at": "2026-09-07T14:22:10",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -69,7 +69,7 @@
       "id": "commercial-obs-payoff_types-0001",
       "dimension": "commercial-obs",
       "field": "payoff_types",
-      "kind": "hard",
+      "kind": "soft",
       "books_count": 3,
       "value": [
         {
@@ -101,8 +101,16 @@
           "ratio": 1.0
         },
         {
-          "type": "爆发 = 10",
-          "ratio": 1.0
+          "type": "情感回应",
+          "ratio": null
+        },
+        {
+          "type": "身份揭露",
+          "ratio": null
+        },
+        {
+          "type": "他人认可",
+          "ratio": null
         }
       ],
       "sources": [
@@ -148,14 +156,22 @@
           "book": "sangshi_chosen",
           "value": [
             {
-              "type": "爆发 = 10",
-              "ratio": 1.0
+              "type": "情感回应",
+              "ratio": null
+            },
+            {
+              "type": "身份揭露",
+              "ratio": null
+            },
+            {
+              "type": "他人认可",
+              "ratio": null
             }
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.5,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -183,8 +199,8 @@
           "value": "穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -212,8 +228,8 @@
           "value": "前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -242,8 +258,8 @@
           "value": "开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。"
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -280,8 +296,8 @@
           }
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.7,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     }
@@ -302,10 +318,10 @@
   ],
   "stats": {
     "total_rules": 7,
-    "hard_rules": 7,
-    "soft_rules": 0,
+    "hard_rules": 6,
+    "soft_rules": 1,
     "personal_styles": 1,
-    "conflicts": 0,
+    "conflicts": 5,
     "blindspots": 2
   }
 }

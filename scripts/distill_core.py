@@ -201,7 +201,13 @@ def _extract_word_count(buildup_length: Any) -> Optional[float]:
 
 
 def _parse_payoff_types(value: Any) -> Any:
-    """解析 payoff_types 为 list；散落字符串用正则 ``类型:数字`` 解析，失败置 None。"""
+    """解析 payoff_types 为 list；散落字符串用正则 ``类型:数字`` 解析，失败置 None。
+
+    注意（Bug1 修复）：比例式字符串（如 ``铺垫:爆发 = 10:1``）含 ``=``，是
+    「铺垫 vs 爆发」的配比描述，不是「类型:数字」清单，不应被正则误匹配成
+    ``{"type": "爆发 = 10", "ratio": 1.0}``。因此字符串中若含 ``=`` 一律视为
+    比例式，直接返回 None（由调用方降级处理）。
+    """
     if value is None:
         return None
     if isinstance(value, list):
@@ -212,9 +218,12 @@ def _parse_payoff_types(value: Any) -> Any:
             return _parse_payoff_types(value["type"])
         return copy.deepcopy(value)
     if isinstance(value, str):
+        # 含「=」的比例式（如 "铺垫:爆发 = 10:1 ..."）不按「类型:数字」解析。
+        if "=" in value:
+            return None
         # 形如 "情感回应:7，他人认可:2，反杀:1"
         parsed: List[Any] = []
-        for m in re.finditer(r"([^:：，,;；\n]+)[:：]\s*(\d+(?:\.\d+)?)", value):
+        for m in re.finditer(r"([^:：，,;；\n=]+)[:：]\s*(\d+(?:\.\d+)?)", value):
             name = m.group(1).strip()
             ratio = float(m.group(2))
             if name:
@@ -277,32 +286,43 @@ def _stringify_for_freq(value: Any) -> str:
     return str(value)
 
 
-def _freq_aggregate_strings(values: List[str]) -> str:
-    """对自然语言字符串做纯字符串匹配 + 频次聚合（不引入 ML）。
+def _freq_aggregate_strings_full(values: List[str]) -> tuple[str, bool]:
+    """对自然语言字符串做纯字符串匹配 + 频次聚合，并返回是否发生分歧。
 
-    策略：若存在完全一致的字符串，取出现频次最高者；否则将不同表述拼接
-    保留来源（以 ``；`` 分隔），不强行去重。
+    返回 ``(聚合结果, has_divergence)``。``has_divergence=True`` 表示存在少数派
+    表述被舍弃（众数占比 < 100%），调用方应据此标记 conflict（Bug2 修复）。
+
+    策略：若存在完全一致的字符串，取出现频次最高者；若并列最高或无法去重，
+    则将不同表述拼接保留来源（以 ``；`` 分隔）。只有当所有非空值完全一致时，
+    ``has_divergence`` 才为 False。
     """
     non_empty = [v for v in values if v and v.strip()]
     if not non_empty:
-        return ""
+        return "", False
     counter: Dict[str, int] = defaultdict(int)
     for v in non_empty:
         counter[v.strip()] += 1
     if len(counter) == 1:
-        return non_empty[0].strip()
-    # 找频次最高者；若并列则拼接。
+        return non_empty[0].strip(), False
+    # 存在多种表述 → 必然有分歧（即便众数占多数，少数派也不该被静默丢弃）。
     max_count = max(counter.values())
     top = [k for k, c in counter.items() if c == max_count]
     if len(top) == 1 and max_count >= 2:
-        return top[0]
-    # 无法去重：保留来源（按出现顺序去重后拼接）。
+        # 众数唯一且出现 >=2 次：取众数，但标记存在少数派分歧。
+        return top[0], True
+    # 无法去重：保留来源（按出现顺序去重后拼接），并标记分歧。
     seen: List[str] = []
     for v in non_empty:
         s = v.strip()
         if s not in seen:
             seen.append(s)
-    return "；".join(seen)
+    return "；".join(seen), True
+
+
+def _freq_aggregate_strings(values: List[str]) -> str:
+    """对自然语言字符串做频次聚合（向后兼容，仅返回聚合结果字符串）。"""
+    value, _ = _freq_aggregate_strings_full(values)
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -443,19 +463,17 @@ def _extract_payoff_types_from_asset(asset: dict) -> Any:
     type_val = pd.get("type")
     ratio_val = pd.get("ratio")
 
+    # sangshi：type 为 list（如 ["情感回应","身份揭露","他人认可"]），ratio 是
+    # 「铺垫:爆发 = 10:1」比例式。此时应直接用 type 列表降级为无比例条目，
+    # 不要先解析 ratio 比例式字符串（否则会误把「爆发 = 10」当成 type）。
+    if isinstance(type_val, list) and type_val:
+        return [{"type": str(t), "ratio": None} for t in type_val]
+
     # qingning：type 为字符串、ratio 为 "情感回应:7，他人认可:2，反杀:1"。
     if isinstance(ratio_val, str):
         parsed = _parse_payoff_types(ratio_val)
         if parsed:
             return parsed
-
-    # sangshi：type 为 list、ratio 为 "铺垫:爆发 = 10:1 (按章...)"。
-    if isinstance(type_val, list) and type_val:
-        ratio_parsed = _parse_payoff_types(ratio_val) if isinstance(ratio_val, str) else None
-        if ratio_parsed:
-            return ratio_parsed
-        # ratio 无法解析时，用 type 列表降级为无比例条目。
-        return [{"type": str(t), "ratio": None} for t in type_val]
 
     # type 为单个字符串。
     if isinstance(type_val, str) and type_val:
@@ -832,6 +850,7 @@ def _aggregate_field(
     count = explicit_count if explicit_count is not None else len(present)
 
     kind = _kind_for_count(count)
+    conflict = False
 
     if aggregator == "string-freq":
         value = explicit_value
@@ -851,10 +870,18 @@ def _aggregate_field(
         sources = [
             SourceValue(book=b, value=present.get(b), raw=book_vals.get(b)) for b in books
         ]
+        # Bug3 修复：list-union 无交集（各书列表两两无共同元素）说明「三本各说
+        # 各话」，是并集而非共识，不应标 hard。此时降级分层并标记 conflict。
+        non_empty_lists = [lst for lst in lists if lst]
+        if len(non_empty_lists) >= 2 and not _list_intersection(non_empty_lists):
+            conflict = True
+            if kind == "hard":
+                kind = "soft"
     elif aggregator == "string-freq-auto":
         # 自然语言字段：str 直接频次聚合；list 逐项频次；dict 序列化后频次。
         strs = [_stringify_for_freq(present[b]) for b in books if b in present]
-        value = _freq_aggregate_strings(strs) or None
+        value, conflict = _freq_aggregate_strings_full(strs)
+        value = value or None
         sources = [
             SourceValue(book=b, value=present.get(b), raw=book_vals.get(b)) for b in books
         ]
@@ -866,9 +893,10 @@ def _aggregate_field(
             if value is not None and value == int(value):
                 value = int(value)
         else:
-            # 非纯数值（字符串/dict/list）：做字符串频次聚合。
+            # 非纯数值（字符串/dict/list）：做字符串频次聚合，并捕获分歧。
             strs = [_stringify_for_freq(present[b]) for b in books if b in present]
-            value = _freq_aggregate_strings(strs) or None
+            value, conflict = _freq_aggregate_strings_full(strs)
+            value = value or None
         sources = [
             SourceValue(book=b, value=present.get(b), raw=book_vals.get(b)) for b in books
         ]
@@ -881,6 +909,7 @@ def _aggregate_field(
         books_count=count,
         value=value,
         sources=sources,
+        conflict=conflict,
         blindspot_books=missing_books,
     )
     return rule

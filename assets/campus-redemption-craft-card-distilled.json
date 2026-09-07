@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "craft-card",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-07T14:04:43",
+    "distilled_at": "2026-09-07T14:22:10",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -17,7 +17,7 @@
       "id": "craft-card-craft_summary-top_3_strengths-0001",
       "dimension": "craft-card",
       "field": "craft_summary.top_3_strengths",
-      "kind": "hard",
+      "kind": "soft",
       "books_count": 3,
       "value": [
         "感官细节外化心理",
@@ -56,8 +56,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.5,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -65,7 +65,7 @@
       "id": "craft-card-craft_summary-unique_techniques-0001",
       "dimension": "craft-card",
       "field": "craft_summary.unique_techniques",
-      "kind": "hard",
+      "kind": "soft",
       "books_count": 3,
       "value": [
         "旁观者的漠视强化孤立感",
@@ -98,8 +98,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.5,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     },
@@ -107,7 +107,7 @@
       "id": "craft-card-craft_summary-reusable_patterns-0001",
       "dimension": "craft-card",
       "field": "craft_summary.reusable_patterns",
-      "kind": "hard",
+      "kind": "soft",
       "books_count": 3,
       "value": [
         "感官细节外化心理",
@@ -146,8 +146,8 @@
           ]
         }
       ],
-      "confidence": 0.8,
-      "conflict": false,
+      "confidence": 0.5,
+      "conflict": true,
       "over_generalized": false,
       "blindspot_books": []
     }
@@ -155,10 +155,10 @@
   "blindspots": [],
   "stats": {
     "total_rules": 3,
-    "hard_rules": 3,
-    "soft_rules": 0,
+    "hard_rules": 0,
+    "soft_rules": 3,
     "personal_styles": 62,
-    "conflicts": 0,
+    "conflicts": 3,
     "blindspots": 0
   }
 }
