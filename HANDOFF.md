@@ -34,12 +34,13 @@
 
 ### 产出文件
 
-**assets/**（13 个资产文件，全部通过校验+合规；2026-09-05 起合成测试卡已退役删除）
+**assets/**（17 个资产文件，全部通过校验+合规；2026-09-05 起合成测试卡已退役删除）
 - 3 × voice-card.json（声线卡）
 - 3 × craft-card.json（笔法卡）
 - 3 × structure-obs.json（结构观测）
 - 3 × commercial-obs.json（商业观测）
 - 1 × campus-redemption-genre-pack.json（题材包）
+- 4 × campus-redemption-*-distilled.json（蒸馏层跨书聚合产物，2026-09-07 新增）
 
 **reports/**（6 份报告，可交付）
 - 3 × 拆书报告.md
@@ -126,12 +127,15 @@ novel.py 状态
 
 ---
 
-## 五、核心脚本清单（19 个）
+## 五、核心脚本清单（22 个）
 
 | 脚本 | 作用 |
 |---|---|
 | `pipeline.py` | 拆书主流程：采样→量化→五遍扫描→归一化→资产→校验→合规 |
 | `assemble.py` | 资产组装（2026-09-01 新增）：读 pass1-5 → 归一化 → 组装 4 类资产入库，补上"AI 产出→入库"最后一公里 |
+| `distill_core.py` | 蒸馏核心（2026-09-07 新增）：跨书聚合/去重/冲突裁决/盲区诊断/置信度评分 |
+| `distill.py` | 蒸馏主控（2026-09-07 新增）：编排蒸馏并落盘 `*-distilled.json` |
+| `distill_render.py` | 蒸馏渲染（2026-09-07 新增）：蒸馏产物 → 注入 prompt 段 |
 | `sampler.py` | 分层采样：开篇10+中段15+卷末2 |
 | `metrics.py` | 量化指标：句长/对话占比/TTR/五感词 |
 | `normalize.py` | LLM 中文键→schema 结构（模糊匹配，兼容 4 种 pass2 格式） |
@@ -267,7 +271,7 @@ novel-lab/
 ├── prompts/                    # 拆书prompt + 生成的写作prompt
 ├── reports/                    # 拆书报告+笔法分析报告（8份）
 ├── schema/                     # JSON Schema（voice-card/craft-card/genre-pack/trope-library）
-├── scripts/                    # 核心Python脚本（18个）
+├── scripts/                    # 核心Python脚本（22个）
 ├── docs/                       # 评估报告 + 指纹拆书使用说明 + 过期计划归档
 └── 指纹拆书/                    # 指纹法拆书工作目录（样本/指纹库/分析报告）
 ```

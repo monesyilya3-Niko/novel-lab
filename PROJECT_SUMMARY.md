@@ -58,7 +58,7 @@
 
 ## 三、模块职责
 
-### 3.1 代码文件（novel-lab 根 + scripts/，共 21 个，py_compile 全过）
+### 3.1 代码文件（novel-lab 根 + scripts/，共 24 个，py_compile 全过）
 
 | 文件 | 职责 |
 |---|---|
@@ -80,6 +80,9 @@
 | `scripts/clean_verbatim.py` | 清除资产中夹带的原文台词 |
 | `scripts/llm_client.py` | 外部模型统一调用层（当前无配置不使用；`any_model_configured()` 供 pipeline 检测）|
 | `scripts/model_config.py` | 外部模型配置 CLI（仅恢复外部模型时用）|
+| `scripts/distill_core.py` | 蒸馏核心纯函数库（跨书聚合/去重/冲突裁决/盲区诊断/置信度评分，零依赖）|
+| `scripts/distill.py` | 蒸馏主控：编排蒸馏并落盘 `*-distilled.json` |
+| `scripts/distill_render.py` | 蒸馏产物 → 注入 prompt 段的渲染 |
 
 > 2026-09-05 清理：`fix_quotes.py` / `test_regex.py` 历史工具已删除（备份在 `_TRASH/novel-lab清理备份_2026-09-05/`）
 
@@ -87,7 +90,7 @@
 
 | 目录 | 内容 |
 |---|---|
-| `assets/` | 拆书资产（13 个 JSON：3 本书的 voice/craft/structure/commercial 4 类卡共 12 张 + 题材包 1。合成测试卡已于 2026-09-05 退役删除）|
+| `assets/` | 拆书资产（17 个 JSON：3 本书的 voice/craft/structure/commercial 4 类卡共 12 张 + 题材包 1 + 蒸馏产物 4 张 `campus-redemption-*-distilled.json`。合成测试卡已于 2026-09-05 退役删除）|
 | `reports/` | 可交付报告（6 份：3 本书 × 拆书报告+笔法分析）|
 | `schema/` | 6 个 JSON Schema（voice-card / craft-card / structure-obs / commercial-obs / genre-pack / trope-library；纯文档用途，实际校验逻辑在 validate.py）。⚠️ trope-library 仅定义 schema，**尚无资产实例（规划中，2026-09-01 标注）** |
 | `prompts/` | pass1-5 分析 prompt + analysis-pipeline.md（设计文档）+ generated/（生成的写作 prompt）|
@@ -102,12 +105,13 @@
 
 ## 四、交付物清单
 
-### 4.1 数据资产（校验状态：2026-09-05 全量实测，13 个资产：12 PASS + 1 WARN，硬错误 0）
+### 4.1 数据资产（校验状态：2026-09-05 全量实测，13 个原始资产：12 PASS + 1 WARN，硬错误 0；2026-09-07 新增 4 个蒸馏产物）
 
 - 3 × voice-card（chireng / qingning / sangshi，置信 90%）→ WARN（burst_pattern 等历史警告，可入库）
 - 3 × craft-card → **PASS**（0 错 0 警）
 - 3 × structure-obs + 3 × commercial-obs → **2026-09-01 起可校验**（此前无校验器被误判 voice-card 而假性 REJECT）：全 0 硬错误，qingning structure-obs / sangshi commercial-obs 有真实数据特征的 WARN，其余 PASS
 - 1 × campus-redemption-genre-pack（PASS；铁律4条/必需要素4条/禁用词11条/疲劳词5条）
+- 4 × campus-redemption-{voice-card|craft-card|structure-obs|commercial-obs}-distilled.json（**2026-09-07 新增**，蒸馏层跨书聚合产物，见 §4.5）
 - ~~1 × synthetic_book_c-voice-card（合成测试用）~~ → 2026-09-05 随项目清理退役删除（备份在 _TRASH）
 - 6 份可交付报告（reports/）
 
@@ -135,6 +139,18 @@ inject.py 实际生成 **6~10 节**（标题块不计）：
 - **零第三方依赖**：核心引擎只用标准库
 - **可选**：fontTools + numpy + Pillow（仅番茄抓书需要，**已装于项目 venv** `~/.workbuddy/binaries/python/envs/default`：fontTools 4.63.0 / numpy 2.5.1 / Pillow 12.3.0，2026-09-01 实测联网抓取可用）；注意须用 venv 的 `Scripts/python.exe`（`$PY` 裸版无 Pillow），且须在 novel-lab 根目录运行 fetch_book.py（脚本用相对路径 `corpus/fanqie`）
 - **技能依赖**：全局 `~/.workbuddy/skills/` 12 个小说技能；项目级 `2026-08-06-16-49-41\.workbuddy\skills\` 装 2 个核心（novel-writing-pipeline、webnovel-reverse-analysis），bug 修复在两处均生效
+
+### 4.5 蒸馏层（2026-09-07 新增，跨书资产聚合引擎）
+
+把 3 本已拆书的 4 类资产跨书聚合、去重、冲突裁决、盲区诊断、置信度评分，并自动注入回写作流程，实现「每拆一本新书就自动学习、知识库越积越厚」的成长型系统。**本期仅聚合+注入，语义检索（RAG）留待下期。**
+
+- 脚本：`scripts/distill_core.py`（纯函数核心）+ `scripts/distill.py`（主控落盘）+ `scripts/distill_render.py`（注入渲染）
+- 落盘：`assets/campus-redemption-{voice|craft|structure|commercial}-distilled.json` × 4（不覆盖原资产）
+- 注入：`inject.py` 增加 `--distilled` 形参，蒸馏段插在 genre-pack 段之后、叙述层之前
+- 自动 Hook：`pipeline.py` 拆书完成处，书数≥3 幂等重跑、<3 静默跳过、异常不阻塞主流程
+- 规则分档：3 本全有=硬规则 / 2 本共有=软规则 / 1 本独有=个人风格（仅标来源不聚合）；冲突标 `conflict` 并降置信度；盲区自动诊断
+- 设计文档：`docs/system_design.md` + `class-diagram.mermaid` + `sequence-diagram.mermaid`
+- 测试：`tests/test_distill.py`（25 用例，含 8 个针对聚合 Bug 的回归用例），`python run_tests.py` 全量 33/33 绿
 
 ---
 
@@ -236,7 +252,7 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 ## 七、当前状态与统计（2026-09-01）
 
 - 已拆书目 3 本：炽炀 / 青柠 / 桑式（campus-redemption 题材，置信 90%）
-- 题材包 1 份（聚合产物）；报告 6 份；脚本 19 个（py_compile 全过）；schema 6 个
+- 题材包 1 份（聚合产物）；报告 6 份；脚本 22 个（scripts/，py_compile 全过）+ 根入口 2 个（novel.py / run_tests.py）；schema 6 个；蒸馏产物 4 份
 - **2026-09-01 下午修复**：write.py 无模型降级路径补齐（此前抛异常）；corpus/raw/ 根 4 个暮冬念春残留 pass JSON + novel/state.json 已归档至 `_TRASH\暮冬念春_清理_2026-09-01\novel-lab内\corpus-raw散落残留\`；HANDOFF.md 过时数字已修正
 - 工作区干净：暮冬念春全部数据已清出（终稿归档在 D 盘，_TRASH 可还原）
 - 《暮冬念春》终稿最新精修版：`D:\fanqie-auto\终稿_最新精修版_2026-09-01\`（159 章最新版 + 第 160 章双版本 + 底层规则包）
@@ -247,7 +263,7 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 ## 八、深度诊断与修复记录（2026-09-05）
 
 > 诊断报告 + 修复计划存档于 `C:/Users/monesy/WorkBuddy/2026-09-05-10-21-22/`（novel-lab_诊断报告 / novel-lab_深度修复计划）。
-> 本次共 8 个提交：`0d59039` `b998648` `153388e` `66812d1` `9e07980` `b146dc6` `8790b27` + 本文档同步（后续另有 `7ae7703`、`fdbc116` 清理提交及 `97bbca7` 测试护栏提交，截至 2026-09-07 共 16 个提交）。
+> 本次共 8 个提交：`0d59039` `b998648` `153388e` `66812d1` `9e07980` `b146dc6` `8790b27` + 本文档同步（后续另有 `7ae7703`、`fdbc116` 清理提交、`97bbca7` 测试护栏提交、`442932c` 文档纠偏，以及 `da24279`/`647e019` 蒸馏层提交，截至 2026-09-07 共 19 个提交）。
 
 ### 修复的问题（诊断报告 A/B/C 级）
 
@@ -295,5 +311,5 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 | X1 合成测试退役 | `corpus/synth_book.txt` + `assets/synthetic_book_c-voice-card.json`（文档引用已同步修正） |
 | D 文档归档 | 4 份 2026-08 阶段报告移入 `docs/archive/` |
 
-**清理后结构**：corpus/ 收敛为 3 本书的 raw/sampled/metrics 对称结构 + 3 本原文 + fanqie 工具链；assets/ 13 个正式资产；根目录仅 novel.py + 4 个 md；脚本 21→19 个。
+**清理后结构**（2026-09-05 时点）：corpus/ 收敛为 3 本书的 raw/sampled/metrics 对称结构 + 3 本原文 + fanqie 工具链；assets/ 13 个正式资产；根目录仅 novel.py + 4 个 md；脚本 21→19 个。（2026-09-07 蒸馏层新增 3 脚本 + 4 蒸馏产物，现为 22 脚本 / 17 资产，见 §七）
 **清理后校验**：py_compile 全绿；资产 12 PASS + 1 WARN（sangshi commercial，合理保留）；`novel.py 状态` 正常识别 3 本书。

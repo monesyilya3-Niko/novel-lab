@@ -36,7 +36,6 @@ def run_script(name: str, args: list) -> int:
         print(f"✗ 脚本不存在: {script}")
         return 1
     cmd = [PY, str(script)] + [str(a) for a in args]
-    print(f"$ {script.name} {' '.join(map(str, args))}\n")
     return subprocess.call(cmd)
 
 

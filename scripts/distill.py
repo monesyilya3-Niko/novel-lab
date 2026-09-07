@@ -6,7 +6,7 @@
     → detect_blindspots → 落盘 assets/<genre>-{dimension}-distilled.json。
 
 用法：
-    python scripts/distill.py --genre campus-redemption [--books chireng qingning sangshi]
+    python scripts/distill.py --genre campus-redemption [--books chireng_chosen qingning_chosen sangshi_chosen]
 """
 
 from __future__ import annotations
