@@ -488,6 +488,51 @@ class TestRetrieval(unittest.TestCase):
         snippet = RETRIEVE._build_snippet(long_body)
         self.assertLessEqual(len(snippet), RETRIEVE.SNIPPET_LEN)
 
+    # ---- 边界测试：零文档 / 无命中 / 子串去重 / 意图注入 / ImportError 兜底 ----
+
+    def test_empty_index_returns_empty(self):
+        idx = RETRIEVE.build_index({})
+        self.assertEqual(RETRIEVE.retrieve_for_intent("钩子", idx), [])
+
+    def test_no_hit_intent_returns_empty(self):
+        idx = RETRIEVE.build_index(self._assets())
+        self.assertEqual(RETRIEVE.retrieve_for_intent("不存在的词xyz", idx), [])
+
+    def test_substring_no_duplicate_accumulation(self):
+        # 构造文档：terms 含两个都包含查询词「钩子」的 token。
+        # 修复后应只累加「最佳匹配 dt」一次，得分不高于该最佳单次贡献值。
+        from collections import Counter
+        idx = RETRIEVE.Index()
+        doc = RETRIEVE.DocEntry(
+            asset_id="d1", dimension="craft-card", terms=Counter({"钩子手法": 1, "小钩子": 1})
+        )
+        idx.docs.append(doc)
+        # 手动补齐 doc_freq/idf_cache，使 _idf 可正常计算（词项 df=1）。
+        for term in ("钩子手法", "小钩子"):
+            idx.doc_freq[term] = 1
+        idx.idf_cache = {}
+
+        score = RETRIEVE._bm25_score(["钩子"], doc, idx)
+
+        # 期望：最佳匹配贡献 = max(idf(t) * tf * (k1+1)/(tf+k1))，tf=1。
+        k1 = RETRIEVE.BM25_K1
+        contrib_a = RETRIEVE._idf("钩子手法", idx) * 1 * (k1 + 1.0) / (1 + k1)
+        contrib_b = RETRIEVE._idf("小钩子", idx) * 1 * (k1 + 1.0) / (1 + k1)
+        expected = max(contrib_a, contrib_b)
+        self.assertEqual(score, expected)
+
+    def test_intent_map_injects_terms(self):
+        idx = RETRIEVE.build_index(self._assets())
+        hits = RETRIEVE.retrieve_for_intent("悬念", idx)
+        self.assertTrue(len(hits) > 0)
+        dimensions = {h.dimension for h in hits}
+        self.assertIn("craft-card", dimensions)
+
+    def test_build_index_from_genre_returns_index(self):
+        # 正常导入 distill_core 时返回 Index 实例；无 genre 资产时至少不 crash。
+        idx = RETRIEVE.build_index_from_genre("nonexistent-genre-xyz")
+        self.assertIsInstance(idx, RETRIEVE.Index)
+
 
 class TestInjectRegression(unittest.TestCase):
     """二期 · 注入回归：未传 context_intent 时与一期字节级一致。"""

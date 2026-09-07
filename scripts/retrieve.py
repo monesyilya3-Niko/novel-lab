@@ -49,7 +49,7 @@ _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+")
 # 意图映射表：查询词项命中关键词时，为对应维度文档加权（提升召回）。
 # 首版只挂高频领域词（钩子/悬念/爽点/铺垫/伏笔）→ 对应维度。
 # 结构：{关键词: {维度: 额外权重词项列表}}，命中关键词时把额外词项注入查询，
-# 使其能召回对应维度的文档（额外词项本身不参与查询与文档重叠度计算，仅作召回桥接）。
+# 使其能召回对应维度的文档（额外词项会完整进入打分，用于提升对应维度召回权重）。
 INTENT_MAP: Dict[str, Dict[str, List[str]]] = {
     "钩子": {"structure-obs": ["钩子", "hook"], "craft-card": ["钩子"]},
     "hook": {"structure-obs": ["钩子", "hook"], "craft-card": ["钩子"]},
@@ -323,12 +323,18 @@ def _bm25_score(query_terms: List[str], doc: DocEntry, index: Index) -> float:
             score += idf * tf * (BM25_K1 + 1.0) / (tf + BM25_K1)
             continue
         # 2) 子串重叠命中：查询词项是文档词项的子串（或反之）。
+        # 对每个查询词项，仅在所有匹配 dt 中累加「最佳匹配」一次，避免同一
+        # 查询词项对同一文档因多个包含它的 token 而重复累加、虚高长文档分数。
+        best_contrib = 0.0
         for dt, dtf in doc.terms.items():
             if len(dt) < 2 or len(term) < 2:
                 continue
             if term in dt or dt in term:
                 idf = _idf(dt, index)
-                score += idf * dtf * (BM25_K1 + 1.0) / (dtf + BM25_K1)
+                contrib = idf * dtf * (BM25_K1 + 1.0) / (dtf + BM25_K1)
+                if contrib > best_contrib:
+                    best_contrib = contrib
+        score += best_contrib
     return score
 
 
