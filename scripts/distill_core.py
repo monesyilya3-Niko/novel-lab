@@ -269,6 +269,49 @@ def _extract_word_count(buildup_length: Any) -> Optional[float]:
     return None
 
 
+def _dedup_payoff_types(items: Any) -> Any:
+    """按 ``type`` 去重归一 payoff_types 条目，保留首次出现者的 ratio。
+
+    payoff_types 可能在同一资产内重复出现同名 type（如 type 字段与 ratio
+    字符串解析出的清单重叠，或 dict/list 嵌套里同名条目），跨书聚合时会产生
+    「同名不同 ratio」的噪音条目。本函数按 type 名去重：
+
+        * 非 list 输入（None / dict 残留等）原样返回；
+        * 逐条提取 ``type`` 名（缺失则跳过），首次出现者保留其原始
+          ``ratio``（含 None）；后续同名者丢弃；
+        * 条目形如 ``{"type": ..., "ratio": ...}``；非 dict 条目若为字符串，
+          按 ``type=字符串、ratio=None`` 归一后参与去重。
+
+    保留「首次出现的 ratio」而非取 max/mean，是遵循架构师拍板的
+    「保序、不引入二次计算」原则，避免对原始配比做主观加工。
+    """
+    if not isinstance(items, list):
+        return items
+    result: List[Any] = []
+    seen: set = set()
+    for item in items:
+        if isinstance(item, dict):
+            type_name = item.get("type")
+            if type_name is None:
+                # 无 type 字段的 dict 保留原样，避免误删结构。
+                result.append(item)
+                continue
+            key = str(type_name)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(item)
+        elif isinstance(item, str):
+            if item in seen:
+                continue
+            seen.add(item)
+            result.append({"type": item, "ratio": None})
+        else:
+            # 其它非标量条目保留原样，不参与去重判断。
+            result.append(item)
+    return result
+
+
 def _parse_payoff_types(value: Any) -> Any:
     """解析 payoff_types 为 list；散落字符串用正则 ``类型:数字`` 解析，失败置 None。
 
@@ -276,11 +319,13 @@ def _parse_payoff_types(value: Any) -> Any:
     「铺垫 vs 爆发」的配比描述，不是「类型:数字」清单，不应被正则误匹配成
     ``{"type": "爆发 = 10", "ratio": 1.0}``。因此字符串中若含 ``=`` 一律视为
     比例式，直接返回 None（由调用方降级处理）。
+
+    所有返回 list 的路径统一经过 :func:`_dedup_payoff_types` 按 type 去重。
     """
     if value is None:
         return None
     if isinstance(value, list):
-        return copy.deepcopy(value)
+        return _dedup_payoff_types(copy.deepcopy(value))
     if isinstance(value, dict):
         # 某些 book 的 payoff_density 里内嵌 type/ratio，这里仅处理顶层 payoff_types。
         if "type" in value:
@@ -297,7 +342,7 @@ def _parse_payoff_types(value: Any) -> Any:
             ratio = float(m.group(2))
             if name:
                 parsed.append({"type": name, "ratio": ratio})
-        return parsed if parsed else None
+        return _dedup_payoff_types(parsed) if parsed else None
     return None
 
 
@@ -496,6 +541,15 @@ def _cluster_techniques(techniques: List[dict]) -> List[TechniqueCluster]:
         * 均不满足 → 新建簇。
 
     单元素簇 / 无法语义去重者原样保留各自来源，不强行合并、不丢数据。
+
+    阈值说明（P3-b 结论，保持现状不改）：当前 3 本书的 craft 技法语义本就
+    各异，跨书实测 name 相似度仅 0.00–0.12、skeleton 相似度 0.01–0.10，均远
+    低于双条件阈值（0.5/0.3）与单条件阈值（0.7）。因此「62 条进 personal、
+    仅 3 条进 rules」的根因是**数据覆盖不足 + 同义词表未显式收录**，而非
+    阈值过严：实际所有跨书合并均由 synonyms.json 驱动（n-gram 阈值驱动的
+    合并数为 0）。在此前提下，降低阈值既不会增加 rules（相似度太低），又会
+    引入误合并风险，故阈值保持不变；后续如新增题材/书目导致相似技法自然
+    增多，再依据实测分布重新评估阈值。
 
     Args:
         techniques: 技法 dict 列表，每项至少含 ``name``，可选 ``skeleton``，
@@ -797,7 +851,7 @@ def _extract_payoff_types_from_asset(asset: dict) -> Any:
     # 「铺垫:爆发 = 10:1」比例式。此时应直接用 type 列表降级为无比例条目，
     # 不要先解析 ratio 比例式字符串（否则会误把「爆发 = 10」当成 type）。
     if isinstance(type_val, list) and type_val:
-        return [{"type": str(t), "ratio": None} for t in type_val]
+        return _dedup_payoff_types([{"type": str(t), "ratio": None} for t in type_val])
 
     # qingning：type 为字符串、ratio 为 "情感回应:7，他人认可:2，反杀:1"。
     if isinstance(ratio_val, str):
@@ -807,7 +861,7 @@ def _extract_payoff_types_from_asset(asset: dict) -> Any:
 
     # type 为单个字符串。
     if isinstance(type_val, str) and type_val:
-        return [{"type": type_val, "ratio": None}]
+        return _dedup_payoff_types([{"type": type_val, "ratio": None}])
 
     return None
 
@@ -1206,6 +1260,12 @@ def _aggregate_field(
     elif aggregator == "list-union":
         lists = [present.get(b) for b in books if b in present]
         value = _list_union(lists)
+        # P3-a 收口：payoff_types 跨书并集后，不同书对同一 type 给不同 ratio
+        # （如「情感回应」ratio=20 / 7.0 / None），_list_union 只按整项相等去重，
+        # 不去重 type，会留下同名重复。这里复用 _dedup_payoff_types 按 type 去重、
+        # 保留首个 ratio（保序、不二次计算）。
+        if field == "payoff_types":
+            value = _dedup_payoff_types(value)
         sources = [
             SourceValue(book=b, value=present.get(b), raw=book_vals.get(b)) for b in books
         ]

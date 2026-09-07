@@ -58,7 +58,7 @@
 
 ## 三、模块职责
 
-### 3.1 代码文件（novel-lab 根 + scripts/，共 24 个，py_compile 全过）
+### 3.1 代码文件（novel-lab 根 + scripts/，脚本 23 个 + 根入口 2 个 = 共 25 个，py_compile 全过）
 
 | 文件 | 职责 |
 |---|---|
@@ -252,7 +252,7 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 ## 七、当前状态与统计（2026-09-01）
 
 - 已拆书目 3 本：炽炀 / 青柠 / 桑式（campus-redemption 题材，置信 90%）
-- 题材包 1 份（聚合产物）；报告 6 份；脚本 22 个（scripts/，py_compile 全过）+ 根入口 2 个（novel.py / run_tests.py）；schema 6 个；蒸馏产物 4 份
+- 题材包 1 份（聚合产物）；报告 6 份；脚本 23 个（scripts/，py_compile 全过）+ 根入口 2 个（novel.py / run_tests.py）；schema 6 个；蒸馏产物 4 份
 - **2026-09-01 下午修复**：write.py 无模型降级路径补齐（此前抛异常）；corpus/raw/ 根 4 个暮冬念春残留 pass JSON + novel/state.json 已归档至 `_TRASH\暮冬念春_清理_2026-09-01\novel-lab内\corpus-raw散落残留\`；HANDOFF.md 过时数字已修正
 - 工作区干净：暮冬念春全部数据已清出（终稿归档在 D 盘，_TRASH 可还原）
 - 《暮冬念春》终稿最新精修版：`D:\fanqie-auto\终稿_最新精修版_2026-09-01\`（159 章最新版 + 第 160 章双版本 + 底层规则包）
@@ -311,5 +311,5 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 | X1 合成测试退役 | `corpus/synth_book.txt` + `assets/synthetic_book_c-voice-card.json`（文档引用已同步修正） |
 | D 文档归档 | 4 份 2026-08 阶段报告移入 `docs/archive/` |
 
-**清理后结构**（2026-09-05 时点）：corpus/ 收敛为 3 本书的 raw/sampled/metrics 对称结构 + 3 本原文 + fanqie 工具链；assets/ 13 个正式资产；根目录仅 novel.py + 4 个 md；脚本 21→19 个。（2026-09-07 蒸馏层新增 3 脚本 + 4 蒸馏产物，现为 22 脚本 / 17 资产，见 §七）
+**清理后结构**（2026-09-05 时点）：corpus/ 收敛为 3 本书的 raw/sampled/metrics 对称结构 + 3 本原文 + fanqie 工具链；assets/ 13 个正式资产；根目录仅 novel.py + 4 个 md；脚本 21→19 个。（2026-09-07 蒸馏层新增 3 脚本 + 4 蒸馏产物，现为 23 脚本 / 17 资产，见 §七）
 **清理后校验**：py_compile 全绿；资产 12 PASS + 1 WARN（sangshi commercial，合理保留）；`novel.py 状态` 正常识别 3 本书。
