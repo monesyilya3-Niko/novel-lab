@@ -42,6 +42,8 @@ def _load(name: str):
 
 CORE = _load("distill_core")
 RENDER = _load("distill_render")
+RETRIEVE = _load("retrieve")
+INJECT = _load("inject")
 
 
 class TestAlign(unittest.TestCase):
@@ -351,6 +353,165 @@ class TestBug3ListUnionNoIntersection(unittest.TestCase):
         # 有交集「共技」→ 仍标 hard，不标 conflict。
         self.assertEqual(rule.kind, "hard")
         self.assertFalse(rule.conflict)
+
+
+class TestTechniqueNormalization(unittest.TestCase):
+    """二期 · 任务 A：技法归一化纯函数。"""
+
+    def test_normalize_removes_space_and_punct(self):
+        self.assertEqual(CORE._normalize_technique("三段式 钩子"), "三段式钩子")
+        self.assertEqual(CORE._normalize_technique("三段式钩子"), "三段式钩子")
+
+    def test_normalize_strips_stopwords(self):
+        # 「的」作为停用词应被剥离（整词，不误伤「目的」内部同形字需另测）。
+        self.assertEqual(CORE._normalize_technique("反转式 悬念"), "反转式悬念")
+
+    def test_normalize_empty(self):
+        self.assertEqual(CORE._normalize_technique(""), "")
+        self.assertEqual(CORE._normalize_technique(None), "")
+
+    def test_char_ngram_similarity_identical(self):
+        self.assertEqual(CORE._char_ngram_similarity("abc", "abc"), 1.0)
+
+    def test_char_ngram_similarity_disjoint(self):
+        self.assertEqual(CORE._char_ngram_similarity("abc", "xyz"), 0.0)
+
+    def test_cluster_synonym_merge(self):
+        techs = [
+            {"name": "三段式钩子", "skeleton": "X", "book": "a"},
+            {"name": "三段式 钩子", "skeleton": "X", "book": "b"},
+            {"name": "三段式悬念钩子", "skeleton": "X", "book": "c"},
+            {"name": "三段式钩子法", "skeleton": "X", "book": "d"},
+        ]
+        clusters = CORE._cluster_techniques(techs)
+        # 同义词表把四个别名归到「三段式钩子」一个簇。
+        self.assertEqual(len(clusters), 1)
+        self.assertEqual(clusters[0].count, 4)
+        self.assertEqual(set(clusters[0].books), {"a", "b", "c", "d"})
+
+    def test_cluster_single_condition_high_threshold(self):
+        # skeleton 缺失时退化为单条件 name Jaccard ≥ 0.7 才合并。
+        techs = [
+            {"name": "生理反应外化情绪张力", "skeleton": "", "book": "a"},
+            {"name": "生理反应外化情绪张力", "skeleton": "", "book": "b"},
+        ]
+        clusters = CORE._cluster_techniques(techs)
+        self.assertEqual(len(clusters), 1)
+        self.assertEqual(clusters[0].count, 2)
+
+    def test_cluster_distinct_names_stay_separate(self):
+        techs = [
+            {"name": "以身体距离变化推动关系张力", "skeleton": "S1", "book": "a"},
+            {"name": "迟到者的动态切入", "skeleton": "S2", "book": "b"},
+        ]
+        clusters = CORE._cluster_techniques(techs)
+        # 两个完全不同的技法名不应合并。
+        self.assertEqual(len(clusters), 2)
+
+
+class TestRetrieval(unittest.TestCase):
+    """二期 · 任务 B：倒排索引 + BM25 检索 + 意图映射 + 渲染。"""
+
+    def _assets(self):
+        return {
+            "craft-card": {
+                "book_a": {
+                    "meta": {"id": "craft-card-book_a", "dimension": "craft-card"},
+                    "craft_analysis": {
+                        "foreshadowing": {
+                            "techniques": [
+                                {"name": "三段式钩子", "skeleton": "先抛悬念再揭晓"}
+                            ]
+                        }
+                    },
+                },
+                "book_b": {
+                    "meta": {"id": "craft-card-book_b", "dimension": "craft-card"},
+                    "craft_analysis": {
+                        "foreshadowing": {
+                            "techniques": [
+                                {"name": "反转式悬念", "skeleton": "结尾反转"}
+                            ]
+                        }
+                    },
+                },
+            },
+            "structure-obs": {
+                "book_a": {
+                    "meta": {"id": "structure-obs-book_a", "dimension": "structure-obs"},
+                    "chapter_analyses": [{"hook": {"skeleton": "钩子骨架A"}}],
+                },
+            },
+        }
+
+    def test_build_index_docs_count(self):
+        idx = RETRIEVE.build_index(self._assets())
+        self.assertEqual(len(idx.docs), 3)
+
+    def test_build_index_inverted_populated(self):
+        idx = RETRIEVE.build_index(self._assets())
+        # 倒排表与文档频率表应非空，且词项数 == 文档频率条目数。
+        self.assertTrue(len(idx.inverted) > 0)
+        self.assertEqual(len(idx.inverted), len(idx.doc_freq))
+
+    def test_retrieve_returns_hits_sorted(self):
+        idx = RETRIEVE.build_index(self._assets())
+        hits = RETRIEVE.retrieve_for_intent("钩子", idx)
+        self.assertTrue(len(hits) > 0)
+        scores = [h.score for h in hits]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_retrieve_top_k_limit(self):
+        idx = RETRIEVE.build_index(self._assets())
+        hits = RETRIEVE.retrieve_for_intent("钩子", idx, top_k=1)
+        self.assertLessEqual(len(hits), 1)
+
+    def test_retrieve_empty_intent(self):
+        idx = RETRIEVE.build_index(self._assets())
+        self.assertEqual(RETRIEVE.retrieve_for_intent("", idx), [])
+
+    def test_render_retrieval_markers(self):
+        hits = [
+            RETRIEVE.HitEntry(
+                asset_id="x", dimension="craft-card", score=1.0, snippet="片段A"
+            )
+        ]
+        text = RETRIEVE.render_retrieval(hits)
+        self.assertIn("针对性注入", text)
+        self.assertIn("片段A", text)
+
+    def test_render_retrieval_empty(self):
+        self.assertEqual(RETRIEVE.render_retrieval([]), "")
+
+    def test_snippet_truncation(self):
+        long_body = {"rules": [{"field": "f", "value": "长" * 300}]}
+        snippet = RETRIEVE._build_snippet(long_body)
+        self.assertLessEqual(len(snippet), RETRIEVE.SNIPPET_LEN)
+
+
+class TestInjectRegression(unittest.TestCase):
+    """二期 · 注入回归：未传 context_intent 时与一期字节级一致。"""
+
+    def _voice(self):
+        return {
+            "meta": {"source_title": "chireng_chosen", "genre": "campus-redemption"},
+            "narration": {"pov": "第三人称"},
+            "dialogue": {"character_voices": []},
+            "emotion_handling": {},
+            "imagery": {},
+            "banned": {},
+        }
+
+    def test_build_prompt_no_intent_unchanged(self):
+        voice = self._voice()
+        base = INJECT.build_prompt(voice, None, None)
+        again = INJECT.build_prompt(voice, None, None)
+        self.assertEqual(base, again)
+
+    def test_build_prompt_signature_has_context_intent(self):
+        import inspect
+        sig = inspect.signature(INJECT.build_prompt)
+        self.assertIn("context_intent", sig.parameters)
 
 
 if __name__ == "__main__":

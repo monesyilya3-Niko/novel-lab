@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "craft-card",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-07T15:21:41",
+    "distilled_at": "2026-09-07T16:27:01",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -13,6 +13,224 @@
     "books_count": 3
   },
   "rules": [
+    {
+      "id": "craft-card-craft_analysis-foreshadowing-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.foreshadowing.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "利用物品细节埋下关联伏笔",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "利用物品细节埋下关联伏笔"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "象征性物件的传递"
+        }
+      ],
+      "confidence": 0.5,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": [
+        "sangshi_chosen"
+      ]
+    },
+    {
+      "id": "craft-card-craft_analysis-pov_control-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.pov_control.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "内心戏与外部反应的错位",
+      "sources": [
+        {
+          "book": "qingning_chosen",
+          "value": "内心戏与外部反应的错位"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。"
+        }
+      ],
+      "confidence": 0.5,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": [
+        "chireng_chosen"
+      ]
+    },
+    {
+      "id": "craft-card-craft_analysis-scene_transition-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.scene_transition.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "以铃声为界硬切冲突",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "以铃声为界硬切冲突"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "以事件通知驱动场景切换"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "以日常行程自然过渡"
+        }
+      ],
+      "confidence": 0.5,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": [
+        "qingning_chosen"
+      ]
+    },
+    {
+      "id": "craft-card-craft_analysis-dialogue_craft-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.dialogue_craft.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "内心独白与说出口的话错位",
+      "sources": [
+        {
+          "book": "qingning_chosen",
+          "value": "内心独白与说出口的话错位"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "活泼内心与拘谨台词的错位"
+        }
+      ],
+      "confidence": 0.4,
+      "conflict": true,
+      "over_generalized": true,
+      "blindspot_books": [
+        "chireng_chosen"
+      ]
+    },
+    {
+      "id": "craft-card-craft_analysis-dialogue_craft-technique-0002",
+      "dimension": "craft-card",
+      "field": "craft_analysis.dialogue_craft.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "以沉默与肢体替代言语回应",
+      "sources": [
+        {
+          "book": "qingning_chosen",
+          "value": "以沉默与肢体替代言语回应"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "极简回应与行动补足的反差"
+        }
+      ],
+      "confidence": 0.4,
+      "conflict": true,
+      "over_generalized": true,
+      "blindspot_books": [
+        "chireng_chosen"
+      ]
+    },
+    {
+      "id": "craft-card-craft_analysis-rhythm_control-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.rhythm_control.technique",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "暴力场景短句连击加速节奏",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "暴力场景短句连击加速节奏"
+        },
+        {
+          "book": "chireng_chosen",
+          "value": "独处场景慢速细节铺陈制造温情"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "以“慢放”手法放大心动瞬间"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "以时间跳跃压缩过渡段落"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "对话驱动的高频节奏"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "内心独白插入调节节奏"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "craft-card-craft_analysis-sensory_craft-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.sensory_craft.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "触觉外化内心生理反应",
+      "sources": [
+        {
+          "book": "qingning_chosen",
+          "value": "嗅觉作为情感记忆的触发器"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "多重感官交织渲染场景"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "触觉外化内心生理反应"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "触觉-体感优先的生理叙事"
+        }
+      ],
+      "confidence": 0.5,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": [
+        "chireng_chosen"
+      ]
+    },
+    {
+      "id": "craft-card-craft_analysis-narrative_engine-technique-0001",
+      "dimension": "craft-card",
+      "field": "craft_analysis.narrative_engine.technique",
+      "kind": "soft",
+      "books_count": 2,
+      "value": "暗恋的“未言明”悬念驱动",
+      "sources": [
+        {
+          "book": "qingning_chosen",
+          "value": "暗恋的“未言明”悬念驱动"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "暗恋对象的“错过与重逢”牵挂"
+        }
+      ],
+      "confidence": 0.5,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": [
+        "chireng_chosen"
+      ]
+    },
     {
       "id": "craft-card-craft_summary-top_3_strengths-0001",
       "dimension": "craft-card",
@@ -154,11 +372,11 @@
   ],
   "blindspots": [],
   "stats": {
-    "total_rules": 3,
-    "hard_rules": 0,
-    "soft_rules": 3,
-    "personal_styles": 62,
-    "conflicts": 3,
+    "total_rules": 11,
+    "hard_rules": 1,
+    "soft_rules": 10,
+    "personal_styles": 39,
+    "conflicts": 5,
     "blindspots": 0
   }
 }

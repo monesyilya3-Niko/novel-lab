@@ -92,6 +92,54 @@ STRUCTURE_FIELDS: tuple[str, ...] = (
     "foreshadow_concurrent_open",
 )
 
+# ---------------------------------------------------------------------------
+# 二期 · 技法归一化常量（与 CONFIDENCE_HARD 等并列，统一收敛在此处）
+# ---------------------------------------------------------------------------
+
+# 双条件合并判据（降误合并）：技法名 Jaccard 且 skeleton Jaccard 同时达标才合并。
+TECHNIQUE_NAME_JACCARD: float = 0.5
+TECHNIQUE_SKELETON_JACCARD: float = 0.3
+# skeleton 缺失时退化为单条件（仅 name）合并，阈值提高避免误合并。
+TECHNIQUE_NAME_ONLY_JACCARD: float = 0.7
+# 字符 n-gram 的 n 值。
+NGRAM_N: int = 2
+
+# 归一化时移除的停用词（虚词/连接词，不影响技法语义）。
+STOPWORDS: frozenset[str] = frozenset(
+    {
+        "的",
+        "了",
+        "与",
+        "和",
+        "及",
+        "或",
+        "之",
+        "在",
+        "是",
+        "对",
+        "把",
+        "被",
+        "而",
+        "并",
+        "等",
+        "着",
+        "过",
+        "一个",
+        "一种",
+        "这种",
+        "那种",
+        "使用",
+        "进行",
+        "通过",
+        "利用",
+        "对于",
+        "关于",
+    }
+)
+
+# 项目根 synonyms.json 路径（可编辑同义词表，缺失/损坏回退空表）。
+SYNONYMS_PATH: Path = Path(__file__).resolve().parent.parent / "synonyms.json"
+
 
 @dataclass
 class SourceValue:
@@ -137,6 +185,27 @@ class AggregatedRule:
     conflict: bool = False
     over_generalized: bool = False
     blindspot_books: List[str] = dc_field(default_factory=list)
+
+
+@dataclass
+class TechniqueCluster:
+    """归一化聚类后的技法簇（二期任务 A）。
+
+    Attributes:
+        representative: 簇代表名（簇内频次最高的原文 name）。
+        names: 簇内所有原始 name（去重，保持首次出现顺序）。
+        skeletons: 簇内所有非空 skeleton（去重）。
+        sources: 来源明细（book + raw name），可追溯。
+        count: 簇内技法出现总频次（跨书累计）。
+        books: 贡献该簇的书籍列表（去重）。
+    """
+
+    representative: str = ""
+    names: List[str] = dc_field(default_factory=list)
+    skeletons: List[str] = dc_field(default_factory=list)
+    sources: List[SourceValue] = dc_field(default_factory=list)
+    count: int = 0
+    books: List[str] = dc_field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -323,6 +392,267 @@ def _freq_aggregate_strings(values: List[str]) -> str:
     """对自然语言字符串做频次聚合（向后兼容，仅返回聚合结果字符串）。"""
     value, _ = _freq_aggregate_strings_full(values)
     return value
+
+
+# ---------------------------------------------------------------------------
+# 二期 · 技法归一化（任务 A）
+# ---------------------------------------------------------------------------
+
+def _normalize_technique(name: str) -> str:
+    """把技法名规范化为可比较的紧凑字符串。
+
+    流程：小写 → 去空格与标点（仅保留字母数字 + 中日韩字符）→ 按停用词表过滤
+    停用词 → 返回剩余字符串（可能为空串，空串不参与相似度合并）。
+
+    实现采用「先统一小写、再逐步剥离停用词」的策略，而非一次性正则删除停用词：
+    因为停用词（如「的」「了」）单字穿插在中文长句中，直接 ``re.sub`` 删除单字
+    停用词会误伤其他词内部的同形字（如「目的」中的「的」）。故此处先做
+    ``lower()`` + 去空白/标点，得到紧凑字符串后，再按停用词从长到短依次用
+    ``str.replace`` 剥离整词。
+
+    Args:
+        name: 原始技法名（如 ``"三段式 钩子"``）。
+
+    Returns:
+        规范化后的紧凑字符串；空串表示无实质内容。
+    """
+    if name is None:
+        return ""
+    text = str(name).lower()
+    # 仅保留字母数字 + 中日韩字符（去空格、标点、引号等）。
+    text = "".join(ch for ch in text if ch.isalnum() or "\u4e00" <= ch <= "\u9fff")
+    if not text:
+        return ""
+    # 按长度降序剥离停用词（长词优先，避免误伤短词部分）。
+    for sw in sorted(STOPWORDS, key=len, reverse=True):
+        text = text.replace(sw, "")
+    return text
+
+
+def _char_ngram_similarity(a: str, b: str, n: int = NGRAM_N) -> float:
+    """计算两个规范化字符串的字符 n-gram Jaccard 相似度。
+
+    对每个字符串生成字符 n-gram 多重集，返回 ``|A∩B| / |A∪B|``。
+
+    Args:
+        a: 规范化后的字符串。
+        b: 规范化后的字符串。
+        n: n-gram 的 n 值（默认 2）。
+
+    Returns:
+        相似度 ``0.0~1.0``；空集时返回 0.0。
+    """
+    if not a or not b:
+        return 0.0
+
+    def _ngrams(s: str) -> set:
+        if n <= 0:
+            return set()
+        if len(s) < n:
+            return {s}
+        return {s[i : i + n] for i in range(len(s) - n + 1)}
+
+    set_a = _ngrams(a)
+    set_b = _ngrams(b)
+    if not set_a or not set_b:
+        return 0.0
+    inter = set_a & set_b
+    union = set_a | set_b
+    if not union:
+        return 0.0
+    return len(inter) / len(union)
+
+
+def _load_synonyms() -> Dict[str, Dict[str, List[str]]]:
+    """读取项目根 ``synonyms.json`` 同义词表。
+
+    格式：``{维度: {规范名: [别名...]}}``。文件缺失或 JSON 损坏时回退空表 ``{}``，
+    不影响相似度主路径。
+
+    Returns:
+        同义词表 dict；无文件或损坏时为 ``{}``。
+    """
+    try:
+        if not SYNONYMS_PATH.is_file():
+            return {}
+        with open(SYNONYMS_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+        if not isinstance(data, dict):
+            return {}
+        return data
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _cluster_techniques(techniques: List[dict]) -> List[TechniqueCluster]:
+    """把技法列表按「同义词 → 双条件相似度」归一化聚成簇。
+
+    对每个技法（含 name + skeleton），与已有簇的代表比较：
+        * 同义词命中：直接并入对应规范名簇（优先于相似度判据，不经过相似度计算）；
+        * 双条件：``name_jaccard >= TECHNIQUE_NAME_JACCARD`` 且
+          ``skeleton_jaccard >= TECHNIQUE_SKELETON_JACCARD`` → 并入该簇；
+        * skeleton 缺失：退化为单条件，``name_jaccard >= TECHNIQUE_NAME_ONLY_JACCARD``
+          才合并（提高阈值避免误合并）；
+        * 均不满足 → 新建簇。
+
+    单元素簇 / 无法语义去重者原样保留各自来源，不强行合并、不丢数据。
+
+    Args:
+        techniques: 技法 dict 列表，每项至少含 ``name``，可选 ``skeleton``，
+            还可带 ``book``（来源书）字段。
+
+    Returns:
+        TechniqueCluster 列表（按首次出现顺序）。
+    """
+    synonyms = _load_synonyms()
+    clusters: List[TechniqueCluster] = []
+    # 簇代表名 → 簇索引，供相似度比较时 O(1) 定位。
+    rep_to_idx: Dict[str, int] = {}
+    # 同义词表展开后的「任一名称（规范名 + 别名）→ 簇索引」映射。
+    # 该映射在建簇/归并后立即登记，且【永不 pop】，保证同义词命中稳定可达。
+    alias_to_idx: Dict[str, int] = {}
+
+    # 预先展开同义词表：任一名称 → 规范名，供 O(1) 命中（而非每次遍历表）。
+    name_to_canon: Dict[str, str] = {}
+    for dimension_aliases in synonyms.values():
+        if not isinstance(dimension_aliases, dict):
+            continue
+        for canon, aliases in dimension_aliases.items():
+            if not isinstance(aliases, list):
+                continue
+            name_to_canon.setdefault(canon, canon)
+            for alias in aliases:
+                name_to_canon.setdefault(alias, canon)
+
+    for t in techniques:
+        if not isinstance(t, dict):
+            continue
+        name = (t.get("name") or "").strip()
+        if not name:
+            continue
+        skeleton = (t.get("skeleton") or "").strip()
+        book = t.get("book") or ""
+
+        norm_name = _normalize_technique(name)
+
+        target_idx: Optional[int] = None
+
+        # 1) 同义词命中优先：任一名称（规范名/别名）命中即归并到对应簇。
+        if name in alias_to_idx:
+            target_idx = alias_to_idx[name]
+        elif name in name_to_canon:
+            canon = name_to_canon[name]
+            if canon in alias_to_idx:
+                target_idx = alias_to_idx[canon]
+
+        # 2) 未命中同义词 → 相似度判据。
+        if target_idx is None and norm_name:
+            norm_skel = _normalize_technique(skeleton)
+            for idx, cluster in enumerate(clusters):
+                rep_norm = _normalize_technique(cluster.representative)
+                if not rep_norm:
+                    continue
+                name_sim = _char_ngram_similarity(norm_name, rep_norm)
+                if cluster.skeletons and norm_skel:
+                    # 双条件：name 且 skeleton 都达标才合并。
+                    skel_sim = 0.0
+                    for sk in cluster.skeletons:
+                        sim = _char_ngram_similarity(
+                            norm_skel, _normalize_technique(sk)
+                        )
+                        skel_sim = max(skel_sim, sim)
+                    if (
+                        name_sim >= TECHNIQUE_NAME_JACCARD
+                        and skel_sim >= TECHNIQUE_SKELETON_JACCARD
+                    ):
+                        target_idx = idx
+                        break
+                else:
+                    # skeleton 缺失（任一缺失）→ 单条件 name，提高阈值。
+                    if name_sim >= TECHNIQUE_NAME_ONLY_JACCARD:
+                        target_idx = idx
+                        break
+
+        if target_idx is not None:
+            cluster = clusters[target_idx]
+            if name not in cluster.names:
+                cluster.names.append(name)
+            if skeleton and skeleton not in cluster.skeletons:
+                cluster.skeletons.append(skeleton)
+            cluster.sources.append(SourceValue(book=book, value=name, raw=t.get("raw")))
+            cluster.count += 1
+            if book and book not in cluster.books:
+                cluster.books.append(book)
+            # 登记该 name 到簇映射（含其同义词规范名/别名，保证后续命中稳定）。
+            alias_to_idx[name] = target_idx
+            canon = name_to_canon.get(name)
+            if canon:
+                alias_to_idx.setdefault(canon, target_idx)
+                for alias, c2 in name_to_canon.items():
+                    if c2 == canon:
+                        alias_to_idx.setdefault(alias, target_idx)
+            # 更新代表名：频次最高的原文名；频次并列时优先取同义词表规范名。
+            cluster.representative = _most_frequent_name(
+                cluster.names, cluster.sources, canon_map=name_to_canon
+            )
+            rep_to_idx[cluster.representative] = target_idx
+            continue
+
+        # 新建簇。
+        new_idx = len(clusters)
+        cluster = TechniqueCluster(
+            representative=name,
+            names=[name],
+            skeletons=[skeleton] if skeleton else [],
+            sources=[SourceValue(book=book, value=name, raw=t.get("raw"))],
+            count=1,
+            books=[book] if book else [],
+        )
+        clusters.append(cluster)
+        rep_to_idx[name] = new_idx
+        alias_to_idx[name] = new_idx
+        # 若该 name 是同义词规范名/别名，把同组所有名称都登记到本簇。
+        canon = name_to_canon.get(name)
+        if canon:
+            alias_to_idx.setdefault(canon, new_idx)
+            for alias, c2 in name_to_canon.items():
+                if c2 == canon:
+                    alias_to_idx.setdefault(alias, new_idx)
+
+    return clusters
+
+
+def _most_frequent_name(
+    names: List[str],
+    sources: List[SourceValue],
+    canon_map: Optional[Dict[str, str]] = None,
+) -> str:
+    """从簇内原始 name 中选出频次最高者作为代表名。
+
+    选择优先级：
+        1. 频次最高者；
+        2. 频次并列时，优先取「同义词表规范名」（即 ``canon_map.get(name) == name``，
+           表示该 name 本身是规范名），语义更居中；
+        3. 仍并列，取首次出现者。
+
+    ``canon_map`` 缺省为 None 时保持旧行为（频次优先、并列取先出现者），向后兼容。
+    """
+    counter: Dict[str, int] = defaultdict(int)
+    for s in sources:
+        if s.value:
+            counter[str(s.value)] += 1
+    if not counter:
+        return names[0] if names else ""
+    # 先选出最高频次。
+    best_count = max(counter.get(name, 0) for name in names)
+    # 频次并列的候选集合。
+    tied = [name for name in names if counter.get(name, 0) == best_count]
+    if len(tied) > 1 and canon_map:
+        # 并列时优先取规范名（canon_map[name] == name 表示该 name 是规范名本身）。
+        for name in tied:
+            if canon_map.get(name) == name:
+                return name
+    return tied[0]
 
 
 # ---------------------------------------------------------------------------
@@ -669,33 +999,34 @@ def _aggregate_banned(
 def _aggregate_craft(
     aligned: Dict[str, dict], books: List[str]
 ) -> List[AggregatedRule]:
-    """craft-card 聚合：十维 techniques 按 name 字符串频次聚合；summary 分字段。"""
+    """craft-card 聚合：十维 techniques 按归一化簇计数；summary 分字段。
+
+    二期（任务 A）：技法不再按 name 精确匹配计数，而是先经同义词表 + 双条件
+    字符 n-gram 相似度聚成 TechniqueCluster，再以簇为单位计数。簇内跨书
+    books_count 正确累计；单元素簇 / 无法语义去重者保留各自来源（personal）。
+    """
     rules: List[AggregatedRule] = []
 
     for dim in CRAFT_DIMENSIONS:
-        # 收集该维度所有书的所有 technique.name。
-        names_by_book: Dict[str, List[str]] = {}
+        # 收集该维度所有书的所有 technique（含 name + skeleton + book）。
+        techniques: List[dict] = []
         for book in books:
             analysis = aligned.get(book, {}).get("craft_analysis") or {}
             dim_node = analysis.get(dim) or {}
-            techniques = dim_node.get("techniques") or []
-            names = [
-                t.get("name", "").strip()
-                for t in techniques
-                if isinstance(t, dict) and t.get("name")
-            ]
-            names_by_book[book] = names
+            tech_list = dim_node.get("techniques") or []
+            for t in tech_list:
+                if not isinstance(t, dict) or not t.get("name"):
+                    continue
+                techniques.append(
+                    {
+                        "name": str(t.get("name")).strip(),
+                        "skeleton": (t.get("skeleton") or "").strip(),
+                        "book": book,
+                        "raw": t,
+                    }
+                )
 
-        # 聚合所有 name 出现频次。
-        all_names: List[str] = []
-        for book in books:
-            all_names.extend(names_by_book.get(book, []))
-        counter: Dict[str, int] = defaultdict(int)
-        for n in all_names:
-            if n:
-                counter[n] += 1
-
-        if not counter:
+        if not techniques:
             rules.append(
                 _aggregate_field(
                     dimension="craft-card",
@@ -707,20 +1038,28 @@ def _aggregate_craft(
             )
             continue
 
-        # 频次 >=2 视为硬/软规则，=1 视为个人风格。
-        for name, count in sorted(counter.items(), key=lambda kv: -kv[1]):
-            source_books = [b for b in books if name in names_by_book.get(b, [])]
-            rules.append(
-                _aggregate_field(
-                    dimension="craft-card",
-                    field=f"craft_analysis.{dim}.technique",
-                    book_vals={b: (name if b in source_books else None) for b in books},
-                    books=books,
-                    aggregator="string-freq",
-                    explicit_value=name,
-                    explicit_count=count,
-                )
+        # 归一化聚类（同义词优先，其次双条件相似度）。
+        clusters = _cluster_techniques(techniques)
+
+        # 以簇为单位计数：分层与 books_count 均基于「去重书数」（len(cluster.books)），
+        # 而非簇内总频次（cluster.count），避免单本书贡献多条技法时被虚标为 hard。
+        # 排序仍按簇内总频次，代表高频簇优先展示。
+        for cluster in sorted(clusters, key=lambda c: -c.count):
+            rule = _aggregate_field(
+                dimension="craft-card",
+                field=f"craft_analysis.{dim}.technique",
+                book_vals={
+                    b: (cluster.representative if b in cluster.books else None)
+                    for b in books
+                },
+                books=books,
+                aggregator="string-freq",
+                explicit_value=cluster.representative,
+                explicit_count=len(cluster.books),
             )
+            # 溯源：把簇内所有来源（含被归并的别名技法）挂到 sources，保留可追溯。
+            rule.sources = list(cluster.sources)
+            rules.append(rule)
 
     # craft_summary 字段聚合。
     for field_name in ("top_3_strengths", "unique_techniques", "reusable_patterns"):

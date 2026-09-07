@@ -35,3 +35,17 @@ sequenceDiagram
     I-->>D: 完整写作 prompt（含『蒸馏规则』段）
     D->>FS: 写 prompts/generated/<genre>-writing-prompt.md
     D-->>U: 报告（规则数/置信度/冲突/盲区）
+
+    Note over U,I: ============ 二期 · 任务B 检索-注入流程 ============
+    U->>I: build_prompt(..., context_intent="悬疑反转钩子")
+    I->>R: render_distilled(distilled)
+    R-->>I: 蒸馏段文本（或空串）
+    alt context_intent 非空
+        I->>R: retrieve_for_intent(intent, index, top_k=5)
+        R->>R: 分词 + 意图映射加权 + 倒排打分
+        R-->>I: list[HitEntry]（score 降序）
+        I->>I: render_retrieval(hits) 渲染针对性注入段
+    else context_intent 为空
+        Note over I: 跳过检索，输出与一期字节级一致
+    end
+    I-->>U: 完整 system prompt

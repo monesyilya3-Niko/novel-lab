@@ -24,6 +24,93 @@ except ImportError:  # 兼容无蒸馏层时的最小运行。
     def render_distilled(distilled):
         return ""
 
+# 二期 · 检索模块（同目录），供 context_intent 针对性注入使用。
+try:
+    from retrieve import build_index, render_retrieval, retrieve_for_intent as _retrieve
+    from distill_core import collect_assets
+except ImportError:  # 兼容无检索模块时的最小运行。
+    def render_retrieval(hits):
+        return ""
+
+    def build_index(assets):
+        return None
+
+    def _retrieve(intent, index, top_k=5):
+        return []
+
+    def collect_assets(genre, book_names=None):
+        return {}
+
+
+def retrieve_for_intent(intent: str, distilled=None, genre: str | None = None, top_k: int = 5) -> list:
+    """按意图字符串检索蒸馏资产片段（二期 · 检索桥接）。
+
+    优先从原始资产（``collect_assets``，含技法名/骨架等丰富词汇）建索引检索；
+    若无法确定 genre，则退化为从 ``distilled`` 结构建索引。
+
+    Args:
+        intent: 意图字符串（如 ``"悬疑反转钩子"``）。
+        distilled: 蒸馏结果（可选），用于兜底确定 genre 或作为索引来源。
+        genre: 题材 id（可选），优先据此采集原始资产建索引。
+        top_k: 返回条数上限。
+
+    Returns:
+        HitEntry 列表（score 降序）。
+    """
+    if not intent:
+        return []
+
+    # 确定 genre：入参优先，其次 distilled.meta.genre。
+    resolved_genre = genre
+    if not resolved_genre and isinstance(distilled, dict):
+        meta = distilled.get("meta") or {}
+        resolved_genre = meta.get("genre")
+        if not resolved_genre:
+            # {dimension: distilled_dict} 结构，取第一个有 genre 的维度。
+            for value in distilled.values():
+                if isinstance(value, dict):
+                    m = value.get("meta") or {}
+                    if m.get("genre"):
+                        resolved_genre = m["genre"]
+                        break
+
+    # 优先用原始资产建索引（词汇丰富，召回更准）。
+    if resolved_genre:
+        assets = collect_assets(resolved_genre)
+        index = build_index(assets)
+        if index is not None and index.docs:
+            return _retrieve(intent, index, top_k=top_k)
+
+    # 兜底：从 distilled 结构建索引。
+    index = build_index(_normalize_distilled_assets(distilled))
+    if index is None:
+        return []
+    return _retrieve(intent, index, top_k=top_k)
+
+
+def _normalize_distilled_assets(distilled) -> dict:
+    """把多种 distilled 结构归一化为 ``{dimension: asset_dict}``。
+
+    兼容：``{dimension: distilled_dict}``、单个 ``distilled_dict``（含
+    ``meta.dimension``）、以及 ``{book: asset_dict}``（裸资产，按 meta.dimension
+    分组）。
+    """
+    if not isinstance(distilled, dict):
+        return {}
+    # 单维度 distilled_dict：含 meta.dimension。
+    meta = distilled.get("meta") if isinstance(distilled, dict) else None
+    if isinstance(meta, dict) and meta.get("dimension"):
+        return {meta["dimension"]: distilled}
+    # {dimension: distilled_dict} 或 {book: asset_dict}：按值内 meta.dimension 分组。
+    result: dict = {}
+    for key, value in distilled.items():
+        if not isinstance(value, dict):
+            continue
+        inner_meta = value.get("meta") or {}
+        dimension = inner_meta.get("dimension") or key
+        result[dimension] = value
+    return result
+
 
 # --------------------------------------------------------------------------
 # 各资产 → Markdown 段落
@@ -322,7 +409,7 @@ def render_commercial_obs(co: dict) -> str:
 
 # --------------------------------------------------------------------------
 
-def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None) -> str:
+def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None, context_intent: str | None = None) -> str:
     meta = voice.get("meta") or {}
     source = meta.get("source_title", "未知")
 
@@ -341,6 +428,29 @@ def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, g
     ds = render_distilled(distilled)
     if ds:
         sections.append(ds)
+
+    # 二期 · 针对性注入段：context_intent 非空时，在蒸馏段后追加检索命中。
+    # 未传 context_intent（默认 None）时完全跳过，保证与一期字节级一致。
+    if context_intent:
+        # genre 来源：入参 distilled.meta.genre 优先，其次 voice.meta.genre。
+        resolved_genre = None
+        if isinstance(distilled, dict):
+            dm = distilled.get("meta") or {}
+            resolved_genre = dm.get("genre")
+            if not resolved_genre:
+                for value in distilled.values():
+                    if isinstance(value, dict):
+                        m = value.get("meta") or {}
+                        if m.get("genre"):
+                            resolved_genre = m["genre"]
+                            break
+        if not resolved_genre:
+            resolved_genre = meta.get("genre")
+        hits = retrieve_for_intent(
+            context_intent, distilled=distilled, genre=resolved_genre
+        )
+        if hits:
+            sections.append(render_retrieval(hits))
 
     sections.append("## 一、叙述层（narration）\n\n" + render_narration(voice.get("narration") or {}))
     sections.append("## 二、角色声线（dialogue.character_voices）\n\n" + render_voices((voice.get("dialogue") or {}).get("character_voices") or []))

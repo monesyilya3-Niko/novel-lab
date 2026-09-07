@@ -80,3 +80,40 @@ classDiagram
     distill ..> inject : 注入
     novel ..> distill : 透传
     inject ..> distill_render : render_distilled
+
+    class TechniqueCluster {
+        +str representative
+        +list names
+        +list skeletons
+        +list sources
+        +int count
+        +list books
+    }
+    class retrieve {
+        <<module>>
+        +build_index(assets) Index
+        +retrieve_for_intent(intent, index, top_k) list~HitEntry~
+        +render_retrieval(hits) str
+    }
+    class Index {
+        +dict inverted
+        +dict doc_freq
+        +list docs
+        +dict idf_cache
+    }
+    class DocEntry {
+        +str asset_id
+        +str dimension
+        +dict asset_dict
+        +dict terms
+        +str snippet
+    }
+    class HitEntry {
+        +str asset_id
+        +str dimension
+        +float score
+        +str snippet
+    }
+    TechniqueCluster *-- SourceValue : 保留来源
+    Index *-- DocEntry : 文档
+    inject ..> retrieve : context_intent
