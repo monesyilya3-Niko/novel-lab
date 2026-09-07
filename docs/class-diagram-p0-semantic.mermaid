@@ -1,0 +1,41 @@
+classDiagram
+    class DocEntry {
+        +str asset_id
+        +str dimension
+        +Dict asset_dict
+        +Counter terms
+        +str snippet
+        +Counter ngrams
+        +str corpus
+    }
+    class Index {
+        +Dict inverted
+        +Dict doc_freq
+        +List~DocEntry~ docs
+        +Dict idf_cache
+        +List~float~ norms
+    }
+    class HitEntry {
+        +str asset_id
+        +str dimension
+        +float score
+        +str snippet
+    }
+    Index "1" *-- "N" DocEntry : docs
+    Index "1" *-- "N" float : norms
+    class retrieve_module {
+        +build_index(assets) Index
+        +retrieve_for_intent(intent, index, top_k) List~HitEntry~
+        +render_retrieval(hits) str
+        +build_index_from_genre(genre, book_names) Index
+        +_corpus_text(asset_id, dimension, asset_dict) str
+        +_ngram_counter(text, max_n) Counter
+        +_cosine_sim(q, q_norm, d, d_norm) float
+        +_norm(c) float
+        +_vector_score(qng, doc, idx) float
+        +_fused_score(bm25, cos, alpha) float
+        +_bm25_score(query_terms, doc, index) float
+    }
+    retrieve_module ..> DocEntry : 构建/读取
+    retrieve_module ..> Index : 构建/读取
+    retrieve_module ..> HitEntry : 产出

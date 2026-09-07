@@ -1,0 +1,36 @@
+sequenceDiagram
+    participant C as 调用方(inject.py)
+    participant R as retrieve.py
+    participant D as DocEntry/Index
+    participant T as 向量/融合函数
+
+    C->>R: build_index(assets)
+    R->>D: 遍历 dimension/asset_dict
+    loop 每篇文档
+        R->>R: _corpus_text(asset_id, dimension, asset_dict)
+        R->>R: _tokenize(corpus) -> terms (BM25)
+        R->>R: _ngram_counter(corpus) -> ngrams (向量)
+        R->>D: DocEntry(..., terms, ngrams, corpus)
+        R->>R: 填 inverted/doc_freq
+    end
+    R->>R: 计算 norms[i] = _norm(docs[i].ngrams)
+    R-->>C: Index 实例
+
+    C->>R: retrieve_for_intent(intent, index, top_k=5)
+    R->>R: 防御：intent 非 str / index None / 空 docs -> []
+    R->>R: query_terms = _tokenize(intent)
+    R->>R: INTENT_MAP 命中 -> expanded_terms (注入额外词项)
+    R->>R: query_ngrams = _ngram_counter(" ".join(expanded_terms))
+    R->>R: q_norm = _norm(query_ngrams)
+    loop 每篇文档 doc
+        R->>R: bm25 = _bm25_score(expanded_terms, doc, index)
+        R->>R: cos = _cosine_sim(query_ngrams, q_norm, doc.ngrams, norms[i])
+        R->>T: score = _fused_score(bm25, cos, alpha=0.5)
+    end
+    R->>R: 过滤 score<=0
+    R->>R: 排序 (-score, asset_id) 稳定 tie-break
+    R->>R: 截 top_k
+    R-->>C: List[HitEntry]
+
+    C->>R: render_retrieval(hits)
+    R-->>C: Markdown 文本（"### 针对性注入" + "- snippet"）
