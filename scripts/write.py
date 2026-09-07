@@ -142,7 +142,7 @@ def main():
     ap.add_argument("--voice", help="voice-card 路径（用于一致性打分，可选）")
     ap.add_argument("--genre-pack", help="题材包路径（用于附加质量检查，可选）")
     ap.add_argument("--target-score", type=int, default=90, help="一致性目标分（默认 90，未达标自动改写）")
-    ap.add_argument("--quality-target", type=int, default=75, help="章节质量目标分（默认 75，chapter_check 100 分制）")
+    ap.add_argument("--quality-target", type=int, default=None, help="章节质量目标分（可选；缺省时按题材包 quality_thresholds 回退，再回退 75）")
     ap.add_argument("--dry-run", action="store_true", help="只打印将调用的内容，不调 LLM")
     args = ap.parse_args()
 
@@ -153,6 +153,20 @@ def main():
 
     novel_dir = Path(args.novel_dir)
     state_file = ensure_novel_structure(novel_dir, args.novel_name)
+
+    # 解析章节质量达标线：CLI 显式 > 题材包 quality_thresholds > 默认 75
+    # （提前解析，供「无外部模型」提示文本与主循环两处复用同一事实来源）
+    import chapter_check as _chapter_check
+    gp = None
+    if args.genre_pack:
+        try:
+            gp = json.loads(Path(args.genre_pack).read_text(encoding="utf-8"))
+        except Exception:
+            gp = None
+    if args.quality_target is not None:
+        pass_line = args.quality_target
+    else:
+        pass_line, _ = _chapter_check.resolve_thresholds(gp)
 
     # 读取大纲（如果有），提供上下文
     outline_path = novel_dir / "chapters" / "outline.md"
@@ -199,7 +213,7 @@ def main():
             "4. 运行本地自检（命令直接可复制）:\n"
             "   python novel.py 检查 " + str((novel_dir / "chapters" / f"arc-{arc}" / f"chapter-{args.chapter:03d}.txt").resolve())
             + (f" --voice {Path(args.voice).resolve()}" if args.voice else "") + "\n"
-            f"5. 达标标准: 一致性 ≥{args.target_score}/100（consistency 五维），章节质量 ≥{args.quality_target}/100（chapter_check 12 维）\n"
+            f"5. 达标标准: 一致性 ≥{args.target_score}/100（consistency 五维），章节质量 ≥{pass_line}/100（chapter_check 12 维）\n"
             "6. 未达标则按扣分点改写后重检（对照「三维度改写循环」标准，最多 3 轮）\n\n"
             "## 写作要求全文（原 LLM user prompt）\n"
             "---\n" + user + "\n---\n\n"
@@ -242,9 +256,6 @@ def main():
         try:
             import chapter_check
             import book_quality
-            gp = None
-            if args.genre_pack:
-                gp = json.loads(Path(args.genre_pack).read_text(encoding="utf-8"))
             qc = chapter_check.chapter_check(content, gp)
             quality_score = qc["score"]
             quality_issues = qc["issues"]
@@ -262,7 +273,8 @@ def main():
         # 三维度达标判断（一致性 + 章节质量；全书 QA 在入库后执行）
         # 2026-09-05 修复：原第三维 qa_ok 因时序问题恒真（见上），已移除该无效判断
         consistency_ok = score >= target_score or not args.voice
-        quality_ok = quality_score >= args.quality_target
+        # 章节质量达标线已在入口处解析（CLI 显式 > 题材包 pass > 默认 75）
+        quality_ok = quality_score >= pass_line
         if consistency_ok and quality_ok:
             print("      ✅ 双维度达标，无需改写")
             break

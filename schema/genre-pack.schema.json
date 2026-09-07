@@ -204,6 +204,15 @@
             }
           }
         },
+        "quality_thresholds": {
+          "type": "object",
+          "description": "评分阈值题材适配。缺省或值非法时回退到 chapter_check 默认 75/60。允许 pass == warn（取消 WARN 档）。",
+          "required": ["pass", "warn"],
+          "properties": {
+            "pass": { "type": "integer", "minimum": 0, "maximum": 100, "description": "PASS 线（>=pass 即 PASS）" },
+            "warn": { "type": "integer", "minimum": 0, "maximum": 100, "description": "WARN 线（>=warn 且 <pass 即 WARN）" }
+          }
+        },
         "paywall": {
           "type": "object",
           "properties": {

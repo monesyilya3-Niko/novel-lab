@@ -48,6 +48,10 @@ HOOK_KEYWORDS = [
     r"明天|以后|从此|那天起",  # 时间钩子
 ]
 
+# 评分阈值默认值（题材包未配置 quality_thresholds 时的回退线）
+DEFAULT_PASS = 75
+DEFAULT_WARN = 60
+
 # AI 味模板句式
 AI_TICS = [
     (r"她不知道，[^。]{5,30}(会|将|要)[^。]{3,20}", "作者预告旁白"),
@@ -321,12 +325,49 @@ def check_emotion_tags(text: str) -> tuple:
         return 0, f"旁白情绪标签 {tag_count} 处（AI味重灾区）"
 
 
+def resolve_thresholds(genre_pack):
+    """解析评分阈值，返回 (pass, warn) 二元组。
+
+    单一事实来源：题材包 commercial.quality_thresholds 可覆盖默认 75/60。
+    回退规则（全部静默回退，不抛异常）：
+      - genre_pack 为 None                 → (75, 60)
+      - 无 quality_thresholds 键            → (75, 60)
+      - pass / warn 非 int 或越界(0-100)   → (75, 60)
+      - warn > pass                        → (75, 60)
+    允许 pass == warn（此时无 WARN 档，>=pass 即 PASS，否则 FAIL）。
+
+    Args:
+        genre_pack: 题材包 dict（可选，来自 JSON 解析）。
+
+    Returns:
+        tuple[int, int]: (pass_line, warn_line)，保证在合法范围内。
+    """
+    if genre_pack is None:
+        return DEFAULT_PASS, DEFAULT_WARN
+    thresholds = genre_pack.get("commercial", {}).get("quality_thresholds") \
+        if isinstance(genre_pack, dict) else None
+    if not isinstance(thresholds, dict):
+        return DEFAULT_PASS, DEFAULT_WARN
+
+    pass_line = thresholds.get("pass")
+    warn_line = thresholds.get("warn")
+
+    def _valid(v):
+        return isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= 100
+
+    if not (_valid(pass_line) and _valid(warn_line)):
+        return DEFAULT_PASS, DEFAULT_WARN
+    if warn_line > pass_line:
+        return DEFAULT_PASS, DEFAULT_WARN
+    return pass_line, warn_line
+
+
 def chapter_check(text: str, genre_pack: dict = None) -> dict:
     """综合章节质量检查，返回评分报告。
 
     2026-09-05 修复（C1）：12 维分值回归文件头 docstring 权重，合计恰好 100
     （原函数内部满分 120，被 min(sum,100) 截断导致高分失真）。
-    判定线调整: PASS≥75 / WARN≥60，与 write.py --quality-target 默认 75 对齐。
+    判定线调整: 默认 PASS≥75 / WARN≥60，可经题材包 quality_thresholds 适配。
     """
     checks = [
         check_word_count(text),       # 8分
@@ -352,10 +393,11 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
         if "严重" in d or "不足" in d or "截断" in d:
             issues.append(d)
 
-    # 判定（PASS 线与 write.py --quality-target 默认值对齐）
-    if total >= 75:
+    # 判定（阈值来自 resolve_thresholds：题材包 quality_thresholds 可覆盖默认 75/60）
+    pass_line, warn_line = resolve_thresholds(genre_pack)
+    if total >= pass_line:
         verdict = "PASS"
-    elif total >= 60:
+    elif total >= warn_line:
         verdict = "WARN"
     else:
         verdict = "FAIL"
