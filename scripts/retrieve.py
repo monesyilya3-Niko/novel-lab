@@ -49,6 +49,11 @@ NGRAM_MAX_N: int = 3
 FUSION_ALPHA: float = 0.5
 # 参与向量的最小 gram 长度（默认 1，即保留 unigram）。
 MIN_NGRAM_GRAM_LEN: int = 1
+# 融合分下限：低于此值视为噪声命中（如弱 bigram 子串重叠产生的近零分），
+# 归零过滤，避免把 ~0.001 的伪相关注入下游 prompt。实测：无关 bigram 噪声
+# 在 0.0012 量级，单字真实意图（如「钩」）在 0.0087 量级，中间约 7 倍断层，
+# 0.005 能同时做到「滤掉噪声」且「不误杀单字意图」。
+MIN_FUSION_SCORE: float = 0.005
 
 # 单字符 n-gram（unigram）停用字：排除无实义高频功能字 + 常见虚词，
 # 避免无关查询与文档在单字层产生伪余弦重叠、破坏「无关→空列表」语义。
@@ -559,7 +564,7 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
     hits: List[HitEntry] = []
     for doc, bm25, cos in zip(index.docs, bm25_scores, cos_scores):
         score = _fused_score(bm25, bm25_max, cos, FUSION_ALPHA)
-        if score <= 0.0:
+        if score < MIN_FUSION_SCORE:
             continue
         hits.append(
             HitEntry(
