@@ -533,6 +533,42 @@ class TestRetrieval(unittest.TestCase):
         idx = RETRIEVE.build_index_from_genre("nonexistent-genre-xyz")
         self.assertIsInstance(idx, RETRIEVE.Index)
 
+    # ---- 健壮性收尾：非字符串 intent / None index / 空输入防御 ----
+
+    def test_retrieve_non_str_intent_returns_empty(self):
+        idx = RETRIEVE.build_index(self._assets())
+        self.assertEqual(RETRIEVE.retrieve_for_intent(["钩子"], idx), [])
+        self.assertEqual(RETRIEVE.retrieve_for_intent(12345, idx), [])
+        self.assertEqual(RETRIEVE.retrieve_for_intent(None, idx), [])
+
+    def test_retrieve_none_index_returns_empty(self):
+        self.assertEqual(RETRIEVE.retrieve_for_intent("钩子", None), [])
+
+    def test_build_index_none_returns_empty(self):
+        idx = RETRIEVE.build_index(None)
+        self.assertIsInstance(idx, RETRIEVE.Index)
+        self.assertEqual(idx.docs, [])
+
+    def test_build_index_non_dict_value_skipped(self):
+        # 非 dict 值（None 与字符串）应被跳过，不 crash，索引为空。
+        idx = RETRIEVE.build_index({"craft-card": None})
+        self.assertIsInstance(idx, RETRIEVE.Index)
+        self.assertEqual(idx.docs, [])
+        idx2 = RETRIEVE.build_index({"craft-card": "notadict"})
+        self.assertEqual(idx2.docs, [])
+
+    def test_build_index_non_dict_meta_skipped(self):
+        # meta 字段为非 dict 真值（str/list/int）时不应 crash，asset_id 走
+        # 兜底分支（meta 视为空 dict，无 id/source_title → "<dimension>-distilled"），
+        # docs 非空且无异常。
+        for bad_meta in ("notadict", [1, 2], 5):
+            idx = RETRIEVE.build_index(
+                {"craft-card": {"b": {"meta": bad_meta, "craft_analysis": {"x": "y"}}}}
+            )
+            self.assertIsInstance(idx, RETRIEVE.Index)
+            self.assertEqual(len(idx.docs), 1)
+            self.assertEqual(idx.docs[0].asset_id, "craft-card-distilled")
+
 
 class TestInjectRegression(unittest.TestCase):
     """二期 · 注入回归：未传 context_intent 时与一期字节级一致。"""

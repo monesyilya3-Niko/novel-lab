@@ -240,13 +240,24 @@ def build_index(assets: Dict[str, Dict[str, dict]]) -> Index:
         assets: 资产字典。
 
     Returns:
-        Index 实例。
+        Index 实例。assets 非 dict（如 None）时返回空索引，不 crash。
     """
+    if not isinstance(assets, dict):
+        return Index()
+
     index = Index()
 
     def _add_doc(dimension: str, asset_dict: Dict[str, Any]) -> None:
-        """把单个 asset_dict 加入索引。"""
-        meta = asset_dict.get("meta") or {}
+        """把单个 asset_dict 加入索引。
+
+        asset_dict 非 dict（如 None）时静默跳过，避免后续 ``.get`` 与
+        ``_build_snippet`` 崩溃。
+        """
+        if not isinstance(asset_dict, dict):
+            return
+        meta = asset_dict.get("meta")
+        if not isinstance(meta, dict):
+            meta = {}
         asset_id = meta.get("id") or f"{dimension}-{meta.get('source_title', 'distilled')}"
         snippet = _build_snippet(asset_dict)
 
@@ -349,14 +360,16 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
     → 按 score 降序、同分按 asset_id 升序排序 → 截 top_k。
 
     Args:
-        intent: 意图字符串（如 ``"悬疑反转钩子"``）。
-        index: 已构建的 Index。
+        intent: 意图字符串（如 ``"悬疑反转钩子"``）。intent 非 str（如
+            list/int/None 等调用方误用）时视为空意图，直接返回空列表，不 crash
+            也不产脏数据。
+        index: 已构建的 Index。index 为 None 时同样返回空列表。
         top_k: 返回条数上限。
 
     Returns:
         HitEntry 列表（score 降序）。
     """
-    if not intent or not index.docs:
+    if not isinstance(intent, str) or index is None or not index.docs:
         return []
 
     query_terms = _tokenize(intent)
