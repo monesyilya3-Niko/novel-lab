@@ -288,6 +288,32 @@ class TestBug1PayoffTypes(unittest.TestCase):
         self.assertEqual(result[0]["type"], "情感回应")
         self.assertEqual(result[0]["ratio"], 7.0)
 
+    def test_payoff_types_cross_book_union_dedup_by_type(self):
+        # P3-a 收口回归：跨书并集后同一 payoff type 出现不同 ratio（如
+        # 「情感回应」ratio=20 / 7.0 / None），_list_union 只按整项相等去重、
+        # 不去重 type。本次修复在 list-union 分支对 payoff_types 追加一次
+        # _dedup_payoff_types，按 type 去重、保留首个出现的 ratio。
+        rule = CORE._aggregate_field(
+            dimension="commercial-obs",
+            field="payoff_types",
+            book_vals={
+                "a": [{"type": "情感回应", "ratio": 20}, {"type": "打脸", "ratio": 40}],
+                "b": [{"type": "情感回应", "ratio": 7.0}, {"type": "反杀", "ratio": 1.0}],
+                "c": [{"type": "情感回应", "ratio": None}, {"type": "身份揭露", "ratio": None}],
+            },
+            books=["a", "b", "c"],
+            aggregator="list-union",
+        )
+        types = [x["type"] for x in rule.value]
+        # 每个 type 只出现一次（「情感回应」三条去重为一条）。
+        self.assertEqual(len(types), len(set(types)))
+        self.assertEqual(set(types), {"情感回应", "打脸", "反杀", "身份揭露"})
+        # 「情感回应」保留首个出现的 ratio=20（来自 book a）。
+        huiying = next(x for x in rule.value if x["type"] == "情感回应")
+        self.assertEqual(huiying["ratio"], 20)
+        # sources 仍保留各书原始（不去重）列表，供溯源。
+        self.assertEqual(len(rule.sources), 3)
+
 
 class TestBug2FreqDivergence(unittest.TestCase):
     """Bug2 回归：string-freq 众数占比 <100% 时应标记分歧。"""
