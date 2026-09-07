@@ -15,7 +15,8 @@
         "contributing_books": {
           "type": "array", "items": { "type": "string" },
           "description": "贡献来源书目"
-        }
+        },
+        "genre_seed": { "type": "string", "description": "首版种子题材" }
       }
     },
     "tropes": {

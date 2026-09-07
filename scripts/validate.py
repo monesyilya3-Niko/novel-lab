@@ -334,9 +334,9 @@ def validate_trope_library(d):
             warn("缺少 parameters（可调参数）", p)
         eff = t.get("effectiveness")
         if check_obj(eff, p + ".effectiveness"):
-            s = eff.get("score")
+            s = eff.get("payoff_strength")
             if s is not None:
-                check_strength(s, p + ".effectiveness.score")
+                check_strength(s, p + ".effectiveness.payoff_strength")
 
 
 # --------------------------------------------------------------------------
