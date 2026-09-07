@@ -18,6 +18,7 @@ novel-lab 蒸馏层回归测试（纯标准库 unittest，零第三方依赖）
 import importlib.util
 import sys
 import unittest
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -594,6 +595,101 @@ class TestRetrieval(unittest.TestCase):
             self.assertIsInstance(idx, RETRIEVE.Index)
             self.assertEqual(len(idx.docs), 1)
             self.assertEqual(idx.docs[0].asset_id, "craft-card-distilled")
+
+
+class TestVectorRetrieval(unittest.TestCase):
+    """二期 · P0：字符 n-gram 向量 + 余弦 + 融合检索（纯标准库）。"""
+
+    def _assets(self):
+        """构造含「悬疑」语义但无「悬念」字面的文档，验证向量近义召回。"""
+        return {
+            "craft-card": {
+                "book_a": {
+                    "meta": {"id": "craft-card-book_a", "dimension": "craft-card"},
+                    "craft_analysis": {
+                        "foreshadowing": {
+                            "techniques": [
+                                {"name": "悬疑铺垫", "skeleton": "逐步埋下疑点"}
+                            ]
+                        }
+                    },
+                },
+            },
+            "structure-obs": {
+                "book_a": {
+                    "meta": {"id": "structure-obs-book_a", "dimension": "structure-obs"},
+                    "chapter_analyses": [{"hook": {"skeleton": "章末悬疑钩子"}}],
+                },
+            },
+        }
+
+    def test_ngram_counter_has_123_grams_with_prefix(self):
+        c = RETRIEVE._ngram_counter("钩子")
+        # 1-gram / 2-gram 存在，键带 "n:" 前缀。
+        self.assertGreaterEqual(c["1:钩"], 1)
+        self.assertGreaterEqual(c["2:钩子"], 1)
+
+    def test_ngram_counter_trigram(self):
+        c = RETRIEVE._ngram_counter("三段式")
+        self.assertGreaterEqual(c["3:三段式"], 1)
+
+    def test_ngram_counter_empty(self):
+        self.assertEqual(RETRIEVE._ngram_counter(""), Counter())
+
+    def test_cosine_identical_is_one(self):
+        self.assertEqual(
+            RETRIEVE._cosine_sim(Counter({"2:钩子": 1}), 1.0, Counter({"2:钩子": 1}), 1.0),
+            1.0,
+        )
+
+    def test_cosine_orthogonal_is_zero(self):
+        self.assertEqual(
+            RETRIEVE._cosine_sim(Counter({"1:a": 1}), 1.0, Counter({"1:b": 1}), 1.0),
+            0.0,
+        )
+
+    def test_cosine_zero_vector_is_zero(self):
+        # 任一范数为 0 → 返回 0（防除零）。
+        self.assertEqual(RETRIEVE._cosine_sim(Counter(), 0.0, Counter({"1:a": 1}), 1.0), 0.0)
+        self.assertEqual(RETRIEVE._cosine_sim(Counter({"1:a": 1}), 1.0, Counter(), 0.0), 0.0)
+
+    def test_norm(self):
+        self.assertEqual(RETRIEVE._norm(Counter({"a": 3, "b": 4})), 5.0)
+        self.assertEqual(RETRIEVE._norm(Counter()), 0.0)
+
+    def test_fused_score_weight_boundaries(self):
+        # alpha=0 → 纯向量；alpha=1 → 纯 BM25；alpha=0.5 → 各半。
+        self.assertEqual(RETRIEVE._fused_score(1.0, 1.0, 0.0, 0.0), 0.0)
+        self.assertEqual(RETRIEVE._fused_score(0.0, 1.0, 1.0, 0.0), 1.0)
+        self.assertEqual(RETRIEVE._fused_score(1.0, 1.0, 0.0, 1.0), 1.0)
+        self.assertEqual(RETRIEVE._fused_score(1.0, 1.0, 1.0, 1.0), 1.0)
+        self.assertEqual(RETRIEVE._fused_score(1.0, 1.0, 0.0, 0.5), 0.5)
+        self.assertEqual(RETRIEVE._fused_score(0.0, 1.0, 1.0, 0.5), 0.5)
+
+    def test_build_index_norms_length(self):
+        idx = RETRIEVE.build_index(self._assets())
+        self.assertEqual(len(idx.norms), len(idx.docs))
+        # 每篇文档 ngrams 非空且含 "n:" 前缀键。
+        for doc in idx.docs:
+            self.assertTrue(doc.ngrams)
+            self.assertTrue(any(k.startswith("2:") for k in doc.ngrams))
+
+    def test_synonym_recall_suspense_vs_xuanyi(self):
+        # 文档用「悬疑」字面，查询「悬念」——BM25 子串补偿召回不了，但向量应能召回。
+        idx = RETRIEVE.build_index(self._assets())
+        hits = RETRIEVE.retrieve_for_intent("悬念", idx)
+        self.assertTrue(len(hits) > 0)
+        dimensions = {h.dimension for h in hits}
+        self.assertIn("craft-card", dimensions)
+
+    def test_deterministic_two_runs_identical(self):
+        idx = RETRIEVE.build_index(self._assets())
+        first = RETRIEVE.retrieve_for_intent("想要章末反转", idx)
+        second = RETRIEVE.retrieve_for_intent("想要章末反转", idx)
+        self.assertEqual(
+            [(h.asset_id, h.score) for h in first],
+            [(h.asset_id, h.score) for h in second],
+        )
 
 
 class TestInjectRegression(unittest.TestCase):

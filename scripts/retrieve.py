@@ -43,6 +43,13 @@ SNIPPET_LEN: int = 200
 # BM25 k1 参数。
 BM25_K1: float = 1.5
 
+# 字符 n-gram 最大长度（1/2/3-gram 混合）。
+NGRAM_MAX_N: int = 3
+# BM25 与向量余弦的融合权重（BM25 占比，向量占比为 1-α）。
+FUSION_ALPHA: float = 0.5
+# 参与向量的最小 gram 长度（默认 1，即保留 unigram）。
+MIN_NGRAM_GRAM_LEN: int = 1
+
 # 分词正则：匹配字母数字 + 中日韩字符（连续串作为一个词项）。
 _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+")
 
@@ -93,6 +100,8 @@ class DocEntry:
     asset_dict: Dict[str, Any] = dc_field(default_factory=dict)
     terms: Counter = dc_field(default_factory=Counter)
     snippet: str = ""
+    ngrams: Counter = dc_field(default_factory=Counter)
+    corpus: str = ""
 
 
 @dataclass
@@ -127,6 +136,7 @@ class Index:
     doc_freq: Dict[str, int] = dc_field(default_factory=dict)
     docs: List[DocEntry] = dc_field(default_factory=list)
     idf_cache: Dict[str, float] = dc_field(default_factory=dict)
+    norms: List[float] = dc_field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +234,66 @@ def _flatten_value(value: Any) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 字符 n-gram 向量（纯标准库）
+# ---------------------------------------------------------------------------
+
+def _corpus_text(asset_id: str, dimension: str, asset_dict: Dict[str, Any]) -> str:
+    """从资产提取规范化 corpus 全文。
+
+    与 ``_add_doc`` 原有拼接逻辑一致：asset_id + 维度 + 正文（经
+    ``_flatten_asset_body`` 字段白名单清洗）+ rules 的 field/value。BM25 词项与
+    向量 n-gram 都从此文本派生，保证两份表示看到同一份文档语义。
+    """
+    corpus_parts: List[str] = [asset_id, dimension]
+    corpus_parts.append(_flatten_asset_body(asset_dict))
+    for rule in asset_dict.get("rules") or []:
+        if isinstance(rule, dict):
+            corpus_parts.append(str(rule.get("field", "")))
+            corpus_parts.append(_flatten_value(rule.get("value")))
+    return " ".join(corpus_parts)
+
+
+def _ngram_counter(text: str, max_n: int = NGRAM_MAX_N) -> Counter:
+    """对文本生成 1..max_n 的字符 n-gram 多重集。
+
+    键为 ``f"{n}:{gram}"``（前缀 n 避免不同长度 gram 的字符串冲突），值为该 gram
+    在文本中的出现次数。用 ``MIN_NGRAM_GRAM_LEN`` 过滤过短 gram（默认 1，全保留）。
+    """
+    counter: Counter = Counter()
+    if not text:
+        return counter
+    for n in range(MIN_NGRAM_GRAM_LEN, max_n + 1):
+        for i in range(len(text) - n + 1):
+            gram = text[i : i + n]
+            counter[f"{n}:{gram}"] += 1
+    return counter
+
+
+def _norm(c: Counter) -> float:
+    """计算向量的 L2 范数（‖v‖ = sqrt(Σ v[g]²)）。"""
+    if not c:
+        return 0.0
+    return math.sqrt(sum(v * v for v in c.values()))
+
+
+def _cosine_sim(q: Counter, q_norm: float, d: Counter, d_norm: float) -> float:
+    """计算两个向量的余弦相似度（只遍历共同键）。
+
+    任一范数为 0（全零向量）时返回 0，避免除零。频次非负，故余弦恒 ≥ 0。
+    """
+    if q_norm <= 0.0 or d_norm <= 0.0:
+        return 0.0
+    dot = 0.0
+    for g, qv in q.items():
+        dv = d.get(g)
+        if dv:
+            dot += qv * dv
+    if dot <= 0.0:
+        return 0.0
+    return dot / (q_norm * d_norm)
+
+
+# ---------------------------------------------------------------------------
 # 索引构建
 # ---------------------------------------------------------------------------
 
@@ -262,20 +332,17 @@ def build_index(assets: Dict[str, Dict[str, dict]]) -> Index:
         snippet = _build_snippet(asset_dict)
 
         # 文档全文：asset_id + 维度 + 正文（distilled 的 rules/盲区 或原始资产的技法名）。
-        corpus_parts: List[str] = [asset_id, dimension]
-        corpus_parts.append(_flatten_asset_body(asset_dict))
-        for rule in asset_dict.get("rules") or []:
-            if isinstance(rule, dict):
-                corpus_parts.append(str(rule.get("field", "")))
-                corpus_parts.append(_flatten_value(rule.get("value")))
-
-        terms = Counter(_tokenize(" ".join(corpus_parts)))
+        corpus = _corpus_text(asset_id, dimension, asset_dict)
+        terms = Counter(_tokenize(corpus))
+        ngrams = _ngram_counter(corpus)
         doc = DocEntry(
             asset_id=asset_id,
             dimension=dimension,
             asset_dict=asset_dict,
             terms=terms,
             snippet=snippet,
+            ngrams=ngrams,
+            corpus=corpus,
         )
         doc_idx = len(index.docs)
         index.docs.append(doc)
@@ -297,6 +364,9 @@ def build_index(assets: Dict[str, Dict[str, dict]]) -> Index:
             if not isinstance(asset_dict, dict):
                 continue
             _add_doc(dimension, asset_dict)
+
+    # 预计算每篇文档 n-gram 向量的 L2 范数（与 docs 下标对齐，供余弦检索复用）。
+    index.norms = [_norm(doc.ngrams) for doc in index.docs]
     return index
 
 
@@ -349,6 +419,48 @@ def _bm25_score(query_terms: List[str], doc: DocEntry, index: Index) -> float:
     return score
 
 
+def _vector_score(query_ngrams: Counter, q_norm: float, doc: DocEntry, idx: Index) -> float:
+    """向量分支打分：查询 n-gram 与文档 n-gram 的余弦相似度，返回 [0,1]。
+
+    Args:
+        query_ngrams: 查询 n-gram 多重集。
+        q_norm: 查询向量 L2 范数（预先算好，避免每篇文档重复开方）。
+        doc: 目标文档（读取 ``doc.ngrams``）。
+        idx: 索引（读取 ``idx.norms``，需与 docs 下标对齐）。
+
+    Returns:
+        余弦相似度 [0,1]；文档下标越界或范数为 0 时返回 0.0。
+    """
+    doc_norm = 0.0
+    for i, d in enumerate(idx.docs):
+        if d is doc:
+            doc_norm = idx.norms[i] if i < len(idx.norms) else _norm(doc.ngrams)
+            break
+    if doc_norm <= 0.0:
+        return 0.0
+    return _cosine_sim(query_ngrams, q_norm, doc.ngrams, doc_norm)
+
+
+def _fused_score(bm25_raw: float, bm25_max: float, cos_sim: float, alpha: float = FUSION_ALPHA) -> float:
+    """融合打分：BM25（max 归一化）+ 余弦线性加权。
+
+    final = alpha * (bm25_raw / bm25_max) + (1 - alpha) * cos_sim
+
+    Args:
+        bm25_raw: 该文档 BM25 原始分（≥ 0）。
+        bm25_max: 当次候选集 BM25 最大值（用于归一化到 [0,1]）。
+        cos_sim: 余弦相似度 [0,1]。
+        alpha: BM25 权重（默认 ``FUSION_ALPHA``）。
+
+    Returns:
+        融合分 [0,1]。
+    """
+    norm_bm25 = 0.0
+    if bm25_max > 0.0:
+        norm_bm25 = bm25_raw / bm25_max
+    return alpha * norm_bm25 + (1.0 - alpha) * cos_sim
+
+
 # ---------------------------------------------------------------------------
 # 检索
 # ---------------------------------------------------------------------------
@@ -388,10 +500,22 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
                     if et not in expanded_terms:
                         expanded_terms.append(et)
 
-    # 对每篇文档打分。
-    hits: List[HitEntry] = []
+    # 查询向量：意图映射注入的额外词项同样进入 n-gram，与向量检索协同。
+    query_ngrams = _ngram_counter(" ".join(expanded_terms))
+    q_norm = _norm(query_ngrams)
+
+    # 先对每篇文档算 BM25 原始分与余弦分，收集 BM25 最大值用于归一化。
+    bm25_scores: List[float] = []
+    cos_scores: List[float] = []
     for doc in index.docs:
-        score = _bm25_score(expanded_terms, doc, index)
+        bm25_scores.append(_bm25_score(expanded_terms, doc, index))
+        cos_scores.append(_vector_score(query_ngrams, q_norm, doc, index))
+    bm25_max = max(bm25_scores) if bm25_scores else 0.0
+
+    # 融合打分。
+    hits: List[HitEntry] = []
+    for doc, bm25, cos in zip(index.docs, bm25_scores, cos_scores):
+        score = _fused_score(bm25, bm25_max, cos, FUSION_ALPHA)
         if score <= 0.0:
             continue
         hits.append(
