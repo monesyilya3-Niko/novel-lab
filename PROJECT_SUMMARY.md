@@ -236,7 +236,7 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 ## 七、当前状态与统计（2026-09-01）
 
 - 已拆书目 3 本：炽炀 / 青柠 / 桑式（campus-redemption 题材，置信 90%）
-- 题材包 1 份（聚合产物）；报告 6 份；脚本 21 个（py_compile 全过）；schema 6 个
+- 题材包 1 份（聚合产物）；报告 6 份；脚本 19 个（py_compile 全过）；schema 6 个
 - **2026-09-01 下午修复**：write.py 无模型降级路径补齐（此前抛异常）；corpus/raw/ 根 4 个暮冬念春残留 pass JSON + novel/state.json 已归档至 `_TRASH\暮冬念春_清理_2026-09-01\novel-lab内\corpus-raw散落残留\`；HANDOFF.md 过时数字已修正
 - 工作区干净：暮冬念春全部数据已清出（终稿归档在 D 盘，_TRASH 可还原）
 - 《暮冬念春》终稿最新精修版：`D:\fanqie-auto\终稿_最新精修版_2026-09-01\`（159 章最新版 + 第 160 章双版本 + 底层规则包）
@@ -247,7 +247,7 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 ## 八、深度诊断与修复记录（2026-09-05）
 
 > 诊断报告 + 修复计划存档于 `C:/Users/monesy/WorkBuddy/2026-09-05-10-21-22/`（novel-lab_诊断报告 / novel-lab_深度修复计划）。
-> 本次共 6 个提交：`0d59039` `b998648` `153388e` `66812d1` `9e07980` + 本文档同步。
+> 本次共 8 个提交：`0d59039` `b998648` `153388e` `66812d1` `9e07980` `b146dc6` `8790b27` + 本文档同步（后续另有 `7ae7703`、`fdbc116` 清理提交及 `97bbca7` 测试护栏提交，截至 2026-09-07 共 16 个提交）。
 
 ### 修复的问题（诊断报告 A/B/C 级）
 
@@ -278,7 +278,7 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 | consistency (qingning/sangshi) | 65 | 65 | 零回归（角色不在章内，声线 0 属预期） |
 | chapter_check | 88 | 75 | 真 100 分制；短段略多/让字3处/了字密度过高等真实短板不再被虚高掩盖 |
 | book_quality | PASS | PASS | 零回归；"小周"误报根因消除 |
-| 14 资产 validate | 12 PASS + 2 WARN | 12 PASS + 2 WARN | 零回归 |
+| 13 资产 validate | 12 PASS + 1 WARN | 12 PASS + 1 WARN | 零回归 |
 
 
 ---
