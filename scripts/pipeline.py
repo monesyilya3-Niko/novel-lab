@@ -491,6 +491,16 @@ def main():
                     "abstraction_note": "Pass5 笔法分析产物，经 compliance.py 扫描",
                 },
             }
+            # 深度分析校验 + 补齐（deep_analyze 不生成内容，只校验结构）
+            try:
+                import deep_analyze
+                depth_stats = deep_analyze.analyze_craft_card(craft_card)
+                if depth_stats["incomplete"] > 0:
+                    print(f"  ⚠ 深度分析缺段 {depth_stats['incomplete']}/{depth_stats['total']} 条技法，"
+                          f"报告可能达不到 1 万字")
+            except ImportError:
+                print("  ⚠ deep_analyze 模块缺失，跳过深度分析校验")
+
             cc_path = ASSETS_DIR / f"{name}-craft-card.json"
             cc_path.write_text(json.dumps(craft_card, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"      {cc_path.name} ({len(json.dumps(craft_card, ensure_ascii=False))//1024}K)")
@@ -503,6 +513,12 @@ def main():
                 report_path.parent.mkdir(parents=True, exist_ok=True)
                 report_path.write_text(report, encoding="utf-8")
                 print(f"      {report_path.name}（可交付报告）")
+
+                # 铁律二：笔法分析报告 ≥10000 字符（字符数口径）
+                report_len = len(report)
+                if report_len < 10000:
+                    print(f"  ✗ 笔法报告 {report_len} 字符 < 10000 硬门槛，交付阻断")
+                    sys.exit(1)
             except Exception as e:
                 print(f"      ⚠ 笔法报告生成失败: {e}")
 

@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import re
 import sys
@@ -628,3 +629,94 @@ def build_index_from_genre(
         return Index()
     assets = collect_assets(genre, book_names=book_names)
     return build_index(assets)
+
+
+# ---------------------------------------------------------------------------
+# 桥段库检索（铁律一：按 genre_scope 过滤）
+# ---------------------------------------------------------------------------
+
+# 桥段库资产路径（相对项目根）。
+_TROPE_LIBRARY_PATH = Path(__file__).resolve().parent.parent / "assets" / "trope-library.json"
+
+
+def _load_tropes() -> List[Dict[str, Any]]:
+    """读取 assets/trope-library.json 的 tropes 数组；缺失/解析失败返回空列表。"""
+    try:
+        data = json.loads(_TROPE_LIBRARY_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    tropes = data.get("tropes")
+    return tropes if isinstance(tropes, list) else []
+
+
+def _trope_score(intent: str, trope: Dict[str, Any]) -> float:
+    """对单个桥段做轻量意图匹配打分（名称/类别/骨架关键词重叠）。"""
+    if not intent:
+        return 0.0
+    query_terms = set(_tokenize(intent))
+    if not query_terms:
+        return 0.0
+    # 构造可检索文本：name + category + skeleton 各段 + applicable_genres
+    text_parts = [str(trope.get("name", "")), str(trope.get("category", ""))]
+    skeleton = trope.get("skeleton")
+    if isinstance(skeleton, dict):
+        text_parts.append(_flatten_value(skeleton))
+    ag = trope.get("applicable_genres")
+    if isinstance(ag, list):
+        text_parts.extend(str(x) for x in ag)
+    corpus = " ".join(text_parts)
+    doc_terms = set(_tokenize(corpus))
+    # 词项命中计数 + 子串重叠补偿
+    score = 0.0
+    for q in query_terms:
+        if q in doc_terms:
+            score += 1.0
+        else:
+            for dt in doc_terms:
+                if len(q) >= 2 and len(dt) >= 2 and (q in dt or dt in q):
+                    score += 0.5
+                    break
+    return score
+
+
+def retrieve_tropes(intent: str, genre: str | None = None, top_k: int = 5) -> List[Dict[str, Any]]:
+    """按意图检索桥段库，按 genre_scope 过滤（铁律一）。
+
+    过滤规则：
+        * ``genre_scope == 'universal'`` 的桥段恒可见；
+        * ``genre_scope == 目标题材 id`` 的桥段仅在 ``genre`` 匹配时可见；
+        * ``genre`` 为 None 时只返回 universal 桥段，避免跨题材桥段混入（保守策略）。
+
+    Args:
+        intent: 意图字符串（如 ``"打脸爽点"``）。
+        genre: 目标题材 id（如 ``"campus-redemption"``）；None 表示未指定题材。
+        top_k: 返回条数上限。
+
+    Returns:
+        按匹配得分降序的桥段 dict 列表（最多 top_k 条）。
+    """
+    if not isinstance(intent, str) or not intent.strip():
+        return []
+    if top_k <= 0:
+        return []
+
+    keep = []
+    for t in _load_tropes():
+        if not isinstance(t, dict):
+            continue
+        gs = t.get("genre_scope")
+        if gs == "universal":
+            keep.append(t)
+        elif genre and gs == genre:
+            keep.append(t)
+        # 其它（未标注 / 非法 / 其它题材专属）一律过滤掉
+
+    if not keep:
+        return []
+
+    scored = [(t, _trope_score(intent, t)) for t in keep]
+    # 得分降序，同分按 id 升序保证稳定可复现
+    scored.sort(key=lambda x: (-x[1], str(x[0].get("id", ""))))
+    return [t for t, _ in scored[:top_k]]

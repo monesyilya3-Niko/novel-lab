@@ -19,6 +19,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 REPORTS_DIR = ROOT / "reports"
 
+# 铁律二：报告字符数硬门槛（字符数口径）
+MIN_REPORT_CHARS = 10000
+
 
 # --------------------------------------------------------------------------
 # 各资产 → 报告章节
@@ -271,6 +274,11 @@ def main():
 
     print(f"✓ 拆书报告已生成: {out}")
     print(f"  报告长度: {len(report)} 字符")
+
+    # 铁律二：拆书报告字符数硬门槛（拆书报告 + 笔法分析合计 ≥10000，此处单份校验）
+    if len(report) < MIN_REPORT_CHARS:
+        print(f"⚠ 拆书报告字数 {len(report)} < 硬门槛 {MIN_REPORT_CHARS}，请补充分析")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

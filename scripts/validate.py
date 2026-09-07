@@ -30,6 +30,10 @@ CHAPTER_ROLE_ENUM = {"铺垫", "推进", "转折", "爆发", "缓冲", "过渡"}
 ABSTRACTION_ENUM = {"structural", "scenic", "verbal"}
 LANG_SUBTYPE_ENUM = {"直白", "偶有潜台词", "大量潜台词"}
 
+# 题材白名单：craft-card / voice-card 的 meta.genre 必须 ∈ 此集合。
+# 后续扩展题材包时在此追加（铁律一）。
+KNOWN_GENRES = {"campus-redemption"}
+
 ERRORS = []   # 硬错误：拒绝入库
 WARNS = []    # 警告：可入库但需复核
 
@@ -337,6 +341,12 @@ def validate_trope_library(d):
             s = eff.get("payoff_strength")
             if s is not None:
                 check_strength(s, p + ".effectiveness.payoff_strength")
+        # === 新增：genre_scope 校验（铁律一）===
+        gs = t.get("genre_scope")
+        if gs is None:
+            err("缺少 genre_scope 字段", p + ".genre_scope")   # 硬错误：题材作用域必须标注
+        elif gs not in ("universal", *KNOWN_GENRES):
+            err(f"genre_scope='{gs}' 非法，须 ∈ {{'universal', *sorted(KNOWN_GENRES)}}", p + ".genre_scope")
 
 
 # --------------------------------------------------------------------------
@@ -356,6 +366,13 @@ def validate_craft_card(d):
             if k not in meta:
                 err(f"缺少必填字段 '{k}'", "meta")
         check_probability(meta.get("confidence"), "meta.confidence")
+        # === 新增：genre 枚举校验（铁律一）===
+        genre = meta.get("genre", "")
+        if not genre:
+            err("meta.genre 为空，题材未标注", "meta.genre")   # 硬错误
+        elif genre not in KNOWN_GENRES:
+            warn(f"meta.genre='{genre}' 不在已知题材白名单 {sorted(KNOWN_GENRES)}，"
+                 f"请确认题材包是否已登记", "meta.genre")        # 警告（不阻断拆书，但阻断聚合）
 
     analysis = d.get("craft_analysis")
     if check_obj(analysis, "craft_analysis"):

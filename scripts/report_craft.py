@@ -16,6 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REPORTS_DIR = ROOT / "reports"
 
+# 铁律二：报告字符数硬门槛（字符数口径）
+MIN_REPORT_CHARS = 10000
+
 
 def _technique_block(t: dict, idx: int) -> str:
     """单个技法 → Markdown 段落。兼容中文/英文字段名。"""
@@ -33,6 +36,20 @@ def _technique_block(t: dict, idx: int) -> str:
     anti = t.get("anti_pattern") or t.get("反例") or t.get("counter_example") or ""
     if anti:
         lines.append(f"- **反例**（该作者不会这么写）：{anti}")
+    # === 渲染 deep_analysis 7 段（铁律二：深度字段是万字报告的主要来源）===
+    da = t.get("deep_analysis") or {}
+    for field, label in [
+        ("reader_psychology", "读者心理机制"),
+        ("execution_steps", "执行步骤"),
+        ("applicable_scene", "适用场景"),
+        ("usage_boundary", "使用边界"),
+        ("intensity_control", "强度控制"),
+        ("combo_patterns", "组合套路"),
+        ("migration_checklist", "迁移清单"),
+    ]:
+        v = da.get(field)
+        if v:
+            lines.append(f"- **{label}**：{v}")
     return "\n".join(lines)
 
 
@@ -183,6 +200,11 @@ def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(report, encoding="utf-8")
     print(f"✓ 报告已生成: {out_path}")
+
+    # 铁律二：报告字符数硬门槛
+    if len(report) < MIN_REPORT_CHARS:
+        print(f"⚠ 报告字数 {len(report)} < 硬门槛 {MIN_REPORT_CHARS}，深度分析不足，阻断交付")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

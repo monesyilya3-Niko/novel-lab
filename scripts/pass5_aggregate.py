@@ -38,9 +38,15 @@ SUGGEST_THRESHOLD = 0.4  # 40-80% → 建议项
 # 资产收集
 # --------------------------------------------------------------------------
 
-def collect_books(genre: str, book_names: list | None) -> list:
-    """收集同题材全部 voice-card，返回 [{'name':..., 'voice':{...}, 'struct':{...}, 'comm':{...}}]。"""
+def collect_books(genre: str, book_names: list | None) -> tuple:
+    """收集同题材全部 voice-card。
+
+    返回 ``(books, mismatches)`` 二元组：
+        books: [{'name':..., 'voice':{...}, 'struct':{...}, 'comm':{...}}, ...]
+        mismatches: [(name, actual_genre), ...] 混入的异题材书（铁律一：不再静默跳过）。
+    """
     books = []
+    mismatches = []
     vc_files = sorted(ASSETS.glob("*-voice-card.json"))
     for vc_f in vc_files:
         name = vc_f.name.replace("-voice-card.json", "")
@@ -48,7 +54,10 @@ def collect_books(genre: str, book_names: list | None) -> list:
         if name.startswith("synthetic_"):
             continue
         vc = json.loads(vc_f.read_text(encoding="utf-8"))
-        if vc.get("meta", {}).get("genre") != genre:
+        actual_genre = vc.get("meta", {}).get("genre")
+        if actual_genre != genre:
+            # 显式收集 mismatch，不再静默跳过（铁律一）
+            mismatches.append((name, actual_genre))
             continue
         if book_names and name not in book_names:
             continue
@@ -61,7 +70,7 @@ def collect_books(genre: str, book_names: list | None) -> list:
         if cf.exists():
             comm = json.loads(cf.read_text(encoding="utf-8"))
         books.append({"name": name, "voice": vc, "struct": struct, "comm": comm})
-    return books
+    return books, mismatches
 
 
 # --------------------------------------------------------------------------
@@ -209,7 +218,10 @@ def main():
     args = ap.parse_args()
 
     book_names = [b.strip() for b in args.books.split(",")] if args.books else None
-    books = collect_books(args.genre, book_names)
+    books, mismatches = collect_books(args.genre, book_names)
+    if mismatches:
+        detail = "；".join(f"{n}(genre={g or '缺失'})" for n, g in mismatches)
+        sys.exit(f"✗ 题材隔离违规：{detail} 与目标 '{args.genre}' 不符")
     if not books:
         sys.exit(f"未找到 {args.genre} 题材的 voice-card（assets/ 下）")
     print(f"聚合样本: {len(books)} 本 → {[b['name'] for b in books]}")

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.0",
+    "version": "1.1",
     "updated_at": "2026-09-07",
     "total_count": 8,
     "contributing_books": [
@@ -8,14 +8,22 @@
       "qingning_chosen",
       "sangshi_chosen"
     ],
-    "genre_seed": "campus-redemption"
+    "genre_seed": "campus-redemption",
+    "genre_scope_note": "首版 8 桥段全部为跨题材通用 structural/scenic 模式，genre_scope 均为 universal。题材专属桥段待后续拆更多题材书后补充。"
   },
   "tropes": [
     {
       "id": "T-FACE-001",
       "name": "公开打脸·事实碾压",
       "category": "打脸",
-      "applicable_genres": ["campus-redemption", "逆袭", "重生", "职场", "仙侠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "逆袭",
+        "重生",
+        "职场",
+        "仙侠"
+      ],
       "skeleton": {
         "setup": "主角处于被轻视、被污蔑或被认为无能的弱势位置，且手中握有尚未亮出的、足以推翻对方判断的硬事实或真实能力。",
         "escalation": [
@@ -28,9 +36,33 @@
       },
       "abstraction_level": "structural",
       "parameters": [
-        {"name": "轻视者身份", "options": ["竞争者", "上位者", "同龄偏见者", "旧敌"]},
-        {"name": "打脸场合", "options": ["公开集会", "考核现场", "众目睽睽的比试", "流言中心"]},
-        {"name": "亮出的事实类型", "options": ["隐藏能力", "隐藏身份", "既往战绩", "无可辩驳的证据"]}
+        {
+          "name": "轻视者身份",
+          "options": [
+            "竞争者",
+            "上位者",
+            "同龄偏见者",
+            "旧敌"
+          ]
+        },
+        {
+          "name": "打脸场合",
+          "options": [
+            "公开集会",
+            "考核现场",
+            "众目睽睽的比试",
+            "流言中心"
+          ]
+        },
+        {
+          "name": "亮出的事实类型",
+          "options": [
+            "隐藏能力",
+            "隐藏身份",
+            "既往战绩",
+            "无可辩驳的证据"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 9,
@@ -52,7 +84,14 @@
       "id": "T-IDEN-001",
       "name": "隐藏身份·当众揭露",
       "category": "身份",
-      "applicable_genres": ["campus-redemption", "重生", "马甲流", "权谋", "仙侠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "重生",
+        "马甲流",
+        "权谋",
+        "仙侠"
+      ],
       "skeleton": {
         "setup": "主角隐藏了足以改变他人认知的真实身份或背景，长期以普通、弱势或伪装的面貌示人。",
         "escalation": [
@@ -65,9 +104,32 @@
       },
       "abstraction_level": "structural",
       "parameters": [
-        {"name": "隐藏身份的类型", "options": ["血统/家世", "真实能力", "过往身份", "关键知情人"]},
-        {"name": "揭露时机", "options": ["被逼到绝境", "主动摊牌", "第三方误揭"]},
-        {"name": "揭露的对象", "options": ["轻视者", "亲近者", "全场围观者", "上位者"]}
+        {
+          "name": "隐藏身份的类型",
+          "options": [
+            "血统/家世",
+            "真实能力",
+            "过往身份",
+            "关键知情人"
+          ]
+        },
+        {
+          "name": "揭露时机",
+          "options": [
+            "被逼到绝境",
+            "主动摊牌",
+            "第三方误揭"
+          ]
+        },
+        {
+          "name": "揭露的对象",
+          "options": [
+            "轻视者",
+            "亲近者",
+            "全场围观者",
+            "上位者"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 8,
@@ -89,7 +151,14 @@
       "id": "T-CRIS-001",
       "name": "危机降临·第三方破局",
       "category": "危机",
-      "applicable_genres": ["campus-redemption", "都市", "悬疑", "末世", "仙侠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "都市",
+        "悬疑",
+        "末世",
+        "仙侠"
+      ],
       "skeleton": {
         "setup": "主角或主角阵营陷入一个自身力量无法当场化解的突发危机，局面迅速恶化、退路被切断。",
         "escalation": [
@@ -102,9 +171,33 @@
       },
       "abstraction_level": "scenic",
       "parameters": [
-        {"name": "危机类型", "options": ["暴力冲突", "威胁性对话", "规则内打压", "突发意外"]},
-        {"name": "第三方身份", "options": ["隐藏助力者", "中立旁观者", "对立阵营中的摇摆者", "上位者"]},
-        {"name": "破局方式", "options": ["以势压人", "以理服人", "以利诱人", "以情动人"]}
+        {
+          "name": "危机类型",
+          "options": [
+            "暴力冲突",
+            "威胁性对话",
+            "规则内打压",
+            "突发意外"
+          ]
+        },
+        {
+          "name": "第三方身份",
+          "options": [
+            "隐藏助力者",
+            "中立旁观者",
+            "对立阵营中的摇摆者",
+            "上位者"
+          ]
+        },
+        {
+          "name": "破局方式",
+          "options": [
+            "以势压人",
+            "以理服人",
+            "以利诱人",
+            "以情动人"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 8,
@@ -126,7 +219,14 @@
       "id": "T-EMOT-001",
       "name": "沉默与爆发·情绪反转",
       "category": "情感",
-      "applicable_genres": ["campus-redemption", "暗恋", "都市情感", "治愈", "仙侠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "暗恋",
+        "都市情感",
+        "治愈",
+        "仙侠"
+      ],
       "skeleton": {
         "setup": "主角长期处于压抑、隐忍或不被理解的情绪状态，真实感受被外部压力或个人性格强行压下。",
         "escalation": [
@@ -139,9 +239,33 @@
       },
       "abstraction_level": "structural",
       "parameters": [
-        {"name": "压抑的触发源", "options": ["外部误解", "长期委屈", "自我克制", "无力感"]},
-        {"name": "爆发形式", "options": ["言语爆发", "行动爆发", "沉默式决裂", "情绪崩溃"]},
-        {"name": "爆发对象", "options": ["亲近者", "轻视者", "围观者", "自己"]}
+        {
+          "name": "压抑的触发源",
+          "options": [
+            "外部误解",
+            "长期委屈",
+            "自我克制",
+            "无力感"
+          ]
+        },
+        {
+          "name": "爆发形式",
+          "options": [
+            "言语爆发",
+            "行动爆发",
+            "沉默式决裂",
+            "情绪崩溃"
+          ]
+        },
+        {
+          "name": "爆发对象",
+          "options": [
+            "亲近者",
+            "轻视者",
+            "围观者",
+            "自己"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 8,
@@ -163,7 +287,14 @@
       "id": "T-TRIAL-001",
       "name": "限时试炼·以行证值",
       "category": "试炼",
-      "applicable_genres": ["campus-redemption", "逆袭", "修仙", "竞技", "职场"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "逆袭",
+        "修仙",
+        "竞技",
+        "职场"
+      ],
       "skeleton": {
         "setup": "主角的价值或能力遭到质疑，一个带明确时限与标准的试炼被抛出——或是交易、或是考验，主角必须用结果而非言语证明自己。",
         "escalation": [
@@ -176,9 +307,33 @@
       },
       "abstraction_level": "structural",
       "parameters": [
-        {"name": "试炼形式", "options": ["限时任务", "交易式考验", "能力考核", "赌约"]},
-        {"name": "证明的目标", "options": ["能力", "价值", "诚意", "潜力"]},
-        {"name": "质疑方", "options": ["上位者", "竞争者", "亲近者", "自己"]}
+        {
+          "name": "试炼形式",
+          "options": [
+            "限时任务",
+            "交易式考验",
+            "能力考核",
+            "赌约"
+          ]
+        },
+        {
+          "name": "证明的目标",
+          "options": [
+            "能力",
+            "价值",
+            "诚意",
+            "潜力"
+          ]
+        },
+        {
+          "name": "质疑方",
+          "options": [
+            "上位者",
+            "竞争者",
+            "亲近者",
+            "自己"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 7,
@@ -200,7 +355,14 @@
       "id": "T-CHAN-001",
       "name": "照料羁绊·隐藏关怀",
       "category": "机缘",
-      "applicable_genres": ["campus-redemption", "治愈", "都市情感", "末世", "仙侠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "治愈",
+        "都市情感",
+        "末世",
+        "仙侠"
+      ],
       "skeleton": {
         "setup": "一方因受伤、受挫或虚弱而陷入需要被照料的处境，另一方（或主角）以看似平常的照料介入，双方关系由此被拉近。",
         "escalation": [
@@ -213,9 +375,33 @@
       },
       "abstraction_level": "scenic",
       "parameters": [
-        {"name": "照料情境", "options": ["受伤照料", "受挫陪伴", "病中看护", "低谷扶持"]},
-        {"name": "隐藏关怀的载体", "options": ["无声的照顾动作", "生活细节", "象征性物件", "牺牲式付出"]},
-        {"name": "关系起点", "options": ["对立", "陌生", "单向暗恋", "旧识"]}
+        {
+          "name": "照料情境",
+          "options": [
+            "受伤照料",
+            "受挫陪伴",
+            "病中看护",
+            "低谷扶持"
+          ]
+        },
+        {
+          "name": "隐藏关怀的载体",
+          "options": [
+            "无声的照顾动作",
+            "生活细节",
+            "象征性物件",
+            "牺牲式付出"
+          ]
+        },
+        {
+          "name": "关系起点",
+          "options": [
+            "对立",
+            "陌生",
+            "单向暗恋",
+            "旧识"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 7,
@@ -237,7 +423,14 @@
       "id": "T-DAIL-001",
       "name": "精心准备·巧遇独处",
       "category": "日常",
-      "applicable_genres": ["campus-redemption", "暗恋", "都市情感", "治愈", "甜宠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "暗恋",
+        "都市情感",
+        "治愈",
+        "甜宠"
+      ],
       "skeleton": {
         "setup": "一方为某个契机（纪念日、日常约定、一场心意）精心准备，却因安排或巧合，最终变成与关键对象的意外独处。",
         "escalation": [
@@ -250,9 +443,32 @@
       },
       "abstraction_level": "scenic",
       "parameters": [
-        {"name": "准备契机", "options": ["生日", "纪念日", "离别前", "日常约定"]},
-        {"name": "独处的促成方式", "options": ["他人智慧退出", "巧合错位", "主动邀约"]},
-        {"name": "互动的载体", "options": ["共同家务", "共同准备", "离别关怀", "分享日常"]}
+        {
+          "name": "准备契机",
+          "options": [
+            "生日",
+            "纪念日",
+            "离别前",
+            "日常约定"
+          ]
+        },
+        {
+          "name": "独处的促成方式",
+          "options": [
+            "他人智慧退出",
+            "巧合错位",
+            "主动邀约"
+          ]
+        },
+        {
+          "name": "互动的载体",
+          "options": [
+            "共同家务",
+            "共同准备",
+            "离别关怀",
+            "分享日常"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 6,
@@ -274,7 +490,14 @@
       "id": "T-CAMP-001",
       "name": "阵营转换·立场公开",
       "category": "阵营转换",
-      "applicable_genres": ["campus-redemption", "权谋", "逆袭", "群像", "仙侠"],
+      "genre_scope": "universal",
+      "applicable_genres": [
+        "campus-redemption",
+        "权谋",
+        "逆袭",
+        "群像",
+        "仙侠"
+      ],
       "skeleton": {
         "setup": "主角与某个关键角色分处对立或相互试探的阵营，彼此立场暧昧、关系处于临界状态。",
         "escalation": [
@@ -287,9 +510,32 @@
       },
       "abstraction_level": "structural",
       "parameters": [
-        {"name": "立场公开的契机", "options": ["外部事件逼迫", "信息揭露", "主动摊牌", "第三方推波助澜"]},
-        {"name": "转换方向", "options": ["从对立到同盟", "从试探到站队", "从中立到介入"]},
-        {"name": "公开的对象", "options": ["全场", "关键对手", "亲近者", "上位者"]}
+        {
+          "name": "立场公开的契机",
+          "options": [
+            "外部事件逼迫",
+            "信息揭露",
+            "主动摊牌",
+            "第三方推波助澜"
+          ]
+        },
+        {
+          "name": "转换方向",
+          "options": [
+            "从对立到同盟",
+            "从试探到站队",
+            "从中立到介入"
+          ]
+        },
+        {
+          "name": "公开的对象",
+          "options": [
+            "全场",
+            "关键对手",
+            "亲近者",
+            "上位者"
+          ]
+        }
       ],
       "effectiveness": {
         "payoff_strength": 8,

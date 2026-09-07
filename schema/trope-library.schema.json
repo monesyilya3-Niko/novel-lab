@@ -35,6 +35,11 @@
             "type": "array", "items": { "type": "string" },
             "description": "适用题材。跨题材可用的桥段价值更高"
           },
+          "genre_scope": {
+            "type": "string",
+            "enum": ["universal", "campus-redemption"],
+            "description": "桥段题材作用域：universal=跨题材通用；具体题材 id=该题材专属。检索时按目标题材过滤（铁律一）"
+          },
 
           "skeleton": {
             "type": "object",
