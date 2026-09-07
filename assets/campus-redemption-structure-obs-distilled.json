@@ -1,0 +1,251 @@
+{
+  "meta": {
+    "id": "campus-redemption-structure-obs-distilled",
+    "schema_version": "1.0",
+    "dimension": "structure-obs",
+    "genre": "campus-redemption",
+    "distilled_at": "2026-09-07T14:04:43",
+    "source_books": [
+      "chireng_chosen",
+      "qingning_chosen",
+      "sangshi_chosen"
+    ],
+    "books_count": 3
+  },
+  "rules": [
+    {
+      "id": "structure-obs-aggregate-hook_type_freq-0001",
+      "dimension": "structure-obs",
+      "field": "aggregate.hook_type_freq",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "{\"[共同完成一件家务]+[离别时的细节关怀]\": 1, \"[受伤后的照料]+[展现隐藏技能/关怀]\": 1, \"[威胁性对话]+[突发第三方介入打破僵局]\": 1, \"[宣布正文完结]+[预告额外内容（番外）]\": 1, \"[提及未来分离可能]+[用甜蜜玩笑暂缓焦虑]\": 1, \"[新角色高调登场]+[与旧冲突产生关联]\": 1, \"[日常中角色突然消失/做出意外行为]\": 1, \"[旧识评价当前感情]+[揭示关系中的小矛盾与需求]\": 1, \"[极端承诺/牺牲]+[身体意外受伤引发态度转变]\": 1, \"[生活照顾中的亲密误会/互动]+[通过食物建立情感联结]\": 1, \"[突发暴力冲突]+[主角介入改变局面]\": 1, \"[精心准备生日]+[家人智慧退出制造二人空间]\": 1, \"[角色主动提出交易/请求]+[开启限时考验]\": 1, \"[角色公开表明立场]+[信息揭露驱动行动]\": 1, \"[角色因害羞回避]+[另一方霸道要求直面]\": 1, \"[角色在互动中意外睡着]+[暗示依赖感产生]\": 1, \"[角色展示异常行为]+[权力者发起规则内挑衅]\": 1, \"[角色生日引入更广阔社交圈]+[提及外部‘新闻’事件]\": 1, \"[解决前文遗留的生活问题]\": 1, \"[达成终极目标/进入理想状态]+[具体美好场景的罗列]\": 1, \"[近距离接触引发强烈生理反应]+[提出带有占有欲的小要求]\": 1, \"[高甜肢体互动]+[男方下意识的保护动作]\": 1}；{\"视觉细节暗示危险\": 20, \"静态动作\": 20}；{\"关键人物影响\": 2, \"尴尬/喜剧意外\": 2, \"悬念抛出或升级\": 2, \"情感冲击（回忆/揭示）\": 3, \"日常互动推进\": 3, \"目标/行动启动或推进\": 4, \"结局式总结\": 1, \"背景事件引入\": 2, \"能力/特质展现\": 2}",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": {
+            "[威胁性对话]+[突发第三方介入打破僵局]": 1,
+            "[新角色高调登场]+[与旧冲突产生关联]": 1,
+            "[角色展示异常行为]+[权力者发起规则内挑衅]": 1,
+            "[突发暴力冲突]+[主角介入改变局面]": 1,
+            "[角色主动提出交易/请求]+[开启限时考验]": 1,
+            "[极端承诺/牺牲]+[身体意外受伤引发态度转变]": 1,
+            "[受伤后的照料]+[展现隐藏技能/关怀]": 1,
+            "[生活照顾中的亲密误会/互动]+[通过食物建立情感联结]": 1,
+            "[共同完成一件家务]+[离别时的细节关怀]": 1,
+            "[角色公开表明立场]+[信息揭露驱动行动]": 1,
+            "[角色在互动中意外睡着]+[暗示依赖感产生]": 1,
+            "[角色因害羞回避]+[另一方霸道要求直面]": 1,
+            "[近距离接触引发强烈生理反应]+[提出带有占有欲的小要求]": 1,
+            "[解决前文遗留的生活问题]": 1,
+            "[提及未来分离可能]+[用甜蜜玩笑暂缓焦虑]": 1,
+            "[高甜肢体互动]+[男方下意识的保护动作]": 1,
+            "[日常中角色突然消失/做出意外行为]": 1,
+            "[角色生日引入更广阔社交圈]+[提及外部‘新闻’事件]": 1,
+            "[精心准备生日]+[家人智慧退出制造二人空间]": 1,
+            "[旧识评价当前感情]+[揭示关系中的小矛盾与需求]": 1,
+            "[达成终极目标/进入理想状态]+[具体美好场景的罗列]": 1,
+            "[宣布正文完结]+[预告额外内容（番外）]": 1
+          }
+        },
+        {
+          "book": "qingning_chosen",
+          "value": {
+            "静态动作": 20,
+            "视觉细节暗示危险": 20
+          }
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": {
+            "情感冲击（回忆/揭示）": 3,
+            "目标/行动启动或推进": 4,
+            "尴尬/喜剧意外": 2,
+            "悬念抛出或升级": 2,
+            "关键人物影响": 2,
+            "日常互动推进": 3,
+            "背景事件引入": 2,
+            "能力/特质展现": 2,
+            "结局式总结": 1
+          }
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "structure-obs-aggregate-hook_min_interval-0001",
+      "dimension": "structure-obs",
+      "field": "aggregate.hook_min_interval",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 1,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 1
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 1
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 1
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "structure-obs-aggregate-climax_cycle-0001",
+      "dimension": "structure-obs",
+      "field": "aggregate.climax_cycle",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "{\"climax_position\": [5, 10, 26], \"main_arc_intervals\": [{\"end\": 5, \"start\": 1, \"type\": \"冲突建立与求助转折\"}, {\"end\": 10, \"start\": 6, \"type\": \"关系突破与立场明确\"}, {\"end\": 23, \"start\": 21, \"type\": \"关系进入新阶段与外部挑战\"}, {\"end\": 27, \"start\": 26, \"type\": \"最终高潮与完结\"}]}；8；18；26；27；开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": {
+            "main_arc_intervals": [
+              {
+                "start": 1,
+                "end": 5,
+                "type": "冲突建立与求助转折"
+              },
+              {
+                "start": 6,
+                "end": 10,
+                "type": "关系突破与立场明确"
+              },
+              {
+                "start": 21,
+                "end": 23,
+                "type": "关系进入新阶段与外部挑战"
+              },
+              {
+                "start": 26,
+                "end": 27,
+                "type": "最终高潮与完结"
+              }
+            ],
+            "climax_position": [
+              5,
+              10,
+              26
+            ]
+          }
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            8,
+            18,
+            26,
+            27
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "structure-obs-aggregate-foreshadow_avg_span-0001",
+      "dimension": "structure-obs",
+      "field": "aggregate.foreshadow_avg_span",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 3.5,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 4.5
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 2.3
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 3.5
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "structure-obs-aggregate-foreshadow_max_span-0001",
+      "dimension": "structure-obs",
+      "field": "aggregate.foreshadow_max_span",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 8,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 8
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 5
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 10
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "structure-obs-aggregate-foreshadow_concurrent_open-0001",
+      "dimension": "structure-obs",
+      "field": "aggregate.foreshadow_concurrent_open",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 5,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 5
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 2
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 6
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    }
+  ],
+  "blindspots": [],
+  "stats": {
+    "total_rules": 6,
+    "hard_rules": 6,
+    "soft_rules": 0,
+    "personal_styles": 0,
+    "conflicts": 0,
+    "blindspots": 0
+  }
+}

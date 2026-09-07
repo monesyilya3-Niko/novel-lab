@@ -1,0 +1,1044 @@
+{
+  "meta": {
+    "id": "campus-redemption-voice-card-distilled",
+    "schema_version": "1.0",
+    "dimension": "voice-card",
+    "genre": "campus-redemption",
+    "distilled_at": "2026-09-07T14:04:43",
+    "source_books": [
+      "chireng_chosen",
+      "qingning_chosen",
+      "sangshi_chosen"
+    ],
+    "books_count": 3
+  },
+  "rules": [
+    {
+      "id": "voice-card-narration-pov-0001",
+      "dimension": "voice-card",
+      "field": "narration.pov",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "第三人称限知",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "第三人称限知"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "第三人称限知"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "第三人称限知"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-narration-tense_feel-0001",
+      "dimension": "voice-card",
+      "field": "narration.tense_feel",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "贴身跟随主角感官，叙述者几乎不介入",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "贴身跟随主角，几乎无叙述者介入"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "贴身跟随主角感官，叙述者几乎不介入"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "贴身跟随主角感官，叙述者几乎不介入"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-narration-sentence_rhythm-avg_length-0001",
+      "dimension": "voice-card",
+      "field": "narration.sentence_rhythm.avg_length",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-narration-sentence_rhythm-short_ratio-0001",
+      "dimension": "voice-card",
+      "field": "narration.sentence_rhythm.short_ratio",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-narration-sentence_rhythm-long_ratio-0001",
+      "dimension": "voice-card",
+      "field": "narration.sentence_rhythm.long_ratio",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-narration-sentence_rhythm-burst_pattern-0001",
+      "dimension": "voice-card",
+      "field": "narration.sentence_rhythm.burst_pattern",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。；叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。；叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-narration-chapter_opening_patterns-0001",
+      "dimension": "voice-card",
+      "field": "narration.chapter_opening_patterns",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "{\"example_structure\": \"[环境状态]+[人物动作]\", \"frequency\": 3, \"pattern\": \"场景白描\"}；{\"example_structure\": \"[心理活动]+[场景引入]\", \"frequency\": 2, \"pattern\": \"内心独白\"}",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            {
+              "pattern": "场景白描",
+              "frequency": 3,
+              "example_structure": "[环境状态]+[人物动作]"
+            },
+            {
+              "pattern": "内心独白",
+              "frequency": 2,
+              "example_structure": "[心理活动]+[场景引入]"
+            }
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            {
+              "pattern": "场景白描",
+              "frequency": 3,
+              "example_structure": "[环境状态]+[人物动作]"
+            },
+            {
+              "pattern": "内心独白",
+              "frequency": 2,
+              "example_structure": "[心理活动]+[场景引入]"
+            }
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            {
+              "pattern": "场景白描",
+              "frequency": 3,
+              "example_structure": "[环境状态]+[人物动作]"
+            },
+            {
+              "pattern": "内心独白",
+              "frequency": 2,
+              "example_structure": "[心理活动]+[场景引入]"
+            }
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-dialogue-dialogue_ratio-0001",
+      "dimension": "voice-card",
+      "field": "dialogue.dialogue_ratio",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.1947,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0.2978
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.1077
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.1947
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-dialogue-subtext_level-0001",
+      "dimension": "voice-card",
+      "field": "dialogue.subtext_level",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "直白",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "直白"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "直白"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "直白"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-dialogue-character_voices-0001",
+      "dimension": "voice-card",
+      "field": "dialogue.character_voices",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "{\"arc\": {}, \"name\": \"孟诗蕊\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"对不起，我错了。\", \"这件事是我做得不对。\", \"你比我优秀，我服气。\"], \"refusal_pattern\": \"用威胁性反问句拒绝（如‘你还跑！让你跑！’），并附加具体惩罚（如‘拍裸照’‘弄死你’）。\", \"verbal_tics\": [\"寻文哥哥\", \"蕊姐\", \"狐狸精\", \"贱民\", \"浪货\", \"臭婊子\"]}}；{\"arc\": {}, \"name\": \"边炀\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"请、谢谢、对不起（连贯使用，表示真诚歉意或请求）。\", \"这件事我需要你们帮忙，请大家支持我。\", \"我很担心你的安全，请你务必小心。\"], \"refusal_pattern\": \"用不耐烦的反问句或陈述句拒绝（如‘关你屁事’‘我为什么要帮你’），并伴随肢体动作（如‘舌尖抵了抵腮帮’‘嗤笑一声’）。\", \"verbal_tics\": [\"老子\", \"关你屁事\", \"唐小雨\", \"嗯？\", \"你丫的\", \"特么\", \"懂？\"]}}；{\"arc\": {}, \"name\": \"唐雨\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"你给我滚开，别碰我！\", \"这件事我绝对不会原谅你。\", \"我凭什么要听你的？\"], \"refusal_pattern\": \"极少直接拒绝，通常以沉默、低头、声音细弱或转移话题（如‘我…我没有’）来回应，拒绝意愿通过身体语言（如‘攥紧笔’‘缩脖子’）表达。\", \"verbal_tics\": [\"对不起\", \"谢谢\", \"没事\", \"我没事\", \"真的不太疼\", \"我不是…\"]}}；{\"arc\": {}, \"name\": \"周寻文\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"你给我闭嘴，听我说。\", \"这件事没得商量，必须按我说的做。\", \"我瞧不起你。\"], \"refusal_pattern\": \"样本中未出现直接拒绝场景。拒绝倾向可能表现为温和地转移话题或提出替代方案。\", \"verbal_tics\": [\"唐雨同学\", \"寻文哥哥\"]}}；{\"arc\": {}, \"name\": \"苏念\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"直接说‘我喜欢陆星辞’\", \"公开表达对陆星辞的醋意\", \"用命令或强硬的语气对陆星辞说话\"], \"refusal_pattern\": \"当被要求直接向陆星辞求助时，会找借口回避，例如。\", \"verbal_tics\": [\"谢谢啊\", \"哪有那么夸张\", \"不弔了\", \"麻烦彵了\", \"我先走了\", \"别胡说\", \"我就是不知道穿什么\", \"妈！\", \"嗯？\"]}}；{\"arc\": {}, \"name\": \"陆星辞\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"直接说出‘我喜欢苏念’\", \"对苏念说软话或明显安慰的话（如‘你很好，不要难过’）\", \"在外人面前主动表现出对苏念的特别关心\"], \"refusal_pattern\": \"面对他人的告白或不感兴趣的社交请求，使用礼貌但疏离的固定句式拒绝，如‘谢谢，不弔’或‘抱歉，影响学习’，然后直接转身离开，不给予任何进一步回应的空间。\", \"verbal_tics\": [\"嗯？\", \"谢谢，不弔\", \"抱歉，影响学习\", \"我家近\", \"别哭\", \"喝水\", \"别听她胡说\", \"自己能想明白\", \"懂了吗\", \"哪里不会\", \"早\", \"不弔，我都准备好了\"]}}；{\"arc\": {}, \"name\": \"夏栀\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"严肃地、长时间地谈论自己的烦恼或心事\", \"对苏念的暗恋心态进行理性、冷静的分析\", \"用低调、含蓄的方式说话\"], \"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"verbal_tics\": [\"念念\", \"哇哦\", \"陆大神\", \"走走走\", \"男友力，简直max\", \"别瞎说\", \"这待遇\", \"就跟你说个事儿\"]}}；{\"arc\": {}, \"name\": \"江辰\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"说任何正经、严肃、带有深刻情感的话\", \"安静地独处或长时间不说话\"], \"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"verbal_tics\": [\"陆哥\", \"可以啊陆星辞\", \"哇\", \"切，装什么装\"]}}；{\"arc\": {}, \"name\": \"教官\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"我理解你的感受\", \"要不我们商量一下\", \"可能我错了\"], \"refusal_pattern\": \"当队伍纪律涣散时\", \"verbal_tics\": [\"二十五中队\", \"操\"]}}；{\"arc\": {}, \"name\": \"周砚\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我也不知道该怎么办\", \"也许你是对的\", \"让我们再讨论一下吧\"], \"refusal_pattern\": \"用简短、陈述事实的方式拒绝，或直接中断对话。如拒绝帮拿杯子时说'不去，撒手'；被要求帮忙时，用'你有病？'表达不耐烦。\", \"verbal_tics\": [\"嗯？\", \"深更半夜不睡觉出去打篮球...你觉得只是发烧后脑子不行？\", \"帮你把杯子洗一下，顺便帮我去医务室拿根体温计，余姐让我每隔半小时测一次，温度过高就拖进医院，靠。\", \"想法不错。\", \"慢慢说，不急。\", \"以后别叫小学妹了。\"]}}；{\"arc\": {}, \"name\": \"桑幼\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我觉得你说得对\", \"对不起，都是我的错\", \"我放弃吧\"], \"refusal_pattern\": \"在感到被冒犯或不公时，会强硬地反问和质问，如对齐缘说'关你什么事？'。面对不想回答的问题（如成绩），选择沉默或模糊回应（'忘了'）。\", \"verbal_tics\": [\"学长\", \"报告教官\", \"我近视八百度\", \"谢谢学长\", \"学长拜拜\", \"关你什么事\"]}}；{\"arc\": {}, \"name\": \"桑落\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我服了你了\", \"行行行，都听你的\", \"我们好好谈谈\"], \"refusal_pattern\": \"用单字'滚'直接拒绝，或用冷嘲热讽的方式回应，如当被威胁时说'我怎么不知道我早恋？'。\", \"verbal_tics\": [\"滚\", \"妈——\", \"你去美黑了吗？\", \"你们军训练习下跪吗？\", \"你的飞行轨迹。\"]}}；{\"arc\": {}, \"name\": \"简栎城\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我错了，请原谅我\", \"让我们冷静一下\", \"也许你的想法更有道理\"], \"refusal_pattern\": \"用带脏字的玩笑话拒绝，或直接说'滚'。\", \"verbal_tics\": [\"困死老子了\", \"靠\", \"我本来就有病，我感冒了你不知道吗？\", \"滚，别逼我打你\", \"小学妹找你干啥？\"]}}；{\"arc\": {}, \"name\": \"校医\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"这不行，没得商量\", \"你必须听我的\", \"我很忙，别烦我\"], \"refusal_pattern\": \"用带有歉意的解释来暂缓请求，如'不好意思啊小同学，你先等等……'。\", \"verbal_tics\": [\"不好意思啊小同学\", \"你先等等，我先给你拿一瓶碘伏，你先自己消一下毒好吗？\"]}}；{\"arc\": {}, \"name\": \"宁冽\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我觉得不太合适\", \"我们再想想\", \"也许他不喜欢你\"], \"refusal_pattern\": \"样本中未出现明确拒绝场景。\", \"verbal_tics\": [\"我靠\", \"幼幼\", \"妈呀，好帅啊\", \"你快上啊！冲！\"]}}",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            {
+              "name": "孟诗蕊",
+              "role": "主角",
+              "speech_signature": {
+                "refusal_pattern": "用威胁性反问句拒绝（如‘你还跑！让你跑！’），并附加具体惩罚（如‘拍裸照’‘弄死你’）。",
+                "never_says": [
+                  "对不起，我错了。",
+                  "这件事是我做得不对。",
+                  "你比我优秀，我服气。"
+                ],
+                "verbal_tics": [
+                  "寻文哥哥",
+                  "蕊姐",
+                  "狐狸精",
+                  "贱民",
+                  "浪货",
+                  "臭婊子"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "边炀",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "用不耐烦的反问句或陈述句拒绝（如‘关你屁事’‘我为什么要帮你’），并伴随肢体动作（如‘舌尖抵了抵腮帮’‘嗤笑一声’）。",
+                "never_says": [
+                  "请、谢谢、对不起（连贯使用，表示真诚歉意或请求）。",
+                  "这件事我需要你们帮忙，请大家支持我。",
+                  "我很担心你的安全，请你务必小心。"
+                ],
+                "verbal_tics": [
+                  "老子",
+                  "关你屁事",
+                  "唐小雨",
+                  "嗯？",
+                  "你丫的",
+                  "特么",
+                  "懂？"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "唐雨",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "极少直接拒绝，通常以沉默、低头、声音细弱或转移话题（如‘我…我没有’）来回应，拒绝意愿通过身体语言（如‘攥紧笔’‘缩脖子’）表达。",
+                "never_says": [
+                  "你给我滚开，别碰我！",
+                  "这件事我绝对不会原谅你。",
+                  "我凭什么要听你的？"
+                ],
+                "verbal_tics": [
+                  "对不起",
+                  "谢谢",
+                  "没事",
+                  "我没事",
+                  "真的不太疼",
+                  "我不是…"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "周寻文",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "样本中未出现直接拒绝场景。拒绝倾向可能表现为温和地转移话题或提出替代方案。",
+                "never_says": [
+                  "你给我闭嘴，听我说。",
+                  "这件事没得商量，必须按我说的做。",
+                  "我瞧不起你。"
+                ],
+                "verbal_tics": [
+                  "唐雨同学",
+                  "寻文哥哥"
+                ]
+              },
+              "arc": {}
+            }
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            {
+              "name": "苏念",
+              "role": "主角",
+              "speech_signature": {
+                "refusal_pattern": "当被要求直接向陆星辞求助时，会找借口回避，例如。",
+                "never_says": [
+                  "直接说‘我喜欢陆星辞’",
+                  "公开表达对陆星辞的醋意",
+                  "用命令或强硬的语气对陆星辞说话"
+                ],
+                "verbal_tics": [
+                  "谢谢啊",
+                  "哪有那么夸张",
+                  "不弔了",
+                  "麻烦彵了",
+                  "我先走了",
+                  "别胡说",
+                  "我就是不知道穿什么",
+                  "妈！",
+                  "嗯？"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "陆星辞",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "面对他人的告白或不感兴趣的社交请求，使用礼貌但疏离的固定句式拒绝，如‘谢谢，不弔’或‘抱歉，影响学习’，然后直接转身离开，不给予任何进一步回应的空间。",
+                "never_says": [
+                  "直接说出‘我喜欢苏念’",
+                  "对苏念说软话或明显安慰的话（如‘你很好，不要难过’）",
+                  "在外人面前主动表现出对苏念的特别关心"
+                ],
+                "verbal_tics": [
+                  "嗯？",
+                  "谢谢，不弔",
+                  "抱歉，影响学习",
+                  "我家近",
+                  "别哭",
+                  "喝水",
+                  "别听她胡说",
+                  "自己能想明白",
+                  "懂了吗",
+                  "哪里不会",
+                  "早",
+                  "不弔，我都准备好了"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "夏栀",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "（样本中未出现明确拒绝情境，置信度较低）",
+                "never_says": [
+                  "严肃地、长时间地谈论自己的烦恼或心事",
+                  "对苏念的暗恋心态进行理性、冷静的分析",
+                  "用低调、含蓄的方式说话"
+                ],
+                "verbal_tics": [
+                  "念念",
+                  "哇哦",
+                  "陆大神",
+                  "走走走",
+                  "男友力，简直max",
+                  "别瞎说",
+                  "这待遇",
+                  "就跟你说个事儿"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "江辰",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "（样本中未出现明确拒绝情境，置信度较低）",
+                "never_says": [
+                  "说任何正经、严肃、带有深刻情感的话",
+                  "安静地独处或长时间不说话"
+                ],
+                "verbal_tics": [
+                  "陆哥",
+                  "可以啊陆星辞",
+                  "哇",
+                  "切，装什么装"
+                ]
+              },
+              "arc": {}
+            }
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            {
+              "name": "教官",
+              "role": "主角",
+              "speech_signature": {
+                "refusal_pattern": "当队伍纪律涣散时",
+                "never_says": [
+                  "我理解你的感受",
+                  "要不我们商量一下",
+                  "可能我错了"
+                ],
+                "verbal_tics": [
+                  "二十五中队",
+                  "操"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "周砚",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "用简短、陈述事实的方式拒绝，或直接中断对话。如拒绝帮拿杯子时说'不去，撒手'；被要求帮忙时，用'你有病？'表达不耐烦。",
+                "never_says": [
+                  "我也不知道该怎么办",
+                  "也许你是对的",
+                  "让我们再讨论一下吧"
+                ],
+                "verbal_tics": [
+                  "嗯？",
+                  "深更半夜不睡觉出去打篮球...你觉得只是发烧后脑子不行？",
+                  "帮你把杯子洗一下，顺便帮我去医务室拿根体温计，余姐让我每隔半小时测一次，温度过高就拖进医院，靠。",
+                  "想法不错。",
+                  "慢慢说，不急。",
+                  "以后别叫小学妹了。"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "桑幼",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "在感到被冒犯或不公时，会强硬地反问和质问，如对齐缘说'关你什么事？'。面对不想回答的问题（如成绩），选择沉默或模糊回应（'忘了'）。",
+                "never_says": [
+                  "我觉得你说得对",
+                  "对不起，都是我的错",
+                  "我放弃吧"
+                ],
+                "verbal_tics": [
+                  "学长",
+                  "报告教官",
+                  "我近视八百度",
+                  "谢谢学长",
+                  "学长拜拜",
+                  "关你什么事"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "桑落",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "用单字'滚'直接拒绝，或用冷嘲热讽的方式回应，如当被威胁时说'我怎么不知道我早恋？'。",
+                "never_says": [
+                  "我服了你了",
+                  "行行行，都听你的",
+                  "我们好好谈谈"
+                ],
+                "verbal_tics": [
+                  "滚",
+                  "妈——",
+                  "你去美黑了吗？",
+                  "你们军训练习下跪吗？",
+                  "你的飞行轨迹。"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "简栎城",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "用带脏字的玩笑话拒绝，或直接说'滚'。",
+                "never_says": [
+                  "我错了，请原谅我",
+                  "让我们冷静一下",
+                  "也许你的想法更有道理"
+                ],
+                "verbal_tics": [
+                  "困死老子了",
+                  "靠",
+                  "我本来就有病，我感冒了你不知道吗？",
+                  "滚，别逼我打你",
+                  "小学妹找你干啥？"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "校医",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "用带有歉意的解释来暂缓请求，如'不好意思啊小同学，你先等等……'。",
+                "never_says": [
+                  "这不行，没得商量",
+                  "你必须听我的",
+                  "我很忙，别烦我"
+                ],
+                "verbal_tics": [
+                  "不好意思啊小同学",
+                  "你先等等，我先给你拿一瓶碘伏，你先自己消一下毒好吗？"
+                ]
+              },
+              "arc": {}
+            },
+            {
+              "name": "宁冽",
+              "role": "配角",
+              "speech_signature": {
+                "refusal_pattern": "样本中未出现明确拒绝场景。",
+                "never_says": [
+                  "我觉得不太合适",
+                  "我们再想想",
+                  "也许他不喜欢你"
+                ],
+                "verbal_tics": [
+                  "我靠",
+                  "幼幼",
+                  "妈呀，好帅啊",
+                  "你快上啊！冲！"
+                ]
+              },
+              "arc": {}
+            }
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-emotion_handling-mode-0001",
+      "dimension": "voice-card",
+      "field": "emotion_handling.mode",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "混合式",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "混合式"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": "直陈式"
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "混合式"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-emotion_handling-body_reaction_vocabulary-0001",
+      "dimension": "voice-card",
+      "field": "emotion_handling.body_reaction_vocabulary",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "体感式；动作外化式；直陈式；简直可爱死了；手指都捏白了；心跳如鼓；她的心猛地一跳；是的，她怀孕了；八月初；九月初；婚后第二年春天；巷口；高铁站；书房；她很紧张/开心；时光飞逝；不好意思；惊奇；没忍住；尖叫；截图；龙眼树；走！；总分；桑幼：【图片】；手机；保证书；换鞋；边换鞋边接电话；好好好，知道了。；狼嚎般的哭声",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "体感式",
+            "动作外化式",
+            "直陈式",
+            "简直可爱死了",
+            "手指都捏白了",
+            "心跳如鼓"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "她的心猛地一跳",
+            "是的，她怀孕了",
+            "八月初",
+            "九月初",
+            "婚后第二年春天",
+            "巷口",
+            "高铁站",
+            "书房",
+            "她很紧张/开心",
+            "时光飞逝"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "不好意思",
+            "惊奇",
+            "没忍住",
+            "尖叫",
+            "截图",
+            "龙眼树",
+            "走！",
+            "总分",
+            "桑幼：【图片】",
+            "手机",
+            "保证书",
+            "换鞋",
+            "边换鞋边接电话",
+            "好好好，知道了。",
+            "狼嚎般的哭声"
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-emotion_handling-examples-0001",
+      "dimension": "voice-card",
+      "field": "emotion_handling.examples",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "{\"anti_pattern\": \"避免使用：华丽辞藻堆砌、复杂心理学术语、冗长环境描写、抽象哲理思辨\", \"emotion\": \"通用\", \"pattern\": \"日常互动场景偏向「体感式」（如心跳如鼓、手指捏白）和「动作外化式」（如撸脑袋、小跑）；内心独白或情绪爆发时，偶尔使用「直陈式」（如‘简直可爱死了’）进行强调，但整体以具象化描写为主。\"}；{\"anti_pattern\": \"情绪直陈：避免泛泛的“她很紧张/开心”，必须用身体反应或环境细节呈现。；静态描写：避免孤立的景物描写，所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。；抽象概括：避免对情感或时间做抽象定义（如“时光飞逝”），改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\", \"emotion\": \"通用\", \"pattern\": \"混合式（按场景切换）。日常等待、焦虑场景多用【环境投射式】，借时间感（慢放键）、空间规划（地铁线路画了又画）外化内心；关键动作瞬间（如听到喊名）用【体感式+动作外化式】组合（心猛地一跳，书“啪”地掉下，冲出房间）；长期状态或背景铺陈则偏向【直陈式】（最漫长也最甜蜜的煎熬）。\"}；{\"anti_pattern\": \"避免泛泛的“她很紧张/开心”\", \"emotion\": \"情绪直陈\", \"pattern\": \"必须用身体反应或环境细节呈现。\"}；{\"anti_pattern\": \"避免孤立的景物描写\", \"emotion\": \"静态描写\", \"pattern\": \"所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。\"}；{\"anti_pattern\": \"避免对情感或时间做抽象定义（如“时光飞逝”）\", \"emotion\": \"抽象概括\", \"pattern\": \"改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"角色内心独白/情感流露\", \"pattern\": \"[直陈式] 直接使用'不好意思'、'惊奇'等情绪词描述主角状态。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"外部观察/他人反应\", \"pattern\": \"[动作外化式] 用'没忍住'、'尖叫'、'截图'等具体动作来替代对情绪的抽象描述。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"环境烘托/氛围铺垫\", \"pattern\": \"[环境投射式] 借助'龙眼树'等具体景物作为情绪触发的支点。\"}",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            {
+              "emotion": "通用",
+              "pattern": "日常互动场景偏向「体感式」（如心跳如鼓、手指捏白）和「动作外化式」（如撸脑袋、小跑）；内心独白或情绪爆发时，偶尔使用「直陈式」（如‘简直可爱死了’）进行强调，但整体以具象化描写为主。",
+              "anti_pattern": "避免使用：华丽辞藻堆砌、复杂心理学术语、冗长环境描写、抽象哲理思辨"
+            }
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            {
+              "emotion": "通用",
+              "pattern": "混合式（按场景切换）。日常等待、焦虑场景多用【环境投射式】，借时间感（慢放键）、空间规划（地铁线路画了又画）外化内心；关键动作瞬间（如听到喊名）用【体感式+动作外化式】组合（心猛地一跳，书“啪”地掉下，冲出房间）；长期状态或背景铺陈则偏向【直陈式】（最漫长也最甜蜜的煎熬）。",
+              "anti_pattern": "情绪直陈：避免泛泛的“她很紧张/开心”，必须用身体反应或环境细节呈现。；静态描写：避免孤立的景物描写，所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。；抽象概括：避免对情感或时间做抽象定义（如“时光飞逝”），改为具体化、可感知的描述（如“时间像被按下了慢放键”）。"
+            },
+            {
+              "emotion": "情绪直陈",
+              "pattern": "必须用身体反应或环境细节呈现。",
+              "anti_pattern": "避免泛泛的“她很紧张/开心”"
+            },
+            {
+              "emotion": "静态描写",
+              "pattern": "所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。",
+              "anti_pattern": "避免孤立的景物描写"
+            },
+            {
+              "emotion": "抽象概括",
+              "pattern": "改为具体化、可感知的描述（如“时间像被按下了慢放键”）。",
+              "anti_pattern": "避免对情感或时间做抽象定义（如“时光飞逝”）"
+            }
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            {
+              "emotion": "角色内心独白/情感流露",
+              "pattern": "[直陈式] 直接使用'不好意思'、'惊奇'等情绪词描述主角状态。",
+              "anti_pattern": "rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。"
+            },
+            {
+              "emotion": "外部观察/他人反应",
+              "pattern": "[动作外化式] 用'没忍住'、'尖叫'、'截图'等具体动作来替代对情绪的抽象描述。",
+              "anti_pattern": "rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。"
+            },
+            {
+              "emotion": "环境烘托/氛围铺垫",
+              "pattern": "[环境投射式] 借助'龙眼树'等具体景物作为情绪触发的支点。",
+              "anti_pattern": "rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。"
+            }
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-high_freq_metaphor_domains-0001",
+      "dimension": "voice-card",
+      "field": "imagery.high_freq_metaphor_domains",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "宠物行为；日常身体反应；时间物理化；日常感官物件；日常物件；身体动作",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "宠物行为",
+            "日常身体反应"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "时间物理化",
+            "日常感官物件"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "日常物件",
+            "身体动作"
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-sensory_preference-visual-0001",
+      "dimension": "voice-card",
+      "field": "imagery.sensory_preference.visual",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.535,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0.535
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.457
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.54
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-sensory_preference-auditory-0001",
+      "dimension": "voice-card",
+      "field": "imagery.sensory_preference.auditory",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.289,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0.289
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.241
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.336
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-sensory_preference-tactile-0001",
+      "dimension": "voice-card",
+      "field": "imagery.sensory_preference.tactile",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.132,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0.132
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.19
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.097
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-sensory_preference-olfactory-0001",
+      "dimension": "voice-card",
+      "field": "imagery.sensory_preference.olfactory",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.026,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0.026
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.043
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.009
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-sensory_preference-gustatory-0001",
+      "dimension": "voice-card",
+      "field": "imagery.sensory_preference.gustatory",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.018,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 0.018
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.069
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.018
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-imagery-signature_devices-0001",
+      "dimension": "voice-card",
+      "field": "imagery.signature_devices",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "将人物行为动物化/幼态化（如、‘那脑袋都缩进脖子里去了’）；用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）；用具体、微小的感官细节（如斑驳光影、茉莉花香、汗味混杂油炸味）瞬间锚定场景情绪，替代直接抒情。；用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。；在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "将人物行为动物化/幼态化（如、‘那脑袋都缩进脖子里去了’）",
+            "用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "用具体、微小的感官细节（如斑驳光影、茉莉花香、汗味混杂油炸味）瞬间锚定场景情绪，替代直接抒情。"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。",
+            "在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。"
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "voice-card-banned-never_used_words-0001",
+      "dimension": "voice-card",
+      "field": "banned.never_used_words",
+      "kind": "hard",
+      "books_count": 3,
+      "value": [
+        "华丽辞藻堆砌",
+        "复杂心理学术语",
+        "冗长环境描写",
+        "抽象哲理思辨",
+        "恍若",
+        "顿时",
+        "霎时",
+        "心中一震",
+        "不由得",
+        "倏地",
+        "深邃",
+        "眸",
+        "幽幽",
+        "仿佛",
+        "宛如"
+      ],
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "华丽辞藻堆砌",
+            "复杂心理学术语",
+            "冗长环境描写",
+            "抽象哲理思辨"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "恍若",
+            "顿时",
+            "霎时",
+            "心中一震",
+            "不由得",
+            "倏地"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "深邃",
+            "眸",
+            "幽幽",
+            "仿佛",
+            "宛如"
+          ]
+        }
+      ],
+      "confidence": 0.7,
+      "conflict": true,
+      "over_generalized": false,
+      "blindspot_books": []
+    }
+  ],
+  "blindspots": [],
+  "stats": {
+    "total_rules": 21,
+    "hard_rules": 21,
+    "soft_rules": 0,
+    "personal_styles": 0,
+    "conflicts": 1,
+    "blindspots": 0
+  }
+}

@@ -1,0 +1,82 @@
+classDiagram
+    class SourceValue {
+        +str book
+        +object value
+        +object raw
+    }
+
+    class AggregatedRule {
+        +str id
+        +str dimension
+        +str field
+        +str kind
+        +int books_count
+        +object value
+        +list sources
+        +float confidence
+        +bool conflict
+        +bool over_generalized
+        +list blindspot_books
+    }
+
+    class Blindspot {
+        +str book
+        +str dimension
+        +str field
+        +str note
+    }
+
+    class Distilled {
+        +dict meta
+        +list rules
+        +list blindspots
+        +dict stats
+    }
+
+    class distill_core {
+        <<module>>
+        +collect_assets(genre, book_names) dict
+        +align(dimension, assets) dict
+        +aggregate(dimension, aligned) list~AggregatedRule~
+        +resolve_conflict(rules) list~AggregatedRule~
+        +detect_blindspots(dimension, raw, aligned) list~Blindspot~
+        +score_confidence(rule) float
+        +distill_genre(genre, book_names) Distilled
+    }
+
+    class distill {
+        <<module>>
+        +main() int
+    }
+
+    class distill_render {
+        <<module>>
+        +render_distilled(distilled) str
+    }
+
+    class inject {
+        <<module>>
+        +build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled) str
+        +render_genre_pack(gp) str
+        +render_distilled_section(distilled) str
+        +main() int
+    }
+
+    class novel {
+        <<module>>
+        +cmd_distill(args) int
+        +main() int
+    }
+
+    Distilled "1" *-- "0..*" AggregatedRule
+    Distilled "1" *-- "0..*" Blindspot
+    AggregatedRule "1" *-- "0..*" SourceValue
+
+    distill_core ..> AggregatedRule : 产出
+    distill_core ..> Distilled : 组装
+    distill_core ..> SourceValue : 构造
+    distill ..> distill_core : 调用
+    distill ..> distill_render : 调用
+    distill ..> inject : 注入
+    novel ..> distill : 透传
+    inject ..> distill_render : render_distilled

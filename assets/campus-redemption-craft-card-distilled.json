@@ -1,0 +1,164 @@
+{
+  "meta": {
+    "id": "campus-redemption-craft-card-distilled",
+    "schema_version": "1.0",
+    "dimension": "craft-card",
+    "genre": "campus-redemption",
+    "distilled_at": "2026-09-07T14:04:43",
+    "source_books": [
+      "chireng_chosen",
+      "qingning_chosen",
+      "sangshi_chosen"
+    ],
+    "books_count": 3
+  },
+  "rules": [
+    {
+      "id": "craft-card-craft_summary-top_3_strengths-0001",
+      "dimension": "craft-card",
+      "field": "craft_summary.top_3_strengths",
+      "kind": "hard",
+      "books_count": 3,
+      "value": [
+        "感官细节外化心理",
+        "沉默与爆发的对比",
+        "通过反派言论揭示社会权力结构",
+        "环境氛围渲染",
+        "迟到者的动态切入",
+        "通过他人视角侧写主角",
+        "在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。",
+        "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
+        "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
+      ],
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "感官细节外化心理",
+            "沉默与爆发的对比",
+            "通过反派言论揭示社会权力结构"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "环境氛围渲染",
+            "迟到者的动态切入",
+            "通过他人视角侧写主角"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。",
+            "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
+            "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "craft-card-craft_summary-unique_techniques-0001",
+      "dimension": "craft-card",
+      "field": "craft_summary.unique_techniques",
+      "kind": "hard",
+      "books_count": 3,
+      "value": [
+        "旁观者的漠视强化孤立感",
+        "救援者的非典型登场与对话",
+        "无声的关怀动作",
+        "内心戏与外部反应的错位",
+        "在需要表现角色长期、无果的暗恋心理时，使用“具体行为列表”的虚化处理。",
+        "在解释角色重大人生转折（如死讯）对主角的影响时，使用碎片化信息与强烈生理反应的组合。"
+      ],
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "旁观者的漠视强化孤立感",
+            "救援者的非典型登场与对话"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "无声的关怀动作",
+            "内心戏与外部反应的错位"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "在需要表现角色长期、无果的暗恋心理时，使用“具体行为列表”的虚化处理。",
+            "在解释角色重大人生转折（如死讯）对主角的影响时，使用碎片化信息与强烈生理反应的组合。"
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "craft-card-craft_summary-reusable_patterns-0001",
+      "dimension": "craft-card",
+      "field": "craft_summary.reusable_patterns",
+      "kind": "hard",
+      "books_count": 3,
+      "value": [
+        "感官细节外化心理",
+        "沉默与爆发的对比",
+        "通过反派言论揭示社会权力结构",
+        "环境氛围渲染",
+        "迟到者的动态切入",
+        "通过他人视角侧写主角",
+        "在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。",
+        "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
+        "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
+      ],
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            "感官细节外化心理",
+            "沉默与爆发的对比",
+            "通过反派言论揭示社会权力结构"
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "环境氛围渲染",
+            "迟到者的动态切入",
+            "通过他人视角侧写主角"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            "在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。",
+            "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
+            "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    }
+  ],
+  "blindspots": [],
+  "stats": {
+    "total_rules": 3,
+    "hard_rules": 3,
+    "soft_rules": 0,
+    "personal_styles": 62,
+    "conflicts": 0,
+    "blindspots": 0
+  }
+}

@@ -553,7 +553,42 @@ def main():
         print("      → 真实运行需先配置模型 key：")
         print("        python scripts/model_config.py add --preset deepseek --id ds --key <你的key>")
         print("        python scripts/model_config.py test ds")
+        print("\n完成。下一步: 人工校验资产（M1.6），或提供更多同题材书跑聚合。")
+        return 0
+
+    # 蒸馏 Hook：拆书资产入库后，若同题材已 ≥3 本则幂等重跑蒸馏层。
+    _run_distill_hook(args.genre)
+
     print("\n完成。下一步: 人工校验资产（M1.6），或提供更多同题材书跑聚合。")
+
+
+def _run_distill_hook(genre: str) -> None:
+    """拆书完成后的蒸馏 Hook（幂等，<3 本静默跳过）。"""
+    if not genre or genre == "unknown":
+        return
+    # 统计该题材下已拆书（voice-card 代表已完整入库的书籍数，平铺在 assets/）。
+    voice_cards = []
+    for vc in sorted(ASSETS_DIR.glob("*-voice-card.json")):
+        try:
+            meta = json.loads(vc.read_text(encoding="utf-8")).get("meta") or {}
+        except (json.JSONDecodeError, OSError):
+            continue
+        if meta.get("genre") == genre:
+            voice_cards.append(vc)
+    if len(voice_cards) < 3:
+        print(f"\n[蒸馏 Hook] 同题材《{genre}》仅 {len(voice_cards)} 本（<3），暂不蒸馏。")
+        return
+    try:
+        import distill
+    except ImportError:
+        print("\n[蒸馏 Hook] 蒸馏模块缺失，跳过。")
+        return
+    print(f"\n[蒸馏 Hook] 同题材《{genre}》已达 {len(voice_cards)} 本，幂等重跑蒸馏…")
+    try:
+        distill.run_distill(genre)
+        print("  ✓ 蒸馏完成，4 类 distilled JSON 已更新。")
+    except Exception as exc:  # noqa: BLE001 — Hook 不阻塞主流程。
+        print(f"  ✗ 蒸馏失败（不阻塞拆书主流程）: {exc}")
 
 
 def run_compliance(asset_path: Path, book_path: Path) -> int:

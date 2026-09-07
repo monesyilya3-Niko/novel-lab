@@ -1,0 +1,311 @@
+{
+  "meta": {
+    "id": "campus-redemption-commercial-obs-distilled",
+    "schema_version": "1.0",
+    "dimension": "commercial-obs",
+    "genre": "campus-redemption",
+    "distilled_at": "2026-09-07T14:04:43",
+    "source_books": [
+      "chireng_chosen",
+      "qingning_chosen",
+      "sangshi_chosen"
+    ],
+    "books_count": 3
+  },
+  "rules": [
+    {
+      "id": "commercial-obs-payoff_density-per_thousand_words-0001",
+      "dimension": "commercial-obs",
+      "field": "payoff_density.per_thousand_words",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 0.8,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 1.5
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 0.8
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 0.8
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "commercial-obs-buildup_length-0001",
+      "dimension": "commercial-obs",
+      "field": "buildup_length",
+      "kind": "hard",
+      "books_count": 3,
+      "value": 7200,
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": 3000.0
+        },
+        {
+          "book": "qingning_chosen",
+          "value": 7200.0
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": 21000.0
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "commercial-obs-payoff_types-0001",
+      "dimension": "commercial-obs",
+      "field": "payoff_types",
+      "kind": "hard",
+      "books_count": 3,
+      "value": [
+        {
+          "type": "打脸",
+          "ratio": 40
+        },
+        {
+          "type": "升级",
+          "ratio": 10
+        },
+        {
+          "type": "收益兑现",
+          "ratio": 30
+        },
+        {
+          "type": "情感回应",
+          "ratio": 20
+        },
+        {
+          "type": "情感回应",
+          "ratio": 7.0
+        },
+        {
+          "type": "他人认可",
+          "ratio": 2.0
+        },
+        {
+          "type": "反杀",
+          "ratio": 1.0
+        },
+        {
+          "type": "爆发 = 10",
+          "ratio": 1.0
+        }
+      ],
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": [
+            {
+              "type": "打脸",
+              "ratio": 40
+            },
+            {
+              "type": "升级",
+              "ratio": 10
+            },
+            {
+              "type": "收益兑现",
+              "ratio": 30
+            },
+            {
+              "type": "情感回应",
+              "ratio": 20
+            }
+          ]
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            {
+              "type": "情感回应",
+              "ratio": 7.0
+            },
+            {
+              "type": "他人认可",
+              "ratio": 2.0
+            },
+            {
+              "type": "反杀",
+              "ratio": 1.0
+            }
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": [
+            {
+              "type": "爆发 = 10",
+              "ratio": 1.0
+            }
+          ]
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "commercial-obs-skeleton-0001",
+      "dimension": "commercial-obs",
+      "field": "skeleton",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "第一阶段（1-3章）：校园欺凌+男主英雄救美+转学生身份揭秘；第二阶段（4-10章）：女主求助被拒+用行动证明价值+男主胃痛关怀+同居契约；第三阶段（11-26章）：两人感情升温+女主逆袭+男主背景揭露+大结局。；{\"chapter_1\": \"开篇：建立日常场景（晨光教室），引入核心人物（苏念、陆星辞），通过细节互动（保温杯、目光追逐）埋下暗恋伏笔，以对视和双向内心波动（公式写错）作为微小钩子。\", \"chapter_2_3_task\": \"第2-3章任务：迅速给出第一个核心‘情感回应’型爽点（错题集秘密），验证暗恋的双向性（男主也在关注女主），并立即引入第二个爽点（雨夜让伞）强化男主‘行动派照顾’形象，通过女主送姜汤回应建立情感闭环，稳定读者预期。\"}；穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "第一阶段（1-3章）：校园欺凌+男主英雄救美+转学生身份揭秘；第二阶段（4-10章）：女主求助被拒+用行动证明价值+男主胃痛关怀+同居契约；第三阶段（11-26章）：两人感情升温+女主逆袭+男主背景揭露+大结局。"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": {
+            "chapter_1": "开篇：建立日常场景（晨光教室），引入核心人物（苏念、陆星辞），通过细节互动（保温杯、目光追逐）埋下暗恋伏笔，以对视和双向内心波动（公式写错）作为微小钩子。",
+            "chapter_2_3_task": "第2-3章任务：迅速给出第一个核心‘情感回应’型爽点（错题集秘密），验证暗恋的双向性（男主也在关注女主），并立即引入第二个爽点（雨夜让伞）强化男主‘行动派照顾’形象，通过女主送姜汤回应建立情感闭环，稳定读者预期。"
+          }
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "commercial-obs-dry_spell_tolerance-0001",
+      "dimension": "commercial-obs",
+      "field": "dry_spell_tolerance",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "2章（约6000字）；{\"max_consecutive_chapters\": 2, \"note\": \"连续章节无明确爽点（如第5、6章）可能导致部分寻求强刺激的读者流失，但本书依赖细腻情感描写维持留存，对‘文青’读者容忍度更高。\"}；前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "2章（约6000字）"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": {
+            "max_consecutive_chapters": 2,
+            "note": "连续章节无明确爽点（如第5、6章）可能导致部分寻求强刺激的读者流失，但本书依赖细腻情感描写维持留存，对‘文青’读者容忍度更高。"
+          }
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "commercial-obs-common_mistakes-0001",
+      "dimension": "commercial-obs",
+      "field": "common_mistakes",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "1.开篇不直接进入冲突，而是铺垫背景；2.男主救美后立刻“天降”，缺乏身份铺垫；3.反派动机单一（仅为嫉妒），缺乏家族势力等深层原因。；开篇环境描写过于冗长，可能劝退追求快节奏的读者。；前期章节（1-3章）情感爆发点依赖内心戏和细节，外部情节冲突弱，对偏好强情节的读者吸引力不足。；中期（第5、6章）男女主因误会‘冷战’，铺垫稍长，若读者代入女主自卑情绪，可能产生焦虑感。；开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": "1.开篇不直接进入冲突，而是铺垫背景；2.男主救美后立刻“天降”，缺乏身份铺垫；3.反派动机单一（仅为嫉妒），缺乏家族势力等深层原因。"
+        },
+        {
+          "book": "qingning_chosen",
+          "value": [
+            "开篇环境描写过于冗长，可能劝退追求快节奏的读者。",
+            "前期章节（1-3章）情感爆发点依赖内心戏和细节，外部情节冲突弱，对偏好强情节的读者吸引力不足。",
+            "中期（第5、6章）男女主因误会‘冷战’，铺垫稍长，若读者代入女主自卑情绪，可能产生焦虑感。"
+          ]
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": "开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。"
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    },
+    {
+      "id": "commercial-obs-paywall-0001",
+      "dimension": "commercial-obs",
+      "field": "paywall",
+      "kind": "hard",
+      "books_count": 3,
+      "value": "{\"cliffhanger_technique\": \"第10章结尾，唐雨离开后，边炀独自吃着西红柿炒蛋，接到父亲电话却不接，暗示其家庭背景复杂，同时两人关系刚有进展即分离，制造悬念。\", \"position_chapter\": 10, \"pre_paywall_buildup\": \"前9章累计铺垫：1.唐雨的绝望处境（被欺凌、无家可归）；2.边炀从拒绝到逐渐软化的过程；3.两人从对立到试探的互动。铺垫总字数约25000字。\"}；{\"cliffhanger_technique\": \"第十章结尾强化‘无形的墙’的张力：双方在乎却不敢越界，关系处于临界点。读者渴望看到‘墙’如何被打破，制造强烈续读欲望。\", \"position_chapter\": 10, \"pre_paywall_buildup\": \"前9章密集铺设双向暗恋证据（错题集、让伞、醋意事件、澄清传闻），累积情感势能，让读者确信‘互相喜欢’，从而对‘何时表白/在一起’产生极高期待。\"}；{\"cliffhanger_technique\": \"后记章，无剧情悬念，属于完结感言。付费点不在强悬念处。\", \"position_chapter\": 27, \"pre_paywall_buildup\": \"前26章已完成“暗恋-相识-相知-热恋”主线，故事基本完结，情感需求已满足。付费内容可能为番外或作者感言，付费动力弱，依赖读者情感认同和对作者的赞赏。\"}",
+      "sources": [
+        {
+          "book": "chireng_chosen",
+          "value": {
+            "position_chapter": 10,
+            "cliffhanger_technique": "第10章结尾，唐雨离开后，边炀独自吃着西红柿炒蛋，接到父亲电话却不接，暗示其家庭背景复杂，同时两人关系刚有进展即分离，制造悬念。",
+            "pre_paywall_buildup": "前9章累计铺垫：1.唐雨的绝望处境（被欺凌、无家可归）；2.边炀从拒绝到逐渐软化的过程；3.两人从对立到试探的互动。铺垫总字数约25000字。"
+          }
+        },
+        {
+          "book": "qingning_chosen",
+          "value": {
+            "position_chapter": 10,
+            "cliffhanger_technique": "第十章结尾强化‘无形的墙’的张力：双方在乎却不敢越界，关系处于临界点。读者渴望看到‘墙’如何被打破，制造强烈续读欲望。",
+            "pre_paywall_buildup": "前9章密集铺设双向暗恋证据（错题集、让伞、醋意事件、澄清传闻），累积情感势能，让读者确信‘互相喜欢’，从而对‘何时表白/在一起’产生极高期待。"
+          }
+        },
+        {
+          "book": "sangshi_chosen",
+          "value": {
+            "position_chapter": 27,
+            "cliffhanger_technique": "后记章，无剧情悬念，属于完结感言。付费点不在强悬念处。",
+            "pre_paywall_buildup": "前26章已完成“暗恋-相识-相知-热恋”主线，故事基本完结，情感需求已满足。付费内容可能为番外或作者感言，付费动力弱，依赖读者情感认同和对作者的赞赏。"
+          }
+        }
+      ],
+      "confidence": 0.8,
+      "conflict": false,
+      "over_generalized": false,
+      "blindspot_books": []
+    }
+  ],
+  "blindspots": [
+    {
+      "book": "qingning_chosen",
+      "dimension": "commercial-obs",
+      "field": "payoff_density.per_chapter",
+      "note": "字段 payoff_density.per_chapter 缺失"
+    },
+    {
+      "book": "sangshi_chosen",
+      "dimension": "commercial-obs",
+      "field": "payoff_density.per_chapter",
+      "note": "字段 payoff_density.per_chapter 缺失"
+    }
+  ],
+  "stats": {
+    "total_rules": 7,
+    "hard_rules": 7,
+    "soft_rules": 0,
+    "personal_styles": 1,
+    "conflicts": 0,
+    "blindspots": 2
+  }
+}

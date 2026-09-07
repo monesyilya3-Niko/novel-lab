@@ -17,6 +17,13 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
 PROMPTS_DIR = ROOT / "prompts" / "generated"
 
+# 蒸馏渲染器（同目录），供注入蒸馏规则段使用。
+try:
+    from distill_render import render_distilled
+except ImportError:  # 兼容无蒸馏层时的最小运行。
+    def render_distilled(distilled):
+        return ""
+
 
 # --------------------------------------------------------------------------
 # 各资产 → Markdown 段落
@@ -315,7 +322,7 @@ def render_commercial_obs(co: dict) -> str:
 
 # --------------------------------------------------------------------------
 
-def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None) -> str:
+def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None) -> str:
     meta = voice.get("meta") or {}
     source = meta.get("source_title", "未知")
 
@@ -329,6 +336,11 @@ def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, g
     gp = render_genre_pack(genre_pack or {})
     if gp and gp != "（无题材包）":
         sections.append("## 〇、题材规则（genre-pack · 最高优先级）\n\n" + gp)
+
+    # 蒸馏规则段：插在 genre-pack 段之后、叙述层之前（§0 注入点定位）。
+    ds = render_distilled(distilled)
+    if ds:
+        sections.append(ds)
 
     sections.append("## 一、叙述层（narration）\n\n" + render_narration(voice.get("narration") or {}))
     sections.append("## 二、角色声线（dialogue.character_voices）\n\n" + render_voices((voice.get("dialogue") or {}).get("character_voices") or []))
@@ -375,6 +387,7 @@ def main():
     ap.add_argument("--commercial", help="commercial-obs JSON（可选）")
     ap.add_argument("--genre-pack", help="题材包 JSON（可选，注入题材级规则）")
     ap.add_argument("--craft-card", help="craft-card JSON（可选，注入写作技法）")
+    ap.add_argument("--distilled", help="蒸馏规则 JSON（可选，注入跨书聚合规则）")
     ap.add_argument("--out", help="输出路径，默认 prompts/generated/<名>-writing-prompt.md")
     args = ap.parse_args()
 
@@ -383,8 +396,9 @@ def main():
     commercial = json.loads(Path(args.commercial).read_text(encoding="utf-8")) if args.commercial else None
     genre_pack = json.loads(Path(args.genre_pack).read_text(encoding="utf-8")) if args.genre_pack else None
     craft_card = json.loads(Path(args.craft_card).read_text(encoding="utf-8")) if args.craft_card else None
+    distilled = json.loads(Path(args.distilled).read_text(encoding="utf-8")) if args.distilled else None
 
-    prompt = build_prompt(voice, structure, commercial, genre_pack, craft_card)
+    prompt = build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled)
 
     name = Path(args.voice).stem.replace("-voice-card", "")
     out = Path(args.out) if args.out else PROMPTS_DIR / f"{name}-writing-prompt.md"
@@ -395,6 +409,7 @@ def main():
     print(f"  prompt 长度: {len(prompt)} 字符")
     print(f"  genre-pack: {'已注入' if genre_pack else '未注入'}")
     print(f"  craft-card: {'已注入' if craft_card else '未注入'}")
+    print(f"  distilled: {'已注入' if distilled else '未注入'}")
     print(f"  （直接作为 system 消息喂给写作 LLM）")
 
 

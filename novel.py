@@ -7,6 +7,7 @@ novel-lab CLI 统一入口 — 一条命令覆盖全部工作流
   novel 拆书 <book.txt> --genre xxx           # 拆书（pipeline）
   novel 批量 <corpus目录> --genre xxx [--report]  # 批量拆书
   novel 聚合 --genre xxx                      # Pass5 题材包（需≥3本）
+  novel 蒸馏 --genre xxx [--books a b c]      # 跨书蒸馏四类资产（需≥2本）
   novel 注入 <voice-card.json> [--structure ...] [--commercial ...]  # 资产→写作prompt
   novel 写作 <voice-card.json> --chapter N --task "要点" [--target-score 90]  # 写章节
   novel 打分 <voice-card.json> <章节.txt>      # 一致性打分
@@ -116,12 +117,17 @@ def main():
     p3.add_argument("--genre", required=True)
     p3.add_argument("--books")
 
+    p3b = sub.add_parser("蒸馏", help="跨书蒸馏四类资产（voice/craft/structure/commercial）")
+    p3b.add_argument("--genre", required=True, help="题材目录名，如 campus-redemption")
+    p3b.add_argument("--books", nargs="*", default=None, help="可选，限定参与蒸馏的书籍")
+
     p4 = sub.add_parser("注入", help="资产 → 写作 prompt")
     p4.add_argument("voice")
     p4.add_argument("--structure")
     p4.add_argument("--commercial")
     p4.add_argument("--genre-pack")
     p4.add_argument("--craft-card", help="craft-card JSON（可选，注入写作技法）")
+    p4.add_argument("--distilled", help="蒸馏规则 JSON（可选，注入跨书聚合规则）")
     p4.add_argument("--out", help="输出路径，默认 prompts/generated/<名>-writing-prompt.md")
 
     p5 = sub.add_parser("写作", help="生成章节（含改写循环，默认目标 90）")
@@ -296,12 +302,16 @@ def main():
     if args.cmd == "聚合":
         return run_script("pass5_aggregate.py", ["--genre", args.genre] +
                           (["--books", args.books] if args.books else []))
+    if args.cmd == "蒸馏":
+        return run_script("distill.py", ["--genre", args.genre] +
+                          (["--books"] + list(args.books) if args.books else []))
     if args.cmd == "注入":
         return run_script("inject.py", [args.voice] +
                           (["--structure", args.structure] if args.structure else []) +
                           (["--commercial", args.commercial] if args.commercial else []) +
                           (["--genre-pack", args.genre_pack] if args.genre_pack else []) +
                           (["--craft-card", args.craft_card] if args.craft_card else []) +
+                          (["--distilled", args.distilled] if args.distilled else []) +
                           (["--out", args.out] if args.out else []))
     if args.cmd == "写作":
         # 缺省 prompt 时自动注入

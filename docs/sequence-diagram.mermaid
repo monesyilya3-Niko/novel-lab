@@ -1,0 +1,37 @@
+sequenceDiagram
+    participant U as 用户/CLI
+    participant N as novel.py
+    participant D as distill.py
+    participant C as distill_core.py
+    participant R as distill_render.py
+    participant I as inject.py
+    participant FS as 文件系统(assets/)
+
+    U->>N: novel 蒸馏 --genre campus-redemption
+    N->>D: 透传 --genre
+    D->>C: collect_assets(genre)
+    C->>FS: glob assets/*-voice-card/-craft-card/-structure-obs/-commercial-obs.json
+    FS-->>C: 3 本书 × 4 类资产
+    C-->>D: {voice,craft,structure,commercial}
+
+    loop 每个维度 (voice/craft/structure/commercial)
+        D->>C: align(dimension, assets)
+        C-->>D: aligned (缺失补 null)
+        D->>C: aggregate(dimension, aligned)
+        C-->>D: rules (3本hard/2本soft/1本personal)
+        D->>C: resolve_conflict(rules)
+        C-->>D: rules (conflict 标记)
+        D->>C: detect_blindspots(dimension, raw, aligned)
+        C-->>D: blindspots
+        D->>C: score_confidence(rule)
+        C-->>D: rules (confidence 赋值)
+    end
+
+    D->>D: 组装 distilled dict (meta+rules+blindspots+stats)
+    D->>FS: 写 assets/<genre>-<dimension>-distilled.json × 4
+    D->>R: render_distilled(distilled)
+    R-->>D: 蒸馏段落 Markdown
+    D->>I: build_prompt(..., distilled=distilled)
+    I-->>D: 完整写作 prompt（含『蒸馏规则』段）
+    D->>FS: 写 prompts/generated/<genre>-writing-prompt.md
+    D-->>U: 报告（规则数/置信度/冲突/盲区）
