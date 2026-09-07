@@ -50,6 +50,25 @@ FUSION_ALPHA: float = 0.5
 # 参与向量的最小 gram 长度（默认 1，即保留 unigram）。
 MIN_NGRAM_GRAM_LEN: int = 1
 
+# 单字符 n-gram（unigram）停用字：排除无实义高频功能字 + 常见虚词，
+# 避免无关查询与文档在单字层产生伪余弦重叠、破坏「无关→空列表」语义。
+# 只作用于 n==1 的 gram；n>=2 的多字 gram 不受影响（语义由组合承载）。
+_UNIGRAM_STOPCHARS: frozenset = frozenset(
+    "的一了是我不在人有这那他么就都而及与或和也很把被让给要为说个们去来到着看子词存有没当于之其些时候又再才却只可是从"
+)
+# 单字 gram 额外排除的 ASCII 字符（字母/标点/连接符/数字），避免 asset_id 的
+# `-`/`_` 与书名拼音（qingning/sangshi/chireng）字母在单字层产生噪声。
+_UNIGRAM_STOPASCII: frozenset = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "-_ ,.;:()[]{}/\\|@#$%^&*+=~`'\"0123456789"
+)
+# 单字 gram 的文档频率停止比：某单字在 ≥80% 文档中出现即视为无判别力噪声（等价于
+# 向量层的 idf/停用词），在检索时从查询向量中过滤。只作用于 n==1 的 gram。
+UNIGRAM_DF_STOP_RATIO: float = 0.8
+# 单字 gram 停止的最小文档频率：小语料（文档数 < 该值）时 df 无统计意义，不做停止，
+# 避免 2~3 篇文档的语料中所有单字都被误判为「普遍噪声」而牺牲近义召回。
+UNIGRAM_DF_STOP_MIN: int = 3
+
 # 分词正则：匹配字母数字 + 中日韩字符（连续串作为一个词项）。
 _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+")
 
@@ -265,6 +284,8 @@ def _ngram_counter(text: str, max_n: int = NGRAM_MAX_N) -> Counter:
     for n in range(MIN_NGRAM_GRAM_LEN, max_n + 1):
         for i in range(len(text) - n + 1):
             gram = text[i : i + n]
+            if n == 1 and (gram in _UNIGRAM_STOPCHARS or gram in _UNIGRAM_STOPASCII):
+                continue
             counter[f"{n}:{gram}"] += 1
     return counter
 
@@ -502,6 +523,28 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
 
     # 查询向量：意图映射注入的额外词项同样进入 n-gram，与向量检索协同。
     query_ngrams = _ngram_counter(" ".join(expanded_terms))
+
+    # 单字 n-gram 文档频率过滤：单字 gram 在 ≥80% 文档中出现时无判别力，属于
+    # 「无关查询与文档在单字层伪重叠」的噪声源（如「学/量/力」等高频字），过滤后
+    # 恢复「完全无关意图 → 空列表」语义，同时保留「钩/爽」等低频单字意图的召回。
+    unigram_df: Dict[str, int] = {}
+    for doc in index.docs:
+        for key in doc.ngrams:
+            if key.startswith("1:"):
+                ch = key[2:]
+                unigram_df[ch] = unigram_df.get(ch, 0) + 1
+    stop_threshold = UNIGRAM_DF_STOP_RATIO * len(index.docs)
+    query_ngrams = Counter(
+        {
+            k: v
+            for k, v in query_ngrams.items()
+            if not (
+                k.startswith("1:")
+                and unigram_df.get(k[2:], 0) >= UNIGRAM_DF_STOP_MIN
+                and unigram_df.get(k[2:], 0) >= stop_threshold
+            )
+        }
+    )
     q_norm = _norm(query_ngrams)
 
     # 先对每篇文档算 BM25 原始分与余弦分，收集 BM25 最大值用于归一化。
