@@ -73,6 +73,12 @@ UNIGRAM_DF_STOP_RATIO: float = 0.8
 # 单字 gram 停止的最小文档频率：小语料（文档数 < 该值）时 df 无统计意义，不做停止，
 # 避免 2~3 篇文档的语料中所有单字都被误判为「普遍噪声」而牺牲近义召回。
 UNIGRAM_DF_STOP_MIN: int = 3
+# 多字无关意图判噪阈值：当查询（含意图映射扩展后）对全语料无任何词项/子串匹配
+# （bm25_max == 0），且经停用/df 过滤后仍含 >= 该值的有效单字时，判定其 unigram
+# 余弦重叠纯属中频内容字的偶然共现（如「天气预报」的天/气/预/报 df 分布在 2~9），
+# 不构成语义相关，直接返回空列表。单字意图（钩/悬/爽）只有 1 个有效单字，是原子
+# 概念检索，保留其 unigram 余弦召回——这是「噪声归零」与「单字不误杀」的分界。
+MIN_NOISE_UNIGRAMS: int = 2
 
 # 分词正则：匹配字母数字 + 中日韩字符（连续串作为一个词项）。
 _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+")
@@ -559,6 +565,16 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
         bm25_scores.append(_bm25_score(expanded_terms, doc, index))
         cos_scores.append(_vector_score(query_ngrams, q_norm, doc, index))
     bm25_max = max(bm25_scores) if bm25_scores else 0.0
+
+    # 多字无关意图判噪：bm25_max == 0 表示查询（含意图映射扩展后的词项）对全语料
+    # 无任何词项/子串匹配，即查询里的字符从未与任何文档形成有效语义组合。此时若
+    # 查询经停用字 + df 停止过滤后仍含 >= 2 个有效单字，说明其 unigram 余弦重叠
+    # 纯属中频内容字的偶然共现（如「天气预报」的天/气/预/报），属噪声，返回空列表。
+    # 单字意图（钩/悬/爽）只有 1 个有效单字，是原子概念检索，保留其 unigram 余弦召回。
+    if bm25_max <= 0.0:
+        effective_unigrams = sum(1 for key in query_ngrams if key.startswith("1:"))
+        if effective_unigrams >= MIN_NOISE_UNIGRAMS:
+            return []
 
     # 融合打分。
     hits: List[HitEntry] = []
