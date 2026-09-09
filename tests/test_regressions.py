@@ -153,5 +153,120 @@ class TestConsistencyReadsAssetVocabulary(unittest.TestCase):
         )
 
 
+class TestNormalizePass3BannedFields(unittest.TestCase):
+    """回归 #5：normalize_pass3 的 banned 组装必须完整提取三字段，不得丢数据。
+
+    历史缺陷（2026-09-08 修复）：当 pass3 输出标准三字段结构
+    {"never_used_words": [...], "avoided_structures": [...], "genre_taboos": [...]}
+    时，原实现只 fuzzy_find 提 never_used_words（且因 fuzzy_find 对 dict 下钻兜底
+    as_str 只取第一个词），并把 avoided_structures/genre_taboos 硬编码为空列表，
+    导致数据静默丢失。
+    """
+
+    def test_full_three_field_banned_preserved(self):
+        norm = _load("normalize")
+        pass3 = {
+            "switching_rules": [],
+            "anti_pattern": {},
+            "banned": {
+                "never_used_words": ["撕心裂肺", "天崩地裂", "肝肠寸断"],
+                "avoided_structures": ["大段排比式煽情", "全知视角跳入多人心思"],
+                "genre_taboos": ["狗血失忆", "豪门玛丽苏", "金手指开挂"],
+            },
+        }
+        narration, dialogue, emotion, imagery, banned = norm.normalize_pass3(pass3)
+        self.assertEqual(
+            banned["never_used_words"],
+            ["撕心裂肺", "天崩地裂", "肝肠寸断"],
+            "never_used_words 不应丢失其余词",
+        )
+        self.assertEqual(
+            banned["avoided_structures"],
+            ["大段排比式煽情", "全知视角跳入多人心思"],
+            "avoided_structures 不应被硬编码为空",
+        )
+        self.assertEqual(
+            banned["genre_taboos"],
+            ["狗血失忆", "豪门玛丽苏", "金手指开挂"],
+            "genre_taboos 不应被硬编码为空",
+        )
+
+    def test_flat_list_banned_still_works(self):
+        """兜底路径：扁平 list 形态的 banned 仍能正常提取 never_used_words。"""
+        norm = _load("normalize")
+        pass3 = {
+            "switching_rules": [],
+            "anti_pattern": {},
+            "banned": ["恍若", "顿时", "霎时"],
+        }
+        narration, dialogue, emotion, imagery, banned = norm.normalize_pass3(pass3)
+        self.assertEqual(banned["never_used_words"], ["恍若", "顿时", "霎时"])
+        self.assertEqual(banned["avoided_structures"], [])
+        self.assertEqual(banned["genre_taboos"], [])
+
+
+class TestEmotionExamplesAntiPatternMatch(unittest.TestCase):
+    """回归 #6：extract_emotion_examples 应按情绪名匹配专属反例，不重复拼接。
+
+    历史缺陷（2026-09-08 修复）：当 anti_pattern 是 dict（按情绪名分组）且
+    switching_rules 是 list 时，旧实现在循环外把整个 anti dict 压成一段
+    「愤怒：…；悲伤：…；心动：…」拼接文本，重复塞给每条 example，
+    导致 3 条 example 的 anti_pattern 完全相同且语义错位。
+    """
+
+    def test_each_emotion_gets_own_anti_pattern(self):
+        norm = _load("normalize")
+        pass3 = {
+            "switching_rules": [
+                {"scene": "愤怒", "mode": "动作外化式", "example_pattern": "摔物件"},
+                {"scene": "悲伤", "mode": "体感式", "example_pattern": "眼泪大颗"},
+                {"scene": "心动", "mode": "环境投射式", "example_pattern": "心跳漏拍"},
+            ],
+            "anti_pattern": {
+                "愤怒": "避免直接写「他很愤怒」、堆砌形容词",
+                "悲伤": "避免写「她伤心欲绝」、嚎哭式自白",
+                "心动": "避免直写「她心动了」、夸张内心呐喊",
+            },
+        }
+        em = norm.extract_emotion_examples(pass3, "混合式")
+        by_emotion = {e["emotion"]: e["anti_pattern"] for e in em if e["emotion"] in ("愤怒", "悲伤", "心动")}
+        # 每条专属反例，且互不相同
+        self.assertEqual(by_emotion["愤怒"], "避免直接写「他很愤怒」、堆砌形容词")
+        self.assertEqual(by_emotion["悲伤"], "避免写「她伤心欲绝」、嚎哭式自白")
+        self.assertEqual(by_emotion["心动"], "避免直写「她心动了」、夸张内心呐喊")
+        self.assertEqual(
+            len(set(by_emotion.values())), 3,
+            "3 条 anti_pattern 应互不相同，而非共用同一段拼接文本",
+        )
+
+
+class TestYamlLiteEmptyValueList(unittest.TestCase):
+    """回归 #7：yaml_lite 空值键后紧跟缩进列表不得崩溃。
+
+    历史缺陷（QA 回归发现）：``key:``（空值）后紧跟 ``- item`` 列表时，
+    旧实现先把 ``result[key]`` 写成空字符串 ``""`` 再记录 ``current_list_key``，
+    下一行列表项的 ``result.setdefault(key, [])`` 命中已存在的 ``str``，
+    随后 ``.append(item)`` 触发 ``AttributeError: 'str' object has no attribute 'append'``。
+    修复：空值分支改为 ``result.pop(key, None)``，使列表项分支能创建全新 list。
+    """
+
+    def test_empty_value_then_list_parses_to_list(self):
+        yl = _load("yaml_lite")
+        text = "aliases:\n  - a\n  - b\n"
+        result = yl.parse_yaml(text)
+        self.assertEqual(
+            result["aliases"], ["a", "b"],
+            "空值键后紧跟列表应解析为列表，而非崩溃或残留空字符串",
+        )
+
+    def test_empty_value_stays_empty_when_no_list_follows(self):
+        yl = _load("yaml_lite")
+        text = "aliases:\nname: 张三\n"
+        result = yl.parse_yaml(text)
+        # 无列表跟随时，空值键应不存在或为空，且不干扰后续键值对。
+        self.assertNotIn("aliases", result, "无列表跟随时空值键不应残留空字符串")
+        self.assertEqual(result["name"], "张三")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

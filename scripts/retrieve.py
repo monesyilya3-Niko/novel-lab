@@ -43,6 +43,8 @@ TOP_K: int = 5
 SNIPPET_LEN: int = 200
 # BM25 k1 参数。
 BM25_K1: float = 1.5
+# BM25 b 参数（文档长度归一化，默认 0.75）。
+BM25_B: float = 0.75
 
 # 字符 n-gram 最大长度（1/2/3-gram 混合）。
 NGRAM_MAX_N: int = 3
@@ -330,7 +332,7 @@ def _cosine_sim(q: Counter, q_norm: float, d: Counter, d_norm: float) -> float:
 # 索引构建
 # ---------------------------------------------------------------------------
 
-def build_index(assets: Dict[str, Dict[str, dict]]) -> Index:
+def build_index(assets: Dict[str, Dict[str, dict]], persist_path: Optional[str] = None) -> Index:
     """把四类资产构建为倒排索引。
 
     兼容两种输入结构：
@@ -341,12 +343,23 @@ def build_index(assets: Dict[str, Dict[str, dict]]) -> Index:
 
     Args:
         assets: 资产字典。
+        persist_path: 可选持久化路径。传入时：
+            * 若该文件已存在且为合法索引缓存，则直接加载并返回（跳过重建）；
+            * 否则构建后把倒排索引序列化写入该路径，下次可直接加载。
 
     Returns:
         Index 实例。assets 非 dict（如 None）时返回空索引，不 crash。
     """
+    if persist_path:
+        cached = _load_index(persist_path)
+        if cached is not None:
+            return cached
+
     if not isinstance(assets, dict):
-        return Index()
+        index = Index()
+        if persist_path:
+            _save_index(index, persist_path)
+        return index
 
     index = Index()
 
@@ -400,7 +413,71 @@ def build_index(assets: Dict[str, Dict[str, dict]]) -> Index:
 
     # 预计算每篇文档 n-gram 向量的 L2 范数（与 docs 下标对齐，供余弦检索复用）。
     index.norms = [_norm(doc.ngrams) for doc in index.docs]
+
+    if persist_path:
+        _save_index(index, persist_path)
+
     return index
+
+
+def _save_index(index: Index, persist_path: str) -> None:
+    """把索引序列化为 JSON 写入 ``persist_path``（可重建缓存，非资产）。
+
+    只持久化检索所需的最小结构（inverted / doc_freq / docs 的核心字段 / norms）。
+    idf_cache 可在加载后惰性重建，不持久化。
+    """
+    payload = {
+        "inverted": index.inverted,
+        "doc_freq": index.doc_freq,
+        "norms": index.norms,
+        "docs": [
+            {
+                "asset_id": d.asset_id,
+                "dimension": d.dimension,
+                "asset_dict": d.asset_dict,
+                "terms": dict(d.terms),
+                "ngrams": dict(d.ngrams),
+                "corpus": d.corpus,
+                "snippet": d.snippet,
+            }
+            for d in index.docs
+        ],
+    }
+    path = Path(persist_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False)
+        fh.write("\n")
+
+
+def _load_index(persist_path: str) -> Optional[Index]:
+    """从 ``persist_path`` 加载索引；不存在或损坏返回 None。"""
+    path = Path(persist_path)
+    if not path.exists():
+        return None
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+        index = Index(
+            inverted={k: list(v) for k, v in payload.get("inverted", {}).items()},
+            doc_freq={k: int(v) for k, v in payload.get("doc_freq", {}).items()},
+            norms=[float(x) for x in payload.get("norms", [])],
+        )
+        for d in payload.get("docs", []):
+            index.docs.append(
+                DocEntry(
+                    asset_id=d.get("asset_id", ""),
+                    dimension=d.get("dimension", ""),
+                    asset_dict=d.get("asset_dict", {}) or {},
+                    terms=Counter(d.get("terms", {})),
+                    snippet=d.get("snippet", ""),
+                    ngrams=Counter(d.get("ngrams", {})),
+                    corpus=d.get("corpus", ""),
+                )
+            )
+        return index
+    except (json.JSONDecodeError, KeyError, TypeError, OSError):
+        return None
 
 
 def _idf(term: str, index: Index) -> float:
@@ -417,7 +494,13 @@ def _idf(term: str, index: Index) -> float:
     return val
 
 
-def _bm25_score(query_terms: List[str], doc: DocEntry, index: Index) -> float:
+def _bm25_score(
+    query_terms: List[str],
+    doc: DocEntry,
+    index: Index,
+    k1: float = BM25_K1,
+    b: float = BM25_B,
+) -> float:
     """BM25 简化打分（带 CJK 子串重叠补偿）。
 
     score(q, d) = Σ_{t∈q∩d} idf(t) * tf(t,d) * (k1+1) / (tf(t,d) + k1)
@@ -427,14 +510,39 @@ def _bm25_score(query_terms: List[str], doc: DocEntry, index: Index) -> float:
     **精确 token 未命中**时，追加「子串重叠」匹配：查询词项 t 与文档词项 dt 满足
     ``t in dt``（或 ``dt in t``，且 len(dt)>=2 避免单字误配）即视为命中，tf 取
     ``doc.terms[dt]``，idf 取 dt 的 idf。这在不引入分词器的前提下提升 CJK 召回。
+
+    Args:
+        query_terms: 查询词项列表。
+        doc: 目标文档。
+        index: 索引（提供 idf 与文档集合）。
+        k1: BM25 k1 参数（默认 1.5），控制词频饱和程度。
+        b: BM25 b 参数（默认 0.75），控制文档长度归一化强度。当前简化实现中
+           以文档词项数近似文档长度参与归一化。
+
+    Raises:
+        ValueError: ``k1 <= 0`` 或 ``b`` 不在 ``[0, 1]`` 区间内时抛出，
+            避免非法参数导致打分公式退化（如除零、负权重）。
     """
+    if k1 <= 0:
+        raise ValueError(f"BM25 k1 必须为正数，收到 {k1}")
+    if not (0.0 <= b <= 1.0):
+        raise ValueError(f"BM25 b 必须在 [0, 1] 区间内，收到 {b}")
+    # 文档长度（词项总数）与平均文档长度，用于 b 参数归一化。
+    doc_len = sum(doc.terms.values())
+    avg_len = 0.0
+    if index.docs:
+        avg_len = sum(sum(d.terms.values()) for d in index.docs) / len(index.docs)
+    # BM25 长度归一化因子：b 越大，长文档惩罚越强。
+    norm = 1.0 - b + b * (doc_len / avg_len) if avg_len > 0 else 1.0
+
     score = 0.0
     for term in query_terms:
         # 1) 精确 token 命中。
         tf = doc.terms.get(term, 0)
         if tf > 0:
             idf = _idf(term, index)
-            score += idf * tf * (BM25_K1 + 1.0) / (tf + BM25_K1)
+            tf_norm = tf / norm if norm > 0 else tf
+            score += idf * tf_norm * (k1 + 1.0) / (tf_norm + k1)
             continue
         # 2) 子串重叠命中：查询词项是文档词项的子串（或反之）。
         # 对每个查询词项，仅在所有匹配 dt 中累加「最佳匹配」一次，避免同一
@@ -445,7 +553,8 @@ def _bm25_score(query_terms: List[str], doc: DocEntry, index: Index) -> float:
                 continue
             if term in dt or dt in term:
                 idf = _idf(dt, index)
-                contrib = idf * dtf * (BM25_K1 + 1.0) / (dtf + BM25_K1)
+                dtf_norm = dtf / norm if norm > 0 else dtf
+                contrib = idf * dtf_norm * (k1 + 1.0) / (dtf_norm + k1)
                 if contrib > best_contrib:
                     best_contrib = contrib
         score += best_contrib

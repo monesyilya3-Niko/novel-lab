@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "tracking-state.schema.json",
+  "title": "长文本状态追踪权威层",
+  "description": "文档用途的 schema，描述 scripts/state_tracker.py 维护的 _tracking-state.json 权威层结构。运行时不做强制校验（state_tracker 用 Python 内部校验），此处仅供人阅读与下游理解。",
+  "type": "object",
+  "required": ["schema_version", "book_title", "last_chapter", "state_revision", "context", "character_snapshots", "foreshadow", "timeline_events"],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "状态协议版本，当前为 1"
+    },
+    "book_title": {
+      "type": "string",
+      "description": "书名"
+    },
+    "last_chapter": {
+      "type": "integer",
+      "description": "最后已提交章节号"
+    },
+    "state_revision": {
+      "type": "integer",
+      "description": "单调递增的状态修订号，用于拒绝基于旧状态构造的 stale 事务"
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "position": {
+          "type": "object",
+          "properties": {
+            "volume": { "type": "string" },
+            "volume_start_chapter": { "type": "integer" },
+            "story_time": { "type": "string" },
+            "scene": { "type": "string" }
+          }
+        },
+        "long_term_constraints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "长期约束（整份提交的当前值）"
+        },
+        "active_character_names": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "活跃核心角色，最多 6 人且必须已有当前快照"
+        },
+        "continuity_risks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "连贯性风险（整份提交的当前值）"
+        },
+        "recent_chapters": {
+          "type": "array",
+          "description": "近三章速记，由工具派生，最多 3 条"
+        },
+        "next_chapter_commitments": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "下一章承诺，由工具从本章 delta 派生"
+        }
+      }
+    },
+    "character_snapshots": {
+      "type": "object",
+      "description": "角色名 → 快照。单快照目标 ≤4096 字节（超警告），硬上限 8192 字节（超拒绝）",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "identity": { "type": "string" },
+          "location": { "type": "string" },
+          "goal": { "type": "string" },
+          "state": { "type": "string" },
+          "abilities_resources": { "type": "array", "items": { "type": "string" } },
+          "relationships": { "type": "array", "items": { "type": "string" } },
+          "knowledge": { "type": "array", "items": { "type": "string" } },
+          "open_threads": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "foreshadow": {
+      "type": "array",
+      "description": "当前活跃伏笔（已埋设过的当前状态，未来规划留在大纲）。init 事务可直接提交顶层 foreshadow（整份当前值），append/revision 则通过 delta.foreshadow_changes 以 upsert/delete 更新。",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "summary": { "type": "string" },
+          "planted_chapter": { "type": ["integer", "null"] },
+          "planned_resolution_chapter": { "type": ["integer", "null"] },
+          "status": { "type": "string", "description": "已埋 / 已回收 / 已作废 等" },
+          "importance": { "type": "string" }
+        }
+      }
+    },
+    "timeline_events": {
+      "type": "array",
+      "description": "时间线事件（作者真相与读者已知）。init 事务可直接提交顶层 timeline_events（整份当前值），append/revision 则通过 delta.timeline_events 以 upsert/delete 更新。",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "story_time": { "type": "string" },
+          "objective_fact": { "type": "string" },
+          "reader_knowledge": { "type": "string" },
+          "reveal_status": { "type": "string", "description": "未揭示 / 部分揭示 / 已揭示" },
+          "reveal_chapter": { "type": ["integer", "null"] },
+          "characters": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

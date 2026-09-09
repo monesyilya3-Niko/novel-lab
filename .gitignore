@@ -11,8 +11,21 @@ corpus/
 __pycache__/
 *.pyc
 
+# 检索倒排索引缓存（可重建，非资产）
+index/
+
+# 临时调试脚本（含凭据抓取/接口探测等，严禁入库）
+_check*.py
+_get_*.py
+_test_browser.py
+_test_chapter.py
+_tmp*.py
+
 # 端到端写作测试产物（本地验证用，不入库）
 novel_test/
+
+# QC 质检临时产物（QA 测试输出，不入库）
+qa_qc_real.json
 
 # 写作项目工作区（不入库）
 novel/

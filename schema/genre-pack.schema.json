@@ -54,7 +54,7 @@
             "properties": {
               "role": {
                 "type": "string",
-                "enum": ["铺垫", "推进", "转折", "爆发", "缓冲", "过渡"]
+                "enum": ["铺垫", "推进", "转折", "爆发", "缓冲", "过渡", "甜蜜", "拉扯", "告白"]
               },
               "ratio": { "type": "number", "description": "在全书中的占比" },
               "typical_position": {
@@ -79,7 +79,7 @@
                 "properties": {
                   "type": {
                     "type": "string",
-                    "enum": ["悬念揭示", "危机降临", "身份反转", "实力展示", "情感冲击", "信息断点", "对手登场"]
+                    "enum": ["悬念揭示", "危机降临", "身份反转", "实力展示", "情感冲击", "信息断点", "对手登场", "误会升级", "甜蜜瞬间", "暧昧拉扯"]
                   },
                   "frequency": { "type": "number" },
                   "strength": { "type": "integer", "minimum": 1, "maximum": 10 },

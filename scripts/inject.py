@@ -41,6 +41,13 @@ except ImportError:  # 兼容无检索模块时的最小运行。
     def collect_assets(genre, book_names=None):
         return {}
 
+# 二期 · 长文本状态追踪（同目录），供 tracking_state 只读注入使用。
+try:
+    from state_tracker import build_injection_context as _build_tracking_context
+except ImportError:  # 兼容无状态追踪模块时的最小运行。
+    def _build_tracking_context(state, **kwargs):
+        return ""
+
 
 def retrieve_for_intent(intent: str, distilled=None, genre: str | None = None, top_k: int = 5) -> list:
     """按意图字符串检索蒸馏资产片段（二期 · 检索桥接）。
@@ -409,7 +416,7 @@ def render_commercial_obs(co: dict) -> str:
 
 # --------------------------------------------------------------------------
 
-def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None, context_intent: str | None = None) -> str:
+def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None, context_intent: str | None = None, tracking_state: dict | None = None) -> str:
     meta = voice.get("meta") or {}
     source = meta.get("source_title", "未知")
 
@@ -469,6 +476,14 @@ def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, g
         sections.append("## 七、写作技法（craft-card · 可执行的写作技巧）\n\n" + cc)
 
     sections.append("## 八、禁忌（banned）\n\n" + render_banned(voice.get("banned") or {}))
+
+    # 长文本状态追踪段（只读注入，题材隔离）：角色快照 + 活跃伏笔 + 近三章速记 + 下一章承诺。
+    # 未传 tracking_state（默认 None）时完全跳过，保证与一期字节级一致。
+    if tracking_state:
+        tracking_text = _build_tracking_context(tracking_state)
+        if tracking_text:
+            sections.append(tracking_text)
+
     sections.append("""
 ## 九、写作执行清单（硬性要求，逐条自查）
 
@@ -498,6 +513,7 @@ def main():
     ap.add_argument("--genre-pack", help="题材包 JSON（可选，注入题材级规则）")
     ap.add_argument("--craft-card", help="craft-card JSON（可选，注入写作技法）")
     ap.add_argument("--distilled", help="蒸馏规则 JSON（可选，注入跨书聚合规则）")
+    ap.add_argument("--tracking-state", help="追踪状态 JSON（可选，注入长文本连续性上下文）")
     ap.add_argument("--out", help="输出路径，默认 prompts/generated/<名>-writing-prompt.md")
     args = ap.parse_args()
 
@@ -507,8 +523,9 @@ def main():
     genre_pack = json.loads(Path(args.genre_pack).read_text(encoding="utf-8")) if args.genre_pack else None
     craft_card = json.loads(Path(args.craft_card).read_text(encoding="utf-8")) if args.craft_card else None
     distilled = json.loads(Path(args.distilled).read_text(encoding="utf-8")) if args.distilled else None
+    tracking_state = json.loads(Path(args.tracking_state).read_text(encoding="utf-8")) if args.tracking_state else None
 
-    prompt = build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled)
+    prompt = build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled, tracking_state=tracking_state)
 
     name = Path(args.voice).stem.replace("-voice-card", "")
     out = Path(args.out) if args.out else PROMPTS_DIR / f"{name}-writing-prompt.md"

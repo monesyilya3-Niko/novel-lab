@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="DkYGt7KyDgPWffHlOC8lj9">
+<head data-page-node-id="sjgotbrSGpAUffhLqguWDk">
+<meta charset="UTF-8" data-page-node-id="jMGBnz8SrV4MxQ6Y7pjfnc">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="wb8SEeDUw8DdBfPrr6NuFL">
+<title>Novel Lab · 拆书资产看板</title>
+<style>
+  :root {
+    --bg: #0d0b10;
+    --bg-elev: #141119;
+    --bg-card: #191622;
+    --bg-card-2: #1e1a28;
+    --ink: #e8e2d8;
+    --ink-dim: #a89f93;
+    --ink-faint: #6f685c;
+    --gold: #c9a55a;
+    --gold-bright: #e3c37e;
+    --gold-dim: #8a7442;
+    --ink-accent: #7a8a9a;
+    --red: #c05a4a;
+    --red-dim: #8a4a3e;
+    --green: #5a8a6a;
+    --teal: #5a8a8a;
+    --line: #2a2434;
+    --line-soft: #241f2e;
+    --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    --sans: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --shadow: 0 8px 30px rgba(0,0,0,0.35);
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.7;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(1200px 500px at 15% -10%, rgba(201,165,90,0.06), transparent 60%),
+      radial-gradient(900px 500px at 90% 0%, rgba(122,138,154,0.05), transparent 55%);
+    min-height: 100vh;
+  }
+
+  /* 顶部导航 */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px);
+    background: rgba(13,11,16,0.82);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav {
+    max-width: 1280px; margin: 0 auto; padding: 16px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+    display: grid; place-items: center; font-family: var(--serif);
+    color: #1a1408; font-weight: 700; font-size: 17px;
+    box-shadow: 0 0 18px rgba(201,165,90,0.35);
+  }
+  .brand-name { font-family: var(--serif); font-size: 19px; letter-spacing: 1px; color: var(--gold-bright); }
+  .brand-sub { font-size: 11px; color: var(--ink-faint); letter-spacing: 3px; text-transform: uppercase; }
+  .nav-meta { text-align: right; font-size: 12px; color: var(--ink-dim); }
+  .nav-meta .gen { color: var(--gold); font-family: var(--serif); font-size: 13px; }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 32px 28px 80px; }
+
+  /* 概览区 */
+  .hero { margin-bottom: 36px; }
+  .hero h1 {
+    font-family: var(--serif); font-weight: 700; font-size: 34px;
+    letter-spacing: 2px; color: var(--ink);
+  }
+  .hero h1 .accent { color: var(--gold-bright); }
+  .hero p { color: var(--ink-dim); margin-top: 10px; font-size: 15px; max-width: 720px; }
+  .hero .rule {
+    display: inline-block; margin-top: 18px; padding: 4px 14px;
+    border: 1px solid var(--gold-dim); border-radius: 20px;
+    color: var(--gold); font-size: 12px; letter-spacing: 1px;
+  }
+
+  /* 概览统计卡片 */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 30px 0 40px; }
+  .stat {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 22px; position: relative; overflow: hidden;
+    transition: transform .2s, border-color .2s;
+  }
+  .stat:hover { transform: translateY(-3px); border-color: var(--gold-dim); }
+  .stat::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--gold); opacity: .7;
+  }
+  .stat .num { font-family: var(--serif); font-size: 34px; font-weight: 700; color: var(--gold-bright); line-height: 1.1; }
+  .stat .label { font-size: 13px; color: var(--ink-dim); margin-top: 4px; letter-spacing: .5px; }
+  .stat .sub { font-size: 11px; color: var(--ink-faint); margin-top: 2px; }
+
+  /* 书籍切换 tabs */
+  .tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 28px; }
+  .tab {
+    padding: 10px 20px; border-radius: 24px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg-card);
+    color: var(--ink-dim); font-size: 14px; font-family: var(--serif);
+    letter-spacing: 1px; transition: all .2s;
+  }
+  .tab:hover { border-color: var(--gold-dim); color: var(--ink); }
+  .tab.active {
+    background: linear-gradient(135deg, rgba(201,165,90,0.18), rgba(201,165,90,0.06));
+    border-color: var(--gold); color: var(--gold-bright);
+    box-shadow: 0 0 16px rgba(201,165,90,0.2);
+  }
+  .tab .badge {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 10px;
+    background: rgba(201,165,90,0.15); font-size: 11px; color: var(--gold);
+  }
+
+  /* 区块标题 */
+  .section-title {
+    display: flex; align-items: center; gap: 12px; margin: 44px 0 18px;
+  }
+  .section-title .bar { width: 4px; height: 22px; background: var(--gold); border-radius: 2px; }
+  .section-title h2 { font-family: var(--serif); font-size: 21px; letter-spacing: 1px; color: var(--ink); }
+  .section-title .en { font-size: 11px; color: var(--ink-faint); letter-spacing: 2px; text-transform: uppercase; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+
+  .card {
+    background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 24px; position: relative;
+  }
+  .card h3 {
+    font-family: var(--serif); font-size: 16px; color: var(--gold-bright);
+    letter-spacing: 1px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card h3 .ico { font-size: 15px; }
+  .card h4 { font-size: 14px; color: var(--ink); margin: 14px 0 8px; }
+  .card p { color: var(--ink-dim); font-size: 14px; }
+  .card .dim { color: var(--ink-faint); font-size: 12px; }
+
+  /* 信息键值行 */
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 8px 14px; font-size: 14px; }
+  .kv .k { color: var(--ink-faint); }
+  .kv .v { color: var(--ink); }
+
+  /* 五感条 */
+  .sense-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+  .sense-label { width: 64px; font-size: 13px; color: var(--ink-dim); }
+  .sense-bar { flex: 1; height: 9px; background: var(--bg-card-2); border-radius: 5px; overflow: hidden; }
+  .sense-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--gold), var(--gold-bright)); transition: width .6s ease; }
+  .sense-val { width: 44px; text-align: right; font-size: 12px; color: var(--gold); font-family: var(--serif); }
+
+  /* 词云 / tag */
+  .tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tag {
+    padding: 5px 13px; border-radius: 16px; font-size: 13px;
+    background: var(--bg-card-2); color: var(--ink-dim); border: 1px solid var(--line-soft);
+  }
+  .tag.gold { background: rgba(201,165,90,0.12); color: var(--gold-bright); border-color: var(--gold-dim); }
+  .tag.red { background: rgba(192,90,74,0.12); color: #d89080; border-color: var(--red-dim); }
+  .tag.green { background: rgba(90,138,106,0.12); color: #8ac09a; border-color: #3d5c47; }
+
+  /* 技法维度列表 */
+  .dim-item { border-bottom: 1px solid var(--line-soft); padding: 12px 0; }
+  .dim-item:last-child { border-bottom: none; }
+  .dim-head { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .dim-name { font-family: var(--serif); font-size: 15px; color: var(--ink); letter-spacing: .5px; }
+  .dim-count { font-size: 12px; color: var(--gold); background: rgba(201,165,90,0.1); padding: 2px 10px; border-radius: 12px; }
+  .dim-body { display: none; margin-top: 10px; }
+  .dim-item.open .dim-body { display: block; }
+  .dim-item.open .dim-name { color: var(--gold-bright); }
+  .tech { background: var(--bg-card-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; border-left: 2px solid var(--gold-dim); }
+  .tech .tname { font-size: 14px; color: var(--gold-bright); font-weight: 600; margin-bottom: 6px; }
+  .tech .tdesc { font-size: 13px; color: var(--ink-dim); margin-bottom: 4px; }
+  .tech .tlabel { font-size: 11px; color: var(--ink-faint); letter-spacing: 1px; margin-top: 6px; text-transform: uppercase; }
+
+  /* 人物卡 */
+  .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .char-card { background: var(--bg-card-2); border-radius: 10px; padding: 14px 16px; border: 1px solid var(--line-soft); }
+  .char-card .cname { font-family: var(--serif); font-size: 15px; color: var(--ink); }
+  .char-card .crole { font-size: 11px; color: var(--gold); margin-left: 8px; }
+  .char-card .cdesc { font-size: 12px; color: var(--ink-dim); margin-top: 6px; }
+
+  /* 桥段卡 */
+  .trope-card { background: var(--bg-card-2); border-radius: 10px; padding: 16px 18px; border: 1px solid var(--line-soft); }
+  .trope-card .tname { font-family: var(--serif); font-size: 15px; color: var(--gold-bright); }
+  .trope-card .tcat { font-size: 11px; color: var(--ink-faint); margin-left: 8px; letter-spacing: 1px; }
+  .trope-card .tscope { font-size: 11px; color: var(--teal); margin-top: 4px; }
+  .trope-card .tsetup { font-size: 13px; color: var(--ink-dim); margin-top: 10px; }
+  .trope-card .tesc { font-size: 12px; color: var(--ink-faint); margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--line); }
+
+  /* 报告区 */
+  .report-box { background: var(--bg-card); border: 1px solid var(--line); border-radius: var(--radius); padding: 0; overflow: hidden; }
+  .report-tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .report-tab { padding: 12px 20px; cursor: pointer; font-size: 14px; color: var(--ink-dim); border-right: 1px solid var(--line-soft); }
+  .report-tab.active { color: var(--gold-bright); background: rgba(201,165,90,0.06); }
+  .report-body { padding: 22px 26px; font-family: var(--serif); font-size: 15px; color: var(--ink); max-height: 600px; overflow-y: auto; white-space: pre-wrap; }
+
+  /* hook 频率条 */
+  .freq-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .freq-label { width: 80px; font-size: 13px; color: var(--ink-dim); }
+  .freq-bar { flex: 1; height: 16px; background: var(--bg-card-2); border-radius: 4px; overflow: hidden; }
+  .freq-fill { height: 100%; background: linear-gradient(90deg, var(--ink-accent), var(--gold)); }
+  .freq-val { width: 30px; text-align: right; font-size: 13px; color: var(--gold); }
+
+  .note { font-size: 12px; color: var(--ink-faint); font-style: italic; margin-top: 8px; }
+  .empty { color: var(--ink-faint); font-style: italic; padding: 20px 0; text-align: center; }
+
+  footer {
+    border-top: 1px solid var(--line); padding: 26px 28px 40px;
+    text-align: center; color: var(--ink-faint); font-size: 12px;
+  }
+  footer .sep { color: var(--gold-dim); margin: 0 8px; }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 26px; }
+    .kv { grid-template-columns: 96px 1fr; }
+    .nav { padding: 14px 18px; }
+    main { padding: 24px 18px 60px; }
+  }
+</style>
+</head>
+<body data-page-node-id="pAvQyaUZysrEucnHcTsEXE">
+<header data-page-node-id="Zzkc7PUtS55nrrSkC0bYsL">
+  <div class="nav" data-page-node-id="GUAbH9gn9TNtiiIMMzlUQc">
+    <div class="brand" data-page-node-id="IJb6WyES5oZiFbU9y5cmRg">
+      <div class="brand-mark" data-page-node-id="Kq9TRVU59AOTAq0f1m5t0A">墨</div>
+      <div data-page-node-id="hwmGU0ZdysAK3zZ8z0xBmj">
+        <div class="brand-name" data-page-node-id="3c9oLDkbJutZa7R9r8lPgE">Novel Lab</div>
+        <div class="brand-sub" data-page-node-id="J1XPNV2yDU0rvqcQn764t2">拆书资产 · 看板</div>
+      </div>
+    </div>
+    <div class="nav-meta" data-page-node-id="tmceJ2iiR0hufDnqFNGGKB">
+      <div class="gen" id="nav-genre" data-page-node-id="HijtTpWBB8yepWYY7T8EZ0">校园救赎 · campus-redemption</div>
+      <div id="nav-time" data-page-node-id="1yknkUlVuj6Q6rwPm4ilPX">生成于 —</div>
+    </div>
+  </div>
+</header>
+
+<main data-page-node-id="hESvxKfTUsWgMAtZbZGFKr">
+  <!-- Hero -->
+  <div class="hero" data-page-node-id="jYLsn5VqjwT1MGUNfKrqsE">
+    <h1 data-page-node-id="ktEaGJ0b4GBDK4qHZ9mx5h">小说拆书 <span class="accent" data-page-node-id="s8wYPquAk6e7fBfjv31GCD">资产可视化</span> 看板</h1>
+    <p data-page-node-id="PQJ1gp0sFuo5kd0P34JXPS">将番茄小说「校园救赎」题材四本样本的声线、笔法、结构、商业观察提炼为可复用的创作资产。数据由纯 Python 流水线从资产与报告中自动提取，前端零依赖、本地静态渲染。</p>
+    <span class="rule" data-page-node-id="TyitDH2YqaT5FZVBcTigKq">三条铁律 · 题材隔离 / 万字报告 / 纯标准库</span>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div class="stats" id="stats" data-page-node-id="X0oYlTTLs933qznCmV2lfa"></div>
+
+  <!-- 书籍切换 -->
+  <div class="tabs" id="tabs" data-page-node-id="jQLB8dA7YAHnOWTnhhArSY"></div>
+
+  <!-- 当前书籍 概览 -->
+  <div class="section-title" data-page-node-id="UeIjc2trcJvdGJLsdqvobC">
+    <div class="bar" data-page-node-id="wPDA6IMXjwrlT0mJHMPXTl"></div>
+    <h2 data-page-node-id="ljZYVEjas8Xswq6YEWUSTg">书籍档案</h2>
+    <span class="en" data-page-node-id="jWHZU3aldl6Y4iEBteUdyM">Book Profile</span>
+  </div>
+  <div class="grid-2" id="book-profile" data-page-node-id="nMklpBlmuGsvXbtYTeWvbZ"></div>
+
+  <!-- 声线卡 -->
+  <div class="section-title" data-page-node-id="ZIAnRVtRc6QTNMe0W3L5BL">
+    <div class="bar" data-page-node-id="RYDrTllqBsL7coLyi8Egfs"></div>
+    <h2 data-page-node-id="xLO2U8SoHz1rO01BQggZWf">声线卡</h2>
+    <span class="en" data-page-node-id="e7jrK7W8a7rUzz8wBBaUW7">Voice Card</span>
+  </div>
+  <div class="grid-2" id="voice-card" data-page-node-id="pcyBghBIVakKny9QoYoYQE"></div>
+
+  <!-- 笔法卡 -->
+  <div class="section-title" data-page-node-id="GNAI9Behxo3DqB4eP4AyfK">
+    <div class="bar" data-page-node-id="VgcOoV10aZgc6ACM0kqK9u"></div>
+    <h2 data-page-node-id="OktBPbUCyv56HY4CP2OFYt">笔法卡</h2>
+    <span class="en" data-page-node-id="oo3jAbreovFOGU2DED51EE">Craft Card</span>
+  </div>
+  <div id="craft-card" data-page-node-id="DpjAY6CMEe8xKHh6QjDPsG"></div>
+
+  <!-- 结构观察 -->
+  <div class="section-title" data-page-node-id="B9QNjIgr1pwG6T50k2JHj4">
+    <div class="bar" data-page-node-id="loJDHD8vmSTlpXggANTbYn"></div>
+    <h2 data-page-node-id="US7xzFTDHE3brdfhuvFuPl">结构观察</h2>
+    <span class="en" data-page-node-id="jO2ceyxbRwZ1VCK81PPCTx">Structure</span>
+  </div>
+  <div class="grid-2" id="structure-obs" data-page-node-id="GaKAoTRsnTheqDFpEzg67w"></div>
+
+  <!-- 商业观察 -->
+  <div class="section-title" data-page-node-id="8VUxQ8k64FNmDZKfGBwGy2">
+    <div class="bar" data-page-node-id="nryzWWhGzPf0ywBA5kPQaw"></div>
+    <h2 data-page-node-id="1aXibZjb71jlZBtoWWrAaG">商业观察</h2>
+    <span class="en" data-page-node-id="Exbn58RkZfZwCLaZRrI6eY">Commercial</span>
+  </div>
+  <div id="commercial-obs" data-page-node-id="6lGsHfb1RCkCvcWL7wlzgZ"></div>
+
+  <!-- 题材包 -->
+  <div class="section-title" data-page-node-id="VxS7brtZCxsbLV2HrsGFhl">
+    <div class="bar" data-page-node-id="AOUrRCaJn61uVjKH9ecGBJ"></div>
+    <h2 data-page-node-id="ldiWvYwGNt3xQDxK3ItIZq">题材包</h2>
+    <span class="en" data-page-node-id="A5wEugYZPL5sdtEAR0mcIV">Genre Pack</span>
+  </div>
+  <div id="genre-pack" data-page-node-id="mImEpjUdBCFbw1LxLI2YTh"></div>
+
+  <!-- 蒸馏层 -->
+  <div class="section-title" data-page-node-id="jYQu3rP1UmzDN21vL40H14">
+    <div class="bar" data-page-node-id="4Q2GVFZQA5Da19iXuD2OA5"></div>
+    <h2 data-page-node-id="AT6QkV5G0lfR9wkPDcMZS4">蒸馏规则</h2>
+    <span class="en" data-page-node-id="L0Z94LTHftAMWA7EGtJvpk">Distilled</span>
+  </div>
+  <div id="distilled" data-page-node-id="0AzVtXv9MO7QUFSs2iaajf"></div>
+
+  <!-- 桥段库 -->
+  <div class="section-title" data-page-node-id="rAoExtUmrhG32IDkLqQfgD">
+    <div class="bar" data-page-node-id="pzT3wFfDm4ey6uZQ9ztukw"></div>
+    <h2 data-page-node-id="DuzBuRDZW4OFMLHNU1Hk7A">桥段库</h2>
+    <span class="en" data-page-node-id="HNCxrBTx2sApmlJZC1C7E6">Trope Library</span>
+  </div>
+  <div id="trope-library" data-page-node-id="SErKrx2Eq23I1QjQNxKXKh"></div>
+
+  <!-- 报告 -->
+  <div class="section-title" data-page-node-id="nkdY5L5CRkEC3O1duZAAHZ">
+    <div class="bar" data-page-node-id="hJ4U9MuEsrN1arUjRecQVy"></div>
+    <h2 data-page-node-id="O0T2RvYuQiZGbTYSrMe8WE">拆书报告</h2>
+    <span class="en" data-page-node-id="k8SQMMjxUW7X69gKSI4pY7">Reports</span>
+  </div>
+  <div class="report-box" data-page-node-id="aSr5gTWJr7AD88q9QjHdpL">
+    <div class="report-tabs" id="report-tabs" data-page-node-id="j5Y7qDGpWSVKB8DUiYo50u"></div>
+    <div class="report-body" id="report-body" data-page-node-id="xxT00B5q5tAYhFySm804Uj"></div>
+  </div>
+</main>
+
+<footer data-page-node-id="kNtEoJO98PTnC0uB5j3jZs">
+  <span data-page-node-id="AmChVtJeE0V4U2c0m45499">Novel Lab</span><span class="sep" data-page-node-id="3mS24eUSI8LOt5dIgv34ZA">·</span>
+  <span data-page-node-id="8qUy80ia6qoVKc5REHrHyC">纯 Python 3.13 · 零第三方依赖</span><span class="sep" data-page-node-id="bOWjCpDGBpQfkWwEbk7Elk">·</span>
+  <span id="foot-time" data-page-node-id="Lntfw2WU44qER91YTqgNZc"></span>
+</footer>
+
+<script src="./dashboard-data.js"></script>
+<script>
+(function(){
+  const DATA = window.__NOVEL_LAB__;
+  if(!DATA){ document.body.innerHTML = '<div style="padding:60px;text-align:center;color:#c05a4a">数据未加载：请先运行 python dashboard/build_data.py</div>'; return; }
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmt = (n) => n == null ? '—' : Number(n).toLocaleString('zh-CN');
+
+  // 解析可能为 JSON 字符串的字段
+  function parseMaybe(v){
+    if(typeof v !== 'string') return v;
+    const t = v.trim();
+    if(t.startsWith('{') || t.startsWith('[')){
+      try { return JSON.parse(t); } catch(e){ return v; }
+    }
+    return v;
+  }
+
+  // 时间显示
+  const genTime = DATA.generated_at || '';
+  $('nav-time').textContent = '生成于 ' + genTime;
+  $('foot-time').textContent = '数据快照 · ' + genTime;
+
+  // 书籍列表
+  const books = DATA.books || [];
+  const genrePack = DATA.genre_pack || {};
+  const distilled = DATA.distilled || {};
+  const tropeLib = DATA.trope_library || {};
+
+  // 题材名
+  const genreName = (genrePack.meta && genrePack.meta.name) || '校园救赎';
+  $('nav-genre').textContent = genreName + ' · ' + ((genrePack.meta && genrePack.meta.id) || '');
+
+  let currentBook = books[0];
+
+  /* ---------- 概览统计 ---------- */
+  function renderStats(){
+    const totalWords = books.reduce((s,b)=> s + (b.voice && b.voice.total_words || 0), 0);
+    const totalReport = books.reduce((s,b)=> s + (b.total_report_chars || 0), 0);
+    const totalChapters = books.reduce((s,b)=> s + (b.structure && b.structure.chapter_count || 0), 0);
+    const tropes = (tropeLib.tropes || []).length;
+    const distRules = Object.values(distilled).reduce((s,d)=> s + ((d.rules||[]).length), 0);
+    const stats = [
+      { num: books.length, label: '拆解样本', sub: '番茄小说 · 校园救赎' },
+      { num: fmt(totalWords), label: '累计样本字数', sub: '四书合计' },
+      { num: fmt(totalReport), label: '报告字符总量', sub: '拆书 + 笔法' },
+      { num: totalChapters, label: '章节结构', sub: '已解析章节数' },
+      { num: distRules, label: '蒸馏规则', sub: '跨书聚合硬/软规则' },
+      { num: tropes, label: '桥段库', sub: '可复用创作模式' },
+    ];
+    $('stats').innerHTML = stats.map(s => `
+      <div class="stat">
+        <div class="num">${s.num}</div>
+        <div class="label">${s.label}</div>
+        <div class="sub">${s.sub}</div>
+      </div>`).join('');
+  }
+
+  /* ---------- 书籍 tabs ---------- */
+  function renderTabs(){
+    $('tabs').innerHTML = books.map(b => `
+      <div class="tab ${b===currentBook?'active':''}" data-id="${esc(b.id)}">
+        ${esc(b.title || b.id)}<span class="badge">${fmt(b.voice && b.voice.total_words)}字</span>
+      </div>`).join('');
+    document.querySelectorAll('.tab').forEach(t => {
+      t.onclick = () => {
+        currentBook = books.find(b => b.id === t.dataset.id);
+        renderTabs(); renderBook();
+      };
+    });
+  }
+
+  /* ---------- 渲染当前书籍 ---------- */
+  function renderBook(){
+    const b = currentBook;
+    const v = b.voice || {};
+    const c = b.craft || {};
+    const s = b.structure || {};
+    const cm = b.commercial || {};
+
+    // 书籍档案
+    const sensory = parseMaybe(v.sensory) || {};
+    const senses = [
+      ['视觉', sensory.visual], ['听觉', sensory.auditory], ['触觉', sensory.tactile],
+      ['味觉', sensory.gustatory], ['嗅觉', sensory.olfactory],
+    ];
+    const maxSense = Math.max(...senses.map(x=>x[1]||0), 1);
+    const chars = (v.characters||[]).map(parseMaybe);
+
+    $('book-profile').innerHTML = `
+      <div class="card">
+        <h3><span class="ico">📖</span> 基础档案</h3>
+        <div class="kv">
+          <span class="k">书名</span><span class="v">${esc(b.title || b.id)}</span>
+          <span class="k">样本字数</span><span class="v">${fmt(v.total_words)} 字</span>
+          <span class="k">声线置信度</span><span class="v">${v.confidence != null ? (v.confidence*100).toFixed(0)+'%' : '—'}</span>
+          <span class="k">章节数</span><span class="v">${s.chapter_count != null ? s.chapter_count : '—'}</span>
+          <span class="k">叙述视角</span><span class="v">${esc(v.pov || '—')}</span>
+          <span class="k">对话占比</span><span class="v">${v.dialogue_ratio != null ? (v.dialogue_ratio*100).toFixed(1)+'%' : '—'}</span>
+          <span class="k">潜台词层次</span><span class="v">${esc(v.subtext_level || '—')}</span>
+          <span class="k">情绪模式</span><span class="v">${esc(v.emotion_mode || '—')}</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3><span class="ico">🎨</span> 五感分布</h3>
+        ${senses.map(([k,val]) => `
+          <div class="sense-row">
+            <span class="sense-label">${k}</span>
+            <div class="sense-bar"><div class="sense-fill" style="width:${((val||0)/maxSense*100).toFixed(0)}%"></div></div>
+            <span class="sense-val">${val != null ? (val*100).toFixed(0)+'%' : '—'}</span>
+          </div>`).join('')}
+        <div class="note">五感调用比例反映该书的感官叙事偏好</div>
+      </div>
+      <div class="card">
+        <h3><span class="ico">🏷️</span> 比喻域 / 招牌手法</h3>
+        <h4>比喻域</h4>
+        <div class="tags">${(v.metaphor_domains||[]).map(m=>`<span class="tag gold">${esc(m)}</span>`).join('')||'<span class="dim">无</span>'}</div>
+        <h4>招牌手法</h4>
+        <div>${(v.signature_devices||[]).map(sd=>`<div class="tech" style="margin-top:8px"><div class="tdesc">${esc(sd)}</div></div>`).join('')||'<span class="dim">无</span>'}</div>
+      </div>
+      <div class="card">
+        <h3><span class="ico">👥</span> 人物声线（${chars.length}）</h3>
+        <div class="char-grid">
+          ${chars.map(ch => {
+            if(typeof ch !== 'object' || !ch) return '';
+            const sig = ch.speech_signature || {};
+            return `<div class="char-card">
+              <span class="cname">${esc(ch.name||'?')}</span><span class="crole">${esc(ch.role||'')}</span>
+              <div class="cdesc">${esc((sig.refusal_pattern||ch.desc||'').slice(0,80))}</div>
+            </div>`;
+          }).join('') || '<div class="empty">无人声线数据</div>'}
+        </div>
+      </div>`;
+
+    // 声线卡 - 负面空间
+    const banned = parseMaybe(v.banned) || {};
+    renderVoiceCard(banned, v);
+
+    // 笔法卡
+    renderCraft(c);
+
+    // 结构观察
+    renderStructure(s);
+
+    // 商业观察
+    renderCommercial(cm);
+
+    // 报告
+    renderReports(b);
+  }
+
+  function renderVoiceCard(banned, v){
+    const words = banned.never_used_words || [];
+    const structs = banned.avoided_structures || [];
+    const taboos = banned.genre_taboos || [];
+    $('voice-card').innerHTML = `
+      <div class="card">
+        <h3><span class="ico">🚫</span> 禁用词（${words.length}）</h3>
+        <div class="tags">${words.map(w=>`<span class="tag red">${esc(w)}</span>`).join('')||'<span class="dim">无</span>'}</div>
+        <div class="note">该声线明确规避的「AI 味」高频词</div>
+      </div>
+      <div class="card">
+        <h3><span class="ico">⚠️</span> 规避结构（${structs.length}）</h3>
+        <div class="tags">${structs.map(s=>`<span class="tag red">${esc(s)}</span>`).join('')||'<span class="dim">无</span>'}</div>
+      </div>
+      <div class="card">
+        <h3><span class="ico">🔒</span> 题材禁忌（${taboos.length}）</h3>
+        <div class="tags">${taboos.map(t=>`<span class="tag green">${esc(t)}</span>`).join('')||'<span class="dim">无</span>'}</div>
+      </div>
+      <div class="card">
+        <h3><span class="ico">💬</span> 情绪表达示例</h3>
+        ${(v.emotion_examples||[]).map(e => {
+          e = parseMaybe(e);
+          if(typeof e !== 'object' || !e) return '';
+          return `<div class="tech">
+            <div class="tname">${esc(e.emotion||'情绪')}</div>
+            <div class="tdesc">${esc(e.pattern||'')}</div>
+            ${e.anti_pattern ? `<div class="tlabel">规避</div><div class="tdesc">${esc(e.anti_pattern)}</div>` : ''}
+          </div>`;
+        }).join('') || '<div class="empty">无</div>'}
+      </div>`;
+  }
+
+  function renderCraft(c){
+    const dims = c.dimensions || [];
+    const summary = c.summary || {};
+    $('craft-card').innerHTML = `
+      <div class="card" style="margin-bottom:18px">
+        <h3><span class="ico">⭐</span> 笔法精髓</h3>
+        ${(summary.top_3||[]).map(t=>`<div class="tech"><div class="tdesc">${esc(t)}</div></div>`).join('')||''}
+        <h4>独特性</h4>
+        ${(summary.unique||[]).map(u=>`<div class="tech"><div class="tdesc">${esc(u)}</div></div>`).join('')||'<span class="dim">无</span>'}
+      </div>
+      <div class="card">
+        <h3><span class="ico">🛠️</span> 技法维度（${dims.length}）</h3>
+        ${dims.map((d,i) => `
+          <div class="dim-item" data-dim="${i}">
+            <div class="dim-head">
+              <span class="dim-name">${esc(d.dimension||'')}</span>
+              <span class="dim-count">${d.count||0} 条</span>
+            </div>
+            <div class="dim-body">
+              ${(d.techniques||[]).map(t => `
+                <div class="tech">
+                  <div class="tname">${esc(t.name||'')}</div>
+                  <div class="tdesc">${esc(t.desc||'')}</div>
+                  ${t.effect ? `<div class="tlabel">效果</div><div class="tdesc">${esc(t.effect)}</div>` : ''}
+                  ${t.skeleton ? `<div class="tlabel">骨架</div><div class="tdesc">${esc(t.skeleton)}</div>` : ''}
+                  ${t.anti ? `<div class="tlabel">规避</div><div class="tdesc">${esc(t.anti)}</div>` : ''}
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+    document.querySelectorAll('.dim-item').forEach(item => {
+      item.querySelector('.dim-head').onclick = () => item.classList.toggle('open');
+    });
+  }
+
+  function renderStructure(s){
+    const agg = s.aggregate || {};
+    const hookFreq = agg.hook_type_freq || {};
+    const entries = Object.entries(hookFreq).sort((a,b)=>b[1]-a[1]);
+    const maxHook = Math.max(...entries.map(e=>e[1]), 1);
+    $('structure-obs').innerHTML = `
+      <div class="card">
+        <h3><span class="ico">🪝</span> 钩子类型频率</h3>
+        ${entries.map(([k,v]) => `
+          <div class="freq-row">
+            <span class="freq-label">${esc(k)}</span>
+            <div class="freq-bar"><div class="freq-fill" style="width:${(v/maxHook*100).toFixed(0)}%"></div></div>
+            <span class="freq-val">${v}</span>
+          </div>`).join('') || '<div class="empty">无钩子数据</div>'}
+      </div>
+      <div class="card">
+        <h3><span class="ico">📐</span> 结构指标</h3>
+        <div class="kv">
+          <span class="k">章节数</span><span class="v">${s.chapter_count != null ? s.chapter_count : '—'}</span>
+          <span class="k">钩子最小间隔</span><span class="v">${agg.hook_min_interval != null ? agg.hook_min_interval+' 章' : '—'}</span>
+          <span class="k">伏笔平均跨度</span><span class="v">${agg.foreshadow_avg_span != null ? agg.foreshadow_avg_span+' 章' : '—'}</span>
+          <span class="k">伏笔最大跨度</span><span class="v">${agg.foreshadow_max_span != null ? agg.foreshadow_max_span+' 章' : '—'}</span>
+          <span class="k">并发开放伏笔</span><span class="v">${agg.foreshadow_concurrent_open != null ? agg.foreshadow_concurrent_open : '—'}</span>
+        </div>
+        <h4>高潮节奏</h4>
+        <p>${esc(agg.climax_cycle || '—')}</p>
+      </div>`;
+  }
+
+  function renderCommercial(cm){
+    const paywall = parseMaybe(cm.paywall) || {};
+    const update = parseMaybe(cm.update_rhythm) || {};
+    const payoffTypes = cm.payoff_types || [];
+    const risks = cm.retention_risks || [];
+    $('commercial-obs').innerHTML = `
+      <div class="card" style="margin-bottom:18px">
+        <h3><span class="ico">💰</span> 商业概要</h3>
+        <div class="kv">
+          <span class="k">爽点密度</span><span class="v">${cm.payoff_per_k != null ? cm.payoff_per_k+' / 千字' : '—'}</span>
+          <span class="k">低谷期</span><span class="v">${esc(cm.dry_spell || '—')}</span>
+          <span class="k">更新节奏</span><span class="v">${update.chapters_per_day != null ? update.chapters_per_day+' 章/天' : '—'}</span>
+          <span class="k">付费点章</span><span class="v">${paywall.position_chapter != null ? '第'+paywall.position_chapter+'章' : '—'}</span>
+        </div>
+        <h4>爽点类型构成</h4>
+        <div class="tags">${payoffTypes.map(p => `<span class="tag gold">${esc(p.type||'')} ${p.ratio!=null?(p.ratio*100).toFixed(0)+'%':''}</span>`).join('')||'<span class="dim">无</span>'}</div>
+      </div>
+      <div class="card" style="margin-bottom:18px">
+        <h3><span class="ico">🪜</span> 叙事骨架</h3>
+        <p style="white-space:pre-wrap">${esc(cm.skeleton || '—')}</p>
+      </div>
+      <div class="card">
+        <h3><span class="ico">🛑</span> 流失风险点（${risks.length}）</h3>
+        ${risks.map(r => {
+          r = parseMaybe(r);
+          if(typeof r !== 'object' || !r) return '';
+          return `<div class="tech">
+            <div class="tname">${esc(r.position||'')}</div>
+            <div class="tdesc">${esc(r.reason||'')}</div>
+            ${r.mitigation ? `<div class="tlabel">对策</div><div class="tdesc">${esc(r.mitigation)}</div>` : ''}
+          </div>`;
+        }).join('') || '<div class="empty">无</div>'}
+        <h4>常见失误</h4>
+        <p style="white-space:pre-wrap">${esc(cm.common_mistakes || '—')}</p>
+      </div>`;
+  }
+
+  function renderReports(b){
+    // 报告在 dashboard-data.js 中没有正文，只有字符数；这里展示字符数 + 提示
+    $('report-tabs').innerHTML = `
+      <div class="report-tab active">拆书报告</div>
+      <div class="report-tab">笔法分析</div>`;
+    $('report-body').innerHTML =
+      `【拆书报告】样本字数 ${fmt(b.voice && b.voice.total_words)} 字\n` +
+      `拆书报告字符 ${fmt(b.report_chars)} · 笔法分析字符 ${fmt(b.craft_report_chars)}\n` +
+      `合计 ${fmt(b.total_report_chars)} 字\n\n` +
+      `报告正文存于 reports/ 目录，看板已在上方各资产卡中结构化展示其核心结论。`;
+  }
+
+  /* ---------- 题材包 ---------- */
+  function renderGenrePack(){
+    const gp = genrePack;
+    const meta = gp.meta || {};
+    const lr = gp.language_rules || {};
+    const st = gp.structure || {};
+    const cm = gp.commercial || {};
+    const cwr = st.chapter_word_range || {};
+    const iron = lr.iron_rules || [];
+    const bannedPhrases = lr.banned_phrases || [];
+    const payoff = cm.payoff_density || {};
+
+    $('genre-pack').innerHTML = `
+      <div class="grid-2">
+        <div class="card">
+          <h3><span class="ico">🧭</span> 题材元信息</h3>
+          <div class="kv">
+            <span class="k">题材名</span><span class="v">${esc(meta.name||'')}</span>
+            <span class="k">子标签</span><span class="v">${esc((meta.sub_tags||[]).join(' / '))}</span>
+            <span class="k">样本来源</span><span class="v">${esc((meta.source_books||[]).map(s=>s.title||s).join('、'))}</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3><span class="ico">📏</span> 章节字数规范</h3>
+          <div class="kv">
+            <span class="k">下限</span><span class="v">${cwr.min||'—'} 字</span>
+            <span class="k">典型</span><span class="v">${cwr.typical||'—'} 字</span>
+            <span class="k">上限</span><span class="v">${cwr.max||'—'} 字</span>
+          </div>
+          <h4>爽点密度</h4>
+          <p>${payoff.per_thousand_words != null ? payoff.per_thousand_words+' / 千字' : '—'}</p>
+          <div class="tags" style="margin-top:8px">${(payoff.payoff_types||[]).map(p=>`<span class="tag gold">${esc(p.type||'')}</span>`).join('')}</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h3><span class="ico">⚖️</span> 语言铁律（${iron.length}）</h3>
+        ${iron.map(r => `
+          <div class="tech">
+            <div class="tdesc">${esc(r.rule||'')}</div>
+            ${r.good_example ? `<div class="tlabel" style="color:#8ac09a">正例</div><div class="tdesc" style="color:#8ac09a">${esc(r.good_example)}</div>` : ''}
+            ${r.bad_example ? `<div class="tlabel" style="color:#d89080">反例</div><div class="tdesc" style="color:#d89080">${esc(r.bad_example)}</div>` : ''}
+          </div>`).join('') || '<div class="empty">无</div>'}
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h3><span class="ico">🚫</span> 禁用词表（${bannedPhrases.length}）</h3>
+        <div class="tags">${bannedPhrases.map(w=>`<span class="tag red">${esc(w)}</span>`).join('')||'<span class="dim">无</span>'}</div>
+      </div>`;
+  }
+
+  /* ---------- 蒸馏层 ---------- */
+  function renderDistilled(){
+    const names = {
+      'voice-card': '声线卡 · 蒸馏',
+      'craft-card': '笔法卡 · 蒸馏',
+      'structure-obs': '结构 · 蒸馏',
+      'commercial-obs': '商业 · 蒸馏',
+    };
+    const cards = Object.entries(distilled).map(([key, d]) => {
+      const rules = d.rules || [];
+      const meta = d.meta || {};
+      const hard = rules.filter(r => r.kind === 'hard');
+      const soft = rules.filter(r => r.kind === 'soft');
+      return `
+        <div class="card">
+          <h3><span class="ico">🔬</span> ${esc(names[key]||key)}</h3>
+          <div class="dim" style="margin-bottom:10px">
+            规则 ${rules.length} 条 · 硬约束 ${hard.length} · 软约束 ${soft.length}
+            ${meta.books_count ? ' · 来源 '+meta.books_count+' 书' : ''}
+          </div>
+          <div class="tags">
+            <span class="tag gold">硬 ${hard.length}</span>
+            <span class="tag">软 ${soft.length}</span>
+          </div>
+          <div style="max-height:280px;overflow-y:auto;margin-top:12px">
+            ${rules.slice(0, 20).map(r => `
+              <div class="tech">
+                <div class="tname" style="font-size:13px">${esc(r.field||r.id||'')}</div>
+                <div class="tdesc">${esc((r.rule||r.summary||r.value||'').toString().slice(0,120))}</div>
+              </div>`).join('')}
+            ${rules.length > 20 ? `<div class="dim">… 其余 ${rules.length-20} 条略</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+    $('distilled').innerHTML = `<div class="grid-2">${cards}</div>`;
+  }
+
+  /* ---------- 桥段库 ---------- */
+  function renderTropes(){
+    const meta = tropeLib.meta || {};
+    const tropes = tropeLib.tropes || [];
+    $('trope-library').innerHTML = `
+      <div class="card" style="margin-bottom:18px">
+        <h3><span class="ico">📚</span> 桥段库概览</h3>
+        <div class="kv">
+          <span class="k">桥段总数</span><span class="v">${meta.total_count || tropes.length}</span>
+          <span class="k">版本</span><span class="v">${esc(meta.version||'')}</span>
+          <span class="k">来源书籍</span><span class="v">${esc((meta.contributing_books||[]).join('、'))}</span>
+        </div>
+        <div class="note">${esc(meta.genre_scope_note||'')}</div>
+      </div>
+      <div class="grid-2">
+        ${tropes.map(t => `
+          <div class="trope-card">
+            <div>
+              <span class="tname">${esc(t.name||'')}</span>
+              <span class="tcat">${esc(t.category||'')}</span>
+            </div>
+            <div class="tscope">适用题材：${esc((t.applicable_genres||[]).join(' · '))}</div>
+            <div class="tsetup">${esc((t.skeleton&&t.skeleton.setup)||t.setup||'')}</div>
+            ${(t.skeleton&&t.skeleton.escalation) ? `<div class="tesc">${esc((t.skeleton.escalation||[]).join(' → '))}</div>` : ''}
+            ${(t.skeleton&&t.skeleton.payoff) ? `<div class="tesc" style="color:var(--gold)">兑现：${esc(t.skeleton.payoff)}</div>` : ''}
+          </div>`).join('')}
+      </div>`;
+  }
+
+  /* ---------- 初始化 ---------- */
+  renderStats();
+  renderTabs();
+  renderBook();
+  renderGenrePack();
+  renderDistilled();
+  renderTropes();
+})();
+</script>
+</body>
+</html>

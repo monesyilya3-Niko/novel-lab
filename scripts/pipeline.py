@@ -514,11 +514,12 @@ def main():
                 report_path.write_text(report, encoding="utf-8")
                 print(f"      {report_path.name}（可交付报告）")
 
-                # 铁律二：笔法分析报告 ≥10000 字符（字符数口径）
+                # 铁律二：笔法分析单份字数提示（合计校验由 novel.py「分析」命令在
+                # 拆书报告 + 笔法报告都生成后统一执行）
                 report_len = len(report)
                 if report_len < 10000:
-                    print(f"  ✗ 笔法报告 {report_len} 字符 < 10000 硬门槛，交付阻断")
-                    sys.exit(1)
+                    print(f"  ⚠ 笔法分析单份 {report_len} 字符 < 10000，"
+                          f"合计校验以 novel.py「分析」命令为准")
             except Exception as e:
                 print(f"      ⚠ 笔法报告生成失败: {e}")
 

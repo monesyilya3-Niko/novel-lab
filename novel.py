@@ -120,6 +120,29 @@ def main():
     p3b.add_argument("--genre", required=True, help="题材目录名，如 campus-redemption")
     p3b.add_argument("--books", nargs="*", default=None, help="可选，限定参与蒸馏的书籍")
 
+    p3c = sub.add_parser("convert-genre-card", help="体裁散文卡 → genre-pack 规则包")
+    p3c.add_argument("--input", required=True, help="源散文卡 markdown 路径")
+    p3c.add_argument("--output", required=True, help="目标 JSON 路径")
+    p3c.add_argument("--genre-id", required=True, help="meta.id，如 genre-youth-romance")
+    p3c.add_argument("--force", action="store_true", help="幂等覆盖：已存在且同 schema_version 则跳过")
+
+    p3d = sub.add_parser("state-track", help="长文本状态追踪（读/写状态、应用事务、校验修订号）")
+    p3d.add_argument("action", choices=["show", "apply", "validate", "context"], help="子动作")
+    p3d.add_argument("--state", required=True, help="_tracking-state.json 路径")
+    p3d.add_argument("--transaction", help="逐章事务 JSON 路径（apply 用）")
+    p3d.add_argument("--expected-revision", type=int, help="期望修订号（validate 用）")
+
+    p3e = sub.add_parser("qc", help="QC 统一质检（四层十二维整合）")
+    p3e.add_argument("chapter_dir", help="章节目录或单章 txt")
+    p3e.add_argument("--voice", help="voice-card 路径（人物弧线/手法运用维度）")
+    p3e.add_argument("--genre-pack", help="题材包路径（阈值解析）")
+    p3e.add_argument("--asset", help="资产 JSON 路径（版权合规）")
+    p3e.add_argument("--book", help="原文 TXT 路径（版权合规 ngram 索引）")
+    p3e.add_argument("--novel-dir", help="novel-writing 项目目录（定位 entities.json）")
+    p3e.add_argument("--auto", action="store_true", help="标记为写作流程自动触发（预留钩子）")
+    p3e.add_argument("--json", action="store_true", help="输出 JSON 格式")
+    p3e.add_argument("--no-save", action="store_true", help="不落盘，仅打印 stdout")
+
     p4 = sub.add_parser("注入", help="资产 → 写作 prompt")
     p4.add_argument("voice")
     p4.add_argument("--structure")
@@ -127,6 +150,7 @@ def main():
     p4.add_argument("--genre-pack")
     p4.add_argument("--craft-card", help="craft-card JSON（可选，注入写作技法）")
     p4.add_argument("--distilled", help="蒸馏规则 JSON（可选，注入跨书聚合规则）")
+    p4.add_argument("--tracking-state", help="追踪状态 JSON（可选，注入长文本连续性上下文）")
     p4.add_argument("--out", help="输出路径，默认 prompts/generated/<名>-writing-prompt.md")
 
     p5 = sub.add_parser("写作", help="生成章节（含改写循环，默认目标 90）")
@@ -208,6 +232,17 @@ def main():
         cc = ROOT / "assets" / f"{name}-craft-card.json"
         if cc.exists():
             run_script("report_craft.py", [str(cc)])
+        # 3.5 铁律二合计校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符（真·合计口径）
+        _book_rpt = ROOT / "reports" / f"{name}-拆书报告.md"
+        _craft_rpt = ROOT / "reports" / f"{name}-笔法分析.md"
+        _book_len = len(_book_rpt.read_text(encoding="utf-8")) if _book_rpt.exists() else 0
+        _craft_len = len(_craft_rpt.read_text(encoding="utf-8")) if _craft_rpt.exists() else 0
+        _total = _book_len + _craft_len
+        print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
+        if _total < 10000:
+            print(f"  ✗ 合计 {_total} 字 < 硬门槛 10000 字，交付阻断（不产出半成品）")
+            sys.exit(1)
+        print(f"  ✓ 合计 {_total} 字 ≥ 10000 字，铁律二通过")
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）
         print("\n[Hook] 自动质检:")
         corpus_file = ROOT / "corpus" / f"{name}.txt"
@@ -304,6 +339,36 @@ def main():
     if args.cmd == "蒸馏":
         return run_script("distill.py", ["--genre", args.genre] +
                           (["--books"] + list(args.books) if args.books else []))
+    if args.cmd == "convert-genre-card":
+        return run_script("convert_genre_card.py",
+                          ["--input", args.input, "--output", args.output,
+                           "--genre-id", args.genre_id] +
+                          (["--force"] if args.force else []))
+    if args.cmd == "state-track":
+        cmd_args = [args.action, "--state", args.state]
+        if args.transaction:
+            cmd_args += ["--transaction", args.transaction]
+        if args.expected_revision is not None:
+            cmd_args += ["--expected-revision", args.expected_revision]
+        return run_script("state_tracker.py", cmd_args)
+    if args.cmd == "qc":
+        qc_args = [args.chapter_dir]
+        if args.voice:
+            qc_args += ["--voice", args.voice]
+        if args.genre_pack:
+            qc_args += ["--genre-pack", args.genre_pack]
+        if args.asset:
+            qc_args += ["--asset", args.asset]
+        if args.book:
+            qc_args += ["--book", args.book]
+        if args.novel_dir:
+            qc_args += ["--novel-dir", args.novel_dir]
+        if args.json:
+            qc_args += ["--json"]
+        if args.no_save:
+            qc_args += ["--no-save"]
+        # --auto 仅作标记（写作流程钩子预留），qc.py 本身是检测-only，不改变执行逻辑
+        return run_script("qc.py", qc_args)
     if args.cmd == "注入":
         return run_script("inject.py", [args.voice] +
                           (["--structure", args.structure] if args.structure else []) +
@@ -311,6 +376,7 @@ def main():
                           (["--genre-pack", args.genre_pack] if args.genre_pack else []) +
                           (["--craft-card", args.craft_card] if args.craft_card else []) +
                           (["--distilled", args.distilled] if args.distilled else []) +
+                          (["--tracking-state", args.tracking_state] if args.tracking_state else []) +
                           (["--out", args.out] if args.out else []))
     if args.cmd == "写作":
         # 缺省 prompt 时自动注入

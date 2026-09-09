@@ -9,8 +9,10 @@
 
 ## 铁律二：每本书拆解必须产出 ≥1 万字分析报告
 - 拆书报告 + 笔法分析 合计字符数 ≥ 10000（硬门槛，字符数口径）
-- 【执行机制】report.py / report_craft.py 生成后自动校验
-  MIN_REPORT_CHARS=10000，不足 → sys.exit(1) 阻断交付，不产出半成品
+- 【执行机制】novel.py「分析」一键命令在生成拆书报告 + 笔法分析后，
+  汇总两份报告字符数合计校验：合计 < 10000 → sys.exit(1) 阻断交付
+- 【执行机制】report.py / report_craft.py / pipeline.py 各自单份字数不足 10000
+  仅打印 soft warning（不退出），最终以「分析」命令的合计校验为准
 - 【执行机制】深度内容由 Pass5 LLM 生成 + deep_analyze.py 校验，缺段即标记
 
 ## 铁律三：纯标准库、零第三方依赖

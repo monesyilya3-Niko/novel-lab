@@ -1,0 +1,409 @@
+{
+  "meta": {
+    "source_title": "suyixinjian_chosen",
+    "genre": "campus-redemption",
+    "extracted_at": "2026-09-08",
+    "sample_chapters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      41,
+      42,
+      43,
+      44,
+      45,
+      83,
+      84,
+      85,
+      86,
+      87,
+      125,
+      126,
+      127,
+      128,
+      129,
+      168,
+      169
+    ],
+    "total_sample_words": 46876,
+    "confidence": 0.9,
+    "human_reviewed": false
+  },
+  "narration": {
+    "pov": "第三人称限知",
+    "pov_switch_rule": "",
+    "tense_feel": "近距离、慢镜头式的凝视感，叙述贴着主角的感官走，像一部长镜头",
+    "sentence_rhythm": {
+      "avg_length": 0,
+      "short_ratio": 0,
+      "long_ratio": 0,
+      "burst_pattern": "情绪爆发（崩溃、对峙、心动）时连续使用3-5个极短句或单句成段，制造停顿与冲击；日常铺陈时句子稍长且平稳"
+    },
+    "paragraph": {},
+    "chapter_opening_patterns": [
+      {
+        "pattern": "场景白描",
+        "frequency": 3,
+        "example_structure": "[环境状态]+[人物动作]"
+      },
+      {
+        "pattern": "内心独白",
+        "frequency": 2,
+        "example_structure": "[心理活动]+[场景引入]"
+      }
+    ]
+  },
+  "dialogue": {
+    "dialogue_ratio": 0.6903,
+    "tag_style": "",
+    "subtext_level": "直白",
+    "character_voices": [
+      {
+        "name": "蒲雨",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "先低头或垂眼压下情绪，再用平静到近乎决绝的短句陈述底线，必要时以对方软肋反向施压",
+          "never_says": [
+            "老子",
+            "关你屁事",
+            "你算什么东西",
+            "少管闲事",
+            "滚"
+          ],
+          "anger_pattern": "不吼不闹，用清亮眼底的决绝眼神和冷静反问，把最狠的话说得很轻",
+          "verbal_tics": [
+            "奶奶",
+            "岁岁",
+            "我……",
+            "谢谢",
+            "麻烦你"
+          ],
+          "physical_habit": [
+            "揪衣角",
+            "攥紧手心",
+            "低头看鞋尖",
+            "咬下唇",
+            "深吸一口气"
+          ],
+          "avg_utterance_length": 15
+        },
+        "arc": {
+          "start_state": "被至亲抛弃、无处容身的绝境少女",
+          "end_state": "出版著作、实现梦想的成熟作家",
+          "turning_chapters": [
+            3,
+            7,
+            43,
+            87,
+            169
+          ],
+          "arc_type": "正向成长"
+        }
+      },
+      {
+        "name": "原溯",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "沉默一两秒后只回一个极短的单字或短语，语气平淡无起伏，用荒芜的平静把话题切断",
+          "never_says": [
+            "求求你",
+            "我好难过",
+            "你能不能陪陪我",
+            "我喜欢你",
+            "随便你吧（敷衍式）"
+          ],
+          "anger_pattern": "不辩驳不动手，用沙哑懒散的一句反讽或冷冰冰的单字，配合低气压的冷眼让对方自讨没趣",
+          "verbal_tics": [
+            "干什么",
+            "谁啊",
+            "做完了",
+            "嗯"
+          ],
+          "physical_habit": [
+            "转笔",
+            "趴桌睡觉",
+            "单手插裤袋",
+            "微垂着头让阴影遮脸",
+            "把笔扔回抽屉"
+          ],
+          "avg_utterance_length": 8
+        },
+        "arc": {
+          "start_state": "家变后自我封闭、独来独往的失意少年",
+          "end_state": "扛住债务、与蒲雨修成正果的成熟男人",
+          "turning_chapters": [
+            10,
+            43,
+            127,
+            168
+          ],
+          "arc_type": "先抑后扬"
+        }
+      },
+      {
+        "name": "李素华",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "先劈头盖脸地数落或反问，用硬邦邦的语气把人噎住，最后却以一句带嫌弃的催促或安排收尾，实际是答应",
+          "never_says": [
+            "宝贝",
+            "乖孙",
+            "我爱你",
+            "我心疼你",
+            "别怕有我在（直接温柔式）"
+          ],
+          "anger_pattern": "把碗或筷子往桌上一拍，声音拔高连珠炮式骂人，夹杂方言俗语，骂完又暗自心疼",
+          "verbal_tics": [
+            "作孽",
+            "小丫头片子",
+            "老婆子",
+            "杀千刀的",
+            "听见没"
+          ],
+          "physical_habit": [
+            "擦手",
+            "颤巍巍转身",
+            "别过脸去",
+            "扔线团",
+            "敲碗沿"
+          ],
+          "avg_utterance_length": 18
+        },
+        "arc": {
+          "start_state": "嘴硬心软、与养子决裂多年的孤寡老人",
+          "end_state": "被蒲雨温暖、含饴弄孙般安享晚年的慈祥奶奶",
+          "turning_chapters": [
+            3,
+            7,
+            84
+          ],
+          "arc_type": "先扬后抑再扬（嘴硬→心软→疼爱）"
+        }
+      },
+      {
+        "name": "许岁然",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用爽朗的笑声和满不在乎的摆手把对方客气挡回去，再不由分说地拉着对方按自己的意思办",
+          "never_says": [
+            "你滚",
+            "少来这套",
+            "别装了",
+            "我才不管你",
+            "烦死了（真嫌弃式）"
+          ],
+          "anger_pattern": "极少真生气，被冒犯时先惊讶瞪眼，再用带着懊恼的活泼语气把事情揭过",
+          "verbal_tics": [
+            "小雨",
+            "走",
+            "哎呀",
+            "嗷",
+            "我跟你说",
+            "嘿嘿"
+          ],
+          "physical_habit": [
+            "挽胳膊",
+            "凑近压低声音",
+            "挥手",
+            "瞪圆眼睛",
+            "吐舌头"
+          ],
+          "avg_utterance_length": 20
+        },
+        "arc": {
+          "start_state": "乐观开朗、家境安稳的镇中女生",
+          "end_state": "陪伴蒲雨走过青春、始终真诚的好友",
+          "turning_chapters": [
+            5,
+            9
+          ],
+          "arc_type": "平坦型"
+        }
+      },
+      {
+        "name": "何烁婉",
+        "role": "反派",
+        "speech_signature": {
+          "refusal_pattern": "用软绵绵的、看似体贴的语气把恶意的要求包装成为了你好，从不直接撕破脸",
+          "never_says": [
+            "我就是要害你",
+            "我恨你",
+            "你走吧（直白驱逐）",
+            "钱我偏不给"
+          ],
+          "anger_pattern": "被戳破时保养得宜的脸骤然变色，尖声喊出单字，随即用刻意催促转移话题",
+          "verbal_tics": [
+            "小雨",
+            "体谅",
+            "孩子",
+            "赶紧"
+          ],
+          "physical_habit": [
+            "扯衣袖",
+            "软声插话",
+            "尖声"
+          ],
+          "avg_utterance_length": 14
+        },
+        "arc": {
+          "start_state": "表面温柔、实则算计的后妈",
+          "end_state": "与蒲雨划清界限、再无交集",
+          "turning_chapters": [
+            1
+          ],
+          "arc_type": "平坦型"
+        }
+      },
+      {
+        "name": "蒲志明",
+        "role": "反派",
+        "speech_signature": {
+          "refusal_pattern": "用暴躁的质问和身份压人，把理亏转化成嗓门大，最后用粗鲁的结论强行终结话题",
+          "never_says": [
+            "我对不起你",
+            "爸爸错了",
+            "你回来吧",
+            "我支持你读书"
+          ],
+          "anger_pattern": "脸色铁青、胸口起伏，摔东西或砸杯子，用一连串反问和脏话宣泄",
+          "verbal_tics": [
+            "我是你爸",
+            "读个屁",
+            "老子没钱",
+            "为了你好"
+          ],
+          "physical_habit": [
+            "摔杯子",
+            "胸口起伏",
+            "嗫嚅嘴唇",
+            "背过身"
+          ],
+          "avg_utterance_length": 12
+        },
+        "arc": {
+          "start_state": "冷漠自私、逼女辍学的父亲",
+          "end_state": "与蒲雨彻底断绝关系",
+          "turning_chapters": [
+            1
+          ],
+          "arc_type": "平坦型"
+        }
+      },
+      {
+        "name": "程司宜",
+        "role": "导师",
+        "speech_signature": {
+          "refusal_pattern": "先温和地反问或停顿几秒表达关切，再用商量的语气给出折中方案，从不生硬拒绝",
+          "never_says": [
+            "你不行",
+            "太差了",
+            "别来烦我",
+            "自己想办法"
+          ],
+          "anger_pattern": "极少动怒，面对不公时会用克制的愤怒和直接的陈述表达立场，再转为心疼",
+          "verbal_tics": [
+            "蒲雨",
+            "同学",
+            "没问题的",
+            "别担心"
+          ],
+          "physical_habit": [
+            "微笑",
+            "揉脑袋",
+            "轻抱",
+            "斟酌用词"
+          ],
+          "avg_utterance_length": 22
+        },
+        "arc": {
+          "start_state": "刚毕业、温柔负责的班主任",
+          "end_state": "蒲雨成长路上的重要引路人",
+          "turning_chapters": [
+            4,
+            8
+          ],
+          "arc_type": "平坦型"
+        }
+      }
+    ]
+  },
+  "emotion_handling": {
+    "mode": "混合式",
+    "body_reaction_vocabulary": [
+      "他很愤怒",
+      "她伤心欲绝",
+      "她心动了"
+    ],
+    "examples": [
+      {
+        "emotion": "愤怒",
+        "pattern": "[动作外化式] 摔物件、拍桌子、攥拳、胸口起伏，配合拔高的声调和反问句",
+        "anti_pattern": "避免直接写「他很愤怒」、堆砌形容词、让角色长篇大论讲道理"
+      },
+      {
+        "emotion": "悲伤",
+        "pattern": "[体感式] 眼泪大颗砸下、喉咙哽咽、指尖颤抖，情绪通过身体反应泄露而非直白倾诉",
+        "anti_pattern": "避免写「她伤心欲绝」、让主角对着空气嚎哭式自白"
+      },
+      {
+        "emotion": "心动",
+        "pattern": "[环境投射式] 心跳漏拍、脸颊泛红，借雨声、汽水气泡、光影等外物烘托，情绪藏在细节里",
+        "anti_pattern": "避免直写「她心动了」、用夸张的内心呐喊"
+      }
+    ]
+  },
+  "imagery": {
+    "high_freq_metaphor_domains": [
+      "自然现象",
+      "日常物件",
+      "食物"
+    ],
+    "sensory_preference": {
+      "visual": 0.435,
+      "auditory": 0.333,
+      "tactile": 0.162,
+      "gustatory": 0.036,
+      "olfactory": 0.034
+    },
+    "signature_devices": [
+      "反复用单句成段定格情绪瞬间",
+      "用雨声、气泡、衣襟等具体物象承载情感记忆",
+      "用破折号引出内心旁白式补充"
+    ]
+  },
+  "banned": {
+    "never_used_words": [
+      "撕心裂肺",
+      "天崩地裂",
+      "肝肠寸断",
+      "宠溺",
+      "邪魅",
+      "冷若冰霜",
+      "梨花带雨"
+    ],
+    "avoided_structures": [
+      "大段排比式煽情",
+      "主角直白的内心宣言",
+      "对话中冗长的说教",
+      "全知视角跳入多人心思"
+    ],
+    "genre_taboos": [
+      "狗血失忆",
+      "豪门玛丽苏",
+      "反派强行降智",
+      "金手指开挂",
+      "无铺垫的强行甜宠"
+    ]
+  },
+  "provenance": {
+    "contains_verbatim": false,
+    "abstraction_note": "四遍扫描产物，经 compliance.py 扫描，连续12字匹配原文已拒收"
+  }
+}

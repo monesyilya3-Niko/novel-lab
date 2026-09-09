@@ -14,6 +14,11 @@
 4. **1 万字按字符数口径**（`len(report)`），已确认。`MIN_REPORT_CHARS = 10000` 是硬门槛，不足则 `sys.exit(1)` 阻断交付。
 5. **报告深度化 = 渲染 deep_analysis 字段**。深度字段从 Pass5 LLM prompt 输出、经 `deep_analyze.py` 校验后写入 craft-card 的 `technique.deep_analysis`，`report_craft.py` 渲染时逐条展开 10 段。
 
+> ⚠️ **【已更新 · 2026-09-08】铁律二最终口径**：本文是 2026-09-07 的**方案讨论期快照**，正文 §0 结论、§1.9、§1.10、§1.11 关于铁律二执行机制的表述存在前后矛盾（§1.10 标题写「硬校验」、正文又说「不做单独校验」）。**最终落地口径以代码为准**：
+> - `novel.py 分析` 收尾做**合计校验**：拆书报告 + 笔法分析 合计 ≥ 10000 字符，不足 `sys.exit(1)` 阻断（novel.py 第 211-221 行）。
+> - `report.py` / `report_craft.py` 单份 `MIN_REPORT_CHARS=10000` 仅 **soft warning**，不阻断。
+> - 本文 §1.9 / §1.10 中「`sys.exit(1)` 硬阻断」的旧表述已废止，请勿据此修改代码。权威口径见 `PROJECT_LAW.md` 与 `RULES.md §15.5`。
+
 ---
 
 ## 1. 精确改动清单（文件 → 行号 → 函数签名）

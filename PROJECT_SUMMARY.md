@@ -108,12 +108,15 @@
 ### 4.1 数据资产（校验状态：2026-09-05 全量实测，13 个原始资产：12 PASS + 1 WARN，硬错误 0；2026-09-07 新增 4 个蒸馏产物）
 
 - 3 × voice-card（chireng / qingning / sangshi，置信 90%）→ WARN（burst_pattern 等历史警告，可入库）
+- **1 × suyixinjian_chosen voice-card（2026-09-07 新增）→ PASS（0 错 0 警）**
 - 3 × craft-card → **PASS**（0 错 0 警）
+- **1 × suyixinjian_chosen craft-card（2026-09-07 新增）→ PASS（20 条技法均含 deep_analysis 7 字段）**
 - 3 × structure-obs + 3 × commercial-obs → **2026-09-01 起可校验**（此前无校验器被误判 voice-card 而假性 REJECT）：全 0 硬错误，qingning structure-obs / sangshi commercial-obs 有真实数据特征的 WARN，其余 PASS
+- **1 × suyixinjian_chosen structure-obs + 1 × commercial-obs（2026-09-07 新增）→ 均 PASS（0 错 0 警，含全部 5 个可选变体字段）**
 - 1 × campus-redemption-genre-pack（PASS；铁律4条/必需要素4条/禁用词11条/疲劳词5条）
 - 4 × campus-redemption-{voice-card|craft-card|structure-obs|commercial-obs}-distilled.json（**2026-09-07 新增**，蒸馏层跨书聚合产物，见 §4.5）
 - ~~1 × synthetic_book_c-voice-card（合成测试用）~~ → 2026-09-05 随项目清理退役删除（备份在 _TRASH）
-- 6 份可交付报告（reports/）
+- 8 份可交付报告（reports/，含 2026-09-07 新增的《溯雨信笺》拆书报告 4719 字 + 笔法分析 20625 字）
 
 ### 4.2 配置文件
 
@@ -244,15 +247,17 @@ $PY "C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/.workbuddy/skills/novel-writi
 | pass 输出格式不稳定？ | normalize.py 已兼容 pass2 的 4 种格式与 pass5 的 4 种格式（A/B/C/D），不需要改 prompt |
 | 想恢复外部模型？ | `$PY scripts/model_config.py add`，配置存 config/（旧配置备份在 _TRASH） |
 | 旧数据在哪？ | 《暮冬念春》终稿：`D:\fanqie-auto\终稿_最新精修版_2026-09-01\`（正文+底层规则，161 文件校验过）；其余在 `C:\Users\monesy\WorkBuddy\_TRASH\`（4 批，可还原） |
-| AI 内置拆书完整链路验证过吗？ | **诚实回答**：关键节点（采样/量化/降级/校验/合规）已实测；pass1-5 由 AI 产出→入库的端到端流程尚未在真实新书跑过完整一本，第一本新书即首次实战 |
+| AI 内置拆书完整链路验证过吗？ | ✅ 已于 2026-09-07 完整跑通：《溯雨信笺》（suyixinjian_chosen）作为第一本实战新书，pass1-5→组装→校验→合规→报告全链路闭环，四类资产 0 硬错 0 警告；合规 voice-card PASS / craft-card WARN（0 硬错 2 警，方法论口诀误伤）；万字报告合计 25344 字 |
+| 拆书实操踩坑经验在哪看？ | `RULES.md` 第十五章「拆书实操经验」（role 白名单 / pass3 情绪示例写顶层 / pass4 商业字段放顶层 / pass5 必带 deep_analysis 7 字段等 4 类问题+解决方案）；详细复盘见 `docs/拆书经验总结_溯雨信笺_2026-09-07.md` |
 | 项目还缺什么？ | 技能选用决策表已交付：`docs/技能选用决策表.md`（2026-09-01 下午）；12 技能冗余治理建议见表内 §四。RULES.md 与 HANDOFF.md 的历史节数描述与代码不一致处（以本文件 §4.3 为准） |
 
 ---
 
-## 七、当前状态与统计（2026-09-01）
+## 七、当前状态与统计（2026-09-01，2026-09-07 更新）
 
-- 已拆书目 3 本：炽炀 / 青柠 / 桑式（campus-redemption 题材，置信 90%）
-- 题材包 1 份（聚合产物）；报告 6 份；脚本 23 个（scripts/，py_compile 全过）+ 根入口 2 个（novel.py / run_tests.py）；schema 6 个；蒸馏产物 4 份
+- 已拆书目 4 本：炽炀 / 青柠 / 桑式 / **溯雨信笺**（campus-redemption 题材，置信 90%）
+- 题材包 1 份（聚合产物）；报告 8 份；脚本 23 个（scripts/，py_compile 全过）+ 根入口 2 个（novel.py / run_tests.py）；schema 6 个；蒸馏产物 4 份
+- **2026-09-07 首次新书实战闭环**：《溯雨信笺》（suyixinjian_chosen）端到端拆书跑通，四类资产 0 硬错 0 警告；合规 voice-card PASS / craft-card WARN（0 硬错 2 警，方法论口诀误伤）；万字报告合计 25344 字；经验已沉淀至 RULES.md 第十五章 + docs/拆书经验总结_溯雨信笺_2026-09-07.md
 - **2026-09-01 下午修复**：write.py 无模型降级路径补齐（此前抛异常）；corpus/raw/ 根 4 个暮冬念春残留 pass JSON + novel/state.json 已归档至 `_TRASH\暮冬念春_清理_2026-09-01\novel-lab内\corpus-raw散落残留\`；HANDOFF.md 过时数字已修正
 - 工作区干净：暮冬念春全部数据已清出（终稿归档在 D 盘，_TRASH 可还原）
 - 《暮冬念春》终稿最新精修版：`D:\fanqie-auto\终稿_最新精修版_2026-09-01\`（159 章最新版 + 第 160 章双版本 + 底层规则包）

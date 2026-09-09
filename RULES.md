@@ -209,3 +209,69 @@ sensory_preference 的中文键→英文键：`视觉→visual, 听觉→auditor
 
 ### 11.3 signature_devices 兼容
 可能是字符串（需包装为单元素数组）或列表。
+
+## 十五、拆书实操经验（2026-09-07 新增，源自《溯雨信笺》全流程复盘）
+
+> 本书记录无模型模式下「pass1-5 JSON → 组装 → 校验 → 合规 → 报告」链路中踩到的 4 类问题与解决方案。
+> 拆新书前先读本章，可避免重复踩坑。详细复盘另见 `docs/拆书经验总结_溯雨信笺_2026-09-07.md`。
+
+### 15.1 role 字段只用白名单 6 词（voice-card 硬错误根因）
+
+**现象**：`dialogue.character_voices[1].role 值 '男主' 不在允许集合 ['主角','反派','女主','导师','工具人','配角']`。
+
+**根因**：voice-card 的 `role` 有白名单，**不含「男主」**；但 `normalize_pass2` 的排序字典里有 `"男主": 1` 映射（仅用于排序），两套词汇表错位。
+
+**解决/预防**：写 pass2 角色 role 时只用 6 个白名单词。男性主角→「主角」，女性主角→「女主」，不要写「男主」「男二」「女配」。排查时先 grep 校验代码里的「允许集合/白名单」字面量，再对照排序字典区分「排序用词」与「校验用词」。
+
+### 15.2 pass3 情绪示例必须写顶层 switching_rules + anti_pattern
+
+**现象**：`emotion_handling.examples 为空——建议补充情绪写法示例 → REJECT`。
+
+**根因**：`normalize_pass3` 的 `extract_emotion_examples(pass3, mode)` 只从 pass3 **顶层**的 `switching_rules`(list) / `anti_pattern`(dict) / `banned` 提取（经 `_find_key` 递归），**不读** `emotion_handling.examples` 嵌套键。
+
+**解决/预防**：pass3_style.json 顶层（`narration` 之前）加：
+- `switching_rules`：list，每条含 `scene / mode / example_pattern`（如 愤怒→动作外化式、悲伤→体感式、心动→环境投射式）。
+- `anti_pattern`：dict，按情绪给「避免写法」。
+
+改完 pass 文件先看对应 normalize 函数读哪个键，再决定数据放哪。
+
+### 15.3 commercial-obs 可选变体字段必须放顶层（层级陷阱）
+
+**现象**：`⚠ commercial-obs 缺少 'skeleton' / 'dry_spell_tolerance' / 'common_mistakes'（可选变体字段）→ WARN`。
+
+**根因**：`validate.py` 的 `COMMERCIAL_OBS_VARIANT_FIELDS = ("skeleton","dry_spell_tolerance","update_rhythm","retention_risk_points","common_mistakes")` 要求这 5 个字段在 **commercial-obs 顶层**；而 `assemble_obs` 只是**透传** pass4 的非 `_` 前缀顶层键，不做嵌套展开。把它们写进 `payoff_density`/`opening_analysis` 内部 → 顶层找不到。
+
+**解决/预防**：pass4_commercial.json 顶层补入，类型如下：
+- `skeleton`：**字符串**（多阶段叙事骨架）。
+- `dry_spell_tolerance`：**字符串**（如 `"3章（约9000字）"`）。
+- `common_mistakes`：**字符串**（编号列表 `1.…；2.…`）。
+- `update_rhythm`：dict（`chapters_per_day` + `burst_timing`）。
+- `retention_risk_points`：list（每条 `position/reason/mitigation`）。
+
+写 pass4 前先对照一本已 PASS 的参考书（如 `assets/chireng_chosen-commercial-obs.json`）看顶层键结构，一次写对。
+
+### 15.4 pass5 技法必带 deep_analysis 7 字段（万字报告字数来源）
+
+**现象**：笔法分析报告 `⚠ 5600 < 硬门槛 10000 → sys.exit(1)`。
+
+**根因**：`report_craft.py` 的字数主要来自 craft-card 每条技法的 `deep_analysis` 7 字段；pass5 的 20 条技法都没有 `deep_analysis`，7 段深度内容全空。
+
+**解决/预防**：pass5_craft.json 每条技法必须补 `deep_analysis`，7 字段齐全（每字段 100-200 字高质量中文）：
+- `reader_psychology`（读者心理机制）/ `execution_steps`（执行步骤）/ `applicable_scene`（适用场景）/ `usage_boundary`（使用边界）/ `intensity_control`（强度控制）/ `combo_patterns`（组合套路）/ `migration_checklist`（迁移清单）。
+
+关键：`assemble_craft_card` 在 `if "craft_analysis" in pass5:` 分支**透传**整个 craft_analysis，**不截断** deep_analysis；深度内容必须由 Pass5 直接写进 pass5_craft.json，本地 `deep_analyze.py` 只校验、不补内容（遵循「AI 不编造数据」红线）。
+
+### 15.5 铁律二口径：真·合计口径（已修复，2026-09-08）
+
+- **条文**（PROJECT_LAW.md 第11行）：拆书报告 + 笔法分析 **合计** ≥10000 字符。
+- **最终口径（已落地）**：`novel.py 分析` 收尾处做**合计校验**——拆书报告字符数 + 笔法分析字符数 ≥ 10000 才通过，不足 `sys.exit(1)` 阻断交付（见 novel.py 第 211-221 行）。
+- **单份脚本行为**：`report.py`（第 279-280 行）与 `report_craft.py`（第 205-206 行）各自 `MIN_REPORT_CHARS=10000` 仅 **soft warning**，不阻断（`⚠ 单份字数 < 10000，请确认...`）。
+- **结论**：代码已与条文一致（真·合计口径）。本例《溯雨信笺》拆书报告 4719 字 + 笔法分析 20625 字 = 合计 25344 字 ≥ 10000，铁律二通过。历史「单份硬门槛」问题已消除。
+
+### 15.6 回归验证闭环（不可省略）
+
+每次改 pass 文件后，必须三步走完：**重新组装 → 重新校验 → 重新生成报告**。只改文件不回归，会导致「改了但校验结果仍是旧的」的假象。
+
+### 15.7 组装 name 参数约定
+
+`python novel.py 组装 <name> --genre <题材>` 的 `<name>` 必须是 `corpus/raw/` 下的**目录名**（如 `suyixinjian_chosen`），不是书名。

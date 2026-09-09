@@ -1463,6 +1463,43 @@ def _empty_distilled(genre: str, dimension: str) -> dict:
     )
 
 
+def _build_evidence(rule: AggregatedRule) -> List[dict]:
+    """从规则的来源明细构造 evidence 数组（可追溯证据）。
+
+    保持自由结构（不新增 schema），每条证据包含：
+    ``source_chapter``（来源章节，无则空串）、``quote``（引用片段，取来源 value 的
+    字符串化，无则空串）、``confidence``（该条证据置信度）、``dimension``（所属维度）。
+
+    证据置信度按贡献来源数分摊：单来源置信度 = 规则置信度 / 来源数，
+    体现「多本书共同支撑同一规则」的证据强度。
+    """
+    sources = rule.sources
+    if not sources:
+        return []
+
+    n = len(sources)
+    per_source_conf = rule.confidence / n if n else 0.0
+    evidence: List[dict] = []
+    for s in sources:
+        # 来源 value 字符串化作为「引用」；value 为 None 时留空。
+        quote = ""
+        if s.value is not None:
+            if isinstance(s.value, (list, dict)):
+                quote = json.dumps(s.value, ensure_ascii=False)
+            else:
+                quote = str(s.value)
+        evidence.append(
+            {
+                "source_chapter": "",  # 蒸馏层无章节粒度，留空（可追溯来源书）。
+                "source_book": s.book,
+                "quote": quote,
+                "confidence": round(per_source_conf, 4),
+                "dimension": rule.dimension,
+            }
+        )
+    return evidence
+
+
 def _build_distilled(
     genre: str,
     dimension: str,
@@ -1485,6 +1522,7 @@ def _build_distilled(
                 "sources": [
                     {"book": s.book, "value": s.value} for s in rule.sources
                 ],
+                "evidence": _build_evidence(rule),
                 "confidence": rule.confidence,
                 "conflict": rule.conflict,
                 "over_generalized": rule.over_generalized,

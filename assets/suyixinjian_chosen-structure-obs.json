@@ -1,0 +1,1300 @@
+{
+  "meta": {
+    "source_title": "suyixinjian_chosen",
+    "genre": "campus-redemption",
+    "scope": "single-book-observation",
+    "awaiting_aggregation": true,
+    "min_books_required": 3
+  },
+  "chapter_analyses": [
+    {
+      "chapter": 1,
+      "title": "青苔湿信",
+      "role": "铺垫",
+      "beats": [
+        "少女持信抵镇 → 母亲遗信成为唯一生路",
+        "父亲砸杯逼嫁 → 少女以举报反制索得盘缠",
+        "敲错门撞见催债 → 谎称警官解围"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 8,
+        "skeleton": "[陌生环境白描]+[身份与来意悬念]+[闯入冲突现场]"
+      },
+      "foreshadow": {
+        "planted": [
+          "母亲遗信地址为唯一生机",
+          "父亲给的两千元来源可疑",
+          "少年被困催债现场"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "青苔窄巷口",
+          "characters": [
+            "蒲雨"
+          ],
+          "function": "铺垫",
+          "gap": "以为母亲遗信能换来安稳→实际连第一道门都进错",
+          "tension": 4,
+          "technique": "环境投射"
+        },
+        {
+          "location": "蒲家客厅",
+          "characters": [
+            "蒲雨",
+            "蒲志明",
+            "何烁婉"
+          ],
+          "function": "冲突",
+          "gap": "以为父亲会念亲情→实际以卖女换彩礼",
+          "tension": 9,
+          "technique": "语言压迫"
+        },
+        {
+          "location": "原溯家院",
+          "characters": [
+            "蒲雨",
+            "原溯",
+            "催债人"
+          ],
+          "function": "转折",
+          "gap": "以为只是寻人→撞入暴力催债现场",
+          "tension": 8,
+          "technique": "身份谎报"
+        }
+      ],
+      "value_change": {
+        "situation": "有家可归→流落陌生小镇",
+        "relationship": "父女决裂→与陌生少年命运交错",
+        "cognition": "以为亲人是依靠→认清父爱已死",
+        "emotion": "绝望→孤注一掷的坚定"
+      }
+    },
+    {
+      "chapter": 2,
+      "title": "雨季说谎",
+      "role": "推进",
+      "beats": [
+        "催债人被谎话吓退 → 少女暂脱险境",
+        "少年反问她身份 → 少女藏起信纸",
+        "敲错门真相暴露 → 少年替她用力敲门"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 6,
+        "skeleton": "[施恩者冷面]+[暗中的援手]+[无声解释]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯认识李素华（相邻而居）",
+          "柿子树标识"
+        ],
+        "resolved": [
+          "原溯困于催债（第1章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "原溯家院",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "冲突",
+          "gap": "以为会被戳穿谎言→少年不追问只审视",
+          "tension": 6,
+          "technique": "沉默对话"
+        },
+        {
+          "location": "风铃巷李素华门前",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "转折",
+          "gap": "以为少年冷漠离去→他折返帮她砸门",
+          "tension": 7,
+          "technique": "反差援手"
+        }
+      ],
+      "value_change": {
+        "situation": "进错门→找到正确地址",
+        "relationship": "原溯由陌生→暗中施以援手",
+        "cognition": "以为对方冷漠→发现他面冷心热",
+        "emotion": "恐惧绝望→重新燃起希望"
+      }
+    },
+    {
+      "chapter": 3,
+      "title": "门开时分",
+      "role": "转折",
+      "beats": [
+        "奶奶开门质问 → 少女坦白身世",
+        "奶奶嘴硬收留 → 少女道出遗信真相",
+        "奶奶答应办转学 → 少女重获希望"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 7,
+        "skeleton": "[长辈冷言]+[回忆佐证]+[心软松口]"
+      },
+      "foreshadow": {
+        "planted": [
+          "奶奶与父亲当年有苦衷",
+          "缝纫机与母亲的情分"
+        ],
+        "resolved": [
+          "母亲遗信地址（第1章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "李素华家门口",
+          "characters": [
+            "蒲雨",
+            "李素华",
+            "原溯"
+          ],
+          "function": "冲突",
+          "gap": "以为会被拒绝→奶奶质问却未赶人",
+          "tension": 6,
+          "technique": "嘴硬心软"
+        },
+        {
+          "location": "李素华家堂屋",
+          "characters": [
+            "蒲雨",
+            "李素华"
+          ],
+          "function": "转折",
+          "gap": "以为求收留会碰壁→奶奶默许留下",
+          "tension": 5,
+          "technique": "物件情感（缝纫机）"
+        },
+        {
+          "location": "李素华家厨房",
+          "characters": [
+            "蒲雨",
+            "李素华"
+          ],
+          "function": "释放",
+          "gap": "以为借住无望→奶奶主动提转学",
+          "tension": 4,
+          "technique": "动作含蓄"
+        }
+      ],
+      "value_change": {
+        "situation": "无处容身→获得栖身之所",
+        "relationship": "与奶奶由陌生防备→彼此接纳",
+        "cognition": "以为奶奶冷漠→发现她嘴硬心软",
+        "emotion": "忐忑→巨大喜悦"
+      }
+    },
+    {
+      "chapter": 4,
+      "title": "云销雨霁",
+      "role": "推进",
+      "beats": [
+        "奶奶带她办转学 → 老师赞其成绩优异",
+        "奶奶当众点破家丑 → 老师心生同情",
+        "蒲雨坐入教室 → 发现同桌是原溯"
+      ],
+      "hook": {
+        "type": "身份反转",
+        "strength": 7,
+        "skeleton": "[新环境人物登场]+[熟人再次现身形成呼应]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯是同桌",
+          "许岁然的出现",
+          "蒲雨文科天赋"
+        ],
+        "resolved": [
+          "奶奶收留（第3章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "汀南中学教导处",
+          "characters": [
+            "蒲雨",
+            "李素华",
+            "程司宜"
+          ],
+          "function": "铺垫",
+          "gap": "以为转学会被轻视→老师惊叹其成绩",
+          "tension": 4,
+          "technique": "反差铺垫"
+        },
+        {
+          "location": "高三(2)班教室",
+          "characters": [
+            "蒲雨",
+            "原溯",
+            "程司宜",
+            "全班同学"
+          ],
+          "function": "转折",
+          "gap": "以为来到全新环境→同桌竟是雨夜少年",
+          "tension": 7,
+          "technique": "巧合呼应"
+        }
+      ],
+      "value_change": {
+        "situation": "寄人篱下→正式入学",
+        "relationship": "原溯由邻居→成为同桌",
+        "cognition": "以为小镇中学差→被认可优秀",
+        "emotion": "拘谨→惊讶与安心交织"
+      }
+    },
+    {
+      "chapter": 5,
+      "title": "旧日沉光",
+      "role": "铺垫",
+      "beats": [
+        "同学议论原溯 → 少女得知其过往",
+        "许岁然讲述原溯家变 → 少女心生复杂",
+        "蒲雨购物付假钞 → 被老板当场揭穿"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 7,
+        "skeleton": "[平静日常]+[过往揭秘]+[突发变故]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯父亲赌博败家",
+          "两千元是假钞"
+        ],
+        "resolved": [
+          "原溯独来独往的缘由"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "教室",
+          "characters": [
+            "蒲雨",
+            "许岁然",
+            "原溯"
+          ],
+          "function": "铺垫",
+          "gap": "以为原溯只是冷漠→得知其从巅峰跌落",
+          "tension": 3,
+          "technique": "侧面描写"
+        },
+        {
+          "location": "食堂",
+          "characters": [
+            "蒲雨",
+            "许岁然"
+          ],
+          "function": "铺垫",
+          "gap": "以为小镇平淡→借许岁然之口铺开原溯命运",
+          "tension": 3,
+          "technique": "对比映衬"
+        },
+        {
+          "location": "小卖部",
+          "characters": [
+            "蒲雨",
+            "许岁然",
+            "老板"
+          ],
+          "function": "冲突",
+          "gap": "以为生活费可用→发现是假钞",
+          "tension": 8,
+          "technique": "突发揭露"
+        }
+      ],
+      "value_change": {
+        "situation": "逐渐安定→再度陷入绝境",
+        "relationship": "与许岁然由陌生→结为好友",
+        "cognition": "以为家人给的是活路→发现是死路",
+        "emotion": "安心→彻骨寒意"
+      }
+    },
+    {
+      "chapter": 6,
+      "title": "识破虚妄",
+      "role": "转折",
+      "beats": [
+        "老板揭穿假钞 → 少女坠入绝境",
+        "许岁然机智解围 → 少女暂避难堪",
+        "学费八百六十元 → 少女陷入两难"
+      ],
+      "hook": {
+        "type": "信息断点",
+        "strength": 6,
+        "skeleton": "[羞辱现场]+[善意遮掩]+[更重难题压来]"
+      },
+      "foreshadow": {
+        "planted": [
+          "学费八百六十元待缴",
+          "父亲递假钞的沉默与眼神"
+        ],
+        "resolved": [
+          "两千元假钞（第5章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "小卖部",
+          "characters": [
+            "蒲雨",
+            "许岁然",
+            "老板"
+          ],
+          "function": "冲突",
+          "gap": "以为钱能花→被当众羞辱为骗子",
+          "tension": 9,
+          "technique": "当众难堪"
+        },
+        {
+          "location": "教学楼后角落",
+          "characters": [
+            "蒲雨",
+            "许岁然"
+          ],
+          "function": "释放",
+          "gap": "以为孤立无援→许岁然两次出手相救",
+          "tension": 4,
+          "technique": "善意谎言"
+        },
+        {
+          "location": "教室/办公室",
+          "characters": [
+            "蒲雨",
+            "程司宜"
+          ],
+          "function": "铺垫",
+          "gap": "以为渡过难关→学费难题接踵而至",
+          "tension": 6,
+          "technique": "压力叠加"
+        }
+      ],
+      "value_change": {
+        "situation": "身无分文→被逼至绝境",
+        "relationship": "与许岁然友情加深",
+        "cognition": "彻底认清家人恶意",
+        "emotion": "麻木→深深的无助"
+      }
+    },
+    {
+      "chapter": 7,
+      "title": "崩溃决堤",
+      "role": "爆发",
+      "beats": [
+        "少女迷路遇原溯 → 暗中跟随回家",
+        "向奶奶借钱被斥 → 少女崩溃吐真言",
+        "奶奶识破假钞 → 怒骂并阻止其返城"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 9,
+        "skeleton": "[积压多日]+[至亲误解]+[情绪决堤吐真]"
+      },
+      "foreshadow": {
+        "planted": [
+          "奶奶要独自解决学费"
+        ],
+        "resolved": [
+          "蒲雨方向感差（第8章呼应）",
+          "假钞真相（第6章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "小镇巷道",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "铺垫",
+          "gap": "以为会迷路→跟随原溯寻得归途",
+          "tension": 3,
+          "technique": "尾随暗线"
+        },
+        {
+          "location": "李素华家堂屋",
+          "characters": [
+            "蒲雨",
+            "李素华"
+          ],
+          "function": "爆发",
+          "gap": "以为奶奶嫌她吃白食→实为担忧她的安危",
+          "tension": 10,
+          "technique": "情绪决堤"
+        }
+      ],
+      "value_change": {
+        "situation": "困境继续→奶奶决定出手",
+        "relationship": "与奶奶由误解→彻底交心",
+        "cognition": "以为奶奶嫌弃→读懂其背后的疼惜",
+        "emotion": "压抑崩溃→被护住的踏实"
+      }
+    },
+    {
+      "chapter": 8,
+      "title": "针线余温",
+      "role": "缓冲",
+      "beats": [
+        "奶奶深夜取钱 → 塞给少女千元积蓄",
+        "奶奶道出缝纫机旧事 → 少女感念母恩",
+        "奶奶送她认路 → 少女交上学费"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 6,
+        "skeleton": "[长辈倾囊]+[旧物承载深情]+[温情落地]"
+      },
+      "foreshadow": {
+        "planted": [
+          "缝纫机与母亲的情分",
+          "程司宜赏识其作文"
+        ],
+        "resolved": [
+          "奶奶要解决学费（第7章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "李素华家",
+          "characters": [
+            "蒲雨",
+            "李素华"
+          ],
+          "function": "释放",
+          "gap": "以为走投无路→奶奶倾囊相助",
+          "tension": 4,
+          "technique": "物件伏笔（缝纫机）"
+        },
+        {
+          "location": "汀南中学办公室",
+          "characters": [
+            "蒲雨",
+            "程司宜"
+          ],
+          "function": "转折",
+          "gap": "以为只是交学费→老师揭示其文科天赋",
+          "tension": 5,
+          "technique": "才华挖掘"
+        }
+      ],
+      "value_change": {
+        "situation": "学费危机解除",
+        "relationship": "与奶奶羁绊更深",
+        "cognition": "得知母亲的善良与父亲的不仁",
+        "emotion": "酸楚→温暖与感激"
+      }
+    },
+    {
+      "chapter": 9,
+      "title": "橘子汽水",
+      "role": "缓冲",
+      "beats": [
+        "少女还情买汽水 → 许岁然分杯同饮",
+        "许岁然吐露成长 → 少女羡慕其安稳",
+        "原溯久别归来 → 少女错愕"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 5,
+        "skeleton": "[日常温情]+[友情升华]+[暗线人物回归]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯重返校园",
+          "许岁然因原溯家变而成长"
+        ],
+        "resolved": [
+          "许岁然请饭（第5章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "食堂",
+          "characters": [
+            "蒲雨",
+            "许岁然"
+          ],
+          "function": "释放",
+          "gap": "以为只能独饮→好友分杯共享",
+          "tension": 3,
+          "technique": "物件寄情（汽水）"
+        },
+        {
+          "location": "教室后门",
+          "characters": [
+            "蒲雨",
+            "原溯",
+            "许岁然"
+          ],
+          "function": "转折",
+          "gap": "以为原溯不再来→他恰好现身",
+          "tension": 6,
+          "technique": "巧合登场"
+        }
+      ],
+      "value_change": {
+        "situation": "生活渐入正轨",
+        "relationship": "与许岁然友情升华",
+        "cognition": "读懂许岁然的成长与自己的缺失",
+        "emotion": "温暖中带酸楚"
+      }
+    },
+    {
+      "chapter": 10,
+      "title": "弦外之音",
+      "role": "推进",
+      "beats": [
+        "原溯秒答满分卷 → 少女震惊其才华",
+        "原溯当堂怼师 → 老师改口说普通话",
+        "少女鼓起勇气请教 → 原溯冷面以待"
+      ],
+      "hook": {
+        "type": "实力展示",
+        "strength": 7,
+        "skeleton": "[隐藏实力亮相]+[言语反差]+[主动示好被冷遇]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯数学物理天才",
+          "物理老师方言改普通话的用心"
+        ],
+        "resolved": [
+          "原溯成绩一落千丈（第5章埋）实为藏锋"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "教室",
+          "characters": [
+            "蒲雨",
+            "原溯",
+            "王老师",
+            "许岁然"
+          ],
+          "function": "转折",
+          "gap": "以为原溯已废→其满分秒答惊全场",
+          "tension": 7,
+          "technique": "实力反差"
+        },
+        {
+          "location": "教室课间",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "冲突",
+          "gap": "以为请教会顺利→被起床气冷脸回绝",
+          "tension": 6,
+          "technique": "冷面互动"
+        }
+      ],
+      "value_change": {
+        "situation": "少女学业遇阻",
+        "relationship": "与原溯由疏离→试探靠近",
+        "cognition": "发现原溯深藏的才华",
+        "emotion": "震惊→鼓起勇气"
+      }
+    },
+    {
+      "chapter": 41,
+      "title": "冬日冒险",
+      "role": "推进",
+      "beats": [
+        "少女主动请缨同往 → 奶奶拍板作伴",
+        "奶奶塞钱给原溯 → 两人结伴寻人"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 5,
+        "skeleton": "[主动请缨]+[长辈托付]+[双人冒险开启]"
+      },
+      "foreshadow": {
+        "planted": [
+          "南华市寻人之旅",
+          "原溯父亲下落线索"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "李素华家",
+          "characters": [
+            "蒲雨",
+            "原溯",
+            "李素华"
+          ],
+          "function": "铺垫",
+          "gap": "以为少女只能旁观→她主动提出同往",
+          "tension": 4,
+          "technique": "主动担当"
+        }
+      ],
+      "value_change": {
+        "situation": "从日常→踏上寻人之旅",
+        "relationship": "与原溯结伴同行",
+        "cognition": "少女开始主动介入原溯的命运",
+        "emotion": "紧张中带坚定"
+      }
+    },
+    {
+      "chapter": 42,
+      "title": "撞入怀中",
+      "role": "转折",
+      "beats": [
+        "原溯突然离去 → 少女攥物茫然",
+        "恶意者上前挑衅 → 少女身处险境"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 7,
+        "skeleton": "[同伴消失]+[陌生环境危险逼近]"
+      },
+      "foreshadow": {
+        "planted": [
+          "铜齿轮物件",
+          "南华市的旧识"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "南华市车站附近",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "冲突",
+          "gap": "以为同行有靠→少年突然消失",
+          "tension": 7,
+          "technique": "突然分离"
+        }
+      ],
+      "value_change": {
+        "situation": "结伴→独自面对",
+        "relationship": "原溯的离场制造不安",
+        "cognition": "意识到对原溯的依赖",
+        "emotion": "茫然→恐慌"
+      }
+    },
+    {
+      "chapter": 43,
+      "title": "泪湿衣襟",
+      "role": "爆发",
+      "beats": [
+        "少女紧紧抱住原溯 → 泪水浸湿衣襟",
+        "原溯悬手不知所措 → 沙哑否认"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 8,
+        "skeleton": "[情绪释放]+[肢体克制]+[沉默的温柔]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯手沾灰血的隐情"
+        ],
+        "resolved": [
+          "第42章险境的后续"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "楼道",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "爆发",
+          "gap": "以为原溯冷漠→他任由她哭却不忍推开",
+          "tension": 8,
+          "technique": "肢体克制"
+        }
+      ],
+      "value_change": {
+        "situation": "情感防线崩塌",
+        "relationship": "两人关系突破暧昧边界",
+        "cognition": "原溯并非无情",
+        "emotion": "崩溃→被接纳的安宁"
+      }
+    },
+    {
+      "chapter": 44,
+      "title": "听话涂药",
+      "role": "缓冲",
+      "beats": [
+        "原溯安排住处 → 少女追问去向",
+        "原溯承诺楼下守护 → 少女略安"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 5,
+        "skeleton": "[安置照料]+[短暂分离]+[承诺守护]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯外出所为何事"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "南华市小旅馆房间",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "释放",
+          "gap": "以为会孤身→原溯妥善安置",
+          "tension": 4,
+          "technique": "细节关怀"
+        }
+      ],
+      "value_change": {
+        "situation": "险境中获照料",
+        "relationship": "原溯展现可靠一面",
+        "cognition": "读懂原溯的守护方式",
+        "emotion": "不安→略安"
+      }
+    },
+    {
+      "chapter": 45,
+      "title": "托住恐惧",
+      "role": "推进",
+      "beats": [
+        "少女纠结同房 → 原溯问明心意",
+        "少女解释担忧 → 两人默契共处"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 5,
+        "skeleton": "[独处纠结]+[直球问询]+[默契化解]"
+      },
+      "foreshadow": {
+        "planted": [
+          "两人共处一室的亲密"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "旅馆房间",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "转折",
+          "gap": "以为会尴尬→原溯直白问出心意",
+          "tension": 5,
+          "technique": "直球对话"
+        }
+      ],
+      "value_change": {
+        "situation": "独处边界试探",
+        "relationship": "信任进一步加深",
+        "cognition": "确认彼此的心意",
+        "emotion": "羞涩→安心"
+      }
+    },
+    {
+      "chapter": 83,
+      "title": "橘酒微涩",
+      "role": "转折",
+      "beats": [
+        "夏天来临 → 少女即将离家",
+        "少女收拾行李 → 却望向空巷发呆",
+        "许岁然连发消息 → 兴奋难掩"
+      ],
+      "hook": {
+        "type": "信息断点",
+        "strength": 5,
+        "skeleton": "[离别氛围]+[心事未说]+[外界消息介入]"
+      },
+      "foreshadow": {
+        "planted": [
+          "少女即将远行",
+          "许岁然带来的消息"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "李素华家晾衣绳前",
+          "characters": [
+            "蒲雨",
+            "李素华"
+          ],
+          "function": "铺垫",
+          "gap": "以为离别轻松→少女心事重重",
+          "tension": 4,
+          "technique": "离别氛围"
+        }
+      ],
+      "value_change": {
+        "situation": "从校园→走向离乡",
+        "relationship": "与奶奶、好友、原溯即将分离",
+        "cognition": "少女开始审视内心牵挂",
+        "emotion": "淡淡的怅惘"
+      }
+    },
+    {
+      "chapter": 84,
+      "title": "他的声音",
+      "role": "缓冲",
+      "beats": [
+        "离家前夜奶奶彻夜未眠 → 反复检查行李",
+        "奶奶细细叮嘱 → 少女感动难言"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 6,
+        "skeleton": "[离别前夜]+[长辈反复叮嘱]+[细节堆叠深情]"
+      },
+      "foreshadow": {
+        "planted": [
+          "东州大学新征程"
+        ],
+        "resolved": [
+          "奶奶腰伤（此前埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "蒲雨房间",
+          "characters": [
+            "蒲雨",
+            "李素华"
+          ],
+          "function": "释放",
+          "gap": "以为奶奶会平静送别→其彻夜操劳",
+          "tension": 4,
+          "technique": "细节深情"
+        }
+      ],
+      "value_change": {
+        "situation": "即将踏上大学之路",
+        "relationship": "奶奶的疼爱达至顶点",
+        "cognition": "读懂奶奶无言的爱",
+        "emotion": "感动与不舍"
+      }
+    },
+    {
+      "chapter": 85,
+      "title": "资助名额",
+      "role": "过渡",
+      "beats": [
+        "少女抵达东州 → 感叹城市繁华",
+        "校园美景 → 却道若你在就好了"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 4,
+        "skeleton": "[新天地展开]+[思念暗涌]"
+      },
+      "foreshadow": {
+        "planted": [
+          "大学生活开启",
+          "资助名额线索"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "东州大学",
+          "characters": [
+            "蒲雨"
+          ],
+          "function": "过渡",
+          "gap": "以为新生活会冲淡过去→思念反而更浓",
+          "tension": 3,
+          "technique": "环境反衬"
+        }
+      ],
+      "value_change": {
+        "situation": "从小镇→到大都市",
+        "relationship": "与原溯空间疏远、思念加深",
+        "cognition": "意识到原溯的分量",
+        "emotion": "新奇中的失落"
+      }
+    },
+    {
+      "chapter": 86,
+      "title": "单向倾诉",
+      "role": "过渡",
+      "beats": [
+        "室友邀约出游 → 少女拒绝",
+        "少女选择打工 → 独自坚守"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 4,
+        "skeleton": "[热闹周遭]+[孤独坚守]+[心事独藏]"
+      },
+      "foreshadow": {
+        "planted": [
+          "蒲雨打工谋生",
+          "对原溯的单向牵挂"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "大学宿舍",
+          "characters": [
+            "蒲雨",
+            "林佳",
+            "室友"
+          ],
+          "function": "铺垫",
+          "gap": "以为能融入热闹→内心选择孤独",
+          "tension": 3,
+          "technique": "对比烘托"
+        }
+      ],
+      "value_change": {
+        "situation": "大学生活清苦",
+        "relationship": "与旧友渐远、思念更烈",
+        "cognition": "看清自己的执着",
+        "emotion": "平静的孤寂"
+      }
+    },
+    {
+      "chapter": 87,
+      "title": "生日礼物",
+      "role": "推进",
+      "beats": [
+        "写作课老师点题 → 少女心有所动",
+        "布置写爱的文章 → 少女陷入思绪"
+      ],
+      "hook": {
+        "type": "信息断点",
+        "strength": 4,
+        "skeleton": "[课堂点拨]+[写作命题]+[情感触发]"
+      },
+      "foreshadow": {
+        "planted": [
+          "少女的写作之路",
+          "成熟写作观"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "大学教室",
+          "characters": [
+            "蒲雨",
+            "孟松"
+          ],
+          "function": "铺垫",
+          "gap": "以为只是普通写作课→老师点拨戳中心事",
+          "tension": 4,
+          "technique": "主题呼应"
+        }
+      ],
+      "value_change": {
+        "situation": "写作天赋被点燃",
+        "relationship": "对原溯的感情借写作显形",
+        "cognition": "领悟成熟的表达方式",
+        "emotion": "触动与怀念"
+      }
+    },
+    {
+      "chapter": 125,
+      "title": "借我勇气",
+      "role": "转折",
+      "beats": [
+        "少女跑去取礼物 → 羞涩递上",
+        "原溯接过袋子 → 沉甸甸似有分量"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 6,
+        "skeleton": "[迟来礼物]+[羞怯赠予]+[分量暗示]"
+      },
+      "foreshadow": {
+        "planted": [
+          "礼物的特殊含义"
+        ],
+        "resolved": [
+          "第87章写作课的情感伏笔"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "某处",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "转折",
+          "gap": "以为只是补送礼物→其中藏深意",
+          "tension": 5,
+          "technique": "物件寄情"
+        }
+      ],
+      "value_change": {
+        "situation": "重逢赠礼",
+        "relationship": "两人关系升温",
+        "cognition": "少女借礼物传递勇气",
+        "emotion": "羞涩与期待"
+      }
+    },
+    {
+      "chapter": 126,
+      "title": "痴心妄想",
+      "role": "推进",
+      "beats": [
+        "原溯挤绿皮站票 → 围巾遮面",
+        "夜色如墨 → 少年审视自我"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 5,
+        "skeleton": "[长途跋涉]+[自我审视]+[隐忍心事]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯凛州之行目的"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "火车车厢",
+          "characters": [
+            "原溯"
+          ],
+          "function": "铺垫",
+          "gap": "以为少年风光→其清苦隐忍",
+          "tension": 4,
+          "technique": "孤身独白"
+        }
+      ],
+      "value_change": {
+        "situation": "原溯踏上远途",
+        "relationship": "独自面对命运",
+        "cognition": "原溯内心的挣扎",
+        "emotion": "压抑的孤独"
+      }
+    },
+    {
+      "chapter": 127,
+      "title": "画地为牢",
+      "role": "转折",
+      "beats": [
+        "原溯抵厂门口 → 听闻老板跑路",
+        "少年神色未变 → 眸中寒意更甚"
+      ],
+      "hook": {
+        "type": "信息断点",
+        "strength": 7,
+        "skeleton": "[真相现场]+[围观议论]+[主角隐忍]"
+      },
+      "foreshadow": {
+        "planted": [
+          "父亲欠债真相",
+          "原溯的决心"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "汽修厂门口",
+          "characters": [
+            "原溯",
+            "围观人群"
+          ],
+          "function": "冲突",
+          "gap": "以为只是普通打听→撞见父亲跑路真相",
+          "tension": 7,
+          "technique": "真相揭露"
+        }
+      ],
+      "value_change": {
+        "situation": "真相浮出水面",
+        "relationship": "与父亲的债更沉重",
+        "cognition": "认清父亲的真面目",
+        "emotion": "寒意与决绝"
+      }
+    },
+    {
+      "chapter": 128,
+      "title": "得知实情",
+      "role": "转折",
+      "beats": [
+        "少女考试结束 → 收到原溯照片",
+        "寻常晚饭照 → 少女盯了许久"
+      ],
+      "hook": {
+        "type": "信息断点",
+        "strength": 5,
+        "skeleton": "[隔空传递]+[日常细节]+[无声牵挂]"
+      },
+      "foreshadow": {
+        "planted": [
+          "原溯的近况",
+          "两人异地的维系"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "东州/凛州（隔空）",
+          "characters": [
+            "蒲雨",
+            "原溯"
+          ],
+          "function": "铺垫",
+          "gap": "以为只是一张照片→其中承载千言",
+          "tension": 4,
+          "technique": "细节传情"
+        }
+      ],
+      "value_change": {
+        "situation": "异地相处",
+        "relationship": "以照片维系牵挂",
+        "cognition": "读懂原溯的报平安",
+        "emotion": "思念与安心"
+      }
+    },
+    {
+      "chapter": 129,
+      "title": "想念疯长",
+      "role": "推进",
+      "beats": [
+        "原溯奔忙律所 → 屡遭拒绝",
+        "证据链不利 → 少年身心俱疲"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 6,
+        "skeleton": "[四处碰壁]+[困境加深]+[疲惫坚守]"
+      },
+      "foreshadow": {
+        "planted": [
+          "法律途径的艰难",
+          "原溯的最终抉择"
+        ],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "凛州各处律所",
+          "characters": [
+            "原溯"
+          ],
+          "function": "冲突",
+          "gap": "以为有法可依→处处碰壁",
+          "tension": 7,
+          "technique": "困境堆叠"
+        }
+      ],
+      "value_change": {
+        "situation": "困境持续加深",
+        "relationship": "独自扛债",
+        "cognition": "认清现实的残酷",
+        "emotion": "疲惫而坚韧"
+      }
+    },
+    {
+      "chapter": 168,
+      "title": "彩蛋版番外（论坛体八卦）",
+      "role": "过渡",
+      "beats": [
+        "篮球赛刷屏 → 众人热议12号",
+        "原溯赛后抱女友转圈 → 甜蜜定格"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 5,
+        "skeleton": "[群体视角]+[甜蜜场景]+[旁观羡慕]"
+      },
+      "foreshadow": {
+        "planted": [],
+        "resolved": [
+          "原溯与蒲雨的圆满结局"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "学校论坛/篮球场",
+          "characters": [
+            "原溯",
+            "蒲雨",
+            "众网友"
+          ],
+          "function": "释放",
+          "gap": "以为结局悲苦→甜蜜圆满",
+          "tension": 3,
+          "technique": "视角换位"
+        }
+      ],
+      "value_change": {
+        "situation": "苦尽甘来",
+        "relationship": "两人修成正果",
+        "cognition": "旁观者见证幸福",
+        "emotion": "甜蜜与欣慰"
+      }
+    },
+    {
+      "chapter": 169,
+      "title": "溯雨信笺【全文完】",
+      "role": "缓冲",
+      "beats": [
+        "专栏文章结集 → 签下出版社",
+        "样书到手 → 少女捧书回望来路"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 6,
+        "skeleton": "[梦想落地]+[回望来路]+[圆满收束]"
+      },
+      "foreshadow": {
+        "planted": [],
+        "resolved": [
+          "书名《溯雨信笺》呼应全文",
+          "少女写作之路（第87章埋）"
+        ]
+      },
+      "scenes": [
+        {
+          "location": "蒲雨家中",
+          "characters": [
+            "蒲雨"
+          ],
+          "function": "收束",
+          "gap": "以为只是出书→文字成为来路的见证",
+          "tension": 3,
+          "technique": "首尾呼应"
+        }
+      ],
+      "value_change": {
+        "situation": "从绝境少女→出版作者",
+        "relationship": "回望所有温暖的人",
+        "cognition": "苦难化为文字的养分",
+        "emotion": "释然与感恩"
+      }
+    }
+  ],
+  "aggregate": {
+    "hook_type_freq": {
+      "情感冲击": 12,
+      "危机降临": 6,
+      "信息断点": 5,
+      "转折": 2,
+      "实力展示": 1,
+      "身份反转": 1
+    },
+    "hook_min_interval": 1,
+    "climax_cycle": "每5-7章一个小爆发章（如第7章崩溃决堤、第43章泪湿衣襟），每30章左右一个大转折章（第42-43章中段高潮、第127章画地为牢）",
+    "foreshadow_avg_span": 4.8,
+    "foreshadow_max_span": 40,
+    "foreshadow_concurrent_open": 3
+  }
+}

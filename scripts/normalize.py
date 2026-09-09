@@ -516,13 +516,26 @@ def extract_emotion_examples(pass3: dict, mode: str) -> list:
 
     examples = []
     if isinstance(rules, list) and rules:
-        anti_txt = _anti_text(anti, banned_words)
+        # 2026-09-08 修复：anti 是 dict（按情绪名分组）时，为每条 rule 匹配其
+        # 专属反例，而非把整个 dict 压成一段拼接文本重复塞给每条 example
+        # （旧实现导致 3 条 example 的 anti_pattern 完全相同且语义错位）。
         for item in rules:
             if not isinstance(item, dict):
                 continue
             scene = as_str(item.get("scene") or item.get("场景") or "通用")
             sub_mode = as_str(item.get("mode") or item.get("模式") or "")
             pat = as_str(item.get("example_pattern") or item.get("规律") or "")
+            # 按场景名匹配专属反例
+            if isinstance(anti, dict) and anti:
+                matched = anti.get(scene) or anti.get(item.get("scene"))
+                if matched is not None:
+                    _, anti_txt = split_anti(as_str(matched))
+                    if not anti_txt:
+                        anti_txt = as_str(matched)
+                else:
+                    anti_txt = _anti_text(anti, banned_words)
+            else:
+                anti_txt = _anti_text(anti, banned_words)
             examples.append({
                 "emotion": scene,
                 "pattern": f"[{sub_mode}] {pat}" if sub_mode and pat else (pat or f"见 {mode}"),
@@ -744,14 +757,33 @@ def normalize_pass3(pass3: dict) -> tuple:
         "signature_devices": devices,
     }
 
-    # 负空间/禁忌词：可能是 {"banned": [...]} 或 ["..."] 或嵌套 dict
-    never = fuzzy_find(pass3, "负空间", "banned", "禁忌", "回避", "禁用")
-    if isinstance(never, dict):
-        never = never.get("banned") or next((v for v in never.values() if isinstance(v, list)), [])
+    # 负空间/禁忌词：可能是 {"never_used_words":[...],"avoided_structures":[...],"genre_taboos":[...]}
+    # 也可能是 {"banned": [...]} 或 ["..."] 或嵌套 dict
+    #
+    # 2026-09-08 修复：原实现只 fuzzy_find 提 never_used_words 且把 avoided_structures /
+    # genre_taboos 硬编码为空，导致 pass3 已输出完整三字段时数据丢失
+    # （fuzzy_find 遇 dict 会下钻找叶子，兜底 as_str 只取第一个词）。
+    # 现改为：先用 _find_key 取 banned 原始值（不下钻），识别标准三字段结构；
+    # 识别不到才退回 fuzzy_find 兜底，兼容扁平 list 等历史形态。
+    banned_raw = _find_key(pass3, "banned", "负空间", "禁忌")
+    if isinstance(banned_raw, dict) and any(
+        k in banned_raw for k in ("never_used_words", "avoided_structures", "genre_taboos")
+    ):
+        # 标准三字段结构：逐字段提取，缺哪个就空列表（不硬编码）
+        never = banned_raw.get("never_used_words", [])
+        avoided = banned_raw.get("avoided_structures", [])
+        taboos = banned_raw.get("genre_taboos", [])
+    else:
+        # 兜底：非标准结构（扁平 list / {"banned": [...]} / 嵌套 dict）
+        never = fuzzy_find(pass3, "负空间", "banned", "禁忌", "回避", "禁用")
+        if isinstance(never, dict):
+            never = never.get("banned") or next((v for v in never.values() if isinstance(v, list)), [])
+        avoided = []
+        taboos = []
     banned = {
         "never_used_words": as_list(never),
-        "avoided_structures": [],
-        "genre_taboos": [],
+        "avoided_structures": as_list(avoided),
+        "genre_taboos": as_list(taboos),
     }
 
     return narration, dialogue, emotion_handling, imagery, banned

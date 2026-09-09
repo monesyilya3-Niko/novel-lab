@@ -275,10 +275,10 @@ def main():
     print(f"✓ 拆书报告已生成: {out}")
     print(f"  报告长度: {len(report)} 字符")
 
-    # 铁律二：拆书报告字符数硬门槛（拆书报告 + 笔法分析合计 ≥10000，此处单份校验）
+    # 铁律二：拆书报告单份字数提示（合计校验在 pipeline.py 汇总两份报告后执行）
     if len(report) < MIN_REPORT_CHARS:
-        print(f"⚠ 拆书报告字数 {len(report)} < 硬门槛 {MIN_REPORT_CHARS}，请补充分析")
-        sys.exit(1)
+        print(f"⚠ 拆书报告单份字数 {len(report)} < {MIN_REPORT_CHARS}，请确认笔法分析部分补足，"
+              f"合计校验以 pipeline.py 为准")
 
 
 if __name__ == "__main__":
