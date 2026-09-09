@@ -359,7 +359,10 @@ def check_logic(texts: dict, entities: dict = None, llm_hook=None) -> list:
         texts: {章号:int -> 文本:str}。章号建议用正整数。
         entities: entities.json 解析结果（可选）。含 characters[].aliases 供称呼/
                   状态检测复用。缺失时仅做数字/时间线两类检测。
-        llm_hook: 占位参数，为将来 LLM 增强预留，当前不实现（架构师已定稿）。
+        llm_hook: Optional[Callable[[list[dict]], list[dict]]]，默认 None（纯算法）。
+                  非 None 时对第一层检测结果做「LLM 因果合理性二次判定」：
+                  入参为第一层完整 issue 列表，出参为过滤后 issue 列表。
+                  若 llm_hook 抛异常，则捕获并回退返回纯算法结果（双保险）。
 
     Returns:
         list[dict]: issue 列表，每项 {"type", "severity", "chapter", "detail"}。
@@ -374,6 +377,14 @@ def check_logic(texts: dict, entities: dict = None, llm_hook=None) -> list:
     if entities:
         issues.extend(_check_appellation_contradictions(texts, entities))
         issues.extend(_check_state_contradictions(texts, entities))
+
+    # 第二层：LLM 因果合理性二次判定（仅当显式传入 callable 时启用）
+    if llm_hook is not None:
+        try:
+            issues = llm_hook(issues)
+        except Exception:
+            # 防御兜底：即使传入的 hook 不健壮，也绝不让异常冒泡，回退纯算法结果
+            pass
     return issues
 
 

@@ -53,6 +53,7 @@ import chapter_check
 import compliance
 import consistency
 import logic_check
+import llm_hook as llm_hook_mod
 import setting_check
 
 
@@ -183,9 +184,12 @@ def _dim_plot_continuity(texts: dict) -> DimensionScore:
         issues=issues, raw={"source": "book_quality.check_plot_continuity"})
 
 
-def _dim_logic(texts: dict, entities: dict) -> DimensionScore:
-    """D2 逻辑合理 → logic_check.check_logic。"""
-    issues = _wrap_issues(logic_check.check_logic(texts, entities))
+def _dim_logic(texts: dict, entities: dict, llm_hook=None) -> DimensionScore:
+    """D2 逻辑合理 → logic_check.check_logic。
+
+    llm_hook: 可选因果二次判定 callable（None 时纯算法，行为与改造前一致）。
+    """
+    issues = _wrap_issues(logic_check.check_logic(texts, entities, llm_hook))
     return DimensionScore(
         key="logic", label="逻辑合理", layer="L1",
         score=_score_from_issues(issues), weight=1.0,
@@ -381,7 +385,8 @@ _LAYER_DEFS = [
 
 
 def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: str = None,
-           asset_path: str = None, book_path: str = None, novel_dir: str = None) -> QCReport:
+           asset_path: str = None, book_path: str = None, novel_dir: str = None,
+           llm_hook=None, enable_llm_hook: bool = False) -> QCReport:
     """统一 QC 编排入口。
 
     Args:
@@ -391,6 +396,13 @@ def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: st
         asset_path: 资产 JSON 路径（可选，用于 D12 版权合规）。
         book_path: 原文 TXT 路径（可选，用于 D12 版权合规 ngram 索引）。
         novel_dir: novel-writing 项目目录（可选，用于定位 entities.json）。
+        llm_hook: 可选因果二次判定 callable（由 llm_hook_mod.make_causality_hook
+                  构造，None 时纯算法，与改造前完全一致）。此参数保留以兼容调用方
+                  显式传入外部构造的 hook。
+        enable_llm_hook: 布尔开关。为 True 时，run_qc 会在加载完章节原文后，
+                  内部调用 llm_hook_mod.make_causality_hook(texts=texts) 构造 hook，
+                  从而让 LLM 二次判定真正拿到「相关章节原文片段」（识别闪回/倒叙/
+                  伏笔的核心依据）。若同时显式传入 llm_hook，则优先使用 llm_hook。
 
     Returns:
         QCReport: 完整报告。
@@ -407,6 +419,11 @@ def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: st
         # 复用 book_quality 的自动探测：chapter_dir 上两级 settings/entities.json
         entities = _auto_detect_entities(Path(chapter_dir))
 
+    # 构造因果判定 hook：必须在此（texts 加载之后）构造，才能把真实章节原文
+    # 传给 hook。无模型配置时 make_causality_hook 返回 None，静默降级为纯算法。
+    if llm_hook is None and enable_llm_hook:
+        llm_hook = llm_hook_mod.make_causality_hook(texts=texts)
+
     voice_card = _load_json(voice_card_path)
     genre_pack = _load_json(genre_pack_path)
     asset = _load_json(asset_path)
@@ -417,7 +434,7 @@ def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: st
     # 十二维
     dims = [
         _dim_plot_continuity(texts),
-        _dim_logic(texts, entities),
+        _dim_logic(texts, entities, llm_hook),
         _dim_structure(texts),
         _dim_character_arc(texts, voice_card),
         _dim_setting(texts, entities),
@@ -468,6 +485,9 @@ def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: st
         "book": book_path,
         "novel_dir": novel_dir,
         "severity_count": _severity_count(all_issues),
+        "llm_hook": llm_hook.llm_hook_meta if (
+            llm_hook is not None and hasattr(llm_hook, "llm_hook_meta")
+        ) else {"enabled": llm_hook is not None},
     }
 
     return QCReport(
@@ -620,6 +640,8 @@ def main():
     ap.add_argument("--novel-dir", help="novel-writing 项目目录（定位 entities.json）")
     ap.add_argument("--json", action="store_true", help="输出 JSON 而非 Markdown")
     ap.add_argument("--no-save", action="store_true", help="不落盘，仅打印到 stdout")
+    ap.add_argument("--llm-hook", action="store_true",
+                    help="启用 LLM 因果合理性二次判定（无模型时自动降级为纯算法）")
     args = ap.parse_args()
 
     report = run_qc(
@@ -629,6 +651,7 @@ def main():
         asset_path=args.asset,
         book_path=args.book,
         novel_dir=args.novel_dir,
+        enable_llm_hook=args.llm_hook,
     )
 
     # 落盘 reports/qc/<书名>-qc.json + .md

@@ -268,5 +268,46 @@ class TestYamlLiteEmptyValueList(unittest.TestCase):
         self.assertEqual(result["name"], "张三")
 
 
+class TestQcLlmHookWiring(unittest.TestCase):
+    """回归 #5：qc.py 的 llm_hook 参数不得遮蔽模块名（接线层崩溃类 bug）。
+
+    历史缺陷：run_qc 的参数 ``llm_hook=None`` 遮蔽了模块级 ``import llm_hook``，
+    导致 ``--llm-hook`` 在无模型环境下触发 ``AttributeError: 'NoneType' object
+    has no attribute 'make_causality_hook'``。工程师单测只覆盖 hook 模块自身逻辑，
+    未覆盖 qc.py 端到端接线，故漏网。此处固化：无模型环境跑 run_qc(enable_llm_hook=True)
+    必须静默降级为纯算法（meta.llm_hook.enabled=False），不得崩溃。
+    """
+
+    def test_run_qc_enable_llm_hook_no_model_silently_degrades(self):
+        qc = _load("qc")
+        # 构造最小章节目录（单章 txt），复用 _load_texts 的发现逻辑。
+        with tempfile.TemporaryDirectory() as tmp:
+            ch = Path(tmp) / "chapters"
+            ch.mkdir()
+            (ch / "ch1.txt").write_text("十八岁那年的夏天，唐雨回到故乡。", encoding="utf-8")
+
+            # 无模型环境（默认 llm_client 未配置），enable_llm_hook=True 应静默降级。
+            report = qc.run_qc(str(ch), enable_llm_hook=True)
+
+            self.assertIsNotNone(report, "run_qc 应正常返回 QCReport，而非崩溃")
+            meta_hook = report.meta.get("llm_hook")
+            self.assertIsNotNone(meta_hook, "meta 应含 llm_hook 字段")
+            self.assertFalse(meta_hook.get("enabled"),
+                             "无模型环境下 llm_hook 应静默降级为 enabled=False")
+
+    def test_run_qc_enable_llm_hook_equals_baseline_issues(self):
+        qc = _load("qc")
+        with tempfile.TemporaryDirectory() as tmp:
+            ch = Path(tmp) / "chapters"
+            ch.mkdir()
+            (ch / "ch1.txt").write_text("十八岁那年的夏天，唐雨回到故乡。", encoding="utf-8")
+
+            base = qc.run_qc(str(ch))                       # 纯算法基线
+            with_hook = qc.run_qc(str(ch), enable_llm_hook=True)  # 降级后应一致
+
+            self.assertEqual(len(with_hook.issues), len(base.issues),
+                             "无模型降级后 issue 数量应与纯算法基线一致")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

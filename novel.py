@@ -144,6 +144,8 @@ def main():
     p3e.add_argument("--book", help="原文 TXT 路径（版权合规 ngram 索引）")
     p3e.add_argument("--novel-dir", help="novel-writing 项目目录（定位 entities.json）")
     p3e.add_argument("--auto", action="store_true", help="标记为写作流程自动触发（预留钩子）")
+    p3e.add_argument("--llm-hook", action="store_true",
+                     help="启用 LLM 因果合理性二次判定（无模型时自动降级为纯算法）")
     p3e.add_argument("--json", action="store_true", help="输出 JSON 格式")
     p3e.add_argument("--no-save", action="store_true", help="不落盘，仅打印 stdout")
 
@@ -371,6 +373,8 @@ def main():
             qc_args += ["--book", args.book]
         if args.novel_dir:
             qc_args += ["--novel-dir", args.novel_dir]
+        if args.llm_hook:
+            qc_args += ["--llm-hook"]
         if args.json:
             qc_args += ["--json"]
         if args.no_save:
