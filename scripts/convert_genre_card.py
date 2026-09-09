@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """体裁散文卡 → genre-pack 规则包转换器（纯标准库）。
 
+.. deprecated::
+    本脚本已弃用。它会把散文卡转成「空壳 genre-pack」（``chapter_word_range: {}``、
+    ``chapter_roles: []``、``frequency: null``、``buildup_length: null`` 等占位空值），
+    缺 ``iron_rules`` 且无有效 ``payoff_density``，无法通过 genre-pack 严格校验
+    （auto_kind 兜底误判为 voice-card，报大量硬错误）。
+
+    散文卡应改用 ``import_genre_prose_cards.py`` 转成 **genre-prose-card**（通用、
+    产出正确的轻量种子卡），而非 genre-pack。本脚本保留仅为历史留档与
+    ``novel.py`` 的 ``convert-genre-card`` 子命令引用；运行时将显式报错退出。
+
 把 ``reference/oh-story/genre-prose-card_<题材>.md`` 这类「散文体体裁提示卡」
 （YAML frontmatter + 13 个 ``##`` 小节）转换为符合 ``schema/genre-pack.schema.json``
 的结构化 JSON 规则包。
@@ -15,12 +25,16 @@
 * 幂等覆盖：``--force`` 时若目标文件已存在且 ``schema_version`` 相同则跳过，
   避免重复转换污染现有规则包。
 
-用法：:
+用法（已弃用，运行会退出）：:
 
     python scripts/convert_genre_card.py \\
         --input reference/oh-story/genre-prose-card_青春甜宠.md \\
         --output assets/genre-youth-romance-pack.json \\
         --genre-id genre-youth-romance
+
+替代方案：:
+
+    python scripts/import_genre_prose_cards.py ...
 """
 
 from __future__ import annotations
@@ -349,6 +363,21 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="幂等覆盖：已存在且同 schema_version 则跳过",
     )
     args = parser.parse_args(argv)
+
+    # 失效引导：本脚本已弃用，运行即显式报错退出，不再产出误导性空壳 genre-pack。
+    print(
+        "错误：convert_genre_card.py 已弃用，不再执行转换。\n"
+        "原因：它会把散文卡转成「空壳 genre-pack」（chapter_word_range 为空、\n"
+        "chapter_roles 为空、frequency/buildup_length/per_thousand_words 为 null），\n"
+        "缺少 iron_rules 且无有效 payoff_density，无法通过 genre-pack 严格校验。\n"
+        "\n"
+        "替代方案：散文卡应转成 genre-prose-card 而非 genre-pack，请改用：\n"
+        "    python scripts/import_genre_prose_cards.py ...\n"
+        "\n"
+        "本脚本保留仅为历史留档与 novel.py 的 convert-genre-card 子命令引用。",
+        file=sys.stderr,
+    )
+    return 1
 
     wrote, reason = convert(
         input_path=Path(args.input),

@@ -24,9 +24,9 @@ ROLE_ENUM = {"主角", "女主", "反派", "导师", "配角", "工具人"}
 ARC_ENUM = {"正向成长", "负向堕落", "平坦型", "先扬后抑", "先抑后扬"}
 EMOTION_MODE_ENUM = {"直陈式", "体感式", "动作外化式", "环境投射式", "混合式"}
 POV_ENUM = {"第一人称", "第三人称限知", "第三人称全知", "多视角轮换"}
-HOOK_ENUM = {"悬念揭示", "危机降临", "身份反转", "实力展示", "情感冲击", "信息断点", "对手登场"}
+HOOK_ENUM = {"悬念揭示", "危机降临", "身份反转", "实力展示", "情感冲击", "信息断点", "对手登场", "误会升级", "甜蜜瞬间", "暧昧拉扯"}
 PAYOFF_ENUM = {"打脸", "升级", "收益兑现", "身份揭露", "他人认可", "情感回应", "反杀"}
-CHAPTER_ROLE_ENUM = {"铺垫", "推进", "转折", "爆发", "缓冲", "过渡"}
+CHAPTER_ROLE_ENUM = {"铺垫", "推进", "转折", "爆发", "缓冲", "过渡", "甜蜜", "拉扯", "告白"}
 ABSTRACTION_ENUM = {"structural", "scenic", "verbal"}
 LANG_SUBTYPE_ENUM = {"直白", "偶有潜台词", "大量潜台词"}
 
@@ -265,6 +265,28 @@ def validate_genre_pack(d):
         if check_list(sb, "meta.source_books"):
             if len(sb) < 3:
                 warn(f"题材包应由 ≥3 本聚合，当前 {len(sb)} 本", "meta.source_books")
+
+    # --- structure 校验（遗留优化：接入 HOOK_ENUM / CHAPTER_ROLE_ENUM）---
+    st = d.get("structure")
+    if check_obj(st, "structure"):
+        # chapter_roles[]：对象数组，每个元素含 role 字段。
+        cr = st.get("chapter_roles")
+        if check_list(cr, "structure.chapter_roles"):
+            for i, role_obj in enumerate(cr):
+                p = f"structure.chapter_roles[{i}]"
+                if not check_obj(role_obj, p):
+                    continue
+                check_enum(role_obj.get("role"), CHAPTER_ROLE_ENUM, p + ".role")
+        # hook_system：先查对象，再查 hook_types 列表，逐个校验 type。
+        hs = st.get("hook_system")
+        if check_obj(hs, "structure.hook_system"):
+            ht = hs.get("hook_types")
+            if check_list(ht, "structure.hook_system.hook_types"):
+                for i, hook in enumerate(ht):
+                    p = f"structure.hook_system.hook_types[{i}]"
+                    if not check_obj(hook, p):
+                        continue
+                    check_enum(hook.get("type"), HOOK_ENUM, p + ".type")
 
     com = d.get("commercial")
     if check_obj(com, "commercial"):
