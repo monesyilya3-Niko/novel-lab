@@ -386,6 +386,70 @@ def render_craft_card(cc: dict) -> str:
     return "\n\n".join(parts) if parts else ""
 
 
+def render_genre_prose_card(card: dict) -> str:
+    """题材文风卡（genre-prose-card）：软约束参考提示（非铁律）。
+
+    与 genre-pack 的「题材铁律（最高优先级）」明确区分：本段标注「参考级、
+    非铁律、来源自报、未经验证」。low 卡（confidence≤0.4）额外标注「低置信·
+    仅供参考」。``prose.sections`` 原文整段渲染进去作为兜底参考。
+
+    Args:
+        card: genre-prose-card 资产 dict。
+
+    Returns:
+        Markdown 段落（无 card 时返回空串，由调用方决定是否注入）。
+    """
+    if not card:
+        return ""
+    meta = card.get("meta") or {}
+    confidence = meta.get("confidence")
+
+    parts: list = []
+    header = "## 〇、题材参考提示（genre-prose-card · 软约束·来源自报·未经验证）"
+    if isinstance(confidence, (int, float)) and confidence <= 0.4:
+        header += "　【低置信·仅供参考】"
+    parts.append(header)
+
+    name = meta.get("name", "")
+    if name:
+        parts.append(f"- 题材：{name}")
+    if isinstance(confidence, (int, float)):
+        parts.append(f"- 置信度：{confidence:.2f}（来源自报，未经验证）")
+
+    lr = card.get("language_rules") or {}
+    forbidden = lr.get("forbidden_elements")
+    if isinstance(forbidden, list) and forbidden:
+        parts.append("\n### 参考·避免漂移（非铁律）")
+        parts.append("、".join(f"✗ {x}" for x in forbidden))
+    if lr.get("voice_notes"):
+        parts.append("\n### 参考·对话与声线")
+        parts.append(str(lr["voice_notes"]))
+
+    st = card.get("structure") or {}
+    if st.get("hook_notes"):
+        parts.append("\n### 参考·章尾钩子 / 正文落点")
+        parts.append(str(st["hook_notes"]))
+    if st.get("arc_rhythm_notes"):
+        parts.append("\n### 参考·节奏密度 / 前中后期打法")
+        parts.append(str(st["arc_rhythm_notes"]))
+
+    co = card.get("commercial") or {}
+    if co.get("payoff_notes"):
+        parts.append("\n### 参考·爽点与情绪释放")
+        parts.append(str(co["payoff_notes"]))
+
+    # prose.sections 原文整段兜底参考。
+    prose = card.get("prose") or {}
+    sections = prose.get("sections")
+    if isinstance(sections, dict) and sections:
+        parts.append("\n### 原文参考（完整小节，兜底）")
+        for title, content in sections.items():
+            parts.append(f"\n#### {title}")
+            parts.append(str(content))
+
+    return "\n".join(parts)
+
+
 def render_commercial_obs(co: dict) -> str:
     """商业观测：爽点密度 / 前3章拆解 / 卡点（如果存在）。"""
     if not co:
@@ -416,7 +480,7 @@ def render_commercial_obs(co: dict) -> str:
 
 # --------------------------------------------------------------------------
 
-def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None, context_intent: str | None = None, tracking_state: dict | None = None) -> str:
+def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, genre_pack: dict | None = None, craft_card: dict | None = None, distilled: dict | None = None, context_intent: str | None = None, tracking_state: dict | None = None, genre_prose_card: dict | None = None) -> str:
     meta = voice.get("meta") or {}
     source = meta.get("source_title", "未知")
 
@@ -430,6 +494,13 @@ def build_prompt(voice: dict, structure: dict | None, commercial: dict | None, g
     gp = render_genre_pack(genre_pack or {})
     if gp and gp != "（无题材包）":
         sections.append("## 〇、题材规则（genre-pack · 最高优先级）\n\n" + gp)
+
+    # 阶段②：genre-prose-card 软约束参考（低优先级，非铁律）。
+    # 有 genre-pack 时 genre-pack 优先、prose-card 作为补充参考不覆盖；
+    # 无 genre-pack 时 prose-card 单独作为参考提示。
+    pc = render_genre_prose_card(genre_prose_card or {})
+    if pc:
+        sections.append(pc)
 
     # 蒸馏规则段：插在 genre-pack 段之后、叙述层之前（§0 注入点定位）。
     ds = render_distilled(distilled)
@@ -511,6 +582,7 @@ def main():
     ap.add_argument("--structure", help="structure-obs JSON（可选）")
     ap.add_argument("--commercial", help="commercial-obs JSON（可选）")
     ap.add_argument("--genre-pack", help="题材包 JSON（可选，注入题材级规则）")
+    ap.add_argument("--genre-prose-card", help="题材文风卡 JSON（可选，注入软约束参考提示）")
     ap.add_argument("--craft-card", help="craft-card JSON（可选，注入写作技法）")
     ap.add_argument("--distilled", help="蒸馏规则 JSON（可选，注入跨书聚合规则）")
     ap.add_argument("--tracking-state", help="追踪状态 JSON（可选，注入长文本连续性上下文）")
@@ -521,11 +593,12 @@ def main():
     structure = json.loads(Path(args.structure).read_text(encoding="utf-8")) if args.structure else None
     commercial = json.loads(Path(args.commercial).read_text(encoding="utf-8")) if args.commercial else None
     genre_pack = json.loads(Path(args.genre_pack).read_text(encoding="utf-8")) if args.genre_pack else None
+    genre_prose_card = json.loads(Path(args.genre_prose_card).read_text(encoding="utf-8")) if args.genre_prose_card else None
     craft_card = json.loads(Path(args.craft_card).read_text(encoding="utf-8")) if args.craft_card else None
     distilled = json.loads(Path(args.distilled).read_text(encoding="utf-8")) if args.distilled else None
     tracking_state = json.loads(Path(args.tracking_state).read_text(encoding="utf-8")) if args.tracking_state else None
 
-    prompt = build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled, tracking_state=tracking_state)
+    prompt = build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled, tracking_state=tracking_state, genre_prose_card=genre_prose_card)
 
     name = Path(args.voice).stem.replace("-voice-card", "")
     out = Path(args.out) if args.out else PROMPTS_DIR / f"{name}-writing-prompt.md"
@@ -535,6 +608,7 @@ def main():
     print(f"✓ 注入完成: {out}")
     print(f"  prompt 长度: {len(prompt)} 字符")
     print(f"  genre-pack: {'已注入' if genre_pack else '未注入'}")
+    print(f"  genre-prose-card: {'已注入' if genre_prose_card else '未注入'}")
     print(f"  craft-card: {'已注入' if craft_card else '未注入'}")
     print(f"  distilled: {'已注入' if distilled else '未注入'}")
     print(f"  （直接作为 system 消息喂给写作 LLM）")

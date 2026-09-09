@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "genre-prose-card.schema.json",
+  "title": "题材文风卡（种子模板）",
+  "description": "从 oh-story 散文式题材文风卡移植的轻量参考资产。非聚合产物、无范文来源，写作时注入为软约束参考，不冒充 genre-pack 题材铁律。",
+  "type": "object",
+  "required": ["meta", "language_rules", "prose"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["id", "name", "kind", "confidence"],
+      "properties": {
+        "id": { "type": "string", "description": "题材唯一 id，如 genre-xianxia" },
+        "name": { "type": "string", "description": "题材中文名，如 东方仙侠" },
+        "kind": { "type": "string", "const": "genre-prose-card" },
+        "sub_tags": { "type": "array", "items": { "type": "string" }, "description": "别名/细分标签" },
+        "target_platform": { "type": "string" },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "来源自报置信度（high=0.85/medium=0.65/low=0.4），非拆书实测"
+        },
+        "upgrade_status": { "type": "string", "enum": ["seed", "upgraded"], "default": "seed" },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "source": { "type": "string", "description": "来源仓库，如 zenstory-ai/oh-story-claudecode" },
+            "license": { "type": "string", "default": "MIT" },
+            "verified": {
+              "type": "boolean",
+              "default": false,
+              "description": "是否经范文拆书实测验证。genre-prose-card 恒为 false（来源自报，未经验证）"
+            },
+            "evidence": { "type": "string", "description": "证据摘要原文（升格溯源依据）" },
+            "converted_at": { "type": "string", "format": "date-time" }
+          }
+        },
+        "source_books": { "type": "array", "items": { "type": "object" }, "description": "范文明细占位，升格时填充（本阶段恒为空）" }
+      }
+    },
+    "language_rules": {
+      "type": "object",
+      "description": "语言软规则（倾向/避用/禁忌，非铁律）",
+      "properties": {
+        "forbidden_elements": { "type": "array", "items": { "type": "string" }, "description": "禁止漂移要素" },
+        "banned_phrases": { "type": "array", "items": { "type": "string" }, "description": "避用/禁用表达" },
+        "voice_notes": { "type": "string", "description": "对话与声线散文描述原文" }
+      }
+    },
+    "structure": {
+      "type": "object",
+      "description": "结构定性描述（非量化）",
+      "properties": {
+        "hook_notes": { "type": "string", "description": "章尾钩子/正文落点定性描述" },
+        "arc_rhythm_notes": { "type": "string", "description": "节奏密度/前中后期打法定性描述" }
+      }
+    },
+    "commercial": {
+      "type": "object",
+      "description": "商业定性描述（无量化字段）",
+      "properties": {
+        "payoff_notes": { "type": "string", "description": "爽点与情绪释放定性描述" }
+      }
+    },
+    "prose": {
+      "type": "object",
+      "description": "原文散文正文整段保留（写作兜底参考 + 升格素材）",
+      "required": ["sections"],
+      "properties": {
+        "sections": {
+          "type": "object",
+          "description": "13 小节标题 → 原文内容（动态收集，不依赖固定标题清单）",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

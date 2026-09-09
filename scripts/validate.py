@@ -463,6 +463,68 @@ def validate_commercial_obs(d):
 
 
 # --------------------------------------------------------------------------
+# genre-prose-card 校验（阶段② 增量：轻量种子模板，与 genre-pack 彻底分离）
+# --------------------------------------------------------------------------
+
+def validate_genre_prose_card(d):
+    """题材文风卡轻量校验（软约束种子，非 genre-pack 铁律）。
+
+    校验点（轻量，**不套用** genre-pack 的量化硬校验）：
+    * ``meta.kind == "genre-prose-card"``（硬校验，区分于 genre-pack/voice-card）
+    * ``meta.id`` / ``meta.name`` / ``meta.confidence``(0-1) 存在且类型正确
+    * ``meta.provenance`` 存在且 ``verified`` 为布尔（本阶段恒 false）
+    * ``language_rules`` 存在（软规则，不要求 iron_rules）
+    * ``prose.sections`` 存在且非空（原文兜底）
+    """
+    if not check_obj(d, "genre-prose-card"):
+        return
+
+    meta = d.get("meta")
+    if check_obj(meta, "meta"):
+        kind = meta.get("kind")
+        if kind != "genre-prose-card":
+            err(f"meta.kind 应为 'genre-prose-card'，实际 {kind!r}", "meta.kind")
+        for k in ("id", "name"):
+            if k not in meta:
+                err(f"缺少必填字段 '{k}'", "meta")
+            else:
+                check_str(meta.get(k, ""), f"meta.{k}", min_len=2)
+        if "confidence" not in meta:
+            err("缺少必填字段 'confidence'", "meta")
+        else:
+            check_probability(meta.get("confidence"), "meta.confidence")
+        # upgrade_status 枚举（缺省视为 seed，不报错）。
+        if "upgrade_status" in meta:
+            check_enum(meta.get("upgrade_status"), ("seed", "upgraded"), "meta.upgrade_status")
+        prov = meta.get("provenance")
+        if prov is None:
+            warn("建议显式声明 provenance 溯源（来源/许可证/是否验证）", "meta.provenance")
+        elif check_obj(prov, "meta.provenance"):
+            if "verified" in prov:
+                check_bool(prov["verified"], "meta.provenance.verified")
+                if prov.get("verified") is not False:
+                    warn("genre-prose-card 来源自报、未经验证，provenance.verified 应恒为 false", "meta.provenance.verified")
+
+    if "language_rules" not in d:
+        err("缺少必填字段 'language_rules'", "genre-prose-card")
+    else:
+        lr = d.get("language_rules")
+        if check_obj(lr, "language_rules"):
+            fe = lr.get("forbidden_elements")
+            if fe is not None and not isinstance(fe, list):
+                err(f"forbidden_elements 应为数组，实际 {type(fe).__name__}", "language_rules.forbidden_elements")
+
+    if "prose" not in d:
+        err("缺少必填字段 'prose'", "genre-prose-card")
+    else:
+        prose = d.get("prose")
+        if check_obj(prose, "prose"):
+            sections = prose.get("sections")
+            if not isinstance(sections, dict) or len(sections) == 0:
+                err("prose.sections 应为非空对象（原文兜底）", "prose.sections")
+
+
+# --------------------------------------------------------------------------
 
 DISPATCH = {
     "voice-card": validate_voice_card,
@@ -471,6 +533,7 @@ DISPATCH = {
     "craft-card": validate_craft_card,
     "structure-obs": validate_structure_obs,
     "commercial-obs": validate_commercial_obs,
+    "genre-prose-card": validate_genre_prose_card,
 }
 
 AUTO_HINTS = {
@@ -483,6 +546,8 @@ AUTO_HINTS = {
     # 2026-09-01 新增：此前缺条目导致 structure-obs/commercial-obs 兜底误判为 voice-card（15 硬错误 REJECT）
     "structure-obs": ["chapter_analyses", "aggregate"],
     "commercial-obs": ["payoff_density", "paywall"],
+    # 阶段②：genre-prose-card 靠显式 meta.kind 判定（auto_kind 里优先检查，见下）
+    "genre-prose-card": ["prose"],
 }
 
 # genre-pack 的 hint 键全部嵌套在 commercial/language_rules 里，需查子结构
@@ -490,6 +555,10 @@ GENRE_PACK_NESTED = ("commercial", "language_rules", "structure", "world_convent
 
 
 def auto_kind(d: dict) -> str:
+    # 阶段②：genre-prose-card 是显式 meta.kind 字段，须优先判断，
+    # 否则会落到兜底 voice-card 造成误判（历史 bug 同款）。
+    if (d.get("meta") or {}).get("kind") == "genre-prose-card":
+        return "genre-prose-card"
     keys = set(d.keys())
     for kind, hints in AUTO_HINTS.items():
         if kind == "genre-pack":
@@ -517,6 +586,16 @@ def main():
 
     kind = args.kind or auto_kind(d)
     DISPATCH[kind](d)
+
+    # 阶段② · 题材隔离校验：断言 meta.id 与文件名一致（防串味，共享知识约定 9）。
+    # 仅对 genre-prose-card 生效；文件名约定 assets/genre-prose-card-<id>.json。
+    if kind == "genre-prose-card":
+        meta = d.get("meta") or {}
+        card_id = meta.get("id", "")
+        expected_stem = f"genre-prose-card-{card_id}"
+        if card_id and path.stem != expected_stem:
+            err(f"题材隔离失败：文件名 '{path.stem}' 与 meta.id '{card_id}' 不一致"
+                f"（应为 '{expected_stem}'）", "meta.id")
 
     print(f"校验类型: {kind}  | 文件: {path.name}")
     print(f"硬错误 {len(ERRORS)} 条，警告 {len(WARNS)} 条")

@@ -120,6 +120,10 @@ def main():
     p3b.add_argument("--genre", required=True, help="题材目录名，如 campus-redemption")
     p3b.add_argument("--books", nargs="*", default=None, help="可选，限定参与蒸馏的书籍")
 
+    p3f = sub.add_parser("import-genre-prose-cards", help="批量移植 oh-story 题材文风卡 → genre-prose-card 轻量资产")
+    p3f.add_argument("--src", required=True, help="源 *.md 目录（genre-prose-cards）")
+    p3f.add_argument("--out", default="assets", help="落库目录（默认 assets/）")
+
     p3c = sub.add_parser("convert-genre-card", help="体裁散文卡 → genre-pack 规则包")
     p3c.add_argument("--input", required=True, help="源散文卡 markdown 路径")
     p3c.add_argument("--output", required=True, help="目标 JSON 路径")
@@ -148,6 +152,7 @@ def main():
     p4.add_argument("--structure")
     p4.add_argument("--commercial")
     p4.add_argument("--genre-pack")
+    p4.add_argument("--genre-prose-card", help="题材文风卡 JSON（可选，注入软约束参考提示）")
     p4.add_argument("--craft-card", help="craft-card JSON（可选，注入写作技法）")
     p4.add_argument("--distilled", help="蒸馏规则 JSON（可选，注入跨书聚合规则）")
     p4.add_argument("--tracking-state", help="追踪状态 JSON（可选，注入长文本连续性上下文）")
@@ -177,7 +182,7 @@ def main():
 
     p8 = sub.add_parser("校验", help="schema 校验")
     p8.add_argument("asset")
-    p8.add_argument("--kind", choices=["voice-card", "genre-pack", "trope-library", "craft-card", "structure-obs", "commercial-obs"])
+    p8.add_argument("--kind", choices=["voice-card", "genre-pack", "trope-library", "craft-card", "structure-obs", "commercial-obs", "genre-prose-card"])
 
     p12 = sub.add_parser("笔法报告", help="craft-card → 笔法深度分析报告")
     p12.add_argument("craft_card", help="craft-card JSON 文件路径")
@@ -344,6 +349,9 @@ def main():
                           ["--input", args.input, "--output", args.output,
                            "--genre-id", args.genre_id] +
                           (["--force"] if args.force else []))
+    if args.cmd == "import-genre-prose-cards":
+        return run_script("import_genre_prose_cards.py",
+                          ["--src", args.src, "--out", args.out])
     if args.cmd == "state-track":
         cmd_args = [args.action, "--state", args.state]
         if args.transaction:
@@ -374,6 +382,7 @@ def main():
                           (["--structure", args.structure] if args.structure else []) +
                           (["--commercial", args.commercial] if args.commercial else []) +
                           (["--genre-pack", args.genre_pack] if args.genre_pack else []) +
+                          (["--genre-prose-card", args.genre_prose_card] if args.genre_prose_card else []) +
                           (["--craft-card", args.craft_card] if args.craft_card else []) +
                           (["--distilled", args.distilled] if args.distilled else []) +
                           (["--tracking-state", args.tracking_state] if args.tracking_state else []) +
