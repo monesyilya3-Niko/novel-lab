@@ -1,51 +1,53 @@
 sequenceDiagram
-    participant U as 用户/CLI
-    participant N as novel.py
-    participant D as distill.py
-    participant C as distill_core.py
-    participant R as distill_render.py
-    participant I as inject.py
-    participant FS as 文件系统(assets/)
+    autonumber
+    participant U as 用户/系统
+    participant S as server.py
+    participant D as db.py
+    participant M as migrate.py
+    participant FS as 文件系统(assets/reports/corpus/gui_state)
 
-    U->>N: novel 蒸馏 --genre campus-redemption
-    N->>D: 透传 --genre
-    D->>C: collect_assets(genre)
-    C->>FS: glob assets/*-voice-card/-craft-card/-structure-obs/-commercial-obs.json
-    FS-->>C: 3 本书 × 4 类资产
-    C-->>D: {voice,craft,structure,commercial}
+    Note over U,FS: 【python -m gui.server 启动初始化】
+    U->>S: 启动命令（阻塞常驻）
+    S->>S: 获取单实例锁（lock 文件/端口）
+    S->>D: init_schema()
+    D->>FS: 建 gui_state/index.db（若不存在）
+    D->>D: CREATE TABLE IF NOT EXISTS ...（books/assets/reports/analysis_tasks/genres）
+    S->>D: apply_migrations()
+    D->>D: 读 schema_migrations，按序执行缺失 migrations/*.sql
+    D->>FS: 事务写库
+    S->>M: run_migrate()（幂等，重复跑不重复插）
+    M->>FS: 扫描 assets/*.json(55) + reports/*.md(8) + 推断 books(4)
+    M->>M: infer_kind / infer_book_id / infer_genre
+    M->>D: UPSERT books/assets/reports（事务）
+    M->>M: 对账：migrated=N, assets=55, reports=8, books=4
+    S->>D: get_conn() 就绪（WAL + foreign_keys）
+    S->>S: ThreadingHTTPServer 监听 127.0.0.1:8000
+    S-->>U: 服务就绪（阻塞 serve_forever）
 
-    loop 每个维度 (voice/craft/structure/commercial)
-        D->>C: align(dimension, assets)
-        C-->>D: aligned (缺失补 null)
-        D->>C: aggregate(dimension, aligned)
-        C-->>D: rules (3本hard/2本soft/1本personal)
-        D->>C: resolve_conflict(rules)
-        C-->>D: rules (conflict 标记)
-        D->>C: detect_blindspots(dimension, raw, aligned)
-        C-->>D: blindspots
-        D->>C: score_confidence(rule)
-        C-->>D: rules (confidence 赋值)
+    Note over M,FS: 【python -m gui.migrate 迁移/对账/回滚】
+    M->>FS: backup() 备份现有 index.db → .bak-{ts}
+    M->>D: init_schema()
+    M->>D: apply_migrations()
+    M->>FS: 扫描 assets/*.json + reports/*.md + 推断 books
+    M->>M: 对每个资产 infer_kind/book_id/genre
+    M->>D: 事务内 UPSERT（asset_key 幂等）
+    M->>M: 对账 count(*) vs 源目录
+    M-->>M: 输出 {migrated:N, assets:55, reports:8, books:4}
+    Note over M: --check 只读对账不写库；--rollback 从备份恢复
+
+    Note over U,D: 【GET /api/assets 查询流程（SQL 为主 + 短 TTL 缓存）】
+    U->>R: GET /api/assets?kind=voice&book_id=chireng_chosen&offset=0&limit=20
+    R->>S: list_assets(kind, genre, book_id, offset, limit)
+    S->>A: list_assets(...)
+    alt 缓存命中（< TTL）
+        A-->>S: 返回缓存结果
+    else 缓存失效/未命中
+        A->>D: SELECT ... FROM assets WHERE kind=? AND book_id=? LIMIT ? OFFSET ?
+        D-->>A: 行结果
+        A->>D: SELECT COUNT(*) FROM assets WHERE kind=? AND book_id=?
+        D-->>A: total
+        A->>A: 写短 TTL 只读缓存（可重建）
     end
-
-    D->>D: 组装 distilled dict (meta+rules+blindspots+stats)
-    D->>FS: 写 assets/<genre>-<dimension>-distilled.json × 4
-    D->>R: render_distilled(distilled)
-    R-->>D: 蒸馏段落 Markdown
-    D->>I: build_prompt(..., distilled=distilled)
-    I-->>D: 完整写作 prompt（含『蒸馏规则』段）
-    D->>FS: 写 prompts/generated/<genre>-writing-prompt.md
-    D-->>U: 报告（规则数/置信度/冲突/盲区）
-
-    Note over U,I: ============ 二期 · 任务B 检索-注入流程 ============
-    U->>I: build_prompt(..., context_intent="悬疑反转钩子")
-    I->>R: render_distilled(distilled)
-    R-->>I: 蒸馏段文本（或空串）
-    alt context_intent 非空
-        I->>R: retrieve_for_intent(intent, index, top_k=5)
-        R->>R: 分词 + 意图映射加权 + 倒排打分
-        R-->>I: list[HitEntry]（score 降序）
-        I->>I: render_retrieval(hits) 渲染针对性注入段
-    else context_intent 为空
-        Note over I: 跳过检索，输出与一期字节级一致
-    end
-    I-->>U: 完整 system prompt
+    A-->>S: {total, items}
+    S-->>R: {total, items}
+    R-->>U: {code:0, data:{total, items}}

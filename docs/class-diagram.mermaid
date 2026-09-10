@@ -1,119 +1,81 @@
 classDiagram
-    class SourceValue {
-        +str book
-        +object value
-        +object raw
+    class DB {
+        +sqlite3.Connection _conn
+        +get_conn() Connection
+        +tx() contextmanager
+        +init_schema() None
+        +apply_migrations() list~int~
+        +close() None
     }
-
-    class AggregatedRule {
-        +str id
-        +str dimension
-        +str field
+    class MigrateCLI {
+        +run_migrate() dict
+        +check() dict
+        +rollback() None
+        +backup() Path
+        +infer_book_id(stem) str
+        +infer_kind(name, content) str
+        +infer_genre(name, content) str
+    }
+    class AssetIndex {
+        +int ttl_seconds
+        +dict _cache
+        +float _cache_ts
+        +list_assets(kind, genre, book_id, offset, limit) dict
+        +get_asset_detail(kind, asset_id) dict
+        +get_overview() Overview
+        +count_by_kind() dict
+        +invalidate() None
+    }
+    class StateStore {
+        +upsert_task(task) None
+        +load_task(book_id) dict
+        +save_state(state) None
+        +load_state(book_id) dict
+    }
+    class GuiService {
+        +get_overview() Overview
+        +list_assets(kind, genre, book_id, offset, limit) dict
+        +get_asset_detail(kind, asset_id) dict
+        +list_reports() list
+        +get_status(book_id) dict
+        +get_stats() dict
+    }
+    class Asset {
+        +str asset_key
         +str kind
-        +int books_count
-        +object value
-        +list sources
-        +float confidence
-        +bool conflict
-        +bool over_generalized
-        +list blindspot_books
+        +str name
+        +str path
+        +str book_id
+        +str genre
+        +int size
+        +float mtime
     }
-
-    class Blindspot {
-        +str book
-        +str dimension
-        +str field
-        +str note
+    class Book {
+        +str book_id
+        +str title
+        +str genre
+        +str status
     }
-
-    class Distilled {
-        +dict meta
-        +list rules
-        +list blindspots
-        +dict stats
+    class Report {
+        +str report_key
+        +str type
+        +str book_id
+        +str path
+        +int char_count
     }
-
-    class distill_core {
-        <<module>>
-        +collect_assets(genre, book_names) dict
-        +align(dimension, assets) dict
-        +aggregate(dimension, aligned) list~AggregatedRule~
-        +resolve_conflict(rules) list~AggregatedRule~
-        +detect_blindspots(dimension, raw, aligned) list~Blindspot~
-        +score_confidence(rule) float
-        +distill_genre(genre, book_names) Distilled
+    class AnalysisTask {
+        +str book_id
+        +str status
+        +str cursor
+        +dict batch_state
+        +int state_revision
     }
-
-    class distill {
-        <<module>>
-        +main() int
-    }
-
-    class distill_render {
-        <<module>>
-        +render_distilled(distilled) str
-    }
-
-    class inject {
-        <<module>>
-        +build_prompt(voice, structure, commercial, genre_pack, craft_card, distilled) str
-        +render_genre_pack(gp) str
-        +render_distilled_section(distilled) str
-        +main() int
-    }
-
-    class novel {
-        <<module>>
-        +cmd_distill(args) int
-        +main() int
-    }
-
-    Distilled "1" *-- "0..*" AggregatedRule
-    Distilled "1" *-- "0..*" Blindspot
-    AggregatedRule "1" *-- "0..*" SourceValue
-
-    distill_core ..> AggregatedRule : 产出
-    distill_core ..> Distilled : 组装
-    distill_core ..> SourceValue : 构造
-    distill ..> distill_core : 调用
-    distill ..> distill_render : 调用
-    distill ..> inject : 注入
-    novel ..> distill : 透传
-    inject ..> distill_render : render_distilled
-
-    class TechniqueCluster {
-        +str representative
-        +list names
-        +list skeletons
-        +list sources
-        +int count
-        +list books
-    }
-    class retrieve {
-        <<module>>
-        +build_index(assets) Index
-        +retrieve_for_intent(intent, index, top_k) list~HitEntry~
-        +render_retrieval(hits) str
-    }
-    class Index {
-        +dict inverted
-        +dict doc_freq
-        +list docs
-        +dict idf_cache
-    }
-    class DocEntry {
-        +str asset_id
-        +str dimension
-        +dict asset_dict
-        +dict terms
-        +str snippet
-    }
-    class HitEntry {
-        +str asset_id
-        +str dimension
-        +float score
-        +str snippet
-    }
-    TechniqueCluster *-- SourceValue : 保留来源
-    Index *-- DocEntry : 文档
-    inject ..> retrieve : context_intent
+    DB ..> MigrateCLI
+    GuiService ..> AssetIndex
+    GuiService ..> StateStore
+    AssetIndex ..> DB
+    StateStore ..> DB
+    AssetIndex ..> Asset
+    GuiService ..> Book
+    GuiService ..> Report
+    StateStore ..> AnalysisTask
