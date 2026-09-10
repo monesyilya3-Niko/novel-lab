@@ -1,0 +1,43 @@
+# 换行符统一策略
+#
+# 背景：本机 core.autocrlf=true，但仓库无 .gitattributes，导致每次提交都刷大量
+# "LF will be replaced by CRLF" 警告，且跨平台协作时换行符可能反复翻转。
+# 本文件把策略显式化，消除歧义（长期可维护）。
+
+# 默认：由 git 自动判定文本文件，仓库内统一存 LF
+* text=auto
+
+# --- 必须 CRLF ---
+# Windows 批处理：cmd.exe 对 LF 结尾的 .bat 可能报错
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# --- 必须 LF ---
+# POSIX shell 脚本：CRLF 会导致 Git Bash 报 "bad interpreter: /bin/sh^M"
+*.sh text eol=lf
+.githooks/pre-commit text eol=lf
+
+# --- 二进制：不做任何换行转换 ---
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.7z binary
+*.exe binary
+*.dll binary
+*.pyd binary
+*.so binary
+*.db binary
+*.sqlite binary
+*.flac binary
+*.mp3 binary
+*.mp4 binary
