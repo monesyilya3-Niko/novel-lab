@@ -11,6 +11,12 @@ corpus/
 __pycache__/
 *.pyc
 
+# 前端依赖与构建中间产物 —— 体积巨大且可完全重建（npm ci），严禁入库。
+# 注意：gui/web/dist/ 是**预构建产物**，按设计**需要入库**（让用户无需装 Node 即可跑 GUI），
+# 故此处只忽略依赖与增量构建缓存，不忽略 dist。
+node_modules/
+*.tsbuildinfo
+
 # 检索倒排索引缓存（可重建，非资产）
 index/
 
@@ -29,3 +35,19 @@ qa_qc_real.json
 
 # 写作项目工作区（不入库）
 novel/
+
+# GUI 运行时数据（SQLite 库 / WAL / SHM、单实例锁、备份）——运行时产物，不入库。
+# SQLite（gui_state/index.db）是任务状态的**唯一权威来源**。
+gui_state/index.db*
+gui_state/*.lock
+gui_state/.lock
+gui_state/*.bak-*
+gui_state/
+*.db-shm
+*.db-wal
+
+# 状态 JSON 副本目录（gui/state/gui_state_*.json）——不入库。
+# 该目录只是 SQLite 的**派生镜像**（降级写路径的产物），权威数据在 gui_state/index.db。
+# 跟踪派生数据会制造第二个真相源、引入提交噪声与合并冲突，与「长期稳定可维护」相悖。
+# 备份需求由 gui_state/*.bak-* 与 migrate CLI 的 backup 机制承担。
+gui/state/

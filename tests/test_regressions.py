@@ -276,37 +276,55 @@ class TestQcLlmHookWiring(unittest.TestCase):
     has no attribute 'make_causality_hook'``。工程师单测只覆盖 hook 模块自身逻辑，
     未覆盖 qc.py 端到端接线，故漏网。此处固化：无模型环境跑 run_qc(enable_llm_hook=True)
     必须静默降级为纯算法（meta.llm_hook.enabled=False），不得崩溃。
+
+    注意：本类测试验证的是「无模型降级」这条逻辑，而非依赖运行环境是否真的
+    没配模型。因此通过 monkeypatch 强制 ``any_model_configured`` 返回 False，
+    使测试在任何环境下（含已配置模型时）都稳定验证降级路径。
     """
+
+    def _patch_no_model(self, qc):
+        """强制 qc 模块视角下「无模型」，返回恢复函数。"""
+        orig = qc.llm_hook_mod.llm_client.any_model_configured
+        qc.llm_hook_mod.llm_client.any_model_configured = lambda: False
+        return orig
 
     def test_run_qc_enable_llm_hook_no_model_silently_degrades(self):
         qc = _load("qc")
-        # 构造最小章节目录（单章 txt），复用 _load_texts 的发现逻辑。
-        with tempfile.TemporaryDirectory() as tmp:
-            ch = Path(tmp) / "chapters"
-            ch.mkdir()
-            (ch / "ch1.txt").write_text("十八岁那年的夏天，唐雨回到故乡。", encoding="utf-8")
+        orig = self._patch_no_model(qc)
+        try:
+            # 构造最小章节目录（单章 txt），复用 _load_texts 的发现逻辑。
+            with tempfile.TemporaryDirectory() as tmp:
+                ch = Path(tmp) / "chapters"
+                ch.mkdir()
+                (ch / "ch1.txt").write_text("十八岁那年的夏天，唐雨回到故乡。", encoding="utf-8")
 
-            # 无模型环境（默认 llm_client 未配置），enable_llm_hook=True 应静默降级。
-            report = qc.run_qc(str(ch), enable_llm_hook=True)
+                # 无模型（已 monkeypatch），enable_llm_hook=True 应静默降级。
+                report = qc.run_qc(str(ch), enable_llm_hook=True)
 
-            self.assertIsNotNone(report, "run_qc 应正常返回 QCReport，而非崩溃")
-            meta_hook = report.meta.get("llm_hook")
-            self.assertIsNotNone(meta_hook, "meta 应含 llm_hook 字段")
-            self.assertFalse(meta_hook.get("enabled"),
-                             "无模型环境下 llm_hook 应静默降级为 enabled=False")
+                self.assertIsNotNone(report, "run_qc 应正常返回 QCReport，而非崩溃")
+                meta_hook = report.meta.get("llm_hook")
+                self.assertIsNotNone(meta_hook, "meta 应含 llm_hook 字段")
+                self.assertFalse(meta_hook.get("enabled"),
+                                 "无模型环境下 llm_hook 应静默降级为 enabled=False")
+        finally:
+            qc.llm_hook_mod.llm_client.any_model_configured = orig
 
     def test_run_qc_enable_llm_hook_equals_baseline_issues(self):
         qc = _load("qc")
-        with tempfile.TemporaryDirectory() as tmp:
-            ch = Path(tmp) / "chapters"
-            ch.mkdir()
-            (ch / "ch1.txt").write_text("十八岁那年的夏天，唐雨回到故乡。", encoding="utf-8")
+        orig = self._patch_no_model(qc)
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                ch = Path(tmp) / "chapters"
+                ch.mkdir()
+                (ch / "ch1.txt").write_text("十八岁那年的夏天，唐雨回到故乡。", encoding="utf-8")
 
-            base = qc.run_qc(str(ch))                       # 纯算法基线
-            with_hook = qc.run_qc(str(ch), enable_llm_hook=True)  # 降级后应一致
+                base = qc.run_qc(str(ch))                       # 纯算法基线
+                with_hook = qc.run_qc(str(ch), enable_llm_hook=True)  # 降级后应一致
 
-            self.assertEqual(len(with_hook.issues), len(base.issues),
-                             "无模型降级后 issue 数量应与纯算法基线一致")
+                self.assertEqual(len(with_hook.issues), len(base.issues),
+                                 "无模型降级后 issue 数量应与纯算法基线一致")
+        finally:
+            qc.llm_hook_mod.llm_client.any_model_configured = orig
 
 
 if __name__ == "__main__":

@@ -1,0 +1,288 @@
+// REST/SSE 客户端封装。统一做 snake_case（后端）↔ camelCase（前端）转换。
+
+import type {
+  ApiResponse,
+  AssetItem,
+  AssetListResult,
+  Batch,
+  Book,
+  BookResults,
+  Chapter,
+  ChapterScore,
+  ModelInfo,
+  Overview,
+  ProgressEvent,
+  ReportItem,
+  StatusInfo,
+} from '../types'
+
+const BASE = '/api'
+
+// ---------------------------------------------------------------------------
+// 字段转换
+// ---------------------------------------------------------------------------
+
+function toCamel<T>(obj: Record<string, unknown>): T {
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(obj)) {
+    const key = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+    out[key] = v
+  }
+  return out as T
+}
+
+function batchFromSnake(b: Record<string, unknown>): Batch {
+  return {
+    chapterIndex: b.chapter_index as number,
+    batchIndex: b.batch_index as number,
+    charStart: b.char_start as number,
+    charEnd: b.char_end as number,
+    text: (b.text ?? '') as string,
+    status: (b.status ?? 'pending') as Batch['status'],
+  }
+}
+
+function chapterFromSnake(c: Record<string, unknown>): Chapter {
+  return {
+    index: c.index as number,
+    title: c.title as string,
+    batchCount: c.batch_count as number,
+    batches: ((c.batches ?? []) as Record<string, unknown>[]).map(batchFromSnake),
+  }
+}
+
+function bookFromSnake(b: Record<string, unknown>): Book {
+  return {
+    bookId: b.book_id as string,
+    title: b.title as string,
+    sourcePath: b.source_path as string,
+    totalChapters: b.total_chapters as number,
+    chapters: ((b.chapters ?? []) as Record<string, unknown>[]).map(chapterFromSnake),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 请求封装
+// ---------------------------------------------------------------------------
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  const json = (await res.json()) as ApiResponse<unknown>
+  if (json.code !== 0) {
+    throw new Error(json.message || `请求失败 (code=${json.code})`)
+  }
+  return json.data as T
+}
+
+// ---------------------------------------------------------------------------
+// API
+// ---------------------------------------------------------------------------
+
+export async function importBook(path: string, batchSize?: number): Promise<Book> {
+  const data = await request<Record<string, unknown>>('POST', '/import', { path, batch_size: batchSize })
+  return bookFromSnake(data)
+}
+
+export async function getBook(bookId: string): Promise<Book> {
+  const data = await request<Record<string, unknown>>('GET', `/book/${bookId}`)
+  return bookFromSnake(data)
+}
+
+export async function getChapter(bookId: string, idx: number): Promise<Chapter> {
+  const data = await request<Record<string, unknown>>('GET', `/book/${bookId}/chapter/${idx}`)
+  return {
+    index: data.index as number,
+    title: data.title as string,
+    batchCount: data.batch_count as number,
+    text: data.text as string,
+    batches: ((data.batches ?? []) as Record<string, unknown>[]).map(batchFromSnake),
+  } as Chapter
+}
+
+export async function splitBatches(bookId: string, idx: number, batchSize?: number): Promise<Batch[]> {
+  const data = await request<Record<string, unknown>[]>('POST', `/book/${bookId}/chapter/${idx}/batch`, { batch_size: batchSize })
+  return (data as unknown as Record<string, unknown>[]).map(batchFromSnake)
+}
+
+export async function startAnalysis(
+  bookId: string,
+  genre: string,
+  modelId?: string,
+  batchSize?: number,
+): Promise<{ taskId: string; cursor: string }> {
+  return toCamel(await request<Record<string, unknown>>('POST', '/analyze/start', {
+    book_id: bookId,
+    genre,
+    model_id: modelId,
+    batch_size: batchSize,
+  }))
+}
+
+export async function pauseAnalysis(bookId: string): Promise<{ cursor: string }> {
+  return toCamel(await request<Record<string, unknown>>('POST', '/analyze/pause', { book_id: bookId }))
+}
+
+export async function resumeAnalysis(bookId: string, genre?: string, modelId?: string): Promise<{ cursor: string }> {
+  return toCamel(await request<Record<string, unknown>>('POST', '/analyze/resume', {
+    book_id: bookId,
+    genre,
+    model_id: modelId,
+  }))
+}
+
+export async function retryFailed(bookId: string): Promise<{ retried: number }> {
+  return toCamel(await request<Record<string, unknown>>('POST', '/analyze/retry-failed', { book_id: bookId }))
+}
+
+export async function getStatus(bookId?: string): Promise<StatusInfo> {
+  const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
+  const data = await request<Record<string, unknown>>('GET', `/status${q}`)
+  return {
+    status: data.status as StatusInfo['status'],
+    bookId: data.book_id as string | null,
+    cursor: data.cursor as string,
+    done: data.done as number,
+    total: data.total as number,
+  }
+}
+
+export async function getModels(): Promise<{ models: ModelInfo[]; anyConfigured: boolean }> {
+  const data = await request<Record<string, unknown>>('GET', '/config/models')
+  const models = ((data.models ?? []) as Record<string, unknown>[]).map((m) => toCamel<ModelInfo>(m))
+  return { models, anyConfigured: data.any_configured as boolean }
+}
+
+export async function getAsset(
+  bookId: string,
+  chapterIndex: number,
+  batchIndex: number,
+  passName: string,
+): Promise<Record<string, unknown>> {
+  const q = new URLSearchParams({
+    book_id: bookId,
+    chapter: String(chapterIndex),
+    batch: String(batchIndex),
+    pass: passName,
+  })
+  return request<Record<string, unknown>>('GET', `/asset?${q.toString()}`)
+}
+
+// ---------------------------------------------------------------------------
+// 阶段一新增 API（概览 / 资产 / 报告 / 拆书结果 / 一键分析）
+// ---------------------------------------------------------------------------
+
+function assetItemFromSnake(a: Record<string, unknown>): AssetItem {
+  return {
+    kind: a.kind as AssetItem['kind'],
+    id: a.id as string,
+    name: a.name as string,
+    path: a.path as string,
+    size: a.size as number,
+    mtime: a.mtime as number,
+    bookId: (a.book_id ?? undefined) as string | undefined,
+  }
+}
+
+function chapterScoreFromSnake(c: Record<string, unknown>): ChapterScore {
+  return {
+    chapterIndex: c.chapter_index as number,
+    title: c.title as string,
+    consistency: c.consistency as number,
+    quality: c.quality as number,
+  }
+}
+
+export async function getOverview(): Promise<Overview> {
+  const data = await request<Record<string, unknown>>('GET', '/overview')
+  return toCamel<Overview>(data)
+}
+
+export async function listAssets(kind?: string, offset = 0, limit = 50): Promise<AssetListResult> {
+  const q = new URLSearchParams({ offset: String(offset), limit: String(limit) })
+  if (kind) q.set('kind', kind)
+  const data = await request<Record<string, unknown>>('GET', `/assets?${q.toString()}`)
+  return {
+    total: data.total as number,
+    items: ((data.items ?? []) as Record<string, unknown>[]).map(assetItemFromSnake),
+  }
+}
+
+export async function getAssetDetail(kind: string, id: string): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>('GET', `/assets/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`)
+}
+
+export async function listReports(): Promise<ReportItem[]> {
+  const data = await request<Record<string, unknown>[]>('GET', '/reports')
+  return (data as unknown as Record<string, unknown>[]).map((r) => toCamel<ReportItem>(r))
+}
+
+export async function getReport(reportId: string): Promise<{ id: string; name: string; markdown: string }> {
+  return request<{ id: string; name: string; markdown: string }>(
+    'GET',
+    `/reports/${encodeURIComponent(reportId)}`,
+  )
+}
+
+export async function getBookResults(bookId: string): Promise<BookResults> {
+  const data = await request<Record<string, unknown>>('GET', `/book/${bookId}/results`)
+  return {
+    bookId: data.book_id as string,
+    title: data.title as string,
+    voiceCard: (data.voice_card ?? {}) as Record<string, unknown>,
+    structure: (data.structure ?? {}) as Record<string, unknown>,
+    commercial: (data.commercial ?? {}) as Record<string, unknown>,
+    craftCard: (data.craft_card ?? {}) as Record<string, unknown>,
+    chapterScores: ((data.chapter_scores ?? []) as Record<string, unknown>[]).map(chapterScoreFromSnake),
+    reportIds: (data.report_ids ?? []) as string[],
+  }
+}
+
+export async function getBookScores(bookId: string): Promise<ChapterScore[]> {
+  const data = await request<Record<string, unknown>[]>('GET', `/book/${bookId}/scores`)
+  return (data as unknown as Record<string, unknown>[]).map(chapterScoreFromSnake)
+}
+
+export async function runFullAnalysis(
+  bookId: string,
+  genre: string,
+  modelId?: string,
+): Promise<{ taskId: string; cursor: string; status: string }> {
+  return toCamel(
+    await request<Record<string, unknown>>('POST', '/analyze/full', {
+      book_id: bookId,
+      genre,
+      model_id: modelId,
+    }),
+  )
+}
+
+// ---------------------------------------------------------------------------
+// SSE
+// ---------------------------------------------------------------------------
+
+export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEvent) => void): () => void {
+  const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
+  const es = new EventSource(`${BASE}/events${q}`)
+  es.onmessage = (msg) => {
+    try {
+      const data = JSON.parse(msg.data) as Record<string, unknown>
+      // 忽略 connected/心跳帧（无 status 字段或 status=connected）
+      if (data.status === 'connected' || !('status' in data)) return
+      onEvent({
+        cursor: data.cursor as string,
+        chapterIndex: data.chapter_index as number,
+        batchIndex: data.batch_index as number,
+        status: data.status as ProgressEvent['status'],
+        done: data.done as number,
+        total: data.total as number,
+      })
+    } catch {
+      // 忽略无法解析的帧
+    }
+  }
+  return () => es.close()
+}
