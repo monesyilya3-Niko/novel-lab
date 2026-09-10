@@ -1,0 +1,93 @@
+#!/bin/sh
+# novel-lab 提交前守卫（pre-commit）
+# ---------------------------------------------------------------------------
+# 作用：提交前运行全量回归测试（python run_tests.py）。红测试一律阻止提交，
+#       避免把失败状态固化进版本库。
+#
+# 启用（新克隆的人只需执行一次）：
+#   git config core.hooksPath .githooks
+#
+# 绕过（仅在确知要临时跳过时使用）：
+#   git commit --no-verify
+#
+# 指定解释器（可选，优先级最高）：
+#   NOVEL_LAB_PYTHON=/path/to/python git commit -m "..."
+#
+# 纯 POSIX sh + 标准库，无第三方依赖（铁律三）。
+# ---------------------------------------------------------------------------
+set -u
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || REPO_ROOT=$(pwd)
+cd "$REPO_ROOT" || {
+    echo "[pre-commit] 无法进入仓库根目录：$REPO_ROOT" >&2
+    exit 1
+}
+
+# --- 解释器解析：健壮降级，绝不因「指定解释器缺失」而崩溃 -------------------
+resolve_python() {
+    # 1) 显式环境变量优先
+    if [ -n "${NOVEL_LAB_PYTHON:-}" ]; then
+        if [ -x "$NOVEL_LAB_PYTHON" ]; then
+            printf '%s\n' "$NOVEL_LAB_PYTHON"
+            return 0
+        fi
+        echo "[pre-commit] 警告：NOVEL_LAB_PYTHON=$NOVEL_LAB_PYTHON 不存在或不可执行，继续尝试其它候选。" >&2
+    fi
+
+    # 2) 项目约定解释器 / 项目内 venv（存在才用）
+    for cand in \
+        "C:/Users/monesy/.niko/binaries/python/versions/3.13.12/python.exe" \
+        "$REPO_ROOT/.venv/Scripts/python.exe" \
+        "$REPO_ROOT/.venv/bin/python" \
+        "$REPO_ROOT/venv/Scripts/python.exe" \
+        "$REPO_ROOT/venv/bin/python"
+    do
+        if [ -x "$cand" ]; then
+            printf '%s\n' "$cand"
+            return 0
+        fi
+    done
+
+    # 3) 回退到 PATH（带警告，不静默）
+    for name in python3 python; do
+        if command -v "$name" >/dev/null 2>&1; then
+            echo "[pre-commit] 警告：未找到项目约定解释器，回退到 PATH 的 $name。" >&2
+            command -v "$name"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+if ! PYTHON=$(resolve_python); then
+    echo "" >&2
+    echo "============================================================" >&2
+    echo "  [pre-commit] 未找到任何可用的 Python 解释器，无法运行测试。" >&2
+    echo "  请安装 Python 到 PATH，或设置 NOVEL_LAB_PYTHON 指向解释器。" >&2
+    echo "  临时绕过：git commit --no-verify" >&2
+    echo "============================================================" >&2
+    exit 1
+fi
+
+echo "[pre-commit] 解释器：$PYTHON"
+echo "[pre-commit] 运行全量回归测试：python run_tests.py"
+echo "[pre-commit] ------------------------------------------------------------"
+
+"$PYTHON" run_tests.py
+STATUS=$?
+
+if [ "$STATUS" -eq 0 ]; then
+    echo "[pre-commit] ------------------------------------------------------------"
+    echo "[pre-commit] 测试通过，允许提交。"
+    exit 0
+fi
+
+echo "[pre-commit] ------------------------------------------------------------"
+echo "" >&2
+echo "============================================================" >&2
+echo "  [pre-commit] 测试未通过，提交已阻止。" >&2
+echo "  请先修复失败用例再提交。" >&2
+echo "  确需临时绕过：git commit --no-verify" >&2
+echo "============================================================" >&2
+exit "$STATUS"
