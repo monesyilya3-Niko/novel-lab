@@ -11,7 +11,7 @@ import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
-import { deepToCamel } from '../api/client'
+import { advancedApi, assetApi } from '../api/client'
 
 export default function AdvancedWorkbench() {
   const [tab, setTab] = useState(0)
@@ -43,9 +43,8 @@ function DistillPanel() {
 
   const loadStatus = async () => {
     try {
-      const res = await fetch(`/api/advanced/distill/${encodeURIComponent(genre)}`)
-      const json = await res.json()
-      if (json.code === 0) setStatus(deepToCamel(json.data))
+      const data = await advancedApi.distillStatus(genre)
+      setStatus(data as Record<string, unknown>)
     } catch { /* ignore */ }
   }
 
@@ -55,10 +54,8 @@ function DistillPanel() {
     setLoading(true)
     setResult('')
     try {
-      const res = await fetch(`/api/advanced/distill/${encodeURIComponent(genre)}`, { method: 'POST' })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setResult(JSON.stringify(deepToCamel(json.data), null, 2))
+      const data = await advancedApi.distillRun(genre)
+      setResult(JSON.stringify(data, null, 2))
       loadStatus()
     } catch (e) {
       setResult(String(e))
@@ -105,9 +102,8 @@ function BatchStatusPanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/advanced/batch-status')
-      .then((r) => r.json())
-      .then((j) => { if (j.code === 0) setStatus(deepToCamel(j.data)); else setError(j.message || '加载失败') })
+    advancedApi.batchStatus()
+      .then((data) => setStatus(data as Record<string, unknown>))
       .catch((e) => setError(String(e)))
   }, [])
 
@@ -152,10 +148,9 @@ function AssetEditPanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/assets?limit=100')
-      .then((r) => r.json())
+    assetApi.list({ limit: 100 })
       .then((j) => {
-        const items = (j.data?.items ?? []) as { id: string; name: string; kind: string }[]
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
       })
       .catch((e) => setError(`加载资产失败: ${e}`))
@@ -167,11 +162,8 @@ function AssetEditPanel() {
     try {
       const [kind, ...rest] = selected.split(':')
       const id = rest.join(':')
-      const res = await fetch(`/api/assets/${kind}/${encodeURIComponent(id)}`)
-      const json = await res.json()
-      if (json.code === 0) {
-        setContent(JSON.stringify(json.data?.content ?? json.data, null, 2))
-      }
+      const data = await assetApi.detail(kind, id)
+      setContent(JSON.stringify((data as Record<string, unknown>)?.content ?? data, null, 2))
     } catch (e) {
       setMessage(String(e))
     } finally {
@@ -187,13 +179,7 @@ function AssetEditPanel() {
       const parsed = JSON.parse(content)
       const [kind, ...rest] = selected.split(':')
       const id = rest.join(':')
-      const res = await fetch(`/api/assets/${kind}/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: parsed }),
-      })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
+      await assetApi.update(kind, id, parsed)
       setMessage('保存成功')
     } catch (e) {
       setMessage(String(e))

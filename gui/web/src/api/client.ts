@@ -316,6 +316,26 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   return deepToCamel<T>(json.data)
 }
 
+async function put<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
+  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
+  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
+  return deepToCamel<T>(json.data)
+}
+
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { method: 'DELETE' })
+  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
+  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
+  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
+  return deepToCamel<T>(json.data)
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
   if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
@@ -343,6 +363,40 @@ export const qualityApi = {
   qc: (body: Record<string, unknown>) => post<import('../types').QualityTaskState>('/quality/qc', body),
   taskState: (taskId: string) => get<import('../types').QualityTaskState>(`/quality/tasks/${taskId}`),
   reports: () => get<import('../types').QcReportItem[]>('/quality/reports'),
+}
+
+// 系统
+export const systemApi = {
+  status: () => get<Record<string, unknown>>('/system/status'),
+  compliance: (body?: Record<string, unknown>) => post<Record<string, unknown>>('/system/compliance', body ?? {}),
+  models: () => get<Record<string, unknown>>('/system/models'),
+  settings: () => get<Record<string, unknown>>('/system/settings'),
+  updateSettings: (body: Record<string, unknown>) => put<Record<string, unknown>>('/system/settings', body),
+  resetSettings: () => post<Record<string, unknown>>('/system/settings/reset'),
+}
+
+// 高级分析
+export const advancedApi = {
+  distillStatus: (genre: string) => get<Record<string, unknown>>(`/advanced/distill/${encodeURIComponent(genre)}`),
+  distillRun: (genre: string) => post<Record<string, unknown>>(`/advanced/distill/${encodeURIComponent(genre)}`),
+  batchStatus: () => get<Record<string, unknown>>('/advanced/batch-status'),
+}
+
+// 资产
+export const assetApi = {
+  list: (params?: { kind?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams()
+    if (params?.kind) q.set('kind', params.kind)
+    if (params?.limit) q.set('limit', String(params.limit))
+    if (params?.offset) q.set('offset', String(params.offset))
+    const qs = q.toString()
+    return get<Record<string, unknown>>(`/assets${qs ? `?${qs}` : ''}`)
+  },
+  detail: (kind: string, id: string) => get<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`),
+  update: (kind: string, id: string, content: Record<string, unknown>) =>
+    put<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`, { content }),
+  delete: (kind: string, id: string) =>
+    del<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`),
 }
 
 // SSE：按 task_id 订阅（写作/质检长任务）

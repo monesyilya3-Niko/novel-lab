@@ -12,7 +12,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import LinearProgress from '@mui/material/LinearProgress'
 import Divider from '@mui/material/Divider'
-import { writingApi, subscribeTaskEvents } from '../api/client'
+import { writingApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
 
 export default function WritingWorkbench() {
@@ -49,10 +49,9 @@ function InjectPanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/assets?limit=100')
-      .then((r) => r.json())
+    assetApi.list({ limit: 100 })
       .then((j) => {
-        const items = (j.data?.items ?? []) as { id: string; name: string; kind: string }[]
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
         const vc = items.find((a) => a.kind === 'voice')
         if (vc) setVoice(vc.id)
@@ -137,10 +136,9 @@ function GeneratePanel() {
 
   useEffect(() => {
     writingApi.projects().then(setProjects).catch((e) => setError(`加载项目失败: ${e}`))
-    fetch('/api/assets?kind=voice&limit=50')
-      .then((r) => r.json())
+    assetApi.list({ kind: 'voice', limit: 50 })
       .then((j) => {
-        const items = (j.data?.items ?? []) as { id: string; name: string; kind: string }[]
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })
@@ -270,10 +268,9 @@ function ScorePanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/assets?kind=voice&limit=50')
-      .then((r) => r.json())
+    assetApi.list({ kind: 'voice', limit: 50 })
       .then((j) => {
-        const items = (j.data?.items ?? []) as { id: string; name: string; kind: string }[]
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })

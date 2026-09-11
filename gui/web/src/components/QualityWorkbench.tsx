@@ -12,7 +12,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import LinearProgress from '@mui/material/LinearProgress'
 import Chip from '@mui/material/Chip'
-import { qualityApi, subscribeTaskEvents } from '../api/client'
+import { qualityApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { QualityTaskState, QcReportItem } from '../types'
 
 export default function QualityWorkbench() {
@@ -47,10 +47,9 @@ function CheckPanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/assets?kind=voice&limit=50')
-      .then((r) => r.json())
+    assetApi.list({ kind: 'voice', limit: 50 })
       .then((j) => {
-        const items = (j.data?.items ?? []) as { id: string; name: string; kind: string }[]
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })

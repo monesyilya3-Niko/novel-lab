@@ -9,6 +9,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Chip from '@mui/material/Chip'
+import { systemApi } from '../api/client'
 
 interface Settings {
   port: number
@@ -38,16 +39,16 @@ export default function SettingsWorkbench() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/system/settings')
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      const d = json.data
-      setSettings(d)
-      setConsistencyTarget(d.thresholds?.consistency_target ?? 90)
-      setQualityPassLine(d.thresholds?.quality_pass_line ?? 75)
-      setQualityWarnLine(d.thresholds?.quality_warn_line ?? 60)
-      setDefaultWords(d.writing?.default_words ?? 2400)
-      setMaxAttempts(d.writing?.max_attempts ?? 3)
+      const d = await systemApi.settings() as Record<string, unknown>
+      setSettings(d as unknown as Settings)
+      const th = d.thresholds as Record<string, number> | undefined
+      const wr = d.writing as Record<string, number> | undefined
+      // deepToCamel 已将 snake_case 转为 camelCase
+      setConsistencyTarget(th?.consistencyTarget ?? 90)
+      setQualityPassLine(th?.qualityPassLine ?? 75)
+      setQualityWarnLine(th?.qualityWarnLine ?? 60)
+      setDefaultWords(wr?.defaultWords ?? 2400)
+      setMaxAttempts(wr?.maxAttempts ?? 3)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -62,24 +63,18 @@ export default function SettingsWorkbench() {
     setMessage('')
     setError('')
     try {
-      const res = await fetch('/api/system/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          thresholds: {
-            consistency_target: consistencyTarget,
-            quality_pass_line: qualityPassLine,
-            quality_warn_line: qualityWarnLine,
-          },
-          writing: {
-            default_words: defaultWords,
-            max_attempts: maxAttempts,
-          },
-        }),
+      const data = await systemApi.updateSettings({
+        thresholds: {
+          consistency_target: consistencyTarget,
+          quality_pass_line: qualityPassLine,
+          quality_warn_line: qualityWarnLine,
+        },
+        writing: {
+          default_words: defaultWords,
+          max_attempts: maxAttempts,
+        },
       })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setSettings(json.data)
+      setSettings(data as unknown as Settings)
       setMessage('设置已保存')
     } catch (e) {
       setError(String(e))
@@ -93,10 +88,8 @@ export default function SettingsWorkbench() {
     setMessage('')
     setError('')
     try {
-      const res = await fetch('/api/system/settings/reset', { method: 'POST' })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setSettings(json.data)
+      const data = await systemApi.resetSettings()
+      setSettings(data as unknown as Settings)
       setConsistencyTarget(90)
       setQualityPassLine(75)
       setQualityWarnLine(60)

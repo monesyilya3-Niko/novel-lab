@@ -9,6 +9,7 @@ import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
+import { systemApi } from '../api/client'
 
 export default function SystemWorkbench() {
   const [tab, setTab] = useState(0)
@@ -43,10 +44,8 @@ function SystemStatusPanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/system/status')
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setStatus(json.data)
+      const data = await systemApi.status()
+      setStatus(data as Record<string, unknown>)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -128,14 +127,8 @@ function CompliancePanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/system/compliance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setResults(json.data)
+      const data = await systemApi.compliance()
+      setResults(data as Record<string, unknown>)
     } catch (e) {
       setError(String(e))
     } finally {
@@ -188,9 +181,8 @@ function ModelPanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/system/models')
-      .then((r) => r.json())
-      .then((j) => { if (j.code === 0) setInfo(j.data); else setError(j.message || '加载失败') })
+    systemApi.models()
+      .then((data) => setInfo(data as Record<string, unknown>))
       .catch((e) => setError(String(e)))
   }, [])
 
@@ -224,9 +216,8 @@ function SettingsPanel() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/system/settings')
-      .then((r) => r.json())
-      .then((j) => { if (j.code === 0) setSettings(j.data); else setError(j.message || '加载失败') })
+    systemApi.settings()
+      .then((data) => setSettings(data as Record<string, unknown>))
       .catch((e) => setError(String(e)))
   }, [])
 
