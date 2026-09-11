@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import re
 from http.server import BaseHTTPRequestHandler
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
 
@@ -39,6 +40,12 @@ def _h_import(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     path = (body or {}).get("path", "")
     if not path:
         raise ServiceError("缺少 path 参数", 400)
+    # M8：API 层限制导入路径在项目根内，防止任意文件读取（纵深防御）。
+    from gui import config as _config
+    resolved = Path(path).resolve()
+    root = _config.ROOT_DIR.resolve()
+    if not resolved.is_relative_to(root):
+        raise ServiceError("导入路径必须在项目目录内", 403)
     batch_size = (body or {}).get("batch_size")
     return ok(services.import_book(path, batch_size))
 
@@ -135,7 +142,7 @@ def _h_list_assets(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, A
         offset = int(params.get("offset", "0") or "0")
         limit = int(params.get("limit", "50") or "50")
     except ValueError:
-        return err(400, "offset/limit 必须为整数")
+        raise ServiceError("offset/limit 必须为整数", 400)
     return ok(services.list_assets(kind, genre, book_id, offset, limit))
 
 
@@ -229,11 +236,20 @@ def dispatch(method: str, path: str, body: Dict[str, Any], query: Dict[str, Any]
     return None, None
 
 
+_MAX_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 def read_body(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
-    """读取 JSON 请求体。"""
-    length = int(handler.headers.get("Content-Length", "0") or "0")
+    """读取 JSON 请求体。L4：非法 Content-Length 返回 400；超大 body 返回 413。"""
+    raw_len = handler.headers.get("Content-Length", "0") or "0"
+    try:
+        length = int(raw_len)
+    except ValueError:
+        raise ServiceError("Content-Length 非法", 400)
     if length <= 0:
         return {}
+    if length > _MAX_BODY_BYTES:
+        raise ServiceError("请求体过大", 413)
     raw = handler.rfile.read(length)
     if not raw:
         return {}

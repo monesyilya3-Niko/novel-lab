@@ -56,12 +56,16 @@ _ENV_PORT = os.environ.get("NOVEL_LAB_GUI_PORT", "").strip()
 
 
 def resolve_port(preferred: int | None = None) -> int:
-    """解析最终端口：参数 > 环境变量 > 默认值。"""
+    """解析最终端口：参数 > 环境变量 > 默认值。L5：校验 1–65535。"""
     if preferred is not None:
-        return int(preferred)
-    if _ENV_PORT.isdigit():
-        return int(_ENV_PORT)
-    return DEFAULT_PORT
+        port = int(preferred)
+    elif _ENV_PORT.isdigit():
+        port = int(_ENV_PORT)
+    else:
+        port = DEFAULT_PORT
+    if not (1 <= port <= 65535):
+        raise ValueError(f"端口超出有效范围 1-65535: {port}")
+    return port
 
 
 def batch_size_from_env() -> int:

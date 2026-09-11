@@ -477,6 +477,28 @@ def upsert_task(task: Dict[str, Any]) -> None:
         )
 
 
+def backup_to(dst: Path) -> None:
+    """把当前库在线备份到 *dst*（正确处理 WAL 未 checkpoint 的写入）。
+
+    优先走原生 ``Connection.backup`` API；失败时回退 ``shutil.copy2``。
+    ``migrate.backup()`` 调用本函数，不再自行 import sqlite3。
+    """
+    import shutil
+
+    conn = get_conn()
+    try:
+        conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+        bak_conn = sqlite3.connect(str(dst))
+        try:
+            conn.backup(bak_conn)
+        finally:
+            bak_conn.close()
+    except Exception:  # noqa: BLE001 — 连接异常时退化为文件拷贝
+        src = db_path()
+        if src.is_file():
+            shutil.copy2(src, dst)
+
+
 def reset_all() -> None:
     """清空所有表（测试隔离用，非生产接口）。"""
     conn = get_conn()

@@ -51,8 +51,8 @@ def _books_dir() -> Path:
 def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
     """读 txt → 切章 → 切批 → 生成 book_id → 建状态文件 → 返回 Book。
 
-    返回的 Book 章节列表带批次元信息，但正文按需由 chapter 接口返回（避免一次性
-    把全文塞进响应）。
+    返回的 Book 章节列表只含批次元信息（不含正文），正文按需由 chapter 接口返回。
+    路径安全校验由路由层（router._h_import）负责，本函数保持对内部调用友好。
     """
     src = Path(path)
     if not src.exists():
@@ -77,7 +77,7 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
     title = src.stem
     book_id = state_store.book_id_from_title(title, str(src))
 
-    # 计算每章批次（只存元信息，正文按需返回）。
+    # 计算每章批次（只存元信息；正文不入响应，按需由 chapter 接口返回）。
     chapters_meta: List[Dict[str, Any]] = []
     for i, (ctitle, cbody) in enumerate(chapters_raw, start=1):
         batches = engine_adapter.split_batches(cbody, bs)
@@ -90,7 +90,6 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
                 "batch_index": b["batch_index"],
                 "char_start": b["char_start"],
                 "char_end": b["char_end"],
-                "text": b["text"],
                 "status": "pending",
             } for b in batches],
         })
@@ -405,7 +404,10 @@ def retry_failed(book_id: str) -> Dict[str, Any]:
     for key in failed:
         state["chapter_states"][key]["status"] = "pending"
     state_store.save_state(state)
-    # 触发续传（resume 会跳过 success，重跑 pending/failed）
+    # L2：线程存活时主循环会按 pending 重扫，不必（也不能）再 resume。
+    rt = _runtime.get(book_id)
+    if rt and rt.get("thread") and rt["thread"].is_alive():
+        return {"retried": len(failed), "note": "线程运行中，将在当前循环内重扫"}
     resume(book_id)
     return {"retried": len(failed)}
 
@@ -540,7 +542,8 @@ def get_stats() -> Dict[str, Any]:
     }
     """
     books = db.get_books()
-    if not db._db_ready():
+    ready = db._db_ready()
+    if not ready:
         # 库未就绪：回退目录扫描（兼容迁移前的旧测试/环境）。
         books = []
         totals = {"books": 0, "assets": 0, "reports": 0}
@@ -553,7 +556,7 @@ def get_stats() -> Dict[str, Any]:
         }
 
     book_stats = []
-    if db._db_ready():
+    if ready:
         conn = db.get_conn()
         for b in books:
             bid = b["book_id"]
@@ -575,7 +578,8 @@ def get_stats() -> Dict[str, Any]:
     else:
         genres = []
 
-    by_kind = asset_index.index.count_by_kind()
+    # M7：by_kind 与 totals 共用同一就绪判据，避免空库中间态下数字打架。
+    by_kind = asset_index.index.count_by_kind() if ready else {}
     return {"books": book_stats, "genres": genres, "by_kind": by_kind, "totals": totals}
 
 

@@ -300,6 +300,7 @@ def load_task(book_id: str) -> Dict[str, Any]:
             "chapter_states": batch_state if isinstance(batch_state, dict) else {},
             "state_revision": int(row.get("state_revision", 0)),
             "last_error": row.get("last_error"),
+            "asset_index": {},  # L1：SQLite 路径无此列，显式返回空 dict 保持字段存在
         }
     # 回退 JSON。
     return load_state(book_id)

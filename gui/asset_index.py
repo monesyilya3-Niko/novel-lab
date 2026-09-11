@@ -48,9 +48,6 @@ _SUFFIX_KIND = (
     ("genre-prose-card-", "prose_card"),
 )
 
-# corpus 下需要排除的子目录（内部结构，不作为「已导入语料」）。
-_CORPUS_EXCLUDE_DIRS = ("raw", "sampled", "metrics", "fanqie")
-
 # 报告文件名后缀 → 报告类型（用于拆书报告 / 笔法分析区分）。
 _REPORT_SUFFIX = (
     ("-拆书报告.md", "book"),
@@ -412,13 +409,14 @@ class AssetIndex:
         """首页概览聚合（SQL 聚合为主，空则回退扫描计数）。"""
         if self._db_ready():
             counts = db.count_by_kind()
-            total_assets = sum(counts.values())
+            assets_by_kind = self.count_by_kind()
             return {
                 "total_books": len(db.get_books()),
                 "total_genre_packs": counts.get("genre_pack", 0),
                 "total_reports": len(db.list_reports()),
-                "total_assets": total_assets,
-                "assets_by_kind": self.count_by_kind(),
+                # M5：total_assets 必须等于 sum(assets_by_kind)，不能用另一套 counts。
+                "total_assets": sum(assets_by_kind.values()),
+                "assets_by_kind": assets_by_kind,
                 "model_configured": self._model_configured(),
                 "recent_activity": [],
             }

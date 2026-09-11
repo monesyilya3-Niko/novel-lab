@@ -223,17 +223,8 @@ def backup() -> Optional[Path]:
     if src.is_file():
         ts = time.strftime("%Y%m%d-%H%M%S")
         dst = src.with_name(f"index.db.bak-{ts}")
-        # 优先走原生 backup API（正确处理 WAL）；失败回退 shutil.copy2。
-        try:
-            conn = db.get_conn()
-            conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
-            bak_conn = __import__("sqlite3").connect(str(dst))
-            try:
-                conn.backup(bak_conn)
-            finally:
-                bak_conn.close()
-        except Exception:  # noqa: BLE001 — 连接异常时退化为文件拷贝。
-            shutil.copy2(src, dst)
+        # M1：备份逻辑收口到 db.backup_to（db.py 是唯一 import sqlite3 的层）。
+        db.backup_to(dst)
     # 保留策略：无论本次是否新建备份，都把备份数量收敛到最近 BACKUP_KEEP 个。
     prune_backups()
     return dst

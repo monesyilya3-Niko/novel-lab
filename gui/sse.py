@@ -24,7 +24,7 @@ class SseBroker:
 
     def subscribe(self) -> queue.Queue:
         """注册一个新订阅者，返回其专属队列。"""
-        q: queue.Queue = queue.Queue()
+        q: queue.Queue = queue.Queue(maxsize=256)
         with self._lock:
             self._subscribers.add(q)
         return q
