@@ -12,6 +12,8 @@ import type { WorkbenchKey } from './layout/WorkbenchNav'
 import HomeDashboard from './components/HomeDashboard'
 import AnalysisView from './components/AnalysisView'
 import AssetLibrary from './components/AssetLibrary'
+import WritingWorkbench from './components/WritingWorkbench'
+import QualityWorkbench from './components/QualityWorkbench'
 import Placeholder from './components/Placeholder'
 
 const theme = createTheme(muiThemeOptions)
@@ -51,8 +53,8 @@ export default function App() {
                 {workbench === 'home' && <HomeDashboard />}
                 {workbench === 'analysis' && <AnalysisView />}
                 {workbench === 'assets' && <AssetLibrary />}
-                {workbench === 'writing' && <Placeholder title="写作" />}
-                {workbench === 'quality' && <Placeholder title="质检" />}
+                {workbench === 'writing' && <WritingWorkbench />}
+                {workbench === 'quality' && <QualityWorkbench />}
                 {workbench === 'system' && <Placeholder title="系统" />}
                 {workbench === 'settings' && <Placeholder title="设置" />}
               </Box>

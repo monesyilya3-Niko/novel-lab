@@ -38,8 +38,8 @@ export interface WorkbenchNavItem {
 const NAV_ITEMS: WorkbenchNavItem[] = [
   { key: 'home', label: '首页', icon: <HomeIcon /> },
   { key: 'analysis', label: '分析', icon: <InsightsIcon /> },
-  { key: 'writing', label: '写作', icon: <EditNoteIcon />, placeholder: true },
-  { key: 'quality', label: '质检', icon: <FactCheckIcon />, placeholder: true },
+  { key: 'writing', label: '写作', icon: <EditNoteIcon /> },
+  { key: 'quality', label: '质检', icon: <FactCheckIcon /> },
   { key: 'assets', label: '资产库', icon: <FolderOpenIcon /> },
   { key: 'system', label: '系统', icon: <TuneIcon />, placeholder: true },
   { key: 'settings', label: '设置', icon: <SettingsIcon />, placeholder: true },

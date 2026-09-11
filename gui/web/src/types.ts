@@ -143,3 +143,121 @@ export interface AssetListResult {
   total: number
   items: AssetItem[]
 }
+
+// ---------------------------------------------------------------------------
+// W16/W17 阶段二：写作（M2）+ 质检（M3）
+// ---------------------------------------------------------------------------
+
+export interface WritingProject {
+  id: string
+  name: string
+  readOnly: boolean
+}
+
+export interface InjectResult {
+  prompt: string
+  charCount: number
+  injectedKinds: string[]
+  meta: { sourceTitle: string; genre: string; savedPath: string | null }
+}
+
+export interface WritingAttempt {
+  attempt: number
+  consistency: number
+  quality: number
+  consistencyOk: boolean
+  qualityOk: boolean
+  issues: string[]
+  charCount: number
+}
+
+export interface WritingTaskState {
+  taskId: string
+  status: 'pending' | 'running' | 'scoring' | 'rewriting' | 'done' | 'degraded' | 'error'
+  mode: 'llm' | 'no_model'
+  chapterNo: number
+  attempt?: number
+  score?: number | null
+  qualityScore?: number | null
+  targetScore: number
+  passLine: number
+  chapterPath?: string | null
+  message?: string
+  attempts: WritingAttempt[]
+  error?: string | null
+  // 降级模式额外字段
+  prompt?: string
+  guideMarkdown?: string
+  guidePath?: string
+  notice?: string
+}
+
+export interface ConsistencyResult {
+  score: number
+  dims: { voice: number; emotion: number; narration: number; banned: number; imagery: number }
+  details: string[]
+  radar?: {
+    indicators: { name: string; max: number }[]
+    series: { name: string; value: number[] }[]
+  }
+}
+
+export interface QualityCheckResult {
+  score: number
+  maxScore: number
+  verdict: string
+  details: string[]
+  issues: string[]
+}
+
+export interface ScoreResult {
+  consistency: ConsistencyResult
+  quality: QualityCheckResult
+  verdict: string
+  passLine: number
+}
+
+export interface QcIssue {
+  type: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  chapter?: number
+  detail: string
+}
+
+export interface QcDimension {
+  key: string
+  label: string
+  layer: string
+  score: number
+  issues: QcIssue[]
+}
+
+export interface QcLayer {
+  layer: string
+  label: string
+  score: number
+  dimensions: QcDimension[]
+}
+
+export interface QualityTaskState {
+  taskId: string
+  status: 'pending' | 'running' | 'done' | 'error'
+  phase: string
+  target: string
+  verdict: string | null
+  totalScore: number | null
+  layers: QcLayer[]
+  issues: QcIssue[]
+  meta: Record<string, unknown>
+  reportJson: string | null
+  reportMd: string | null
+  error: string | null
+}
+
+export interface QcReportItem {
+  name: string
+  path: string
+  verdict: string
+  totalScore: number | null
+  createdAt: string | null
+}

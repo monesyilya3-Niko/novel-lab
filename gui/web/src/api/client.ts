@@ -270,7 +270,6 @@ export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEven
   es.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data) as Record<string, unknown>
-      // 忽略 connected/心跳帧（无 status 字段或 status=connected）
       if (data.status === 'connected' || !('status' in data)) return
       onEvent({
         cursor: data.cursor as string,
@@ -282,6 +281,64 @@ export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEven
       })
     } catch {
       // 忽略无法解析的帧
+    }
+  }
+  return () => es.close()
+}
+
+// ---------------------------------------------------------------------------
+// W16/W17 阶段二：写作（M2）+ 质检（M3）
+// ---------------------------------------------------------------------------
+
+async function post<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const json = await res.json()
+  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
+  return json.data as T
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await fetch(`${BASE}${path}`)
+  const json = await res.json()
+  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
+  return json.data as T
+}
+
+// 写作
+export const writingApi = {
+  projects: () => get<import('../types').WritingProject[]>('/writing/projects'),
+  inject: (body: Record<string, unknown>) => post<import('../types').InjectResult>('/writing/inject', body),
+  generate: (body: Record<string, unknown>) => post<import('../types').WritingTaskState>('/writing/generate', body),
+  taskState: (taskId: string) => get<import('../types').WritingTaskState>(`/writing/tasks/${taskId}`),
+  importChapter: (body: Record<string, unknown>) => post<Record<string, unknown>>('/writing/chapters', body),
+  score: (body: Record<string, unknown>) => post<import('../types').ScoreResult>('/writing/score', body),
+  assemble: (body: Record<string, unknown>) => post<Record<string, unknown>>('/writing/assemble', body),
+  assembleCandidates: () => get<Record<string, unknown>[]>('/writing/assemble-candidates'),
+}
+
+// 质检
+export const qualityApi = {
+  check: (body: Record<string, unknown>) => post<Record<string, unknown>>('/quality/check', body),
+  book: (body: Record<string, unknown>) => post<Record<string, unknown>>('/quality/book', body),
+  qc: (body: Record<string, unknown>) => post<import('../types').QualityTaskState>('/quality/qc', body),
+  taskState: (taskId: string) => get<import('../types').QualityTaskState>(`/quality/tasks/${taskId}`),
+  reports: () => get<import('../types').QcReportItem[]>('/quality/reports'),
+}
+
+// SSE：按 task_id 订阅（写作/质检长任务）
+export function subscribeTaskEvents(taskId: string, onEvent: (e: Record<string, unknown>) => void): () => void {
+  const es = new EventSource(`${BASE}/events?task_id=${encodeURIComponent(taskId)}`)
+  es.onmessage = (msg) => {
+    try {
+      const data = JSON.parse(msg.data) as Record<string, unknown>
+      if (data.status === 'connected') return
+      onEvent(data)
+    } catch {
+      // 忽略
     }
   }
   return () => es.close()
