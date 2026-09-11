@@ -164,7 +164,7 @@ PROMPTS_DIR    = novel-lab/prompts/generated/
 ## 九、已知限制
 
 1. **无外部模型**：写作改写循环需 AI 会话内接管，GUI 提供降级指引+手动入库
-2. **前端主包 1.7MB**：超 Vite 500KB 阈值，待代码分割（P2）
+2. **前端 echarts chunk 1MB**：已隔离为独立按需加载 chunk，主入口仅 16KB（2026-09-11 代码分割后）
 3. **番茄抓书**：依赖 venv 的 fontTools/numpy/Pillow，未实测
 4. **服务常驻**：`gui/autostart/install_task.bat` 存在但未实测
 
