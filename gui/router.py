@@ -330,6 +330,49 @@ def _h_reset_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[st
     return ok(system_service.reset_settings())
 
 
+# --- 模型管理 handlers ---
+
+def _h_list_models(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.list_models())
+
+
+def _h_get_model(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.get_model(params["model_id"]))
+
+
+def _h_add_model(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.add_model(body or {}))
+
+
+def _h_update_model(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.update_model(params["model_id"], body or {}))
+
+
+def _h_delete_model(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.delete_model(params["model_id"]))
+
+
+def _h_set_model_key(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    b = body or {}
+    return ok(model_service.set_api_key(params["model_id"], b.get("api_key", "")))
+
+
+def _h_test_model(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.test_model(params["model_id"]))
+
+
+def _h_get_presets(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import model_service
+    return ok(model_service.get_presets())
+
+
 # --- M1 高级分析 handlers ---
 
 def _h_distill_status(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
@@ -431,6 +474,15 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
     ("PUT", re.compile(r"^/api/assets/(?P<kind>[^/]+)/(?P<id>[^/]+)$"), _h_asset_update),
     ("DELETE", re.compile(r"^/api/assets/(?P<kind>[^/]+)/(?P<id>[^/]+)$"), _h_asset_delete),
     ("POST", re.compile(r"^/api/assets$"), _h_asset_create),
+    # 模型管理
+    ("GET", re.compile(r"^/api/models$"), _h_list_models),
+    ("POST", re.compile(r"^/api/models$"), _h_add_model),
+    ("GET", re.compile(r"^/api/models/presets$"), _h_get_presets),
+    ("GET", re.compile(r"^/api/models/(?P<model_id>[^/]+)$"), _h_get_model),
+    ("PUT", re.compile(r"^/api/models/(?P<model_id>[^/]+)$"), _h_update_model),
+    ("DELETE", re.compile(r"^/api/models/(?P<model_id>[^/]+)$"), _h_delete_model),
+    ("POST", re.compile(r"^/api/models/(?P<model_id>[^/]+)/key$"), _h_set_model_key),
+    ("POST", re.compile(r"^/api/models/(?P<model_id>[^/]+)/test$"), _h_test_model),
 ]
 
 

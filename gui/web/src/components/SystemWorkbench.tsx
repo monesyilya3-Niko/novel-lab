@@ -10,6 +10,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import { systemApi } from '../api/client'
+import ModelManager from './ModelManager'
 
 export default function SystemWorkbench() {
   const [tab, setTab] = useState(0)
@@ -24,7 +25,7 @@ export default function SystemWorkbench() {
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {tab === 0 && <SystemStatusPanel />}
         {tab === 1 && <CompliancePanel />}
-        {tab === 2 && <ModelPanel />}
+        {tab === 2 && <ModelManager />}
         {tab === 3 && <SettingsPanel />}
       </Box>
     </Box>
@@ -174,39 +175,6 @@ function CompliancePanel() {
 
 // ---------------------------------------------------------------------------
 // 模型配置
-// ---------------------------------------------------------------------------
-
-function ModelPanel() {
-  const [info, setInfo] = useState<Record<string, unknown> | null>(null)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    systemApi.models()
-      .then((data) => setInfo(data as Record<string, unknown>))
-      .catch((e) => setError(String(e)))
-  }, [])
-
-  if (error) return <Alert severity="error">{error}</Alert>
-  if (!info) return <CircularProgress />
-
-  return (
-    <Box>
-      <Typography variant="h6" gutterBottom>模型配置</Typography>
-      <Chip label={info.configured ? '已配置' : '未配置'} size="small" color={info.configured ? 'success' : 'warning'} sx={{ mb: 2 }} />
-      {Array.isArray(info.models) && (info.models as Record<string, unknown>[]).map((m, i) => (
-        <Paper key={i} sx={{ p: 2, mb: 1 }}>
-          <Typography variant="subtitle2">{String(m.name)} ({String(m.id)})</Typography>
-          <Typography variant="body2" color="text.secondary">协议：{String(m.protocol)}</Typography>
-          {Array.isArray(m.roles) && (
-            <Typography variant="body2" color="text.secondary">角色：{(m.roles as string[]).join(', ')}</Typography>
-          )}
-        </Paper>
-      ))}
-      <Alert severity="info" sx={{ mt: 2 }}>{info.note as string}</Alert>
-    </Box>
-  )
-}
-
 // ---------------------------------------------------------------------------
 // 设置
 // ---------------------------------------------------------------------------
