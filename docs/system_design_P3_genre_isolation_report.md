@@ -11,13 +11,16 @@
 1. **题材隔离**本质是"把 3 处静默跳过 → 显式断言"，不引入新目录、不动资产路径。`KNOWN_GENRES` 白名单是唯一新增的全局常量，放 `validate.py` 顶部。
 2. **8 个桥段全部判定为 `genre_scope = "universal"`**：它们全部是跨题材通用的 structural/scenic 模式，`applicable_genres` 已显式标注多题材。当前没有任何一个桥段是 campus-redemption **专属**的（专属桥段需含"校园救赎"这个题材的不可迁移内核，现有 8 条都不具备）。见 §5.3 逐条判定理由。
 3. **`deep_analyze.py` 的职责边界是"质量校验 + 组装器"，不是"生成器"**。6 段深度内容必须由 LLM 在 Pass5 阶段生成（本地规则拼不出"读者心理机制/执行步骤/使用边界"），`deep_analyze.py` 只做：结构补齐、非空校验、10 段齐全性断言、缺段标记。**这避免了"本地规则硬凑假深度"这个最大坑。**
-4. **1 万字按字符数口径**（`len(report)`），已确认。`MIN_REPORT_CHARS = 10000` 是硬门槛，不足则 `sys.exit(1)` 阻断交付。
+4. **1 万字按字符数口径**（`len(report)`），已确认。`MIN_REPORT_CHARS = 10000` 是**两份合计**的硬门槛（拆书报告 + 笔法分析），由 `report.py::check_combined_report_length` 判定；`novel.py 分析` 收尾不达标则 `sys.exit(1)` 阻断交付。单份脚本仅 soft warning。
 5. **报告深度化 = 渲染 deep_analysis 字段**。深度字段从 Pass5 LLM prompt 输出、经 `deep_analyze.py` 校验后写入 craft-card 的 `technique.deep_analysis`，`report_craft.py` 渲染时逐条展开 10 段。
 
-> ⚠️ **【已更新 · 2026-09-08】铁律二最终口径**：本文是 2026-09-07 的**方案讨论期快照**，正文 §0 结论、§1.9、§1.10、§1.11 关于铁律二执行机制的表述存在前后矛盾（§1.10 标题写「硬校验」、正文又说「不做单独校验」）。**最终落地口径以代码为准**：
-> - `novel.py 分析` 收尾做**合计校验**：拆书报告 + 笔法分析 合计 ≥ 10000 字符，不足 `sys.exit(1)` 阻断（novel.py 第 211-221 行）。
-> - `report.py` / `report_craft.py` 单份 `MIN_REPORT_CHARS=10000` 仅 **soft warning**，不阻断。
-> - 本文 §1.9 / §1.10 中「`sys.exit(1)` 硬阻断」的旧表述已废止，请勿据此修改代码。权威口径见 `PROJECT_LAW.md` 与 `RULES.md §15.5`。
+> ⚠️ **【已对齐落地代码 · 2026-09-11】铁律二最终口径**：本文原为 2026-09-07 方案讨论期快照，正文 §0 结论、§1.9、§1.10、§1.11 关于铁律二执行机制的表述曾前后矛盾（§1.10 标题写「硬校验」、正文又说「不做单独校验」；§0/§1.9/§1.11 仍写单份 `sys.exit(1)`）。**正文现已按落地代码同步**，当前唯一有效口径：
+>
+> - **单一来源**：`scripts/report.py::check_combined_report_length(reports_dir, name)` —— 拆书报告 + 笔法分析 **合计** ≥ `MIN_REPORT_CHARS=10000` 字符。
+> - **`novel.py 分析`** 收尾调用该函数，不达标 `sys.exit(1)` 阻断交付。
+> - **GUI `services._generate_reports`** 经 `engine_adapter.check_report_min_length` 调用同一函数（此前 GUI 路径曾整条绕过铁律二，已修复，见 `report.py` 与 `engine_adapter.py` 函数 docstring）。
+> - **`report.py` / `report_craft.py` 单份 `main()`** 仅打印 soft warning（`⚠ ... 合计校验以 pipeline.py 为准`），**不 `sys.exit(1)`**。
+> - 权威条文另见 `PROJECT_LAW.md` 与 `RULES.md §15.5`。
 
 ---
 
@@ -38,9 +41,15 @@
 - 【执行机制】桥段库每个 trope 必须标注 genre_scope（universal / 题材专属 id）
 
 ## 铁律二：每本书拆解必须产出 ≥1 万字分析报告
-- 拆书报告 + 笔法分析 合计字符数 ≥ 10000（硬门槛，字符数口径）
-- 【执行机制】report.py / report_craft.py 生成后自动校验
-  MIN_REPORT_CHARS=10000，不足 → sys.exit(1) 阻断交付，不产出半成品
+- 拆书报告 + 笔法分析 **合计**字符数 ≥ 10000（硬门槛，字符数口径）
+- 【执行机制】单一来源：`report.py::check_combined_report_length(reports_dir, name)`
+  判定两份合计；CLI 与 GUI 共用同一实现，禁止两处口径漂移
+- 【执行机制】`novel.py「分析」` 收尾调用该函数：合计 < 10000 → `sys.exit(1)` 阻断交付
+- 【执行机制】GUI 路径：`services._generate_reports` 经
+  `engine_adapter.check_report_min_length` 调用同一函数
+  （历史上 GUI 曾整条绕过铁律二，已修复；不得再出现旁路）
+- 【执行机制】`report.py` / `report_craft.py` / `pipeline.py` 各自单份字数不足 10000
+  仅打印 soft warning（不退出），最终以合计校验为准
 - 【执行机制】深度内容由 Pass5 LLM 生成 + deep_analyze.py 校验，缺段即标记
 
 ## 铁律三：纯标准库、零第三方依赖
@@ -240,7 +249,7 @@ def retrieve_tropes(intent: str, genre: str | None = None, top_k: int = 5) -> li
 | 校验每条技法 10 段齐全、深度字段非空 | **deep_analyze.py** |
 | 缺段时补齐占位 + 标记 `incomplete` | **deep_analyze.py** |
 | 把 deep_analysis 写入 craft-card | **deep_analyze.py** |
-| 报告字数硬校验 | report.py / report_craft.py |
+| 报告字数硬校验 | `report.py::check_combined_report_length`（单一来源，CLI 与 GUI 共用） |
 
 **模块结构**：
 
@@ -332,7 +341,7 @@ def main():
 
 ---
 
-### 1.9 `scripts/report_craft.py` — 渲染 deep_analysis + 硬校验
+### 1.9 `scripts/report_craft.py` — 渲染 deep_analysis + 单份 soft warning
 
 **① 渲染深度字段**：`_technique_block`（第 20-36 行）扩展，在现有 4 段之后追加 7 段：
 
@@ -357,43 +366,59 @@ def _technique_block(t: dict, idx: int) -> str:
     return "\n".join(lines)
 ```
 
-**② 硬校验**：`main()`（第 163-185 行）在写文件后新增：
+**② 单份字数 soft warning（落地口径，非硬阻断）**：`main()` 写文件后仅提示，**不 `sys.exit(1)`**：
 
 ```python
-MIN_REPORT_CHARS = 10000  # 铁律二：字符数口径
+MIN_REPORT_CHARS = 10000  # 铁律二：字符数口径（合计判定用）
 
 # 写文件后：
-report = render_craft_report(craft)
 if len(report) < MIN_REPORT_CHARS:
-    print(f"⚠ 报告字数 {len(report)} < 硬门槛 {MIN_REPORT_CHARS}，深度分析不足，阻断交付")
-    sys.exit(1)
+    print(f"⚠ 笔法分析单份字数 {len(report)} < {MIN_REPORT_CHARS}，"
+          f"合计校验以 pipeline.py 为准")
 ```
 
-> `MIN_REPORT_CHARS` 常量建议同时定义在 `report.py` 和 `report_craft.py` 各自文件顶部，或提取到共享模块。为最小变更，**分别在两个文件顶部各定义一次**（值一致），避免新增共享依赖文件。
+> **落地说明**：原设计此处为 `sys.exit(1)` 硬阻断，已被否决——单份笔法分析未必能独立撑到 1 万字，硬阻断会误伤。真正的硬门槛是**两份合计**，见 §1.10。`MIN_REPORT_CHARS` 仍在 `report.py` 与 `report_craft.py` 各自顶部定义一次（值一致），避免新增共享依赖文件；但**判定函数只有一份**（`report.py::check_combined_report_length`）。
 
 ---
 
-### 1.10 `scripts/report.py` — 渲染深度字段 + 硬校验
+### 1.10 `scripts/report.py` — 合计硬校验单一来源 + 单份 soft warning
 
-`report.py` 的 `build_report`（第 194-249 行）是"拆书报告"（voice+structure+commercial），**不含 craft-card 技法**，因此**不需要渲染 deep_analysis**。它只需要**字数硬校验**：
+`report.py` 的 `build_report` 是"拆书报告"（voice+structure+commercial），**不含 craft-card 技法**，因此**不需要渲染 deep_analysis**。它承担两个角色：
+
+**① 合计硬校验单一来源（落地核心）**——新增共享函数，CLI 与 GUI 共用：
 
 ```python
-# main() 内（第 252-273 行），写文件后：
 MIN_REPORT_CHARS = 10000
-if len(report) < MIN_REPORT_CHARS:
-    print(f"⚠ 拆书报告字数 {len(report)} < 硬门槛 {MIN_REPORT_CHARS}，请补充分析")
-    sys.exit(1)
+
+def check_combined_report_length(reports_dir, name: str) -> dict:
+    """铁律二「真·合计口径」：拆书报告 + 笔法分析 合计 ≥ MIN_REPORT_CHARS。
+
+    为何必须有此共享函数：该硬校验原先只内联在 CLI 的 novel.py 分析里，
+    GUI 的 services._generate_reports 直接生成并发布报告、完全没有合计校验，
+    导致铁律二在 GUI 路径被整条绕过。现在 CLI 与 GUI 都调本函数。
+
+    Returns: {book_chars, craft_chars, total, ok, min_chars, book_path, craft_path}
+    """
+    ...
+    return {"total": total, "ok": total >= MIN_REPORT_CHARS, "min_chars": MIN_REPORT_CHARS, ...}
 ```
 
-**注意**：铁律二是"拆书报告 + 笔法分析 合计 ≥1 万字"。但两者是**独立脚本、独立文件**，各自单独校验更清晰。**若单独一份达不到 1 万字**（拆书报告本身可能只有 3000 字，因为不含技法深度），则需在 `pipeline.py` 收尾处做**合计校验**（见 1.11）。**本设计决策**：
-- `report_craft.py`（笔法分析）单独硬校验 ≥10000（这是深度化的主战场，LLM 增量后可达标）。
-- `report.py`（拆书报告）**不做单独 10000 硬校验**，改为在 `pipeline.py` 收尾做"笔法分析 ≥10000"的单一硬校验（笔法分析是 1 万字的主要来源）。
+**② 单份字数 soft warning**——`main()` 写文件后仅提示，不 `sys.exit(1)`：
 
-> 理由：拆书报告（voice/structure/commercial）本质是"资产搬运"，深度有限，强加 10000 会逼出注水内容；而笔法分析（craft-card）经 deep_analysis 展开后天然可达 1 万字。**最终口径：`report_craft.py` 的产出是 1 万字门槛的判定对象。**
+```python
+if len(report) < MIN_REPORT_CHARS:
+    print(f"⚠ 拆书报告单份字数 {len(report)} < {MIN_REPORT_CHARS}，请确认笔法分析部分补足，"
+          f"合计校验以 pipeline.py 为准")
+```
+
+**落地决策（取代原「report_craft 单独硬校验」方案）**：
+- 硬门槛判定对象是**两份合计**，不是任何单份。拆书报告（voice/structure/commercial）本质是"资产搬运"，强加单份 10000 会逼出注水内容。
+- 硬阻断位置：`novel.py 分析` 收尾调 `check_combined_report_length`，`not ok` → `sys.exit(1)`。
+- GUI 路径：`services._generate_reports` 经 `engine_adapter.check_report_min_length` 调同一函数，两处口径不会漂移。
 
 ---
 
-### 1.11 `scripts/pipeline.py` — 组装衔接 + 收尾校验
+### 1.11 `scripts/pipeline.py` — 组装衔接（无独立收尾硬校验）
 
 **① 组装衔接**：第 460-475 行规范化之后、第 477 行构建 `craft_card` 之前，插入：
 
@@ -406,17 +431,9 @@ if depth_stats["incomplete"] > 0:
           f"报告可能达不到 1 万字")
 ```
 
-**② 收尾硬校验**：第 498-507 行生成笔法报告之后，追加：
+**② 收尾硬校验（落地口径）**：`pipeline.py` **不做**独立的字数 `sys.exit(1)`。字数硬校验收敛到上层 `novel.py 分析`（调 `report.py::check_combined_report_length`）。`pipeline.py` 只负责产出两份报告文件，是否达标由调用方判定。
 
-```python
-# 铁律二：笔法分析报告 ≥10000 字符（字符数口径）
-report_len = len(report)
-if report_len < 10000:
-    print(f"  ✗ 笔法报告 {report_len} 字符 < 10000 硬门槛，交付阻断")
-    sys.exit(1)
-```
-
-> `report_craft.py` 已单独校验，`pipeline.py` 再校验一次作为**双保险**（因为 pipeline 直接调 `render_craft_report` 而非走 report_craft 的 main）。
+> 原设计此处的「笔法分析单份 ≥10000 双保险 `sys.exit(1)`」已废止，与 §1.9/§1.10 的落地口径保持一致。
 
 ---
 
@@ -530,7 +547,7 @@ if report_len < 10000:
 | **T03** | `validate.py` 增加 `KNOWN_GENRES` + craft-card genre 校验 | engineer | T01 | P0 | `KNOWN_GENRES={"campus-redemption"}`；`validate_craft_card` 对空 genre 报 err、非法 genre 报 warn；voice-card 是否同步加校验（可选，见注） |
 | **T04** | `trope-library` 加 `genre_scope`（schema + 资产回填 + `retrieve_tropes`） | engineer | T01 | P0 | schema 增加 `genre_scope` enum；8 个 trope 全部回填 `"universal"`；`validate_trope_library` 校验 genre_scope；`retrieve.py` 新增 `retrieve_tropes()` 按 genre_scope 过滤；新增单测 `test_trope_genre_scope.py` |
 | **T05** | 新增 `deep_analyze.py`（质量校验 + 组装器） | engineer | T01 | P0 | 定义 `TECHNIQUE_DEEP_FIELDS`（7 键）；`check_technique_depth` / `ensure_technique_depth` / `analyze_craft_card` 三函数；对缺段技法标记 incomplete 不 crash；纯标准库 |
-| **T06** | `report_craft.py` 渲染深度字段 + `MIN_REPORT_CHARS=10000` 硬校验；`report.py` 收尾校验；`pipeline.py` 组装衔接 + 收尾校验 | engineer | T05 | P0 | `_technique_block` 渲染 7 段 deep_analysis；`report_craft.py` 写文件后 `len<10000` 则 `sys.exit(1)`；`pipeline.py` 调 `analyze_craft_card` + 收尾双保险校验；旧 craft-card（无 deep_analysis）渲染不 crash |
+| **T06** | `report_craft.py` 渲染深度字段 + 单份 soft warning；`report.py` 新增 `check_combined_report_length` 合计硬校验单一来源 + 单份 soft warning；`novel.py 分析` 收尾调用该函数；`pipeline.py` 组装衔接（不做独立收尾 `sys.exit(1)`） | engineer | T05 | P0 | `_technique_block` 渲染 7 段 deep_analysis；`report.py::check_combined_report_length` 返回 `{total, ok, min_chars, ...}`；`novel.py 分析` 在 `not ok` 时 `sys.exit(1)`；`services._generate_reports` 调同一函数（GUI 路径不绕过铁律二）；两份单份脚本仅 soft warning 不阻断；旧 craft-card（无 deep_analysis）渲染不 crash |
 | **T07** | 回归测试 `tests/test_genre_isolation.py` + `tests/test_report_length.py` | QA | T02-T06 | P0 | 覆盖：mismatch 断言、KNOWN_GENRES 校验、genre_scope 过滤、deep_analyze 缺段标记、报告字数门槛；`run_tests.py` 全绿（98 + 新增） |
 
 **注（T03 补充）**：`validate_voice_card`（第 100-121 行）当前也有 `meta.genre` 校验（第 114 行 `check_str` 只查非空、不查枚举）。**本设计选择不改 voice-card 的 genre 枚举校验**（最小变更），因为 voice-card 是单本中间产物，题材聚合时才需严格。若 QA 发现混入，可在 T03 顺带补上（低风险）。
@@ -551,8 +568,8 @@ if report_len < 10000:
 | `retrieve.py` `retrieve_tropes` | 否（新增函数） | 是 | 不侵入现有 `retrieve_for_intent` |
 | `deep_analyze.py` | 否（新文件） | 是 | 独立模块，无 import 副作用 |
 | `report_craft.py` 渲染 | 否（渲染器增加分支） | 是 | 旧 craft-card 无 deep_analysis → `.get("deep_analysis") or {}` 返回空，只渲染 4 段，不 crash |
-| `report_craft.py` 硬校验 | **需注意** | 是 | 若测试直接调 `render_craft_report()`（不经过 main），不触发校验；只有 CLI main 触发。现有测试未见调用 report_craft，风险低 |
-| `report.py` 硬校验 | 同上 | 是 | 同上 |
+| `report_craft.py` 单份字数 | 否（仅 soft warning） | 是 | 落地口径：单份 `<10000` 只打印提示、不 `sys.exit(1)`；硬门槛在合计校验 |
+| `report.py` 单份字数 + `check_combined_report_length` | 否（纯新增函数） | 是 | 单份仅 soft warning；合计函数是纯新增，不改 `build_report` 契约；CLI 与 GUI 共用 |
 | `pipeline.py` 衔接 | **需注意** | 是 | `import deep_analyze` 若模块缺失会 ImportError——需用 try/except 包裹（与 inject.py 第 21-26 行的防御式 import 一致） |
 
 **关键结论**：所有改动均为"新增字段/新增函数/新增常量"，**不修改任何现有函数的输入输出契约**（唯一例外是 `collect_books` 的返回值，需 QA 在 T07 前确认无测试直接调用）。向后兼容的核心保障是：**不带 genre_pack / 不带 deep_analysis 的调用路径行为完全不变**。
@@ -628,7 +645,7 @@ graph TD
     T01 --> T03[T03 KNOWN_GENRES 白名单]
     T01 --> T04[T04 trope genre_scope]
     T01 --> T05[T05 deep_analyze.py]
-    T05 --> T06[T06 报告渲染+硬校验]
+    T05 --> T06[T06 报告渲染+合计校验]
     T02 --> T07[T07 回归测试]
     T03 --> T07
     T04 --> T07
@@ -648,9 +665,11 @@ graph TD
 | `assets/trope-library.json` | 8 处回填 `genre_scope: universal` | T04 |
 | `scripts/retrieve.py` | 加 `retrieve_tropes()` | T04 |
 | `scripts/deep_analyze.py` | 新建 | T05 |
-| `scripts/report_craft.py` | 渲染 deep_analysis + 硬校验 | T06 |
-| `scripts/report.py` | 硬校验 | T06 |
-| `scripts/pipeline.py` | 组装衔接 + 收尾校验 | T06 |
+| `scripts/report_craft.py` | 渲染 deep_analysis + 单份 soft warning | T06 |
+| `scripts/report.py` | `check_combined_report_length` 合计硬校验单一来源 + 单份 soft warning | T06 |
+| `novel.py` | `分析` 收尾调用合计校验，`not ok` → `sys.exit(1)` | T06 |
+| `gui/services.py` | `_generate_reports` 调用同一合计校验函数 | T06 |
+| `scripts/pipeline.py` | 组装衔接（不做独立收尾硬校验） | T06 |
 | `prompts/pass5_craft.md` | SYSTEM/USER 扩展 deep_analysis | T05（或 T06） |
 | `tests/test_genre_isolation.py` | 新建 | T07 |
 | `tests/test_report_length.py` | 新建 | T07 |

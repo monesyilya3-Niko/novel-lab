@@ -8,11 +8,15 @@
 - 【执行机制】桥段库每个 trope 必须标注 genre_scope（universal / 题材专属 id）
 
 ## 铁律二：每本书拆解必须产出 ≥1 万字分析报告
-- 拆书报告 + 笔法分析 合计字符数 ≥ 10000（硬门槛，字符数口径）
-- 【执行机制】novel.py「分析」一键命令在生成拆书报告 + 笔法分析后，
-  汇总两份报告字符数合计校验：合计 < 10000 → sys.exit(1) 阻断交付
-- 【执行机制】report.py / report_craft.py / pipeline.py 各自单份字数不足 10000
-  仅打印 soft warning（不退出），最终以「分析」命令的合计校验为准
+- 拆书报告 + 笔法分析 **合计**字符数 ≥ 10000（硬门槛，字符数口径）
+- 【执行机制】单一来源：`report.py::check_combined_report_length(reports_dir, name)`
+  判定两份合计；CLI 与 GUI 共用同一实现，禁止两处口径漂移
+- 【执行机制】`novel.py「分析」` 收尾调用该函数：合计 < 10000 → `sys.exit(1)` 阻断交付
+- 【执行机制】GUI 路径：`services._generate_reports` 经
+  `engine_adapter.check_report_min_length` 调用同一函数
+  （历史上 GUI 曾整条绕过铁律二，已修复；不得再出现旁路）
+- 【执行机制】`report.py` / `report_craft.py` / `pipeline.py` 各自单份字数不足 10000
+  仅打印 soft warning（不退出），最终以合计校验为准
 - 【执行机制】深度内容由 Pass5 LLM 生成 + deep_analyze.py 校验，缺段即标记
 
 ## 铁律三：纯标准库、零第三方依赖
