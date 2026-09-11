@@ -24,6 +24,19 @@ _WRITING_LOCK = threading.Lock()
 
 _ACTIVE_STATUSES = frozenset({"pending", "running", "scoring", "rewriting"})
 _MAX_CONCURRENT_WRITING = 2
+_MAX_TERMINAL_TASKS = 50  # 终态任务最多保留 N 个
+
+
+def _prune_terminal_tasks() -> None:
+    """清理终态任务，防止注册表无限增长。"""
+    with _WRITING_LOCK:
+        terminal = {k: v for k, v in _WRITING_TASKS.items()
+                    if v.get("status") not in _ACTIVE_STATUSES}
+        if len(terminal) > _MAX_TERMINAL_TASKS:
+            # 按 task_id 排序（含时间戳），删除最旧的
+            to_remove = sorted(terminal.keys())[:len(terminal) - _MAX_TERMINAL_TASKS]
+            for k in to_remove:
+                del _WRITING_TASKS[k]
 
 
 def _active_writing_count() -> int:
@@ -143,7 +156,7 @@ def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str
 
 
 def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = None,
-          label: str = "") -> Dict[str, Any]:
+          label: str = "", genre_pack: Optional[str] = None) -> Dict[str, Any]:
     """双维度打分：一致性五维 + 章节质量十二维。"""
     if not text and not chapter_path:
         raise ServiceError("需要 text 或 chapter_path", 400)
@@ -178,7 +191,7 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
         "series": [{"name": label or "章节", "value": [dims["voice"], dims["emotion"], dims["narration"], dims["banned"], dims["imagery"]]}],
     }
 
-    genre_pack_data = None
+    genre_pack_data = _load_asset_json(genre_pack) if genre_pack else None
     qc = engine_adapter.chapter_check(text, genre_pack_data)
     pass_line, _ = engine_adapter.resolve_thresholds(genre_pack_data)
 
@@ -341,6 +354,9 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
             }
         return _WRITING_TASKS[task_id]
 
+    # MEDIUM：先清理终态任务，防止注册表无限增长
+    _prune_terminal_tasks()
+
     # HIGH：并发上限检查 + 登记必须在同一临界区（TOCTOU 修复）
     with _WRITING_LOCK:
         if _active_writing_count() >= _MAX_CONCURRENT_WRITING:
@@ -375,11 +391,13 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
 
 def task_state(task_id: str) -> Dict[str, Any]:
     """查询写作任务状态。"""
+    import copy
     with _WRITING_LOCK:
         t = _WRITING_TASKS.get(task_id)
-    if not t:
-        raise ServiceError(f"任务不存在: {task_id}", 404)
-    return dict(t)
+        if not t:
+            raise ServiceError(f"任务不存在: {task_id}", 404)
+        # MEDIUM：锁内 deepcopy，避免嵌套列表被并发修改
+        return copy.deepcopy(t)
 
 
 def import_chapter(project: str, chapter_no: int, content: str,
@@ -481,7 +499,10 @@ def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> Non
                 best_qc = qc_score
                 break
 
-            if cons_score > best_cons or best_content is None:
+            # MEDIUM：用加权分比较（一致性 60% + 质量 40%），避免高一致性低质量稿胜出
+            combined = cons_score * 0.6 + qc_score * 0.4
+            best_combined = best_cons * 0.6 + best_qc * 0.4
+            if combined > best_combined or best_content is None:
                 best_content = content
                 best_cons = cons_score
                 best_qc = qc_score

@@ -22,6 +22,18 @@ _QUALITY_LOCK = threading.Lock()
 
 _ACTIVE_STATUSES = frozenset({"pending", "running"})
 _MAX_CONCURRENT_QUALITY = 2
+_MAX_TERMINAL_TASKS = 50
+
+
+def _prune_terminal_tasks() -> None:
+    """清理终态任务，防止注册表无限增长。"""
+    with _QUALITY_LOCK:
+        terminal = {k: v for k, v in _QUALITY_TASKS.items()
+                    if v.get("status") not in _ACTIVE_STATUSES}
+        if len(terminal) > _MAX_TERMINAL_TASKS:
+            to_remove = sorted(terminal.keys())[:len(terminal) - _MAX_TERMINAL_TASKS]
+            for k in to_remove:
+                del _QUALITY_TASKS[k]
 
 
 def _active_quality_count() -> int:
@@ -249,6 +261,9 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
     book_path = _asset_path(book)
     nd = str(resolve_chapter_target(novel_dir)) if novel_dir else None
 
+    # MEDIUM：先清理终态任务
+    _prune_terminal_tasks()
+
     # HIGH：并发上限检查 + 登记必须在同一临界区（TOCTOU 修复）
     with _QUALITY_LOCK:
         if _active_quality_count() >= _MAX_CONCURRENT_QUALITY:
@@ -277,11 +292,12 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
 
 def qc_task_state(task_id: str) -> Dict[str, Any]:
     """查询 qc 任务状态。"""
+    import copy
     with _QUALITY_LOCK:
         t = _QUALITY_TASKS.get(task_id)
-    if not t:
-        raise ServiceError(f"任务不存在: {task_id}", 404)
-    return dict(t)
+        if not t:
+            raise ServiceError(f"任务不存在: {task_id}", 404)
+        return copy.deepcopy(t)
 
 
 def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
@@ -306,8 +322,9 @@ def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
         qc_dir = config.REPORTS_DIR / "qc"
         qc_dir.mkdir(parents=True, exist_ok=True)
         safe_name = display_target.replace("/", "_").replace("\\", "_").replace("..", "")[:60]
-        json_fp = qc_dir / f"{safe_name}-qc.json"
-        md_fp = qc_dir / f"{safe_name}-qc.md"
+        # MEDIUM：文件名加 task_id 防止并发同名覆盖
+        json_fp = qc_dir / f"{safe_name}-{task_id}-qc.json"
+        md_fp = qc_dir / f"{safe_name}-{task_id}-qc.md"
         json_fp.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         md_fp.write_text(markdown, encoding="utf-8")
 
