@@ -12,6 +12,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import { advancedApi, assetApi } from '../api/client'
+import PlatformPanel from './PlatformPanel'
 
 export default function AdvancedWorkbench() {
   const [tab, setTab] = useState(0)
@@ -21,11 +22,13 @@ export default function AdvancedWorkbench() {
         <Tab label="蒸馏" />
         <Tab label="批量状态" />
         <Tab label="资产编辑" />
+        <Tab label="平台适配" />
       </Tabs>
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {tab === 0 && <DistillPanel />}
         {tab === 1 && <BatchStatusPanel />}
         {tab === 2 && <AssetEditPanel />}
+        {tab === 3 && <PlatformPanel />}
       </Box>
     </Box>
   )

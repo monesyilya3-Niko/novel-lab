@@ -14,6 +14,7 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Divider from '@mui/material/Divider'
 import { writingApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
+import StylePanel from './StylePanel'
 
 export default function WritingWorkbench() {
   const [tab, setTab] = useState(0)
@@ -24,12 +25,14 @@ export default function WritingWorkbench() {
         <Tab label="写作" />
         <Tab label="打分" />
         <Tab label="组装" />
+        <Tab label="文风" />
       </Tabs>
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {tab === 0 && <InjectPanel />}
         {tab === 1 && <GeneratePanel />}
         {tab === 2 && <ScorePanel />}
         {tab === 3 && <AssemblePanel />}
+        {tab === 4 && <StylePanel />}
       </Box>
     </Box>
   )

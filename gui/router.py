@@ -373,6 +373,75 @@ def _h_get_presets(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, 
     return ok(model_service.get_presets())
 
 
+# --- 文风集成 handlers ---
+
+def _h_analyze_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import style_service
+    b = body or {}
+    return ok(style_service.analyze_style(b.get("text", ""), b.get("name", "")))
+
+
+def _h_save_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import style_service
+    b = body or {}
+    return ok(style_service.save_style(b.get("name", ""), b.get("style_card", {})))
+
+
+def _h_list_styles(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import style_service
+    return ok({"styles": style_service.list_styles()})
+
+
+def _h_get_style(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import style_service
+    return ok(style_service.get_style(params["name"]))
+
+
+def _h_delete_style(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import style_service
+    return ok(style_service.delete_style(params["name"]))
+
+
+def _h_apply_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import style_service
+    b = body or {}
+    return ok(style_service.apply_style_prompt(b.get("style_name", ""), b.get("base_prompt", "")))
+
+
+# --- 多平台适配 handlers ---
+
+def _h_list_platforms(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import platform_service
+    return ok({"platforms": platform_service.list_platforms()})
+
+
+def _h_get_platform(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import platform_service
+    return ok(platform_service.get_platform(params["platform_id"]))
+
+
+def _h_check_compliance(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import platform_service
+    b = body or {}
+    return ok(platform_service.check_chapter_compliance(
+        b.get("platform_id", ""), b.get("chapter_text", ""), b.get("chapter_title", "")))
+
+
+def _h_format_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import platform_service
+    b = body or {}
+    return ok(platform_service.format_chapter(
+        b.get("platform_id", ""), int(b.get("chapter_num", 1)),
+        b.get("title", ""), b.get("content", "")))
+
+
+def _h_export_book(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import platform_service
+    b = body or {}
+    return ok(platform_service.export_book_for_platform(
+        b.get("platform_id", ""), b.get("book_dir", "")))
+
+
 # --- M1 高级分析 handlers ---
 
 def _h_distill_status(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
@@ -483,6 +552,19 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
     ("DELETE", re.compile(r"^/api/models/(?P<model_id>[^/]+)$"), _h_delete_model),
     ("POST", re.compile(r"^/api/models/(?P<model_id>[^/]+)/key$"), _h_set_model_key),
     ("POST", re.compile(r"^/api/models/(?P<model_id>[^/]+)/test$"), _h_test_model),
+    # 文风集成
+    ("POST", re.compile(r"^/api/style/analyze$"), _h_analyze_style),
+    ("POST", re.compile(r"^/api/style/save$"), _h_save_style),
+    ("GET", re.compile(r"^/api/style/list$"), _h_list_styles),
+    ("GET", re.compile(r"^/api/style/(?P<name>[^/]+)$"), _h_get_style),
+    ("DELETE", re.compile(r"^/api/style/(?P<name>[^/]+)$"), _h_delete_style),
+    ("POST", re.compile(r"^/api/style/apply$"), _h_apply_style),
+    # 多平台适配
+    ("GET", re.compile(r"^/api/platform/list$"), _h_list_platforms),
+    ("GET", re.compile(r"^/api/platform/(?P<platform_id>[^/]+)$"), _h_get_platform),
+    ("POST", re.compile(r"^/api/platform/check$"), _h_check_compliance),
+    ("POST", re.compile(r"^/api/platform/format$"), _h_format_chapter),
+    ("POST", re.compile(r"^/api/platform/export$"), _h_export_book),
 ]
 
 

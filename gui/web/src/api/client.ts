@@ -428,3 +428,25 @@ export function subscribeTaskEvents(taskId: string, onEvent: (e: Record<string, 
   }
   return () => es.close()
 }
+
+// 文风集成
+export const styleApi = {
+  analyze: (body: { text: string; name?: string }) => post<Record<string, unknown>>('/style/analyze', body),
+  save: (body: { name: string; style_card: Record<string, unknown> }) => post<Record<string, unknown>>('/style/save', body),
+  list: () => get<Record<string, unknown>>('/style/list'),
+  get: (name: string) => get<Record<string, unknown>>(`/style/${encodeURIComponent(name)}`),
+  delete: (name: string) => del<Record<string, unknown>>(`/style/${encodeURIComponent(name)}`),
+  apply: (body: { style_name: string; base_prompt: string }) => post<Record<string, unknown>>('/style/apply', body),
+}
+
+// 多平台适配
+export const platformApi = {
+  list: () => get<Record<string, unknown>>('/platform/list'),
+  get: (id: string) => get<Record<string, unknown>>(`/platform/${encodeURIComponent(id)}`),
+  check: (body: { platform_id: string; chapter_text: string; chapter_title?: string }) =>
+    post<Record<string, unknown>>('/platform/check', body),
+  format: (body: { platform_id: string; chapter_num: number; title: string; content: string }) =>
+    post<Record<string, unknown>>('/platform/format', body),
+  export: (body: { platform_id: string; book_dir: string }) =>
+    post<Record<string, unknown>>('/platform/export', body),
+}
