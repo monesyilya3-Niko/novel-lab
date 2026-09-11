@@ -221,8 +221,9 @@ def delete_asset(kind: str, asset_id: str) -> Dict[str, Any]:
     # 移到 trash 目录（软删除）
     trash_dir = config.STATE_ROOT / "trash"
     trash_dir.mkdir(parents=True, exist_ok=True)
+    import uuid
     ts = time.strftime("%Y%m%d-%H%M%S")
-    dst = trash_dir / f"{name}-{ts}.json"
+    dst = trash_dir / f"{name}-{ts}-{uuid.uuid4().hex[:6]}.json"
     shutil.move(str(fp), str(dst))
 
     return {"name": name, "trashed_to": str(dst.relative_to(config.ROOT_DIR)), "deleted": True}

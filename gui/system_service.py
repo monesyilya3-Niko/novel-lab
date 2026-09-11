@@ -15,6 +15,13 @@ from gui import config, engine_adapter
 from gui.services import ServiceError
 
 
+def _ensure_scripts_path() -> None:
+    """确保 scripts/ 在 sys.path 中（幂等）。"""
+    import sys
+    if str(config.SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(config.SCRIPTS_DIR))
+
+
 # ---------------------------------------------------------------------------
 # 系统状态
 # ---------------------------------------------------------------------------
@@ -25,7 +32,14 @@ def system_status() -> Dict[str, Any]:
     def _dir_size(p: Path) -> int:
         if not p.is_dir():
             return 0
-        return sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+        total = 0
+        for f in p.rglob("*"):
+            try:
+                if f.is_file():
+                    total += f.stat().st_size
+            except OSError:
+                continue
+        return total
 
     assets_size = _dir_size(config.ASSETS_ROOT)
     reports_size = _dir_size(config.REPORTS_DIR)
@@ -114,11 +128,7 @@ def compliance_scan(voice: Optional[str] = None,
                 raise ServiceError(f"读取原文失败: {exc}", 400)
 
         # 调用 compliance.scan_asset（需要 ngram 索引）
-        from gui import engine_adapter as ea
-        # 构建 ngram 索引（简化：直接用 compliance 模块）
-        import sys
-        if str(config.SCRIPTS_DIR) not in sys.path:
-            sys.path.insert(0, str(config.SCRIPTS_DIR))
+        _ensure_scripts_path()
         import compliance as compliance_mod
 
         ngram = set()
@@ -137,9 +147,7 @@ def compliance_scan(voice: Optional[str] = None,
         })
     else:
         # 全量扫描（不带原文，只做字段级检查）
-        import sys
-        if str(config.SCRIPTS_DIR) not in sys.path:
-            sys.path.insert(0, str(config.SCRIPTS_DIR))
+        _ensure_scripts_path()
         import compliance as compliance_mod
 
         for fp in sorted(config.ASSETS_ROOT.glob("*.json")):

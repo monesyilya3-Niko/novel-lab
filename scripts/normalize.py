@@ -159,14 +159,6 @@ PASS2_KEYS = {
 }
 
 
-# 常见角色名 → 角色类型（基于流行网文命名规律，可扩展）
-ROLE_NAME_HINTS = [
-    (("男主", "男一", "男主角", "he", "他"), "主角"),
-    (("女主", "女一", "女主角", "she", "她"), "女主"),
-    (("反派", "女二", "男二", "校霸", "恶毒", "白莲"), "反派" if False else "配角"),
-]
-
-
 def _role_for(name: str, spec: dict, position: int = 99) -> str:
     """判断角色身份：优先 spec 声明 → 名字关键词 → 位置兜底（第一个=主角，第二个=女主）。"""
     declared = as_str(spec.get("角色") or spec.get("role") or "")
