@@ -87,10 +87,10 @@ function SystemStatusPanel() {
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>数据统计</Typography>
         <Typography variant="body2">
-          资产 {String(counts.assets)} 个 | 报告 {String(counts.reports)} 份 | 已拆书 {(counts.book_names as string[]).length} 本
+          资产 {String(counts.assets ?? 0)} 个 | 报告 {String(counts.reports ?? 0)} 份 | 已拆书 {((counts.book_names as string[]) ?? []).length} 本
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {(counts.book_names as string[]).join('、')}
+          {((counts.book_names as string[]) ?? []).join('、')}
         </Typography>
       </Paper>
 
@@ -160,10 +160,10 @@ function CompliancePanel() {
               color={r.verdict === 'PASS' ? 'success' : r.verdict === 'WARN' ? 'warning' : 'error'}
             />
           </Box>
-          {r.errors.map((e, i) => (
+          {(r.errors ?? []).map((e, i) => (
             <Typography key={i} variant="caption" sx={{ color: 'error.main', display: 'block' }}>{e}</Typography>
           ))}
-          {r.warns.map((w, i) => (
+          {(r.warns ?? []).map((w, i) => (
             <Typography key={i} variant="caption" sx={{ color: 'warning.main', display: 'block' }}>{w}</Typography>
           ))}
         </Paper>
