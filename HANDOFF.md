@@ -1,7 +1,7 @@
 # novel-lab 交接文档
 
 > **用途**：新会话/新协作者的完整上下文。先读本文件 + `PROJECT_SUMMARY.md` + `AGENTS.md` 即可接手。
-> **最后更新**：2026-09-11（迁移后重写，基于 git `769610d` 实测）
+> **最后更新**：2026-09-11（迁移后重写，基于 git `fb6a3f6` 实测）
 > **项目路径**：`C:\Users\monesy\niko\novel-lab`
 
 ---
@@ -33,7 +33,7 @@
 
 - **资产 55 个**：voice 4 / craft 4 / structure 4 / commercial 4 / genre-pack 1 / distilled 4 / prose-card 33 / trope 1
 - **报告 8 份**：4 书 × (拆书报告 + 笔法分析)
-- **测试 272 用例全绿**
+- **测试 353 用例全绿**
 
 ### GUI 功能
 
@@ -55,11 +55,11 @@
 ```
 前端 (Vite + React + MUI + Tailwind + ECharts)
   HomeDashboard / AnalysisView / AssetLibrary
-  WritingWorkbench / QualityWorkbench / SystemWorkbench / AdvancedWorkbench
+  WritingWorkbench / QualityWorkbench / SystemWorkbench / AdvancedWorkbench / SettingsWorkbench
         │  HTTP REST + SSE
         ▼
 GUI 后端（纯标准库）
-  router.py           44 个端点
+  router.py           65 个端点
   services.py         拆书链路服务
   writing_service.py  M2：注入/写作/打分/组装/手动入库
   quality_service.py  M3：检查/全书质检/qc/报告
@@ -116,7 +116,7 @@ $PY -m gui.launch
 ## 五、测试与质量守卫
 
 ```bash
-$PY run_tests.py    # 全量 272 用例
+$PY run_tests.py    # 全量 353 用例
 ```
 
 - `.githooks/pre-commit` 提交前自动跑全量测试，红测试阻止提交
