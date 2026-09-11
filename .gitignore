@@ -51,3 +51,6 @@ gui_state/
 # 跟踪派生数据会制造第二个真相源、引入提交噪声与合并冲突，与「长期稳定可维护」相悖。
 # 备份需求由 gui_state/*.bak-* 与 migrate CLI 的 backup 机制承担。
 gui/state/
+
+# MiMoCode 本地配置目录（技能安装等，不入库）
+.mimocode/
