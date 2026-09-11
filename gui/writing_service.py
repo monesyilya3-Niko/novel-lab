@@ -362,7 +362,14 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
     thread = threading.Thread(
         target=_run_generate, args=(task_id, voice_data, system, req),
         daemon=True, name=f"writing-{task_id}")
-    thread.start()
+    try:
+        thread.start()
+    except RuntimeError:
+        # HIGH：start 失败必须释放并发槽位，否则永久占用
+        with _WRITING_LOCK:
+            _WRITING_TASKS[task_id]["status"] = "error"
+            _WRITING_TASKS[task_id]["error"] = "线程启动失败"
+        raise ServiceError("线程启动失败，请稍后重试", 500)
     return {"task_id": task_id, "status": "running", "mode": "llm", "chapter_no": chapter_no}
 
 
@@ -380,6 +387,8 @@ def import_chapter(project: str, chapter_no: int, content: str,
                    genre_pack: Optional[str] = None) -> Dict[str, Any]:
     """手动入库：用户贴回会话内写好的正文 → 落盘 + 双维度打分。"""
     project = _sanitize_project(project)
+    if chapter_no < 1:
+        raise ServiceError("chapter_no 必须 ≥ 1", 400)
     if not content or not content.strip():
         raise ServiceError("content 不能为空", 400)
 

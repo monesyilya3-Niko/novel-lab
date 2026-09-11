@@ -290,6 +290,20 @@ export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEven
 // W16/W17 阶段二：写作（M2）+ 质检（M3）
 // ---------------------------------------------------------------------------
 
+/** 递归把 snake_case 键转为 camelCase（含数组和嵌套对象）。 */
+function deepToCamel<T>(obj: unknown): T {
+  if (Array.isArray(obj)) return obj.map(deepToCamel) as T
+  if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const key = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+      out[key] = deepToCamel(v)
+    }
+    return out as T
+  }
+  return obj as T
+}
+
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
@@ -298,14 +312,14 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
   })
   const json = await res.json()
   if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
-  return json.data as T
+  return deepToCamel<T>(json.data)
 }
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
   const json = await res.json()
   if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
-  return json.data as T
+  return deepToCamel<T>(json.data)
 }
 
 // 写作

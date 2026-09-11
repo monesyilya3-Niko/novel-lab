@@ -184,7 +184,6 @@ class TestGenerateDegraded(unittest.TestCase):
 
 class TestConcurrencyLimit(unittest.TestCase):
     def test_active_count_starts_zero(self):
-        # 清空任务注册表
         with writing_service._WRITING_LOCK:
             writing_service._WRITING_TASKS.clear()
         self.assertEqual(writing_service._active_writing_count(), 0)
@@ -193,6 +192,14 @@ class TestConcurrencyLimit(unittest.TestCase):
         with writing_service._WRITING_LOCK:
             writing_service._WRITING_TASKS["test-1"] = {"status": "running"}
         self.assertEqual(writing_service._active_writing_count(), 1)
+        with writing_service._WRITING_LOCK:
+            writing_service._WRITING_TASKS.clear()
+
+    def test_scoring_and_rewriting_counted(self):
+        with writing_service._WRITING_LOCK:
+            writing_service._WRITING_TASKS["t-scoring"] = {"status": "scoring"}
+            writing_service._WRITING_TASKS["t-rewriting"] = {"status": "rewriting"}
+        self.assertEqual(writing_service._active_writing_count(), 2)
         with writing_service._WRITING_LOCK:
             writing_service._WRITING_TASKS.clear()
 

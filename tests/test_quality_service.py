@@ -109,10 +109,13 @@ class TestCleanStaleScratch(unittest.TestCase):
         self.assertFalse(sub.exists())
 
     def test_empty_dir_returns_zero(self):
-        scratch = config.STATE_ROOT / "scratch_empty"
+        # 确保 scratch 目录不存在时返回 0
+        scratch = config.STATE_ROOT / "scratch"
+        if scratch.exists():
+            import shutil
+            shutil.rmtree(scratch)
         n = quality_service.clean_stale_scratch()
-        # scratch_empty 不存在，不影响主 scratch
-        self.assertGreaterEqual(n, 0)
+        self.assertEqual(n, 0)
 
 
 class TestCheck(unittest.TestCase):

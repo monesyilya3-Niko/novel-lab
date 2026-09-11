@@ -253,7 +253,14 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
         target=_run_qc_task,
         args=(task_id, chapter_dir, voice_path, gp_path, asset_path, book_path, nd, llm_hook, display_target),
         daemon=True, name=f"qc-{task_id}")
-    thread.start()
+    try:
+        thread.start()
+    except RuntimeError:
+        # HIGH：start 失败必须释放并发槽位
+        with _QUALITY_LOCK:
+            _QUALITY_TASKS[task_id]["status"] = "error"
+            _QUALITY_TASKS[task_id]["error"] = "线程启动失败"
+        raise ServiceError("线程启动失败，请稍后重试", 500)
     return {"task_id": task_id, "status": "running", "target": display_target}
 
 
