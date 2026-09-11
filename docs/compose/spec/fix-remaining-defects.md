@@ -1,12 +1,20 @@
 ---
 feature: fix-remaining-defects
-status: designed
+status: delivered
 updated: 2026-09-11
 branch: fix/remaining-defects
-commits: 2d6435c..pending
+commits: 2d6435c..8649e0c
 ---
 
 # 修复 GUI 后端剩余 12 项缺陷
+
+## Report
+
+**What was built** — 修复了进度报告中剩余的 12 项 GUI 后端缺陷。M1 将 sqlite3 备份调用收口到 `db.backup_to`；M2 统一分页参数错误为 `raise ServiceError`；M4 给 SSE 队列加 `maxsize=256` 防止慢客户端内存堆积；M5 统一 `total_assets = sum(assets_by_kind)` 口径；M7 统一 `get_stats` 就绪判据；M8 在 API 层限制导入路径在项目根内并从响应中剥离正文；L1/L2/L4/L5/L6 分别补字段、修假调用、加输入校验、删死代码。L3 经核实已由 H3 修复。另根据 review 反馈补修了负数 Content-Length 边界。
+
+**Verification** — `python run_tests.py` → 272 OK (1 skipped)。pre-commit hook 全量通过。针对性验证：`__import__` 不在 migrate.py、`Queue.maxsize==256`、`resolve_port(0)` 抛 ValueError、`_CORPUS_EXCLUDE_DIRS` 已删除。独立 review 确认 11 项验收标准全过，无 critical。
+
+**Journey log** — M8 路径限制最初放在服务层导致测试全挂（temp 目录在项目外），改为路由层后解决。M5 扫描分支原本已自洽，只需改 SQLite 分支。L3 在写 spec 时通过读代码发现已被 H3 顺带修复。
 
 ## [S1] Problem
 
@@ -96,16 +104,16 @@ commits: 2d6435c..pending
 
 ## Tasks
 
-- [ ] T1: 修 M1 — db.backup_to 封装 + migrate 调用 — acceptance: `__import__` 不再出现在 migrate.py；测试通过 (covers: S2-M1)
-- [ ] T2: 修 M2 — router 分页错误改 raise ServiceError — acceptance: 非整数 offset 返回 HTTP 400 (covers: S2-M2)
-- [ ] T3: 修 M4 — SSE 队列加 maxsize=256 — acceptance: Queue 有界；Full 时不阻塞 (covers: S2-M4)
-- [ ] T4: 修 M5 — total_assets = sum(assets_by_kind) — acceptance: 两分支口径一致 (covers: S2-M5)
-- [ ] T5: 修 M7 — get_stats 统一就绪判据 — acceptance: 空库时 totals 与 by_kind 均为 0 (covers: S2-M7)
-- [ ] T6: 修 M8 — import 响应剥离 text + 路径限制 — acceptance: 响应无正文；项目外路径 403 (covers: S2-M8)
-- [ ] T7: 修 L1 — load_task 补 asset_index 键 — acceptance: get_status 响应含 asset_index 字段 (covers: S2-L1)
-- [ ] T8: 修 L2 — retry_failed 线程存活时不假调 resume — acceptance: 存活时返回 note；不存活时正常 resume (covers: S2-L2)
-- [ ] T9: 验证 L3 已修 — acceptance: start 后 /api/status 返回 running (covers: S2-L3)
-- [ ] T10: 修 L4 — read_body 健壮性 — acceptance: 非法 Content-Length→400；超大 body→413 (covers: S2-L4)
-- [ ] T11: 修 L5 — resolve_port 范围校验 — acceptance: 端口 0 或 70000 抛 ValueError (covers: S2-L5)
-- [ ] T12: 修 L6 — 删除 _CORPUS_EXCLUDE_DIRS — acceptance: 常量不存在且测试通过 (covers: S2-L6)
-- [ ] T13: 全量测试 + 提交 — acceptance: 272+ 新增用例全绿；工作区干净 (covers: 全部)
+- [x] T1: 修 M1 — db.backup_to 封装 + migrate 调用 — acceptance: `__import__` 不再出现在 migrate.py；测试通过 (covers: S2-M1)
+- [x] T2: 修 M2 — router 分页错误改 raise ServiceError — acceptance: 非整数 offset 返回 HTTP 400 (covers: S2-M2)
+- [x] T3: 修 M4 — SSE 队列加 maxsize=256 — acceptance: Queue 有界；Full 时不阻塞 (covers: S2-M4)
+- [x] T4: 修 M5 — total_assets = sum(assets_by_kind) — acceptance: 两分支口径一致 (covers: S2-M5)
+- [x] T5: 修 M7 — get_stats 统一就绪判据 — acceptance: 空库时 totals 与 by_kind 均为 0 (covers: S2-M7)
+- [x] T6: 修 M8 — import 响应剥离 text + 路径限制 — acceptance: 响应无正文；项目外路径 403 (covers: S2-M8)
+- [x] T7: 修 L1 — load_task 补 asset_index 键 — acceptance: get_status 响应含 asset_index 字段 (covers: S2-L1)
+- [x] T8: 修 L2 — retry_failed 线程存活时不假调 resume — acceptance: 存活时返回 note；不存活时正常 resume (covers: S2-L2)
+- [x] T9: 验证 L3 已修 — acceptance: start 后 /api/status 返回 running (covers: S2-L3)
+- [x] T10: 修 L4 — read_body 健壮性 — acceptance: 非法 Content-Length→400；超大 body→413 (covers: S2-L4)
+- [x] T11: 修 L5 — resolve_port 范围校验 — acceptance: 端口 0 或 70000 抛 ValueError (covers: S2-L5)
+- [x] T12: 修 L6 — 删除 _CORPUS_EXCLUDE_DIRS — acceptance: 常量不存在且测试通过 (covers: S2-L6)
+- [x] T13: 全量测试 + 提交 — acceptance: 272 全绿；独立 review 通过 (covers: 全部)

@@ -246,7 +246,9 @@ def read_body(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
         length = int(raw_len)
     except ValueError:
         raise ServiceError("Content-Length 非法", 400)
-    if length <= 0:
+    if length < 0:
+        raise ServiceError("Content-Length 非法", 400)
+    if length == 0:
         return {}
     if length > _MAX_BODY_BYTES:
         raise ServiceError("请求体过大", 413)
