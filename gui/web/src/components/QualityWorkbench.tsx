@@ -54,7 +54,7 @@ function CheckPanel() {
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })
-      .catch(() => {})
+      .catch((e) => setError(`加载资产失败: ${e}`))
   }, [])
 
   const doCheck = async () => {
@@ -189,7 +189,7 @@ function QcPanel() {
   const sseUnsubRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
-    qualityApi.reports().then(setReports).catch(() => {})
+    qualityApi.reports().then(setReports).catch(() => setReports([]))
     return () => { sseUnsubRef.current?.() }
   }, [])
 
@@ -210,7 +210,7 @@ function QcPanel() {
               setRunning(false)
               unsub()
               sseUnsubRef.current = null
-              qualityApi.reports().then(setReports).catch(() => {})
+              qualityApi.reports().then(setReports).catch(() => setReports([]))
             }
           } catch { /* ignore */ }
         })

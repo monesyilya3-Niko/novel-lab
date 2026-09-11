@@ -149,6 +149,7 @@ function AssetEditPanel() {
   const [content, setContent] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetch('/api/assets?limit=100')
@@ -157,7 +158,7 @@ function AssetEditPanel() {
         const items = (j.data?.items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
       })
-      .catch(() => {})
+      .catch((e) => setError(`加载资产失败: ${e}`))
   }, [])
 
   const loadAsset = async () => {
@@ -204,6 +205,7 @@ function AssetEditPanel() {
   return (
     <Box>
       <Typography variant="h6" gutterBottom>资产编辑</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField select label="选择资产" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 300 }} size="small">
           {assets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{a.kind}）</MenuItem>)}

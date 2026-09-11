@@ -126,14 +126,16 @@ export default function AnalysisResultView() {
   const { book, bookResults, loadBookResults } = useApp()
   const [tab, setTab] = useState<ResultTab>('overview')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const bookId = book?.bookId ?? null
 
   useEffect(() => {
     if (!bookId) return
     setLoading(true)
+    setError('')
     loadBookResults(bookId)
-      .catch(() => {})
+      .catch((e) => setError(String(e)))
       .finally(() => setLoading(false))
   }, [bookId, loadBookResults])
 
@@ -179,6 +181,14 @@ export default function AnalysisResultView() {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography color="text.secondary">请先在首页/控制栏导入并拆书，完成后在此查看结果</Typography>
+      </Box>
+    )
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography color="error">加载失败：{error}</Typography>
       </Box>
     )
   }

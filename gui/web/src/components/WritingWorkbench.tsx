@@ -136,7 +136,7 @@ function GeneratePanel() {
   }, [])
 
   useEffect(() => {
-    writingApi.projects().then(setProjects).catch(() => {})
+    writingApi.projects().then(setProjects).catch((e) => setError(`加载项目失败: ${e}`))
     fetch('/api/assets?kind=voice&limit=50')
       .then((r) => r.json())
       .then((j) => {
@@ -144,7 +144,7 @@ function GeneratePanel() {
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })
-      .catch(() => {})
+      .catch((e) => setError(`加载资产失败: ${e}`))
   }, [])
 
   const doGenerate = async () => {
@@ -277,7 +277,7 @@ function ScorePanel() {
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })
-      .catch(() => {})
+      .catch((e) => setError(`加载资产失败: ${e}`))
   }, [])
 
   const doScore = async () => {
@@ -347,6 +347,7 @@ function AssemblePanel() {
   const [genre, setGenre] = useState('campus-redemption')
   const [result, setResult] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     writingApi.assembleCandidates()
@@ -354,7 +355,7 @@ function AssemblePanel() {
         setCandidates(r as { name: string; passes: string[] }[])
         if (r.length > 0) setName((r[0] as { name: string }).name)
       })
-      .catch(() => {})
+      .catch((e) => setError(`加载候选失败: ${e}`))
   }, [])
 
   const doAssemble = async () => {
@@ -372,6 +373,10 @@ function AssemblePanel() {
   return (
     <Box>
       <Typography variant="h6" gutterBottom>资产组装</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {candidates.length === 0 && !error && (
+        <Alert severity="info" sx={{ mb: 2 }}>暂无可组装的书目（需先完成 pass1-5）</Alert>
+      )}
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField select label="书名" value={name} onChange={(e) => setName(e.target.value)} sx={{ minWidth: 200 }} size="small">
           {candidates.map((c) => <MenuItem key={c.name} value={c.name}>{c.name}（{c.passes.length} pass）</MenuItem>)}

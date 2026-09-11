@@ -51,7 +51,7 @@ export default function HomeDashboard() {
         {loadError ? (
           <>
             <Typography variant="body2" color="error">加载失败：{loadError}</Typography>
-            <Button variant="outlined" size="small" onClick={() => refreshOverview().catch(() => {})}>重试</Button>
+            <Button variant="outlined" size="small" onClick={() => { setLoadError(''); refreshOverview().catch((e) => setLoadError(String(e))) }}>重试</Button>
           </>
         ) : (
           <CircularProgress />
