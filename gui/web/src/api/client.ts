@@ -382,6 +382,18 @@ export const advancedApi = {
   batchStatus: () => get<Record<string, unknown>>('/advanced/batch-status'),
 }
 
+// 模型管理
+export const modelApi = {
+  list: () => get<Record<string, unknown>>('/models'),
+  presets: () => get<Record<string, unknown>>('/models/presets'),
+  get: (id: string) => get<Record<string, unknown>>(`/models/${encodeURIComponent(id)}`),
+  add: (body: Record<string, unknown>) => post<Record<string, unknown>>('/models', body),
+  update: (id: string, body: Record<string, unknown>) => put<Record<string, unknown>>(`/models/${encodeURIComponent(id)}`, body),
+  delete: (id: string) => del<Record<string, unknown>>(`/models/${encodeURIComponent(id)}`),
+  setKey: (id: string, apiKey: string) => post<Record<string, unknown>>(`/models/${encodeURIComponent(id)}/key`, { api_key: apiKey }),
+  test: (id: string) => post<Record<string, unknown>>(`/models/${encodeURIComponent(id)}/test`),
+}
+
 // 资产
 export const assetApi = {
   list: (params?: { kind?: string; limit?: number; offset?: number }) => {

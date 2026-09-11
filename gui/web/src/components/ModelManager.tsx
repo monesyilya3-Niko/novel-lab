@@ -18,6 +18,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import KeyIcon from '@mui/icons-material/Key'
+import { modelApi } from '../api/client'
 
 interface ModelInfo {
   id: string
@@ -59,10 +60,8 @@ export default function ModelManager() {
 
   const loadModels = useCallback(async () => {
     try {
-      const res = await fetch('/api/models')
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setModels(json.data.models)
+      const data = await modelApi.list()
+      setModels((data.models ?? []) as ModelInfo[])
     } catch (e) {
       setError(String(e))
     } finally {
@@ -72,9 +71,8 @@ export default function ModelManager() {
 
   const loadPresets = useCallback(async () => {
     try {
-      const res = await fetch('/api/models/presets')
-      const json = await res.json()
-      if (json.code === 0) setPresets(json.data.presets)
+      const data = await modelApi.presets()
+      setPresets((data.presets ?? []) as Preset[])
     } catch { /* ignore */ }
   }, [])
 
@@ -117,15 +115,11 @@ export default function ModelManager() {
       }
       if (form.note) body.note = form.note
 
-      const url = editing ? `/api/models/${editing.id}` : '/api/models'
-      const method = editing ? 'PUT' : 'POST'
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
+      if (editing) {
+        await modelApi.update(editing.id, body)
+      } else {
+        await modelApi.add(body)
+      }
       setMessage(editing ? '模型已更新' : '模型已添加')
       setShowAdd(false)
       loadModels()
@@ -137,9 +131,7 @@ export default function ModelManager() {
   const deleteModel = async (id: string) => {
     if (!confirm(`确认删除模型 ${id}？`)) return
     try {
-      const res = await fetch(`/api/models/${id}`, { method: 'DELETE' })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
+      await modelApi.delete(id)
       setMessage(`模型 ${id} 已删除`)
       loadModels()
     } catch (e) {
@@ -150,14 +142,8 @@ export default function ModelManager() {
   const saveKey = async () => {
     if (!showKey || !apiKey) return
     try {
-      const res = await fetch(`/api/models/${showKey}/key`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ api_key: apiKey }),
-      })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      setMessage(`API Key 已保存`)
+      await modelApi.setKey(showKey, apiKey)
+      setMessage('API Key 已保存')
       setShowKey(null)
       setApiKey('')
       loadModels()
@@ -170,13 +156,11 @@ export default function ModelManager() {
     setTesting(id)
     setMessage('')
     try {
-      const res = await fetch(`/api/models/${id}/test`, { method: 'POST' })
-      const json = await res.json()
-      if (json.code !== 0) throw new Error(json.message)
-      if (json.data.success) {
+      const data = await modelApi.test(id)
+      if (data.success) {
         setMessage(`模型 ${id} 连接成功`)
       } else {
-        setError(`模型 ${id} 连接失败: ${json.data.error}`)
+        setError(`模型 ${id} 连接失败: ${String(data.error ?? '未知错误')}`)
       }
     } catch (e) {
       setError(String(e))
