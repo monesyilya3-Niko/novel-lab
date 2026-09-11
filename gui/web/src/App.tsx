@@ -9,6 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { AppProvider, useApp } from './state/AppContext'
 import { muiThemeOptions } from './theme'
 import WorkbenchNav from './layout/WorkbenchNav'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // 4B：页面级组件 lazy 加载，主包只含框架 + 导航 + 主题
 const HomeDashboard = lazy(() => import('./components/HomeDashboard'))
@@ -60,16 +61,18 @@ function AppShell() {
         </Box>
         <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-            <Suspense fallback={<LoadingFallback />}>
-              {workbench === 'home' && <HomeDashboard />}
-              {workbench === 'analysis' && <AnalysisView />}
-              {workbench === 'assets' && <AssetLibrary />}
-              {workbench === 'advanced' && <AdvancedWorkbench />}
-              {workbench === 'writing' && <WritingWorkbench />}
-              {workbench === 'quality' && <QualityWorkbench />}
-              {workbench === 'system' && <SystemWorkbench />}
-              {workbench === 'settings' && <SettingsWorkbench />}
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback />}>
+                {workbench === 'home' && <HomeDashboard />}
+                {workbench === 'analysis' && <AnalysisView />}
+                {workbench === 'assets' && <AssetLibrary />}
+                {workbench === 'advanced' && <AdvancedWorkbench />}
+                {workbench === 'writing' && <WritingWorkbench />}
+                {workbench === 'quality' && <QualityWorkbench />}
+                {workbench === 'system' && <SystemWorkbench />}
+                {workbench === 'settings' && <SettingsWorkbench />}
+              </Suspense>
+            </ErrorBoundary>
           </Box>
         </Box>
       </Box>
