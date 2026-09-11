@@ -50,6 +50,8 @@ CORPUS_DIR = ROOT_DIR / "corpus"        # 已导入语料（*.txt）
 CONFIG_DIR = ROOT_DIR / "config"        # 模型配置 models.json 等
 # 阶段二写作产出目录（预留，阶段一不扫描）。
 NOVEL_DIR = ROOT_DIR / "novel"
+# 注入 prompt 可选落盘目录（W11）。
+PROMPTS_DIR = ROOT_DIR / "prompts" / "generated"
 
 # 可选的端口环境变量覆盖（便于自动化测试 / 部署）。
 _ENV_PORT = os.environ.get("NOVEL_LAB_GUI_PORT", "").strip()

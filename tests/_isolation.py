@@ -44,6 +44,7 @@ DATA_PATH_CONSTANTS: Tuple[str, ...] = (
     "CORPUS_DIR",
     "CONFIG_DIR",
     "NOVEL_DIR",
+    "PROMPTS_DIR",
 )
 
 # 真实状态 JSON 目录：由项目根推导，**不读 config**，避免被 patch 影响。

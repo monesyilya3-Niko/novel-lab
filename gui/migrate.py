@@ -543,6 +543,41 @@ def _print_result(result: Dict[str, Any]) -> None:
         print(f"  unrecognized  = {result['unrecognized']}")
 
 
+def sync_asset(fp: Path) -> None:
+    """单文件重索引：组装写完 assets/*.json 后调用，幂等 upsert 进 SQLite。
+
+    复用 infer_kind / infer_book_id / infer_genre + _upsert_asset（db.tx 内）。
+    不调 run_migrate()（避免每次 backup() 与全量扫描）。
+    """
+    from gui import db as _db
+
+    fp = Path(fp)
+    if not fp.is_file():
+        return
+    try:
+        content = json.loads(fp.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return
+    if not isinstance(content, dict):
+        return
+
+    stem = fp.stem
+    kind = infer_kind(stem, content)
+    book_id = infer_book_id(stem)
+    genre = infer_genre(stem, content)
+    meta_json = json.dumps(content.get("meta", {}), ensure_ascii=False)
+    try:
+        size = fp.stat().st_size
+        mtime = fp.stat().st_mtime
+    except OSError:
+        size, mtime = None, None
+
+    with _db.tx() as conn:
+        _upsert_asset(
+            conn, asset_key=stem, kind=kind, name=stem, path=str(fp),
+            book_id=book_id, genre=genre, size=size, mtime=mtime, meta_json=meta_json)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="novel-lab GUI 数据迁移 CLI")
     parser.add_argument("--check", action="store_true", help="只读对账，不写库")

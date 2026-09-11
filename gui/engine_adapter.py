@@ -339,12 +339,177 @@ def score_text(voice_card: Dict[str, Any], text: str, label: str = "") -> Dict[s
 
 
 def get_pass5_craft(book_id: str) -> Optional[Dict[str, Any]]:
-    """预留：读取某书 pass5（笔法）craft-card 资产。阶段一尽力而为，通常返回 None。
-
-    阶段三 M1 高级能力接入 pass5 后，此函数改为从 ``assets/{book_id}/`` 读取 craft 资产。
-    """
+    """预留：读取某书 pass5（笔法）craft-card 资产。阶段一尽力而为，通常返回 None。"""
     _ = book_id
     return None
+
+
+# ---------------------------------------------------------------------------
+# W10 阶段二扩展：写作 / 质检 / 组装原子函数包装
+# ---------------------------------------------------------------------------
+
+def _get_inject():
+    global _inject
+    if _inject is None:
+        import inject as _inject  # type: ignore
+    return _inject
+
+
+def _get_write():
+    global _write
+    if _write is None:
+        import write as _write  # type: ignore
+    return _write
+
+
+def _get_chapter_check():
+    global _chapter_check
+    if _chapter_check is None:
+        import chapter_check as _chapter_check  # type: ignore
+    return _chapter_check
+
+
+def _get_book_quality():
+    global _book_quality
+    if _book_quality is None:
+        import book_quality as _book_quality  # type: ignore
+    return _book_quality
+
+
+def _get_qc():
+    global _qc
+    if _qc is None:
+        import qc as _qc  # type: ignore
+    return _qc
+
+
+def _get_normalize():
+    global _normalize
+    if _normalize is None:
+        import normalize as _normalize  # type: ignore
+    return _normalize
+
+
+def _get_assemble():
+    global _assemble
+    if _assemble is None:
+        import assemble as _assemble  # type: ignore
+    return _assemble
+
+
+_inject = None
+_write = None
+_chapter_check = None
+_book_quality = None
+_qc = None
+_normalize = None
+_assemble = None
+
+
+# --- 注入（inject.py）---
+
+def build_writing_prompt(voice: Dict[str, Any], structure: Optional[Dict] = None,
+                         commercial: Optional[Dict] = None, genre_pack: Optional[Dict] = None,
+                         craft_card: Optional[Dict] = None, distilled: Optional[Dict] = None,
+                         context_intent: Optional[str] = None,
+                         tracking_state: Optional[Dict] = None,
+                         genre_prose_card: Optional[Dict] = None) -> str:
+    """资产 → 写作 system prompt（inject.build_prompt）。"""
+    return _get_inject().build_prompt(
+        voice, structure=structure, commercial=commercial, genre_pack=genre_pack,
+        craft_card=craft_card, distilled=distilled, context_intent=context_intent,
+        tracking_state=tracking_state, genre_prose_card=genre_prose_card)
+
+
+# --- 写作（write.py 原子 + llm_client）---
+
+def llm_chat(user: str, system: str, task: str = "writing", max_tokens: int = 6000,
+             temperature: float = 0.8, json_mode: bool = False) -> Dict[str, Any]:
+    """LLM 对话调用（llm_client.chat）。无模型时由调用方先判 any_model_configured()。"""
+    return _get_llm_client().chat(user=user, system=system, task=task,
+                                  max_tokens=max_tokens, temperature=temperature,
+                                  json_mode=json_mode)
+
+
+def ensure_novel_structure(novel_dir: str, name: str = "新书") -> Path:
+    """建 novel 项目骨架（write.ensure_novel_structure）。"""
+    return _get_write().ensure_novel_structure(Path(novel_dir), name)
+
+
+def save_chapter(novel_dir: str, chapter_no: int, content: str) -> Path:
+    """落盘章节（write.save_chapter）。"""
+    return _get_write().save_chapter(Path(novel_dir), chapter_no, content)
+
+
+# --- 打分 / 检查（consistency.py / chapter_check.py）---
+
+def chapter_check(text: str, genre_pack: Optional[Dict] = None) -> Dict[str, Any]:
+    """章节质量 12 维检查（chapter_check.chapter_check）。"""
+    return _get_chapter_check().chapter_check(text, genre_pack)
+
+
+def resolve_thresholds(genre_pack: Optional[Dict] = None) -> Tuple[int, int]:
+    """解析质量阈值 (pass_line, warn_line)（chapter_check.resolve_thresholds）。"""
+    return _get_chapter_check().resolve_thresholds(genre_pack)
+
+
+# --- 全书质检（book_quality.py）---
+
+def book_quality_check(chapter_dir: str, voice_card_path: Optional[str] = None,
+                       prev_chapters_dir: Optional[str] = None) -> Dict[str, Any]:
+    """全书质检（book_quality.book_quality_check）。"""
+    return _get_book_quality().book_quality_check(
+        chapter_dir, voice_card_path=voice_card_path, prev_chapters_dir=prev_chapters_dir)
+
+
+# --- QC（qc.py）---
+
+def run_qc(chapter_dir: str, *, voice_card_path: Optional[str] = None,
+           genre_pack_path: Optional[str] = None, asset_path: Optional[str] = None,
+           book_path: Optional[str] = None, novel_dir: Optional[str] = None,
+           enable_llm_hook: bool = False) -> Dict[str, Any]:
+    """四层十二维 QC（qc.run_qc），返回 report dict + markdown。"""
+    report = _get_qc().run_qc(
+        chapter_dir, voice_card_path=voice_card_path, genre_pack_path=genre_pack_path,
+        asset_path=asset_path, book_path=book_path, novel_dir=novel_dir,
+        enable_llm_hook=enable_llm_hook)
+    return {"report": report, "markdown": _get_qc().to_markdown(report)}
+
+
+# --- 组装（assemble.py / normalize.py）---
+
+def normalize_pass2(pass2: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Pass2 角色声线归一化（normalize.normalize_pass2）。"""
+    return _get_normalize().normalize_pass2(pass2)
+
+
+def normalize_pass3(pass3: Dict[str, Any]) -> Tuple[Dict, Dict, Dict, Dict, Dict]:
+    """Pass3 文风归一化（normalize.normalize_pass3）。"""
+    return _get_normalize().normalize_pass3(pass3)
+
+
+def assemble_asset_voice_card(name: str, genre: str, manifest: Dict, metrics: Dict,
+                              voices: List, narration: Dict, dialogue: Dict, emotion: Dict,
+                              imagery: Dict, banned: Dict) -> Dict[str, Any]:
+    """组装 voice-card（assemble.assemble_voice_card）。"""
+    return _get_assemble().assemble_voice_card(
+        name, genre, manifest, metrics, voices, narration, dialogue, emotion, imagery, banned)
+
+
+def assemble_asset_obs(kind: str, name: str, genre: str, pass_out: Dict) -> Dict:
+    """组装 structure-obs / commercial-obs（assemble.assemble_obs）。"""
+    return _get_assemble().assemble_obs(kind, name, genre, pass_out)
+
+
+def assemble_asset_craft_card(name: str, genre: str, manifest: Dict, metrics: Dict,
+                              pass5: Dict) -> Dict[str, Any]:
+    """组装 craft-card（assemble.assemble_craft_card）。"""
+    return _get_assemble().assemble_craft_card(name, genre, manifest, metrics, pass5)
+
+
+def clean_verbatim(asset: Dict[str, Any], book_text: str) -> Tuple[Dict, int]:
+    """清除资产中夹带的原文台词（assemble._clean_verbatim）。"""
+    return _get_assemble()._clean_verbatim(asset, book_text)
 
 
 # ---------------------------------------------------------------------------
@@ -367,6 +532,12 @@ def adapter_self_check() -> bool:
         # 单批切片
         slices = build_single_batch_slices("pass1_structure", 1, "第1章", "正文", m)
         assert "pass1_structure" in slices
+        # W10：阈值解析（纯算法，不调 LLM）
+        pass_line, warn_line = resolve_thresholds(None)
+        assert pass_line == 75 and warn_line == 60, f"resolve_thresholds 异常: {pass_line}/{warn_line}"
+        # W10：章节检查（纯算法）
+        qc_result = chapter_check("这是一段测试正文，用来验证章节检查函数可调用。" * 20)
+        assert "score" in qc_result and "verdict" in qc_result, "chapter_check 返回结构异常"
         return True
     except Exception as exc:  # noqa: BLE001
         print(f"[adapter_self_check] 失败: {exc}")

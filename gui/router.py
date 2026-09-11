@@ -185,6 +185,108 @@ def _h_full_analysis(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, 
 
 
 # ---------------------------------------------------------------------------
+# W15 阶段二：写作（M2）+ 质检（M3）端点
+# ---------------------------------------------------------------------------
+
+def _h_writing_projects(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    return ok(writing_service.list_projects())
+
+
+def _h_writing_inject(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    b = body or {}
+    return ok(writing_service.inject(
+        voice=b.get("voice", ""), structure=b.get("structure"),
+        commercial=b.get("commercial"), genre_pack=b.get("genre_pack"),
+        craft=b.get("craft"), distilled=b.get("distilled"),
+        prose_card=b.get("prose_card"), context_intent=b.get("context_intent"),
+        tracking_state=b.get("tracking_state"), save=bool(b.get("save"))))
+
+
+def _h_writing_generate(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    b = body or {}
+    return ok(writing_service.generate(
+        voice=b.get("voice", ""), project=b.get("project", ""),
+        chapter_no=int(b.get("chapter_no", 0)), task=b.get("task", ""),
+        novel_name=b.get("novel_name"), prompt=b.get("prompt"),
+        genre_pack=b.get("genre_pack"), words=int(b.get("words", 2400)),
+        target_score=int(b.get("target_score", 90)),
+        quality_target=b.get("quality_target"),
+        save_prompt=bool(b.get("save_prompt"))))
+
+
+def _h_writing_task(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    return ok(writing_service.task_state(params["task_id"]))
+
+
+def _h_writing_import_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    b = body or {}
+    return ok(writing_service.import_chapter(
+        project=b.get("project", ""), chapter_no=int(b.get("chapter_no", 0)),
+        content=b.get("content", ""), novel_name=b.get("novel_name"),
+        voice=b.get("voice"), genre_pack=b.get("genre_pack")))
+
+
+def _h_writing_score(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    b = body or {}
+    return ok(writing_service.score(
+        voice=b.get("voice", ""), text=b.get("text"),
+        chapter_path=b.get("chapter_path"), label=b.get("label", "")))
+
+
+def _h_writing_assemble(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    b = body or {}
+    return ok(writing_service.assemble(
+        name=b.get("name", ""), genre=b.get("genre", ""),
+        skip_craft=bool(b.get("skip_craft"))))
+
+
+def _h_writing_assemble_candidates(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import writing_service
+    return ok(writing_service.assemble_candidates())
+
+
+def _h_quality_check(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import quality_service
+    b = body or {}
+    return ok(quality_service.check(
+        target=b.get("target"), text=b.get("text"),
+        voice=b.get("voice"), genre_pack=b.get("genre_pack")))
+
+
+def _h_quality_book(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import quality_service
+    b = body or {}
+    return ok(quality_service.book(
+        target=b.get("target"), text=b.get("text"), voice=b.get("voice")))
+
+
+def _h_quality_qc(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import quality_service
+    b = body or {}
+    return ok(quality_service.qc(
+        target=b.get("target"), text=b.get("text"), voice=b.get("voice"),
+        genre_pack=b.get("genre_pack"), asset=b.get("asset"), book=b.get("book"),
+        novel_dir=b.get("novel_dir"), llm_hook=bool(b.get("llm_hook"))))
+
+
+def _h_quality_task(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import quality_service
+    return ok(quality_service.qc_task_state(params["task_id"]))
+
+
+def _h_quality_reports(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import quality_service
+    return ok(quality_service.list_qc_reports())
+
+
+# ---------------------------------------------------------------------------
 # 路由表
 # ---------------------------------------------------------------------------
 
@@ -211,6 +313,21 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)/results$"), _h_book_results),
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)/scores$"), _h_book_scores),
     ("POST", re.compile(r"^/api/analyze/full$"), _h_full_analysis),
+    # W15 阶段二：写作（M2）
+    ("GET", re.compile(r"^/api/writing/projects$"), _h_writing_projects),
+    ("POST", re.compile(r"^/api/writing/inject$"), _h_writing_inject),
+    ("POST", re.compile(r"^/api/writing/generate$"), _h_writing_generate),
+    ("GET", re.compile(r"^/api/writing/tasks/(?P<task_id>[^/]+)$"), _h_writing_task),
+    ("POST", re.compile(r"^/api/writing/chapters$"), _h_writing_import_chapter),
+    ("POST", re.compile(r"^/api/writing/score$"), _h_writing_score),
+    ("POST", re.compile(r"^/api/writing/assemble$"), _h_writing_assemble),
+    ("GET", re.compile(r"^/api/writing/assemble-candidates$"), _h_writing_assemble_candidates),
+    # W15 阶段二：质检（M3）
+    ("POST", re.compile(r"^/api/quality/check$"), _h_quality_check),
+    ("POST", re.compile(r"^/api/quality/book$"), _h_quality_book),
+    ("POST", re.compile(r"^/api/quality/qc$"), _h_quality_qc),
+    ("GET", re.compile(r"^/api/quality/tasks/(?P<task_id>[^/]+)$"), _h_quality_task),
+    ("GET", re.compile(r"^/api/quality/reports$"), _h_quality_reports),
 ]
 
 

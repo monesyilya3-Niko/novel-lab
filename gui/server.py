@@ -101,7 +101,10 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _handle_sse(self, query: dict) -> None:
-        """SSE 长连接：订阅 broker，持续推送 progress 事件直到客户端断开。"""
+        """SSE 长连接：订阅 broker，持续推送 progress 事件直到客户端断开。
+
+        W15：支持 task_id / task_type 过滤（写作/质检任务不绑 book_id）。
+        """
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
@@ -110,20 +113,25 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
         book_id = query.get("book_id")
+        task_id = query.get("task_id")
+        task_type = query.get("task_type")
         q: queue.Queue = broker.subscribe()
         try:
-            # 立即发送一条 connected，确认连接建立。
-            self.wfile.write(f"data: {json.dumps({'status': 'connected', 'book_id': book_id}, ensure_ascii=False)}\n\n".encode("utf-8"))
+            self.wfile.write(f"data: {json.dumps({'status': 'connected', 'book_id': book_id, 'task_id': task_id}, ensure_ascii=False)}\n\n".encode("utf-8"))
             self.wfile.flush()
             while True:
                 try:
                     event = q.get(timeout=15)
                 except queue.Empty:
-                    # 心跳保活
                     self.wfile.write(b": ping\n\n")
                     self.wfile.flush()
                     continue
-                if book_id and event.get("book_id") != book_id:
+                # W15：task_id 优先过滤；否则 book_id；再否则 task_type
+                if task_id and event.get("task_id") != task_id:
+                    continue
+                if not task_id and book_id and event.get("book_id") != book_id:
+                    continue
+                if not task_id and not book_id and task_type and event.get("task_type") != task_type:
                     continue
                 self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode("utf-8"))
                 self.wfile.flush()
@@ -453,6 +461,15 @@ class GuiServer:
             db.apply_migrations()
         except Exception as exc:  # noqa: BLE001 — 库损坏不阻断服务，降级为内存/扫描。
             print(f"[GUI] 警告: 持久化层初始化失败（降级运行）: {exc}")
+
+        # W15/D3：启动自清理 scratch 残留
+        try:
+            from gui import quality_service
+            n = quality_service.clean_stale_scratch()
+            if n:
+                print(f"[GUI] 启动清理 scratch 残留 {n} 个文件")
+        except Exception:  # noqa: BLE001
+            pass
 
         host, port = self._bind_port()
         self._httpd = ThreadingHTTPServer((host, port), _Handler)
