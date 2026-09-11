@@ -13,7 +13,6 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -220,19 +219,19 @@ export default function ModelManager() {
                 </Typography>
               )}
             </Box>
-            <Box sx={{ display: 'flex', gap: 0.5 }}>
-              <IconButton size="small" title="测试连接" onClick={() => testModel(m.id)} disabled={testing === m.id}>
-                {testing === m.id ? <CircularProgress size={16} /> : <PlayArrowIcon fontSize="small" />}
-              </IconButton>
-              <IconButton size="small" title="设置 API Key" onClick={() => { setShowKey(m.id); setApiKey('') }}>
-                <KeyIcon fontSize="small" />
-              </IconButton>
-              <IconButton size="small" title="编辑" onClick={() => openEdit(m)}>
-                <EditIcon fontSize="small" />
-              </IconButton>
-              <IconButton size="small" title="删除" color="error" onClick={() => deleteModel(m.id)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
+            <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+              <Button size="small" startIcon={<PlayArrowIcon />} onClick={() => testModel(m.id)} disabled={testing === m.id}>
+                {testing === m.id ? '测试中' : '测试'}
+              </Button>
+              <Button size="small" startIcon={<KeyIcon />} onClick={() => { setShowKey(m.id); setApiKey('') }}>
+                密钥
+              </Button>
+              <Button size="small" startIcon={<EditIcon />} onClick={() => openEdit(m)}>
+                编辑
+              </Button>
+              <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => deleteModel(m.id)}>
+                删除
+              </Button>
             </Box>
           </Box>
         </Paper>
