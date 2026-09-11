@@ -32,7 +32,7 @@ export default function PlatformPanel() {
   useEffect(() => {
     platformApi.list()
       .then((data) => setPlatforms((data.platforms ?? []) as Platform[]))
-      .catch(() => {})
+      .catch((e) => setError(`加载平台列表失败: ${e}`))
   }, [])
 
   const doCheck = async () => {

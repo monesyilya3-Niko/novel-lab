@@ -105,12 +105,12 @@ export default function StylePanel() {
             <Paper sx={{ p: 2, mt: 2 }}>
               <Typography variant="subtitle2" gutterBottom>风格指标</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                <Typography variant="body2">平均句长：{String(metrics.avg_sentence_length)} 字</Typography>
-                <Typography variant="body2">对话占比：{(Number(metrics.dialogue_ratio) * 100).toFixed(1)}%</Typography>
-                <Typography variant="body2">情绪密度：{String(metrics.emotion_density)}/千字</Typography>
-                <Typography variant="body2">段落均长：{String(metrics.avg_paragraph_length)} 字</Typography>
-                <Typography variant="body2">短段占比：{(Number(metrics.short_paragraph_ratio) * 100).toFixed(1)}%</Typography>
-                <Typography variant="body2">总字数：{String(metrics.total_chars)}</Typography>
+                <Typography variant="body2">平均句长：{String(metrics.avgSentenceLength ?? metrics.avg_sentence_length ?? '-')} 字</Typography>
+                <Typography variant="body2">对话占比：{(Number(metrics.dialogueRatio ?? metrics.dialogue_ratio ?? 0) * 100).toFixed(1)}%</Typography>
+                <Typography variant="body2">情绪密度：{String(metrics.emotionDensity ?? metrics.emotion_density ?? '-')}/千字</Typography>
+                <Typography variant="body2">段落均长：{String(metrics.avgParagraphLength ?? metrics.avg_paragraph_length ?? '-')} 字</Typography>
+                <Typography variant="body2">短段占比：{(Number(metrics.shortParagraphRatio ?? metrics.short_paragraph_ratio ?? 0) * 100).toFixed(1)}%</Typography>
+                <Typography variant="body2">总字数：{String(metrics.totalChars ?? metrics.total_chars ?? '-')}</Typography>
               </Box>
               <Button variant="outlined" size="small" sx={{ mt: 1.5 }} onClick={doSave} disabled={!styleName}>
                 保存风格卡
