@@ -200,7 +200,7 @@ function AssetEditPanel() {
       <Typography variant="h6" gutterBottom>资产编辑</Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField select label="选择资产" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 300 }} size="small">
-          {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}（{a.kind}）</MenuItem>)}
+          {assets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{a.kind}）</MenuItem>)}
         </TextField>
         <Button variant="outlined" onClick={loadAsset} disabled={!selected || loading}>加载</Button>
         <Button variant="contained" onClick={saveAsset} disabled={!content || loading}>

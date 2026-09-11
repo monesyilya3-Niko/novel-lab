@@ -310,14 +310,16 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : undefined,
   })
-  const json = await res.json()
+  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
+  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
   if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
   return deepToCamel<T>(json.data)
 }
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`)
-  const json = await res.json()
+  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
+  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
   if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
   return deepToCamel<T>(json.data)
 }

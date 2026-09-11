@@ -44,13 +44,18 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
     if len(books) < 2:
         raise ServiceError(f"题材 {genre} 仅有 {len(books)} 本书，蒸馏需要 ≥2 本", 400)
 
-    # 调用 distill
+    # HIGH：genre 用于拼路径，必须白名单校验
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", genre):
+        raise ServiceError(f"非法 genre 名: {genre!r}", 400)
+
+    # 调用 distill（CRITICAL：必须调 run_distill 而非 distill_genre，后者不写盘）
     import sys
     if str(config.SCRIPTS_DIR) not in sys.path:
         sys.path.insert(0, str(config.SCRIPTS_DIR))
     import distill as distill_mod
 
-    result = distill_mod.distill_genre(genre, book_names=books)
+    result = distill_mod.run_distill(genre, book_names=books)
     written = result.get("written", [])
 
     # 重索引
@@ -129,14 +134,12 @@ def aggregate_genre(genre: str) -> Dict[str, Any]:
     if len(books) < 3:
         raise ServiceError(f"题材 {genre} 仅有 {len(books)} 本书，聚合需要 ≥3 本", 400)
 
-    # 调用聚合（通过 CLI 入口）
-    import subprocess
-    result = subprocess.run(
-        [str(Path(config.SCRIPTS_DIR).parent / "novel.py" if False else "python"), "-c", ""],
-        capture_output=True, text=True, timeout=5,
-    )
-    # 直接调用模块函数更可靠
-    # pass5_aggregate 的 main 是 CLI 入口，我们直接构造
+    # HIGH：genre 白名单校验
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", genre):
+        raise ServiceError(f"非法 genre 名: {genre!r}", 400)
+
+    # 聚合需调用 pass5_aggregate 的 CLI 入口（GUI 内直接调用尚未封装）
     out_path = config.ASSETS_ROOT / f"{genre}-genre-pack.json"
 
     # 简化：标记为需要 CLI 执行

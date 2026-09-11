@@ -94,6 +94,17 @@ def clean_stale_scratch() -> int:
 # 同步能力
 # ---------------------------------------------------------------------------
 
+def _safe_asset_path(ref: str) -> Optional[Path]:
+    """安全解析资产引用路径（防路径穿越）。"""
+    name = ref.split(":")[-1]
+    if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
+        return None
+    fp = (config.ASSETS_ROOT / f"{name}.json").resolve()
+    if not fp.is_relative_to(config.ASSETS_ROOT.resolve()):
+        return None
+    return fp if fp.is_file() else None
+
+
 def check(target: Optional[str] = None, text: Optional[str] = None,
           voice: Optional[str] = None, genre_pack: Optional[str] = None) -> Dict[str, Any]:
     """单章双维度检查：质量 12 维 + 一致性 5 维。"""
@@ -110,8 +121,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
 
     gp_data = None
     if genre_pack:
-        gp_fp = config.ASSETS_ROOT / f"{genre_pack.split(':')[-1]}.json"
-        if gp_fp.is_file():
+        gp_fp = _safe_asset_path(genre_pack)
+        if gp_fp:
             try:
                 gp_data = json.loads(gp_fp.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
@@ -121,8 +132,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
     result: Dict[str, Any] = {"quality": qc}
 
     if voice:
-        voice_fp = config.ASSETS_ROOT / f"{voice.split(':')[-1]}.json"
-        if voice_fp.is_file():
+        voice_fp = _safe_asset_path(voice)
+        if voice_fp:
             try:
                 voice_data = json.loads(voice_fp.read_text(encoding="utf-8"))
                 cons = engine_adapter.score_text(voice_data, text, label=target or "粘贴文本")

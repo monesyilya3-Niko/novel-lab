@@ -73,6 +73,39 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             self._send_json(router.err(500, f"内部错误: {exc}"), 500)
 
+    def do_PUT(self) -> None:
+        """CRITICAL：M4 资产更新需要 PUT 支持。"""
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        try:
+            body = router.read_body(self)
+            payload, _ = router.dispatch("PUT", path, body, query)
+            if payload is not None:
+                self._send_json(payload)
+                return
+            self._send_json(router.err(404, f"未找到接口: {path}"), 404)
+        except ServiceError as exc:
+            self._send_json(router.err(exc.code, exc.message), exc.code)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+
+    def do_DELETE(self) -> None:
+        """CRITICAL：M4 资产删除需要 DELETE 支持。"""
+        parsed = urlparse(self.path)
+        path = unquote(parsed.path)
+        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        try:
+            payload, _ = router.dispatch("DELETE", path, {}, query)
+            if payload is not None:
+                self._send_json(payload)
+                return
+            self._send_json(router.err(404, f"未找到接口: {path}"), 404)
+        except ServiceError as exc:
+            self._send_json(router.err(exc.code, exc.message), exc.code)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+
     # ------------------------------------------------------------------
     def _is_same_host_origin(self, origin: str) -> bool:
         """判断 Origin 是否属于本机（localhost / 127.0.0.1 / [::1]），允许同机不同端口。"""

@@ -210,6 +210,8 @@ function QcPanel() {
             }
           } catch { /* ignore */ }
         })
+      } else {
+        setRunning(false)
       }
     } catch (e) {
       setError(String(e))

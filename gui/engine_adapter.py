@@ -473,11 +473,12 @@ def run_qc(chapter_dir: str, *, voice_card_path: Optional[str] = None,
         chapter_dir, voice_card_path=voice_card_path, genre_pack_path=genre_pack_path,
         asset_path=asset_path, book_path=book_path, novel_dir=novel_dir,
         enable_llm_hook=enable_llm_hook)
-    # CRITICAL：run_qc 返回 QCReport dataclass，必须转 dict 才能 JSON 序列化
+    # CRITICAL：to_markdown 必须在 asdict 之前调用（它需要 dataclass 属性）
+    markdown = _get_qc().to_markdown(report)
     import dataclasses
     if dataclasses.is_dataclass(report) and not isinstance(report, dict):
         report = dataclasses.asdict(report)
-    return {"report": report, "markdown": _get_qc().to_markdown(report)}
+    return {"report": report, "markdown": markdown}
 
 
 # --- 组装（assemble.py / normalize.py）---

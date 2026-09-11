@@ -86,9 +86,13 @@ def compliance_scan(voice: Optional[str] = None,
     results = []
 
     if voice:
-        # 单资产扫描
+        # HIGH：路径穿越防护
         name = voice.split(":")[-1]
-        fp = config.ASSETS_ROOT / f"{name}.json"
+        if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
+            raise ServiceError(f"非法资产引用: {voice}", 400)
+        fp = (config.ASSETS_ROOT / f"{name}.json").resolve()
+        if not fp.is_relative_to(config.ASSETS_ROOT.resolve()):
+            raise ServiceError(f"非法资产引用: {voice}", 400)
         if not fp.is_file():
             raise ServiceError(f"资产不存在: {voice}", 404)
         try:
@@ -96,10 +100,12 @@ def compliance_scan(voice: Optional[str] = None,
         except (json.JSONDecodeError, OSError) as exc:
             raise ServiceError(f"资产文件损坏: {exc}", 500)
 
-        # 需要原文做比对
+        # HIGH：book_path 也必须在项目根内
         book_text = ""
         if book_path:
-            bp = Path(book_path)
+            bp = Path(book_path).resolve()
+            if not bp.is_relative_to(config.ROOT_DIR.resolve()):
+                raise ServiceError("book_path 必须在项目目录内", 400)
             if not bp.is_file():
                 raise ServiceError(f"原文不存在: {book_path}", 404)
             try:

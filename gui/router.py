@@ -437,8 +437,9 @@ def dispatch(method: str, path: str, body: Dict[str, Any], query: Dict[str, Any]
         match = pattern.match(path)
         if match:
             params = match.groupdict()
-            # 合并 query string 参数
-            params.update(query)
+            # MEDIUM：query 只补缺，不覆盖 path 捕获组
+            for k, v in query.items():
+                params.setdefault(k, v)
             return handler(params, body), None
 
     return None, None
