@@ -1,5 +1,5 @@
 // M3 质检工作台：检查 / 全书质检 / qc 三 Tab。
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
@@ -186,15 +186,18 @@ function QcPanel() {
   const [taskState, setTaskState] = useState<QualityTaskState | null>(null)
   const [reports, setReports] = useState<QcReportItem[]>([])
   const [error, setError] = useState('')
+  const sseUnsubRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
     qualityApi.reports().then(setReports).catch(() => {})
+    return () => { sseUnsubRef.current?.() }
   }, [])
 
   const doQc = async () => {
     setRunning(true)
     setError('')
     setTaskState(null)
+    sseUnsubRef.current?.()
     try {
       const r = await qualityApi.qc({ target })
       setTaskState(r)
@@ -206,10 +209,12 @@ function QcPanel() {
             if (s.status === 'done' || s.status === 'error') {
               setRunning(false)
               unsub()
+              sseUnsubRef.current = null
               qualityApi.reports().then(setReports).catch(() => {})
             }
           } catch { /* ignore */ }
         })
+        sseUnsubRef.current = unsub
       } else {
         setRunning(false)
       }

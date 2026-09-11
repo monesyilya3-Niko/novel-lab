@@ -48,13 +48,17 @@ export default function AssetLibrary() {
   const [selected, setSelected] = useState<AssetItem | null>(null)
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const load = useCallback(async (k: AssetKind | null, p: number) => {
     setLoading(true)
+    setError('')
     try {
       const res = await api.listAssets(k ?? undefined, (p - 1) * PAGE_SIZE, PAGE_SIZE)
       setItems(res.items)
       setTotal(res.total)
+    } catch (e) {
+      setError(String(e))
     } finally {
       setLoading(false)
     }
@@ -72,6 +76,8 @@ export default function AssetLibrary() {
     try {
       const d = await api.getAssetDetail(item.kind, item.id)
       setDetail(d)
+    } catch (e) {
+      setDetail({ error: String(e) })
     } finally {
       setDetailLoading(false)
     }
@@ -107,7 +113,11 @@ export default function AssetLibrary() {
               ))}
             </Box>
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-              {loading ? (
+              {error ? (
+                <Typography variant="body2" color="error" sx={{ p: 3, textAlign: 'center' }}>
+                  加载失败：{error}
+                </Typography>
+              ) : loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress size={24} />
                 </Box>

@@ -1,5 +1,5 @@
 // 首页仪表盘（M0）：KPI 卡片 + 资产类型分布 + 数据管理入口。
-import { useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
@@ -30,9 +30,12 @@ const KIND_LABELS: Record<string, string> = {
 
 export default function HomeDashboard() {
   const { overview, refreshOverview, setWorkbench } = useApp()
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
-    refreshOverview().catch(() => {})
+    refreshOverview()
+      .then(() => setLoadError(''))
+      .catch((e) => setLoadError(String(e)))
   }, [refreshOverview])
 
   const pieData = useMemo(() => {
@@ -44,8 +47,15 @@ export default function HomeDashboard() {
 
   if (!overview) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', gap: 2 }}>
+        {loadError ? (
+          <>
+            <Typography variant="body2" color="error">加载失败：{loadError}</Typography>
+            <Button variant="outlined" size="small" onClick={() => refreshOverview().catch(() => {})}>重试</Button>
+          </>
+        ) : (
+          <CircularProgress />
+        )}
       </Box>
     )
   }

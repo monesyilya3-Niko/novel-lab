@@ -1,5 +1,5 @@
 // M2 写作工作台：三步向导（注入 → 写作 → 打分）+ 组装 Tab。
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
@@ -125,6 +125,12 @@ function GeneratePanel() {
   const [error, setError] = useState('')
   const [importContent, setImportContent] = useState('')
   const [importResult, setImportResult] = useState('')
+  const sseUnsubRef = useRef<(() => void) | null>(null)
+
+  // 组件卸载时清理 SSE 订阅
+  useEffect(() => {
+    return () => { sseUnsubRef.current?.() }
+  }, [])
 
   useEffect(() => {
     writingApi.projects().then(setProjects).catch(() => {})
@@ -142,6 +148,7 @@ function GeneratePanel() {
     setRunning(true)
     setError('')
     setTaskState(null)
+    sseUnsubRef.current?.()  // 清理旧订阅
     try {
       const r = await writingApi.generate({
         voice, project, chapter_no: chapterNo, task, target_score: 90,
@@ -155,9 +162,11 @@ function GeneratePanel() {
             if (s.status === 'done' || s.status === 'error' || s.status === 'degraded') {
               setRunning(false)
               unsub()
+              sseUnsubRef.current = null
             }
           } catch { /* ignore */ }
         })
+        sseUnsubRef.current = unsub
       } else {
         setRunning(false)
       }

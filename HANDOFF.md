@@ -44,7 +44,9 @@
 | 资产库 | ✅ 可用 | 7 |
 | **写作台 (M2)** | ✅ 阶段二新增 | 8 |
 | **质检台 (M3)** | ✅ 阶段二新增 | 5 |
-| 系统 / 设置 | 占位 | — |
+| **高级 (M1+M4)** | ✅ 阶段三新增 | 7 |
+| **系统 (M5)** | ✅ 阶段三新增 | 4 |
+| 设置 | 占位（系统 Tab 内已覆盖） | — |
 
 ---
 
@@ -53,11 +55,11 @@
 ```
 前端 (Vite + React + MUI + Tailwind + ECharts)
   HomeDashboard / AnalysisView / AssetLibrary
-  WritingWorkbench / QualityWorkbench
+  WritingWorkbench / QualityWorkbench / SystemWorkbench / AdvancedWorkbench
         │  HTTP REST + SSE
         ▼
 GUI 后端（纯标准库）
-  router.py           33 个端点
+  router.py           44 个端点
   services.py         拆书链路服务
   writing_service.py  M2：注入/写作/打分/组装/手动入库
   quality_service.py  M3：检查/全书质检/qc/报告

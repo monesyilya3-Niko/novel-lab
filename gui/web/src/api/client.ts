@@ -357,5 +357,8 @@ export function subscribeTaskEvents(taskId: string, onEvent: (e: Record<string, 
       // 忽略
     }
   }
+  es.onerror = () => {
+    // SSE 断线：EventSource 会自动重连，此处仅记录
+  }
   return () => es.close()
 }
