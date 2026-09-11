@@ -102,19 +102,25 @@ function DistillPanel() {
 
 function BatchStatusPanel() {
   const [status, setStatus] = useState<Record<string, unknown> | null>(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetch('/api/advanced/batch-status')
       .then((r) => r.json())
-      .then((j) => { if (j.code === 0) setStatus(deepToCamel(j.data)) })
-      .catch(() => {})
+      .then((j) => { if (j.code === 0) setStatus(deepToCamel(j.data)); else setError(j.message || '加载失败') })
+      .catch((e) => setError(String(e)))
   }, [])
 
   const books = (status?.books ?? []) as Record<string, unknown>[]
 
+  if (error) return <Alert severity="error">{error}</Alert>
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>批量拆书状态</Typography>
+      {books.length === 0 && (
+        <Typography variant="body2" color="text.secondary">暂无拆书数据</Typography>
+      )}
       {books.map((b) => (
         <Paper key={String(b.name)} sx={{ p: 1.5, mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

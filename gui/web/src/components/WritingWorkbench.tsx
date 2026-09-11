@@ -61,7 +61,7 @@ function InjectPanel() {
         const cc = items.find((a) => a.kind === 'craft')
         if (cc) setCraft(cc.id)
       })
-      .catch(() => {})
+      .catch(() => setAssets([]))
   }, [])
 
   const doInject = async () => {
@@ -82,6 +82,9 @@ function InjectPanel() {
   return (
     <Box>
       <Typography variant="h6" gutterBottom>资产注入</Typography>
+      {assets.length === 0 && (
+        <Alert severity="info" sx={{ mb: 2 }}>暂无可用资产，请先在「分析」工作台完成拆书</Alert>
+      )}
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
         <TextField select label="voice-card（必选）" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 220 }} size="small">
           {byKind('voice').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}

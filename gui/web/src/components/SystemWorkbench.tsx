@@ -185,14 +185,16 @@ function CompliancePanel() {
 
 function ModelPanel() {
   const [info, setInfo] = useState<Record<string, unknown> | null>(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetch('/api/system/models')
       .then((r) => r.json())
-      .then((j) => { if (j.code === 0) setInfo(j.data) })
-      .catch(() => {})
+      .then((j) => { if (j.code === 0) setInfo(j.data); else setError(j.message || '加载失败') })
+      .catch((e) => setError(String(e)))
   }, [])
 
+  if (error) return <Alert severity="error">{error}</Alert>
   if (!info) return <CircularProgress />
 
   return (
@@ -219,14 +221,16 @@ function ModelPanel() {
 
 function SettingsPanel() {
   const [settings, setSettings] = useState<Record<string, unknown> | null>(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     fetch('/api/system/settings')
       .then((r) => r.json())
-      .then((j) => { if (j.code === 0) setSettings(j.data) })
-      .catch(() => {})
+      .then((j) => { if (j.code === 0) setSettings(j.data); else setError(j.message || '加载失败') })
+      .catch((e) => setError(String(e)))
   }, [])
 
+  if (error) return <Alert severity="error">{error}</Alert>
   if (!settings) return <CircularProgress />
 
   const paths = settings.paths as Record<string, string>
