@@ -16,7 +16,7 @@ validate.py  schema 校验（voice-card 严格，观测文件延后）
 compliance.py  版权合规（12字匹配原文→REJECT，title 字段豁免）
 ```
 
-## 二、模型调用规则（⚠️ 2026-09-01 起本节仅作历史存档：外部模型已删除，LLM 层由 WorkBuddy 内置智能承担，见 HANDOFF.md 第六节。json_mode 等规则仅在未来恢复外部模型时适用）
+## 二、模型调用规则（⚠️ 2026-09-01 起本节仅作历史存档：外部模型已删除，LLM 层由 niko 内置智能承担，见 HANDOFF.md 第六节。json_mode 等规则仅在未来恢复外部模型时适用）
 
 ### 2.0 批量拆书与报告（M3）
 - `batch.py <目录> --genre xxx [--report]`：遍历目录多本 TXT 逐本拆解，产出每本的 voice-card/结构/商业资产；`--report` 时每本生成拆书报告。

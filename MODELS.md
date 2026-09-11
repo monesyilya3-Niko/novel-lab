@@ -1,11 +1,11 @@
 # 模型配置说明
 
-> ⚠️ **2026-09-01 起本手册仅作参考存档**：外部模型（mimo/ds）及密钥已按用户指令删除，当前项目**不调用任何外部 LLM API**——拆书分析与写作由 WorkBuddy 内置智能在会话内直接完成（见 HANDOFF.md 第六节）。本手册仅在未来需要恢复外部模型时使用。
+> ⚠️ **2026-09-01 起本手册仅作参考存档**：外部模型（mimo/ds）及密钥已按用户指令删除，当前项目**不调用任何外部 LLM API**——拆书分析与写作由 niko 内置智能在会话内直接完成（见 HANDOFF.md 第六节）。本手册仅在未来需要恢复外部模型时使用。
 
 零依赖，只用 Python 标准库。不需要 `pip install` 任何东西。
 
 ```
-PY=C:/Users/monesy/.workbuddy/binaries/python/versions/3.13.12/python.exe
+PY=C:/Users/monesy/.niko/binaries/python/versions/3.13.12/python.exe
 cd novel-lab/scripts
 ```
 

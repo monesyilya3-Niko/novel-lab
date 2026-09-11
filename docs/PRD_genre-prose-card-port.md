@@ -14,8 +14,8 @@
 |---|---|
 | 语言 | 中文 |
 | 编程语言 | Python 3.13（**纯标准库，零第三方依赖**） |
-| 项目路径 | `C:\Users\monesy\WorkBuddy\2026-08-06-16-49-41\novel-lab\` |
-| 上游调研 | `C:\Users\monesy\WorkBuddy\2026-09-08-03-54-14\deliverables\github-skill-tuijian.md` |
+| 项目路径 | `C:\Users\monesy\niko\novel-lab\` |
+| 上游调研 | `C:\Users\monesy\niko\deliverables\github-skill-tuijian.md` |
 | 移植来源 | `zenstory-ai/oh-story-claudecode`（6614★，MIT）的 `genre-prose-cards/` |
 
 ---

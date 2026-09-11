@@ -430,7 +430,7 @@ classDiagram
   "task_id":"w-3f9a1c2b7d40","status":"degraded","mode":"no_model",
   "chapter_no":12,"target_score":90,"pass_line":75,
   "prompt":"# 写作风格注入 ...",
-  "guide_markdown":"# WorkBuddy 内置智能接管写作任务（无外部模型模式）\n...",
+  "guide_markdown":"# niko 内置智能接管写作任务（无外部模型模式）\n...",
   "guide_path":"novel/新书/AI接管写作任务.md",
   "chapter_path":"novel/新书/chapters/arc-1/chapter-012.txt",
   "notice":"未配置外部模型：请把指引与 prompt 交给会话内智能，写完后用「手动入库」贴回。"
