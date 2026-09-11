@@ -17,15 +17,27 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional
 
 from gui import config
 
-# 进程级单连接 + 其绑定的库路径（用于检测 STATE_ROOT 被 monkeypatch 后重建连接）。
-_conn: Optional[sqlite3.Connection] = None
-_conn_path: Optional[Path] = None
+# ---------------------------------------------------------------------------
+# 连接管理：每线程独立连接（不是进程级单连接）
+#
+# 【为何必须每线程一条】sqlite3 的事务状态是「连接级」的：``commit()`` 提交的是
+# 该连接上所有未提交的 DML，``rollback()`` 同理。GUI 用 ThreadingHTTPServer，写路径
+# 来自多个并发线程（每本书一个分析线程 + 若干 HTTP 线程）。若共享一条连接：
+#   - 线程 A 执行 DML 隐式 BEGIN 后，线程 B 的 DML 不会新开事务而是并入同一事务；
+#   - B 的 rollback() 会把 A 已写入的数据一并回滚，A 的 commit() 又会提交 B 的半成品。
+# 结果是任务状态/资产记录可能丢写、错写或跨请求串写。WAL 只提升并发读，
+# 解决不了「共享连接的事务语义」问题。
+# ---------------------------------------------------------------------------
+_conns: Dict[int, sqlite3.Connection] = {}   # threading.get_ident() -> Connection
+_conns_lock = threading.Lock()
+_conn_path: Optional[Path] = None             # 当前所有连接绑定的库路径
 
 
 def db_path() -> Path:
@@ -37,39 +49,61 @@ def db_path() -> Path:
     return config.STATE_ROOT / "index.db"
 
 
+def _new_conn(path: Path) -> sqlite3.Connection:
+    """建立并配置一条新连接（PRAGMA 统一在此处设置）。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(path))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
+    conn.execute("PRAGMA busy_timeout=5000")
+    return conn
+
+
+def _close_all_locked() -> None:
+    """关闭全部连接（调用方必须已持有 ``_conns_lock``）。"""
+    global _conn_path
+    for conn in _conns.values():
+        try:
+            conn.close()
+        except sqlite3.Error:
+            pass
+    _conns.clear()
+    _conn_path = None
+
+
 def get_conn() -> sqlite3.Connection:
-    """返回进程级单连接；首次调用时建立并配置 PRAGMA。
+    """返回**当前线程**的连接；该线程首次调用时建立并配置 PRAGMA。
 
     配置项：``row_factory=sqlite3.Row``（dict-like 取值）、``journal_mode=WAL``、
-    ``foreign_keys=ON``、``busy_timeout=5000``。``check_same_thread=False`` 允许多线程共享。
+    ``foreign_keys=ON``、``busy_timeout=5000``。
+
+    **每线程独立连接**：事务的 commit/rollback 是连接级操作，共享连接会让并发
+    线程互相污染事务边界（详见文件头注释）。这里不再使用 ``check_same_thread=False``，
+    每条连接只由其创建线程使用，天然安全。
+
+    库路径变化时（测试 monkeypatch ``config.STATE_ROOT``）自动关闭旧连接重建。
     """
-    global _conn, _conn_path
-    if _conn is None or _conn_path != db_path():
-        if _conn is not None:
-            try:
-                _conn.close()
-            except sqlite3.Error:
-                pass
-        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
-        _conn = sqlite3.connect(str(db_path()), check_same_thread=False)
-        _conn.row_factory = sqlite3.Row
-        _conn.execute("PRAGMA journal_mode=WAL")
-        _conn.execute("PRAGMA foreign_keys=ON")
-        _conn.execute("PRAGMA busy_timeout=5000")
-        _conn_path = db_path()
-    return _conn
+    global _conn_path
+    path = db_path()
+    tid = threading.get_ident()
+    with _conns_lock:
+        if _conn_path is not None and _conn_path != path:
+            # STATE_ROOT 被切换（测试隔离场景）→ 丢弃全部旧连接
+            _close_all_locked()
+        conn = _conns.get(tid)
+        if conn is None:
+            conn = _new_conn(path)
+            _conns[tid] = conn
+            if _conn_path is None:
+                _conn_path = path
+    return conn
 
 
 def _reset_conn() -> None:
-    """关闭并清空进程级连接（供测试隔离：切换 STATE_ROOT 后重建连接）。"""
-    global _conn, _conn_path
-    if _conn is not None:
-        try:
-            _conn.close()
-        except sqlite3.Error:
-            pass
-        _conn = None
-    _conn_path = None
+    """关闭并清空全部连接（供测试隔离：切换 STATE_ROOT 后重建连接）。"""
+    with _conns_lock:
+        _close_all_locked()
 
 
 @contextmanager
@@ -93,11 +127,76 @@ def init_schema() -> None:
     _exec_sql_file(Path(__file__).parent / "migrations" / "0001_init.sql")
 
 
+def split_sql_statements(script: str) -> List[str]:
+    """把 SQL 脚本切分为单条语句（供事务内逐条 execute）。
+
+    【为何不用 ``executescript``】``executescript`` 会先隐式提交当前事务再执行脚本，
+    导致「DDL + 版本登记」无法原子化：DDL 已落库但若版本登记失败，下次重跑会重复执行
+    该迁移。故改为逐条 ``execute``，配合显式 BEGIN/COMMIT 保证原子性。
+
+    切分规则：按 ``;`` 切分，并跳过 **行注释（``--``）**、**块注释（``/* */``）**
+    与 **单/双引号字符串** 内部的分号（避免误切）。
+    """
+    stmts: List[str] = []
+    buf: List[str] = []
+    i, n = 0, len(script)
+    while i < n:
+        ch = script[i]
+        # 行注释：忽略到行尾
+        if ch == "-" and script.startswith("--", i):
+            j = script.find("\n", i)
+            if j == -1:
+                break
+            i = j + 1
+            continue
+        # 块注释：忽略到 */
+        if ch == "/" and script.startswith("/*", i):
+            j = script.find("*/", i + 2)
+            i = n if j == -1 else j + 2
+            continue
+        # 单引号字符串（'' 为转义）
+        if ch == "'":
+            j = i + 1
+            while j < n:
+                if script[j] == "'":
+                    if j + 1 < n and script[j + 1] == "'":
+                        j += 2
+                        continue
+                    break
+                j += 1
+            buf.append(script[i:j + 1])
+            i = j + 1
+            continue
+        # 双引号标识符（"" 为转义）
+        if ch == '"':
+            j = i + 1
+            while j < n:
+                if script[j] == '"':
+                    if j + 1 < n and script[j + 1] == '"':
+                        j += 2
+                        continue
+                    break
+                j += 1
+            buf.append(script[i:j + 1])
+            i = j + 1
+            continue
+        if ch == ";":
+            stmts.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    if "".join(buf).strip():
+        stmts.append("".join(buf))
+    return [s.strip() for s in stmts if s.strip()]
+
+
 def apply_migrations() -> List[int]:
     """按 ``migrations/*.sql`` 文件名序号顺序执行缺失版本，返回已执行版本列表。
 
-    版本号取自文件名前导数字（如 ``0001_init.sql`` → 1）。已登记的版本跳过，
-    每条迁移在单事务内执行，失败回滚（不留半成品）。
+    版本号取自文件名前导数字（如 ``0001_init.sql`` → 1）。已登记的版本跳过。
+    **每条迁移在单事务内执行（DDL + 版本登记原子提交），失败整体回滚、不留半成品。**
     """
     migrations_dir = Path(__file__).parent / "migrations"
     if not migrations_dir.is_dir():
@@ -108,13 +207,24 @@ def apply_migrations() -> List[int]:
     for version, name, sql_path in files:
         if _is_applied(version):
             continue
-        # 整条迁移在一个事务内执行。
-        with tx() as conn:
-            conn.executescript(sql_path.read_text(encoding="utf-8"))
+        # 整条迁移（DDL + 版本登记）在一个显式事务内执行。
+        # 注意：不能用 executescript（会隐式提交，破坏原子性），改为逐条 execute。
+        conn = get_conn()
+        conn.execute("BEGIN")
+        try:
+            for stmt in split_sql_statements(sql_path.read_text(encoding="utf-8")):
+                conn.execute(stmt)
             conn.execute(
                 "INSERT INTO schema_migrations (version, name) VALUES (?, ?)",
                 (version, name),
             )
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except sqlite3.Error:
+                pass
+            raise
         applied.append(version)
     return applied
 
@@ -157,19 +267,20 @@ def _exec_sql_file(sql_path: Path) -> None:
 
 
 def close() -> None:
-    """优雅关闭：wal_checkpoint(TRUNCATE) 刷盘 + 关闭连接。"""
-    global _conn, _conn_path
-    if _conn is not None:
-        try:
-            _conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        except sqlite3.Error:
-            pass
-        try:
-            _conn.close()
-        except sqlite3.Error:
-            pass
-        _conn = None
-    _conn_path = None
+    """优雅关闭：对每条连接 wal_checkpoint(TRUNCATE) 刷盘 + 关闭。"""
+    with _conns_lock:
+        for conn in _conns.values():
+            try:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except sqlite3.Error:
+                pass
+            try:
+                conn.close()
+            except sqlite3.Error:
+                pass
+        _conns.clear()
+        global _conn_path
+        _conn_path = None
 
 
 # ---------------------------------------------------------------------------

@@ -74,12 +74,29 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(router.err(500, f"内部错误: {exc}"), 500)
 
     # ------------------------------------------------------------------
+    def _is_same_host_origin(self, origin: str) -> bool:
+        """判断 Origin 是否属于本机（localhost / 127.0.0.1 / [::1]），允许同机不同端口。"""
+        try:
+            from urllib.parse import urlparse
+            host = (urlparse(origin).hostname or "").lower()
+        except Exception:  # noqa: BLE001
+            return False
+        return host in ("localhost", "127.0.0.1", "::1", "[::1]", "")
+
     def _send_json(self, payload: dict, status: int = 200) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # 【修复 M8】不再无条件返回 `Access-Control-Allow-Origin: *`。
+        # 本服务绑定 127.0.0.1 且无任何鉴权；通配 CORS 会让任意网站在用户浏览器里
+        # 读取本服务响应（/api/import 会回吐整书正文），构成**本地文件外泄**。
+        # 前端由本服务同源托管，dev 模式下 vite 也把 /api 代理到本机，本就不需要 CORS。
+        # 仅当请求来自本机时才回显 Origin（保留同机跨端口开发的可用性）。
+        origin = self.headers.get("Origin")
+        if origin and self._is_same_host_origin(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
         self.end_headers()
         self.wfile.write(data)
 
@@ -117,6 +134,14 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _serve_static(self, path: str) -> None:
         """托管前端 dist 静态文件。"""
+        # 【修复 M3】未知 /api/* 路径不得走 SPA 回退返回 index.html(HTTP 200)。
+        # 原先 GET /api/nonexistent 会回退成 HTML 200，前端当 JSON 解析即报错；
+        # 而 POST 未知接口返回 404 JSON，同一「接口不存在」在 GET/POST 下表现不一致。
+        _rel = path.lstrip("/")
+        if _rel == "api" or _rel.startswith("api/"):
+            self._send_json(router.err(404, "Not Found"), 404)
+            return
+
         if not config.DIST_DIR.is_dir():
             self._send_json(router.err(500, "未找到前端构建产物，请先运行 npm run build"), 500)
             return

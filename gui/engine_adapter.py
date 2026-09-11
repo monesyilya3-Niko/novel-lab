@@ -316,6 +316,19 @@ def render_craft_report(craft: Dict[str, Any]) -> str:
     return _get_report_craft().render_craft_report(craft)
 
 
+def check_report_min_length(reports_dir, name: str) -> Dict[str, Any]:
+    """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符。
+
+    【为何需要】该校验原先只内联在 CLI 的 ``novel.py 分析`` 收尾，GUI 生成报告后
+    直接发布 report_ready，把铁律二整条绕过——低于门槛的报告照样当合格品交付。
+    本函数把校验暴露给 GUI，与 CLI 共用 ``scripts/report.py`` 的同一实现（单一来源）。
+
+    Returns:
+        dict: {book_chars, craft_chars, total, ok, min_chars, book_path, craft_path}
+    """
+    return _get_report().check_combined_report_length(reports_dir, name)
+
+
 def score_text(voice_card: Dict[str, Any], text: str, label: str = "") -> Dict[str, Any]:
     """一致性打分：voice-card + 章节文本 → (score, details, raw) 归一化为 dict。
 

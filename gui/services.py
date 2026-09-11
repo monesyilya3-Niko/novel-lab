@@ -214,32 +214,40 @@ def start_analysis(book_id: str, genre: str, model_id: Optional[str] = None,
     if not engine_adapter.any_model_configured():
         raise ServiceError("未配置外部模型，请先运行 model_config.py 配置（PRD Q7：首版 GUI 仅支持已配置模型）", 400)
 
+    bs = batch_size or config.batch_size_from_env()
+
+    # 【修复 M6】「检查 + 建 ctx + 建线程 + 登记 + 启动」必须在一个临界区内完成。
+    # 原先分两段加锁且 thread 在锁外赋值，两个并发 start 可同时通过 is_alive 检查
+    # （都看到无线程），各自起一个分析线程并发写同一状态与资产。
     with _runtime_lock:
         rt = _runtime.get(book_id)
         if rt and rt.get("thread") and rt["thread"].is_alive():
             raise ServiceError("分析已在运行中", 409)
 
-    bs = batch_size or config.batch_size_from_env()
-    state = state_store.load_state(book_id)
-    state["genre"] = genre
-    state["model_id"] = model_id
-    state["batch_size"] = bs
-    state_store.save_state(state)
+        state = state_store.load_state(book_id)
+        state["genre"] = genre
+        state["model_id"] = model_id
+        state["batch_size"] = bs
+        # 【修复 H3】必须把 status 重置为 running 并清掉上一次的 report_error。
+        # 否则重跑一本已分析完（status="done"）的书时，报告监听线程 _watch 首次
+        # 轮询就读到残留的 "done"，立刻用旧/半成品资产生成报告，并与新启动的
+        # 分析线程并发读写同一批资产卡；返回体却仍声称 status:"running"。
+        state["status"] = "running"
+        state.pop("report_error", None)
+        state_store.save_state(state)
 
-    # 启动后台线程
-    stop_flag = threading.Event()
-    ctx = {"stop_flag": stop_flag, "paused": threading.Event(), "thread": None}
-    with _runtime_lock:
+        # 启动后台线程（在锁内完成登记与启动，保证并发安全）
+        stop_flag = threading.Event()
+        ctx = {"stop_flag": stop_flag, "paused": threading.Event(), "thread": None}
         _runtime[book_id] = ctx
-
-    thread = threading.Thread(
-        target=_run_analysis,
-        args=(book_id, genre, model_id, bs, ctx),
-        daemon=True,
-        name=f"analysis-{book_id}",
-    )
-    ctx["thread"] = thread
-    thread.start()
+        thread = threading.Thread(
+            target=_run_analysis,
+            args=(book_id, genre, model_id, bs, ctx),
+            daemon=True,
+            name=f"analysis-{book_id}",
+        )
+        ctx["thread"] = thread
+        thread.start()
 
     # 返回持久化的真实 cursor（断点），而非硬编码 c1-b0。
     state = state_store.load_state(book_id)
@@ -755,6 +763,29 @@ def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
     # 刷新资产索引。
     asset_index.index.invalidate()
 
+    # ---- 铁律二：合计 ≥10000 字符硬校验（与 CLI 共用同一实现）-------------------
+    # 历史缺陷：GUI 此前直接生成并发布 report_ready，完全不做合计校验，
+    # 铁律二在 GUI 路径被整条绕过（低于门槛的报告照样当合格品交付）。
+    # 现在与 novel.py 共用 engine_adapter.check_report_min_length（单一来源）。
+    chk = engine_adapter.check_report_min_length(reports_dir, book_id)
+    if not chk.get("ok"):
+        msg = (f"铁律二未通过：拆书报告 {chk['book_chars']} 字 + 笔法分析 "
+               f"{chk['craft_chars']} 字 = 合计 {chk['total']} 字 < 硬门槛 "
+               f"{chk['min_chars']} 字（不发布 report_ready）")
+        st = state_store.load_state(book_id)
+        st["report_error"] = msg
+        state_store.save_state(st)
+        broker.publish({
+            "book_id": book_id,
+            "status": "report_error",
+            "chapter_index": 0,
+            "batch_index": 0,
+            "done": 0,
+            "total": 0,
+            "message": msg,
+        })
+        return
+
     # SSE 推送 report_ready 事件。
     broker.publish({
         "book_id": book_id,
@@ -764,4 +795,5 @@ def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
         "done": 0,
         "total": 0,
         "report_ids": [f"report:{book_id}-拆书报告", f"report:{book_id}-笔法分析"],
+        "report_chars": chk.get("total", 0),
     })

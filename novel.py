@@ -240,16 +240,16 @@ def main():
         if cc.exists():
             run_script("report_craft.py", [str(cc)])
         # 3.5 铁律二合计校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符（真·合计口径）
-        _book_rpt = ROOT / "reports" / f"{name}-拆书报告.md"
-        _craft_rpt = ROOT / "reports" / f"{name}-笔法分析.md"
-        _book_len = len(_book_rpt.read_text(encoding="utf-8")) if _book_rpt.exists() else 0
-        _craft_len = len(_craft_rpt.read_text(encoding="utf-8")) if _craft_rpt.exists() else 0
-        _total = _book_len + _craft_len
+        # 【单一来源】校验逻辑在 scripts/report.py::check_combined_report_length，
+        # 与 GUI（services._generate_reports）共用同一函数，避免两处口径漂移。
+        from report import check_combined_report_length  # 局部导入：scripts 路径在此处才注入
+        _chk = check_combined_report_length(ROOT / "reports", name)
+        _book_len, _craft_len, _total = _chk["book_chars"], _chk["craft_chars"], _chk["total"]
         print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
-        if _total < 10000:
-            print(f"  ✗ 合计 {_total} 字 < 硬门槛 10000 字，交付阻断（不产出半成品）")
+        if not _chk["ok"]:
+            print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
             sys.exit(1)
-        print(f"  ✓ 合计 {_total} 字 ≥ 10000 字，铁律二通过")
+        print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）
         print("\n[Hook] 自动质检:")
         corpus_file = ROOT / "corpus" / f"{name}.txt"

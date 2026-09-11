@@ -14,6 +14,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -21,6 +22,56 @@ REPORTS_DIR = ROOT / "reports"
 
 # 铁律二：报告字符数硬门槛（字符数口径）
 MIN_REPORT_CHARS = 10000
+
+# 报告文件命名（单一来源：CLI 与 GUI 共用，避免两处硬编码漂移）
+REPORT_NAME_BOOK = "{name}-拆书报告.md"
+REPORT_NAME_CRAFT = "{name}-笔法分析.md"
+
+
+def _report_char_len(path: Path) -> int:
+    """读取报告字符数；文件不存在/读取失败一律按 0 计（不抛异常）。"""
+    try:
+        return len(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
+        return 0
+
+
+def check_combined_report_length(reports_dir, name: str) -> Dict[str, Any]:
+    """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ MIN_REPORT_CHARS。
+
+    【为何必须有此共享函数】该硬校验原先只内联在 CLI 的 ``novel.py 分析`` 里，
+    GUI 的 ``services._generate_reports`` 直接生成并发布报告，完全没有合计校验，
+    导致铁律二在 GUI 路径被整条绕过（低于 10000 字符的报告照样交付）。
+    现在 CLI 与 GUI 都调本函数，保证「同一条规则、两处一致执行」。
+
+    Args:
+        reports_dir: 报告目录（``config.REPORTS_DIR``）
+        name: 书名/书 id（不含后缀）
+
+    Returns:
+        dict: {
+            "book_chars": 拆书报告字符数,
+            "craft_chars": 笔法分析字符数,
+            "total": 合计字符数,
+            "ok": 是否 ≥ MIN_REPORT_CHARS,
+            "book_path": ..., "craft_path": ...
+        }
+    """
+    base = Path(reports_dir)
+    book_path = base / REPORT_NAME_BOOK.format(name=name)
+    craft_path = base / REPORT_NAME_CRAFT.format(name=name)
+    book_chars = _report_char_len(book_path)
+    craft_chars = _report_char_len(craft_path)
+    total = book_chars + craft_chars
+    return {
+        "book_chars": book_chars,
+        "craft_chars": craft_chars,
+        "total": total,
+        "ok": total >= MIN_REPORT_CHARS,
+        "min_chars": MIN_REPORT_CHARS,
+        "book_path": str(book_path),
+        "craft_path": str(craft_path),
+    }
 
 
 # --------------------------------------------------------------------------
