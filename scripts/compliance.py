@@ -70,14 +70,31 @@ def find_quoted_fragments(s: str) -> list:
     return frags
 
 
+def walk_all_values(node, path="", out=None):
+    """遍历 JSON 所有叶子值（含 bool/num/str），返回 (path, value) 列表。"""
+    if out is None:
+        out = []
+    if isinstance(node, dict):
+        for k, v in node.items():
+            p = f"{path}.{k}" if path else k
+            if isinstance(v, (dict, list)):
+                walk_all_values(v, p, out)
+            else:
+                out.append((p, v))
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            walk_all_values(v, f"{path}[{i}]", out)
+    return out
+
+
 def scan_asset(asset: dict, ngram: set) -> tuple:
     """
     扫描资产 JSON，返回 (errors, warns) 两组字符串。
     errors 任一命中即 REJECT，warns 需人工复核。
     """
     errors, warns = [], []
-    # 检查特殊字段
-    for path, val in walk_strings(asset):
+    # 检查特殊字段（用 walk_all_values 以捕获布尔值 contains_verbatim）
+    for path, val in walk_all_values(asset):
         if path.endswith(".abstraction_level") and val == "verbal":
             errors.append(f"abstraction_level='verbal' → REJECT（版权红线） @ {path}")
         if path.endswith(".contains_verbatim") and val is True:

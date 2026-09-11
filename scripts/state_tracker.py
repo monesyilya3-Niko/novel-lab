@@ -242,7 +242,9 @@ def apply_transaction(
             ctx["next_chapter_commitments"] = ctx_in["next_chapter_commitments"]
     else:
         ctx["recent_chapters"] = _derive_recent_chapters(state, transaction, result_state)
-        ctx["next_chapter_commitments"] = delta.get("next_chapter_commitments", [])
+        # 只在 delta 显式包含该键时才覆盖，避免静默清空已有承诺
+        if "next_chapter_commitments" in delta:
+            ctx["next_chapter_commitments"] = delta["next_chapter_commitments"]
 
     # 6. 更新角色快照（合并，非覆盖整体）。
     if snapshots:

@@ -38,6 +38,13 @@ ERRORS = []   # 硬错误：拒绝入库
 WARNS = []    # 警告：可入库但需复核
 
 
+def reset():
+    """清空错误/警告列表。每次独立校验前必须调用，防止跨资产累积。"""
+    global ERRORS, WARNS
+    ERRORS = []
+    WARNS = []
+
+
 def err(msg, path=""):
     ERRORS.append(f"  ✗ {path} {msg}")
 
@@ -102,6 +109,7 @@ def check_str(v, path, min_len=0, max_len=None):
 # --------------------------------------------------------------------------
 
 def validate_voice_card(d):
+    reset()
     if not check_obj(d, "voice-card"):
         return
     required = ["meta", "narration", "dialogue", "emotion_handling", "banned"]
@@ -249,6 +257,7 @@ def validate_voice_card(d):
 # --------------------------------------------------------------------------
 
 def validate_genre_pack(d):
+    reset()
     if not check_obj(d, "genre-pack"):
         return
     for k in ("meta", "structure", "commercial", "language_rules"):
@@ -337,6 +346,7 @@ def validate_genre_pack(d):
 # --------------------------------------------------------------------------
 
 def validate_trope_library(d):
+    reset()
     if not check_obj(d, "trope-library"):
         return
     tropes = d.get("tropes")
@@ -376,6 +386,7 @@ def validate_trope_library(d):
 # --------------------------------------------------------------------------
 
 def validate_craft_card(d):
+    reset()
     if not check_obj(d, "craft-card"):
         return
     for k in ("meta", "craft_analysis", "craft_summary"):
@@ -424,6 +435,7 @@ def validate_craft_card(d):
 # --------------------------------------------------------------------------
 
 def validate_structure_obs(d):
+    reset()
     if not check_obj(d, "structure-obs"):
         return
     meta = d.get("meta")
@@ -465,6 +477,7 @@ COMMERCIAL_OBS_VARIANT_FIELDS = ("skeleton", "dry_spell_tolerance", "update_rhyt
 
 
 def validate_commercial_obs(d):
+    reset()
     if not check_obj(d, "commercial-obs"):
         return
     meta = d.get("meta")
@@ -498,6 +511,7 @@ def validate_genre_prose_card(d):
     * ``language_rules`` 存在（软规则，不要求 iron_rules）
     * ``prose.sections`` 存在且非空（原文兜底）
     """
+    reset()
     if not check_obj(d, "genre-prose-card"):
         return
 

@@ -53,7 +53,7 @@ except ImportError:  # 直接以脚本方式运行时的兜底（独立可用）
         source = Path(source)
         if source.is_file():
             m = re.search(r'(\d+)', source.stem)
-            texts[m.group(1) and int(m.group(1)) or 1] = source.read_text(encoding="utf-8")
+            texts[int(m.group(1)) if m else 1] = source.read_text(encoding="utf-8")
             return texts
         if not source.is_dir():
             return {}

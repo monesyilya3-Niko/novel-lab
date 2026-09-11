@@ -269,6 +269,11 @@ def main():
     if "contains_verbatim" in pack_str and '"contains_verbatim": true' in pack_str:
         sys.exit("✗ 题材包含 verbatim 标记，未入库")
 
+    # MEDIUM：genre 用于拼接默认输出路径，必须白名单校验防路径穿越
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", args.genre):
+        sys.exit(f"✗ 非法 genre 名（仅允许字母/数字/下划线/连字符）: {args.genre!r}")
+
     out = Path(args.out) if args.out else ASSETS / f"{args.genre}-genre-pack.json"
     out.write_text(json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"✓ 题材包已入库: {out}")

@@ -388,7 +388,7 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
     details = [d for _, d in checks]
     issues = []
     for s, d in checks:
-        if s == 0 or ("偏短" in d and "严重" not in d):
+        if "偏短" in d and "严重" not in d:
             continue
         if "严重" in d or "不足" in d or "截断" in d:
             issues.append(d)

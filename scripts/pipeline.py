@@ -124,9 +124,9 @@ def build_user_input(kind: str, slices: dict, metrics: dict) -> str:
 
 
 def run_pass(kind: str, slices: dict, metrics: dict, dry_run: bool,
-             model_id: str | None) -> dict:
+             model_id: str | None, user_override: str | None = None) -> dict:
     system, template = load_prompt(kind)
-    user = build_user_input(kind, slices, metrics)
+    user = user_override if user_override is not None else build_user_input(kind, slices, metrics)
     mid, model = llm_client.resolve_model(task=kind, model_id=model_id)
     print(f"  [Pass] {kind} → 模型 {mid} ({model['model_name']})  | user 约 {len(user)//1000}K 字")
     if dry_run:
@@ -387,7 +387,8 @@ def main():
         # 将资产摘要注入 pass5 的 user input
         pass5_user = build_user_input("pass5_craft", slices, m)
         pass5_user = f"【前四遍扫描摘要】\n{asset_summary}\n\n【采样章节全文】\n{pass5_user}"
-        pass5_result = run_pass("pass5_craft", slices, m, args.dry_run, args.model_id)
+        pass5_result = run_pass("pass5_craft", slices, m, args.dry_run, args.model_id,
+                                user_override=pass5_user)
         if not args.dry_run:
             (raw_dir / "pass5_craft.json").write_text(
                 json.dumps(pass5_result, ensure_ascii=False, indent=2), encoding="utf-8")

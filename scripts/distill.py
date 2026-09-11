@@ -29,6 +29,11 @@ def run_distill(genre: str, book_names: Optional[List[str]] = None) -> dict:
     """执行蒸馏，返回 ``{dimension: distilled_dict}`` 并落盘。"""
     distilled_by_dim = distill_genre(genre, book_names=book_names)
 
+    # HIGH：genre 用于拼接输出路径，必须白名单校验防路径穿越
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", genre):
+        raise ValueError(f"非法 genre 名（仅允许字母/数字/下划线/连字符）: {genre!r}")
+
     assets_dir = Path(__file__).resolve().parent.parent / "assets"
     assets_dir.mkdir(parents=True, exist_ok=True)
 

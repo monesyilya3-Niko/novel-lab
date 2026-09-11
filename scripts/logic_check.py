@@ -74,7 +74,7 @@ def _load_texts(source: Path) -> dict:
     source = Path(source)
     if source.is_file():
         m = re.search(r'(\d+)', source.stem)
-        texts[m.group(1) and int(m.group(1)) or 1] = source.read_text(encoding="utf-8")
+        texts[int(m.group(1)) if m else 1] = source.read_text(encoding="utf-8")
         return texts
     if not source.is_dir():
         return {}
@@ -303,7 +303,21 @@ def _check_appellation_contradictions(texts: dict, entities: dict) -> list:
 # ---------------------------------------------------------------------------
 
 DEATH_WORDS = ["死了", "去世", "牺牲", "遇难", "身亡", "丧生", "死亡", "咽气", "断气"]
-ALIVE_WORDS = ["出场", "出现", "走来", "说话", "开口", "站起", "坐下", "抬头", "开口"]
+ALIVE_WORDS = ["出场", "出现", "走来", "说话", "开口", "站起", "坐下", "抬头"]
+_DEATH_PROXIMITY = 50  # 死亡词须出现在角色名附近 N 字内才判定该角色死亡
+
+
+def _name_near_death(name: str, text: str) -> bool:
+    """检查角色名附近（±_DEATH_PROXIMITY 字）是否有死亡词。"""
+    for m_start in range(len(text)):
+        idx = text.find(name, m_start)
+        if idx == -1:
+            break
+        window = text[max(0, idx - _DEATH_PROXIMITY): idx + len(name) + _DEATH_PROXIMITY]
+        if any(d in window for d in DEATH_WORDS):
+            return True
+        m_start = idx + 1
+    return False
 
 
 def _check_state_contradictions(texts: dict, entities: dict) -> list:
@@ -328,7 +342,8 @@ def _check_state_contradictions(texts: dict, entities: dict) -> list:
         for canonical, nm in role_names:
             if nm not in text:
                 continue
-            is_death = any(d in text for d in DEATH_WORDS)
+            # HIGH：死亡判定改为角色名邻近窗口，不再整章一刀切
+            is_death = _name_near_death(nm, text)
             is_flashback = any(m in text for m in FLASHBACK_MARKERS)
             # 该角色死亡章记录
             if is_death and canonical not in death_ch:

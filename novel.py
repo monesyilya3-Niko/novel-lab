@@ -48,10 +48,19 @@ def cmd_status():
     assets = [a for a in assets if not a.name.startswith("synthetic_")]
     print(f"\n[资产] {len(assets)} 本已拆:")
     for a in assets:
-        vc = json.loads(a.read_text(encoding="utf-8"))
+        try:
+            vc = json.loads(a.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            print(f"  - {a.name}: （损坏，跳过）")
+            continue
         meta = vc.get("meta", {})
+        conf = meta.get("confidence", 0)
+        try:
+            conf_str = f"{float(conf):.0%}"
+        except (TypeError, ValueError):
+            conf_str = "?"
         print(f"  - {a.name.replace('-voice-card.json','')}: "
-              f"{meta.get('genre','?')} | 置信 {meta.get('confidence',0):.0%} | "
+              f"{meta.get('genre','?')} | 置信 {conf_str} | "
               f"角色 {len(vc.get('dialogue',{}).get('character_voices',[]))} 个")
     packs = sorted((ROOT / "assets").glob("*-genre-pack.json"))
     if packs:
@@ -62,7 +71,11 @@ def cmd_status():
     if novels:
         print("\n[创作项目]")
         for s in novels:
-            state = json.loads(s.read_text(encoding="utf-8"))
+            try:
+                state = json.loads(s.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                print(f"  - {s.parent.name}: （损坏，跳过）")
+                continue
             print(f"  - {state.get('name','?')}: 第{state.get('current_chapter',1)}章/"
                   f"第{state.get('current_arc',1)}卷, 今日{state.get('word_count_today',0)}字")
     reports = sorted((ROOT / "reports").glob("*.md"))
@@ -70,8 +83,11 @@ def cmd_status():
         print(f"\n[拆书报告] {len(reports)} 份: {[r.name for r in reports]}")
     models_path = ROOT / "config" / "models.json"
     if models_path.exists():
-        models = json.loads(models_path.read_text(encoding="utf-8"))
-        print(f"\n[模型] {list(models.get('models', {}).keys())}")
+        try:
+            models = json.loads(models_path.read_text(encoding="utf-8"))
+            print(f"\n[模型] {list(models.get('models', {}).keys())}")
+        except (json.JSONDecodeError, OSError):
+            print("\n[模型] 配置文件损坏")
     else:
         print("\n[模型] 未配置外部模型 —— LLM 层由 WorkBuddy 内置智能承担"
               "（pass1-5 分析与写作改写由 AI 直接读文本完成，无 API 依赖）")
@@ -281,13 +297,19 @@ def main():
         ch_path = Path(args.chapter)
         if not ch_path.exists():
             sys.exit(f"文件不存在: {ch_path}")
-        text = ch_path.read_text(encoding="utf-8")
+        try:
+            text = ch_path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError) as exc:
+            sys.exit(f"读取章节失败: {exc}")
 
         # 1. 章节质量
         import chapter_check
         gp = None
         if args.genre_pack:
-            gp = _json.loads(Path(args.genre_pack).read_text(encoding="utf-8"))
+            try:
+                gp = _json.loads(Path(args.genre_pack).read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError) as exc:
+                sys.exit(f"读取题材包失败: {exc}")
         qc = chapter_check.chapter_check(text, gp)
 
         # 2. 一致性（如果有 voice-card）
@@ -295,7 +317,10 @@ def main():
         vc_details = []
         if args.voice:
             import consistency
-            vc_data = _json.loads(Path(args.voice).read_text(encoding="utf-8"))
+            try:
+                vc_data = _json.loads(Path(args.voice).read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError) as exc:
+                sys.exit(f"读取 voice-card 失败: {exc}")
             vc_score, vc_details, _ = consistency.score_text(vc_data, text, label=ch_path.name)
 
         # 输出

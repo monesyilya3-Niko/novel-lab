@@ -53,11 +53,16 @@ def any_model_configured() -> bool:
 
 
 def load_models() -> dict:
-    """读取模型配置。文件不存在时返回空骨架"""
+    """读取模型配置。文件不存在或损坏时返回空骨架"""
     if not MODELS_FILE.exists():
         return {"version": 1, "models": {}, "roles": {}, "routes": dict(DEFAULT_ROUTES)}
-    with open(MODELS_FILE, encoding="utf-8") as f:
-        cfg = json.load(f)
+    try:
+        with open(MODELS_FILE, encoding="utf-8") as f:
+            cfg = json.load(f)
+        if not isinstance(cfg, dict):
+            raise ValueError("models.json 顶层不是对象")
+    except (json.JSONDecodeError, OSError, ValueError):
+        return {"version": 1, "models": {}, "roles": {}, "routes": dict(DEFAULT_ROUTES)}
     cfg.setdefault("models", {})
     cfg.setdefault("roles", {})
     cfg.setdefault("routes", dict(DEFAULT_ROUTES))
@@ -73,8 +78,12 @@ def save_models(cfg: dict):
 def load_secrets() -> dict:
     if not SECRETS_FILE.exists():
         return {}
-    with open(SECRETS_FILE, encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(SECRETS_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
 
 
 def save_secrets(secrets: dict):
