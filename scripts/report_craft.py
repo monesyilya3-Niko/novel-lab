@@ -201,10 +201,10 @@ def main():
     out_path.write_text(report, encoding="utf-8")
     print(f"✓ 报告已生成: {out_path}")
 
-    # 铁律二：笔法分析单份字数提示（合计校验在 pipeline.py 汇总两份报告后执行）
+    # 铁律二：笔法分析单份字数提示（硬闸是 novel.py 分析 的合计校验）
     if len(report) < MIN_REPORT_CHARS:
         print(f"⚠ 笔法分析单份字数 {len(report)} < {MIN_REPORT_CHARS}，"
-              f"合计校验以 pipeline.py 为准")
+              f"合计硬校验在 novel.py 分析（check_combined_report_length）")
 
 
 if __name__ == "__main__":

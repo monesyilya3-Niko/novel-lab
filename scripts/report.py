@@ -326,10 +326,10 @@ def main():
     print(f"✓ 拆书报告已生成: {out}")
     print(f"  报告长度: {len(report)} 字符")
 
-    # 铁律二：拆书报告单份字数提示（合计校验在 pipeline.py 汇总两份报告后执行）
+    # 铁律二：拆书报告单份字数提示（硬闸是 novel.py 分析 的合计校验）
     if len(report) < MIN_REPORT_CHARS:
         print(f"⚠ 拆书报告单份字数 {len(report)} < {MIN_REPORT_CHARS}，请确认笔法分析部分补足，"
-              f"合计校验以 pipeline.py 为准")
+              f"合计硬校验在 novel.py 分析（check_combined_report_length）")
 
 
 if __name__ == "__main__":
