@@ -204,15 +204,25 @@ def _h_writing_inject(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str
         tracking_state=b.get("tracking_state"), save=bool(b.get("save"))))
 
 
+def _safe_int(value: Any, default: int, field: str) -> int:
+    """安全 int 转换：非法值返回 400 而非 500。"""
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ServiceError(f"{field} 必须为整数", 400)
+
+
 def _h_writing_generate(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     from gui import writing_service
     b = body or {}
     return ok(writing_service.generate(
         voice=b.get("voice", ""), project=b.get("project", ""),
-        chapter_no=int(b.get("chapter_no", 0)), task=b.get("task", ""),
+        chapter_no=_safe_int(b.get("chapter_no"), 0, "chapter_no"), task=b.get("task", ""),
         novel_name=b.get("novel_name"), prompt=b.get("prompt"),
-        genre_pack=b.get("genre_pack"), words=int(b.get("words", 2400)),
-        target_score=int(b.get("target_score", 90)),
+        genre_pack=b.get("genre_pack"), words=_safe_int(b.get("words"), 2400, "words"),
+        target_score=_safe_int(b.get("target_score"), 90, "target_score"),
         quality_target=b.get("quality_target"),
         save_prompt=bool(b.get("save_prompt"))))
 
@@ -226,7 +236,7 @@ def _h_writing_import_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> 
     from gui import writing_service
     b = body or {}
     return ok(writing_service.import_chapter(
-        project=b.get("project", ""), chapter_no=int(b.get("chapter_no", 0)),
+        project=b.get("project", ""), chapter_no=_safe_int(b.get("chapter_no"), 0, "chapter_no"),
         content=b.get("content", ""), novel_name=b.get("novel_name"),
         voice=b.get("voice"), genre_pack=b.get("genre_pack")))
 

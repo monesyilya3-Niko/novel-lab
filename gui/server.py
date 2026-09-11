@@ -109,7 +109,10 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        # HIGH：SSE 也必须走本机 Origin 回显，不能 ACAO: *（与 M8 一致）
+        origin = self.headers.get("Origin", "")
+        if origin and self._is_same_host_origin(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
         self.end_headers()
 
         book_id = query.get("book_id")

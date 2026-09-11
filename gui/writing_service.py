@@ -44,12 +44,18 @@ def _sanitize_project(project: str) -> str:
 
 
 def _load_asset_json(ref: str) -> Dict[str, Any]:
-    """把 '<kind>:<id>' 资产引用解析为 JSON dict。"""
+    """把 '<kind>:<id>' 资产引用解析为 JSON dict。CRITICAL：防路径穿越。"""
     if not ref or ":" not in ref:
         raise ServiceError(f"非法资产引用: {ref!r}", 400)
     kind, _, asset_id = ref.partition(":")
     name = asset_id[len(f"{kind}:"):] if asset_id.startswith(f"{kind}:") else asset_id
-    fp = config.ASSETS_ROOT / f"{name}.json"
+    # CRITICAL：拒绝路径穿越字符
+    if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
+        raise ServiceError(f"非法资产引用: {ref!r}", 400)
+    fp = (config.ASSETS_ROOT / f"{name}.json").resolve()
+    # CRITICAL：resolve 后必须仍在 ASSETS_ROOT 内
+    if not fp.is_relative_to(config.ASSETS_ROOT.resolve()):
+        raise ServiceError(f"非法资产引用: {ref!r}", 400)
     if not fp.is_file():
         raise ServiceError(f"资产不存在: {ref}", 404)
     try:
@@ -142,7 +148,10 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
     if not text and not chapter_path:
         raise ServiceError("需要 text 或 chapter_path", 400)
     if chapter_path:
-        fp = Path(chapter_path)
+        # HIGH：路径必须在 NOVEL_DIR 内
+        fp = Path(chapter_path).resolve()
+        if not fp.is_relative_to(config.NOVEL_DIR.resolve()):
+            raise ServiceError("chapter_path 必须在 novel/ 目录内", 400)
         if not fp.is_file():
             raise ServiceError(f"章节文件不存在: {chapter_path}", 404)
         try:
@@ -192,7 +201,12 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空（铁律一：题材隔离）", 400)
     genre = genre.strip()
-    raw_dir = config.CORPUS_DIR / "raw" / name
+    # HIGH：name 用于拼路径，必须消毒
+    if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
+        raise ServiceError(f"非法书名: {name!r}", 400)
+    raw_dir = (config.CORPUS_DIR / "raw" / name).resolve()
+    if not raw_dir.is_relative_to(config.CORPUS_DIR.resolve()):
+        raise ServiceError(f"非法书名: {name!r}", 400)
     if not raw_dir.is_dir():
         raise ServiceError(f"pass 输出目录不存在: {raw_dir}", 404)
 
@@ -327,17 +341,16 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
             }
         return _WRITING_TASKS[task_id]
 
-    # 并发上限检查（D6）
-    if _active_writing_count() >= _MAX_CONCURRENT_WRITING:
-        raise ServiceError(f"写作任务已达上限 {_MAX_CONCURRENT_WRITING}，请等待当前任务完成", 429)
-
-    req = {
-        "project": project, "chapter_no": chapter_no, "task": task,
-        "novel_name": novel_name or project, "genre_pack": genre_pack,
-        "words": words, "target_score": target_score,
-        "quality_target": quality_target or pass_line, "pass_line": pass_line,
-    }
+    # HIGH：并发上限检查 + 登记必须在同一临界区（TOCTOU 修复）
     with _WRITING_LOCK:
+        if _active_writing_count() >= _MAX_CONCURRENT_WRITING:
+            raise ServiceError(f"写作任务已达上限 {_MAX_CONCURRENT_WRITING}，请等待当前任务完成", 429)
+        req = {
+            "project": project, "chapter_no": chapter_no, "task": task,
+            "novel_name": novel_name or project, "genre_pack": genre_pack,
+            "words": words, "target_score": target_score,
+            "quality_target": quality_target or pass_line, "pass_line": pass_line,
+        }
         _WRITING_TASKS[task_id] = {
             "task_id": task_id, "status": "running", "mode": "llm",
             "chapter_no": chapter_no, "attempt": 0, "score": None,

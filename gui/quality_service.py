@@ -61,24 +61,30 @@ def resolve_chapter_target(target: str, *, novel_dir: Optional[str] = None) -> P
 
 
 def _materialize_text(text: str, task_id: str) -> Path:
-    """把粘贴文本落到 scratch 目录，返回文件路径。"""
-    scratch_dir = config.STATE_ROOT / "scratch"
+    """把粘贴文本落到 scratch/<task_id>/ 子目录，避免跨任务污染。"""
+    scratch_dir = config.STATE_ROOT / "scratch" / task_id
     scratch_dir.mkdir(parents=True, exist_ok=True)
-    fp = scratch_dir / f"{task_id}.txt"
+    fp = scratch_dir / "input.txt"
     fp.write_text(text, encoding="utf-8")
     return fp
 
 
 def clean_stale_scratch() -> int:
-    """删除 STATE_ROOT/scratch/ 下全部残留任务文本（进程启动时调用一次）。"""
+    """删除 STATE_ROOT/scratch/ 下全部残留任务目录/文件（进程启动时调用一次）。"""
     scratch_dir = config.STATE_ROOT / "scratch"
     if not scratch_dir.is_dir():
         return 0
     count = 0
-    for fp in scratch_dir.glob("*.txt"):
+    for item in scratch_dir.iterdir():
         try:
-            fp.unlink()
-            count += 1
+            if item.is_file():
+                item.unlink()
+                count += 1
+            elif item.is_dir():
+                for fp in item.iterdir():
+                    fp.unlink()
+                item.rmdir()
+                count += 1
         except OSError:
             pass
     return count
@@ -139,6 +145,7 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
         raise ServiceError("需要 target 或 text", 400)
 
     chapter_dir: Optional[str] = None
+    scratch_fp: Optional[Path] = None
     if target:
         fp = resolve_chapter_target(target)
         if fp.is_file():
@@ -147,8 +154,9 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
             chapter_dir = str(fp)
     elif text:
         task_id = f"tmp-{uuid.uuid4().hex[:8]}"
-        fp = _materialize_text(text, task_id)
-        chapter_dir = str(fp.parent)
+        scratch_fp = _materialize_text(text, task_id)
+        # HIGH：传单文件路径而非父目录（book_quality_check 支持 is_file）
+        chapter_dir = str(scratch_fp)
 
     voice_path = None
     if voice:
@@ -156,7 +164,16 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
         if vfp.is_file():
             voice_path = str(vfp)
 
-    return engine_adapter.book_quality_check(chapter_dir, voice_card_path=voice_path)
+    try:
+        return engine_adapter.book_quality_check(chapter_dir, voice_card_path=voice_path)
+    finally:
+        # MEDIUM：book() 的 scratch 也要清理（D3）
+        if scratch_fp and scratch_fp.is_file():
+            try:
+                scratch_fp.unlink()
+                scratch_fp.parent.rmdir()
+            except OSError:
+                pass
 
 
 def list_qc_reports() -> List[Dict[str, Any]]:
@@ -188,21 +205,18 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
        asset: Optional[str] = None, book: Optional[str] = None,
        novel_dir: Optional[str] = None, llm_hook: bool = False) -> Dict[str, Any]:
     """启动 qc 长任务（四层十二维）。并发上限 2（D6）。"""
-    if _active_quality_count() >= _MAX_CONCURRENT_QUALITY:
-        raise ServiceError(f"质检任务已达上限 {_MAX_CONCURRENT_QUALITY}，请等待当前任务完成", 429)
-
     task_id = f"q-{uuid.uuid4().hex[:12]}"
-    scratch_fp: Optional[Path] = None
 
     # 解析章节目录
     if target:
         fp = resolve_chapter_target(target)
-        chapter_dir = str(fp if fp.is_dir() else fp.parent)
+        chapter_dir = str(fp if fp.is_dir() else fp)
         display_target = target
     elif text:
         scratch_fp = _materialize_text(text, task_id)
+        # HIGH：传子目录路径（scratch/<task_id>/），避免共享 scratch/ 污染
         chapter_dir = str(scratch_fp.parent)
-        display_target = f"scratch/{task_id}.txt"
+        display_target = f"scratch/{task_id}"
     else:
         raise ServiceError("需要 target 或 text", 400)
 
@@ -210,7 +224,12 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
     def _asset_path(ref: Optional[str]) -> Optional[str]:
         if not ref:
             return None
-        p = config.ASSETS_ROOT / f"{ref.split(':')[-1]}.json"
+        name = ref.split(':')[-1]
+        if not name or any(ch in name for ch in ("/", "\\", "..")):
+            return None
+        p = (config.ASSETS_ROOT / f"{name}.json").resolve()
+        if not p.is_relative_to(config.ASSETS_ROOT.resolve()):
+            return None
         return str(p) if p.is_file() else None
 
     voice_path = _asset_path(voice)
@@ -219,7 +238,10 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
     book_path = _asset_path(book)
     nd = str(resolve_chapter_target(novel_dir)) if novel_dir else None
 
+    # HIGH：并发上限检查 + 登记必须在同一临界区（TOCTOU 修复）
     with _QUALITY_LOCK:
+        if _active_quality_count() >= _MAX_CONCURRENT_QUALITY:
+            raise ServiceError(f"质检任务已达上限 {_MAX_CONCURRENT_QUALITY}，请等待当前任务完成", 429)
         _QUALITY_TASKS[task_id] = {
             "task_id": task_id, "status": "running", "phase": "qc",
             "target": display_target, "verdict": None, "total_score": None,
@@ -297,11 +319,15 @@ def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
         })
 
     finally:
-        # D3：任务结束即删 scratch
-        scratch_dir = config.STATE_ROOT / "scratch"
-        if scratch_dir.is_dir():
-            for fp in scratch_dir.glob(f"{task_id}.txt"):
+        # D3：任务结束即删 scratch 子目录
+        task_scratch = config.STATE_ROOT / "scratch" / task_id
+        if task_scratch.is_dir():
+            for fp in task_scratch.iterdir():
                 try:
                     fp.unlink()
                 except OSError:
                     pass
+            try:
+                task_scratch.rmdir()
+            except OSError:
+                pass
