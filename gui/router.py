@@ -296,6 +296,30 @@ def _h_quality_reports(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[s
     return ok(quality_service.list_qc_reports())
 
 
+# --- M5 系统与合规 handlers ---
+
+def _h_system_status(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import system_service
+    return ok(system_service.system_status())
+
+
+def _h_compliance_scan(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import system_service
+    b = body or {}
+    return ok(system_service.compliance_scan(
+        voice=b.get("voice"), book_path=b.get("book_path")))
+
+
+def _h_model_info(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import system_service
+    return ok(system_service.model_info())
+
+
+def _h_get_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import system_service
+    return ok(system_service.get_settings())
+
+
 # ---------------------------------------------------------------------------
 # 路由表
 # ---------------------------------------------------------------------------
@@ -338,6 +362,11 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
     ("POST", re.compile(r"^/api/quality/qc$"), _h_quality_qc),
     ("GET", re.compile(r"^/api/quality/tasks/(?P<task_id>[^/]+)$"), _h_quality_task),
     ("GET", re.compile(r"^/api/quality/reports$"), _h_quality_reports),
+    # M5 系统与合规
+    ("GET", re.compile(r"^/api/system/status$"), _h_system_status),
+    ("POST", re.compile(r"^/api/system/compliance$"), _h_compliance_scan),
+    ("GET", re.compile(r"^/api/system/models$"), _h_model_info),
+    ("GET", re.compile(r"^/api/system/settings$"), _h_get_settings),
 ]
 
 
