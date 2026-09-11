@@ -7,7 +7,6 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // dev 模式下把 API 与 SSE 代理到本地 GUI 后端（默认 8000）。
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
@@ -17,5 +16,14 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // 4B：react+mui 合并为 vendor 避免 circular；echarts 独立 chunk。
+        manualChunks: {
+          'vendor': ['react', 'react-dom', '@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          'echarts': ['echarts'],
+        },
+      },
+    },
   },
 })

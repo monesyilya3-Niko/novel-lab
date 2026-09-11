@@ -1,22 +1,33 @@
-import { useState } from 'react'
+import { useState, Suspense, lazy } from 'react'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import Box from '@mui/material/Box'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
+import CircularProgress from '@mui/material/CircularProgress'
 import { AppProvider } from './state/AppContext'
 import { muiThemeOptions } from './theme'
 import WorkbenchNav from './layout/WorkbenchNav'
 import type { WorkbenchKey } from './layout/WorkbenchNav'
-import HomeDashboard from './components/HomeDashboard'
-import AnalysisView from './components/AnalysisView'
-import AssetLibrary from './components/AssetLibrary'
-import WritingWorkbench from './components/WritingWorkbench'
-import QualityWorkbench from './components/QualityWorkbench'
-import Placeholder from './components/Placeholder'
+
+// 4B：页面级组件 lazy 加载，主包只含框架 + 导航 + 主题
+const HomeDashboard = lazy(() => import('./components/HomeDashboard'))
+const AnalysisView = lazy(() => import('./components/AnalysisView'))
+const AssetLibrary = lazy(() => import('./components/AssetLibrary'))
+const WritingWorkbench = lazy(() => import('./components/WritingWorkbench'))
+const QualityWorkbench = lazy(() => import('./components/QualityWorkbench'))
+const Placeholder = lazy(() => import('./components/Placeholder'))
 
 const theme = createTheme(muiThemeOptions)
+
+function LoadingFallback() {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+      <CircularProgress />
+    </Box>
+  )
+}
 
 export default function App() {
   const [workbench, setWorkbench] = useState<WorkbenchKey>('home')
@@ -50,13 +61,15 @@ export default function App() {
             {/* 主区 */}
             <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
               <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-                {workbench === 'home' && <HomeDashboard />}
-                {workbench === 'analysis' && <AnalysisView />}
-                {workbench === 'assets' && <AssetLibrary />}
-                {workbench === 'writing' && <WritingWorkbench />}
-                {workbench === 'quality' && <QualityWorkbench />}
-                {workbench === 'system' && <Placeholder title="系统" />}
-                {workbench === 'settings' && <Placeholder title="设置" />}
+                <Suspense fallback={<LoadingFallback />}>
+                  {workbench === 'home' && <HomeDashboard />}
+                  {workbench === 'analysis' && <AnalysisView />}
+                  {workbench === 'assets' && <AssetLibrary />}
+                  {workbench === 'writing' && <WritingWorkbench />}
+                  {workbench === 'quality' && <QualityWorkbench />}
+                  {workbench === 'system' && <Placeholder title="系统" />}
+                  {workbench === 'settings' && <Placeholder title="设置" />}
+                </Suspense>
               </Box>
             </Box>
           </Box>
