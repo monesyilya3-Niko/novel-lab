@@ -153,7 +153,8 @@ def compliance_scan(voice: Optional[str] = None,
         for fp in sorted(config.ASSETS_ROOT.glob("*.json")):
             try:
                 asset = json.loads(fp.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"[warn] 合规扫描跳过无法解析的资产 {fp.name}: {exc}")
                 continue
             errors, warns = compliance_mod.scan_asset(asset, set())
             results.append({
@@ -211,7 +212,8 @@ def _load_settings_file() -> Dict[str, Any]:
     try:
         data = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"[warn] settings.json 损坏，回退为空配置（阈值/写作配置将用默认值）: {exc}")
         return {}
 
 

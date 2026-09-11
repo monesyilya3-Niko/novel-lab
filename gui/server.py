@@ -9,6 +9,7 @@ import mimetypes
 import os
 import queue
 import socket
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -512,8 +513,8 @@ class GuiServer:
             n = quality_service.clean_stale_scratch()
             if n:
                 print(f"[GUI] 启动清理 scratch 残留 {n} 个文件")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] 启动清理 scratch 失败（不影响服务启动）: {exc}")
 
         host, port = self._bind_port()
         self._httpd = ThreadingHTTPServer((host, port), _Handler)
@@ -536,8 +537,8 @@ class GuiServer:
         # 优雅关闭：刷盘 SQLite（wal_checkpoint）。
         try:
             db.close()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] 关闭时 SQLite 刷盘失败: {exc}", file=sys.stderr)
         self._release_lock()
 
 

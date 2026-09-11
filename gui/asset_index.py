@@ -378,7 +378,8 @@ class AssetIndex:
             return None
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 资产详情加载失败，content 置空 {fp.name}: {exc}")
             data = {}
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 
@@ -401,7 +402,8 @@ class AssetIndex:
             raise KeyError(f"资产不存在: {name}")
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 资产详情加载失败，content 置空 {fp.name}: {exc}")
             data = {}
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 

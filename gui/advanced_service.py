@@ -35,7 +35,8 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
             data = json.loads(fp.read_text(encoding="utf-8"))
             if data.get("meta", {}).get("genre") == genre:
                 books.append(fp.stem.replace("-voice-card", ""))
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 跳过无法解析的 voice-card {fp.name}: {exc}")
             continue
 
     if book_names:
@@ -92,7 +93,8 @@ def distill_status(genre: str) -> Dict[str, Any]:
             data = json.loads(fp.read_text(encoding="utf-8"))
             if data.get("meta", {}).get("genre") == genre:
                 books.append(fp.stem.replace("-voice-card", ""))
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 跳过无法解析的 voice-card {fp.name}: {exc}")
             continue
 
     return {
@@ -128,7 +130,8 @@ def aggregate_genre(genre: str) -> Dict[str, Any]:
             data = json.loads(fp.read_text(encoding="utf-8"))
             if data.get("meta", {}).get("genre") == genre:
                 books.append(fp.stem.replace("-voice-card", ""))
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 跳过无法解析的 voice-card {fp.name}: {exc}")
             continue
 
     if len(books) < 3:

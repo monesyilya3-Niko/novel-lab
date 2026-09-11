@@ -125,7 +125,8 @@ def list_styles() -> List[Dict[str, Any]]:
                 "created_at": data.get("created_at", ""),
                 "metrics": data.get("metrics", {}),
             })
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 跳过无法解析的文风档案 {fp.name}: {exc}")
             continue
     return styles
 

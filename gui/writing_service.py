@@ -246,8 +246,8 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if metrics_fp.is_file():
         try:
             metrics = json.loads(metrics_fp.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 量化指标加载失败，注入提示将不含统计画像 {metrics_fp.name}: {exc}")
 
     written: List[str] = []
 

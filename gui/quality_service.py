@@ -137,8 +137,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
         if gp_fp:
             try:
                 gp_data = json.loads(gp_fp.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"[warn] 题材包加载失败，本次检查不带题材约束 {gp_fp.name}: {exc}")
 
     qc = engine_adapter.chapter_check(text, gp_data)
     result: Dict[str, Any] = {"quality": qc}
@@ -155,8 +155,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
                     "dims": {k: float(raw.get(k, 0)) for k in ("voice", "emotion", "narration", "banned", "imagery")},
                     "details": cons.get("details", []),
                 }
-            except (json.JSONDecodeError, OSError):
-                pass
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"[warn] voice-card 加载失败，跳过一致性打分 {voice_fp.name}: {exc}")
 
     return result
 
@@ -214,7 +214,8 @@ def list_qc_reports() -> List[Dict[str, Any]]:
                     "total_score": data.get("total_score"),
                     "created_at": data.get("meta", {}).get("created_at"),
                 })
-            except (json.JSONDecodeError, OSError):
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"[warn] 跳过无法解析的质检报告 {fp.name}: {exc}")
                 continue
     return reports
 

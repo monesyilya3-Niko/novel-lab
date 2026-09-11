@@ -91,7 +91,8 @@ def load_state(book_id: str) -> Dict[str, Any]:
     try:
         with path.open("r", encoding="utf-8") as fh:
             return json.load(fh)
-    except (json.JSONDecodeError, OSError):
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"[warn] 状态文件损坏，按空白状态重建 book_id={book_id} ({path.name}): {exc}")
         return new_state(book_id, "")
 
 
@@ -120,8 +121,9 @@ def save_state(state: Dict[str, Any]) -> None:
     # 尽力同步 SQLite（权威），失败不阻断（降级副本已落盘）。
     try:
         upsert_task(state)
-    except Exception:  # noqa: BLE001 — 库未初始化/损坏时静默降级。
-        pass
+    except Exception as exc:  # noqa: BLE001 — 库未初始化/损坏时静默降级。
+        print(f"[warn] SQLite 权威写入失败（降级副本已落盘）book_id="
+              f"{state.get('book_id')}: {exc}")
 
 
 def bump_revision(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -221,7 +223,8 @@ def list_books_summary() -> List[Dict[str, Any]]:
     for fp in _iter_state_files():
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"[warn] 跳过无法解析的状态文件 {fp.name}: {exc}")
             continue
         if not isinstance(data, dict) or "book_id" not in data:
             continue
@@ -288,7 +291,8 @@ def load_task(book_id: str) -> Dict[str, Any]:
         if isinstance(batch_state, str):
             try:
                 batch_state = json.loads(batch_state) if batch_state else {}
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as exc:
+                print(f"[warn] SQLite batch_state 损坏，批进度丢失 book_id={book_id}: {exc}")
                 batch_state = {}
         return {
             "book_id": row.get("book_id", book_id),

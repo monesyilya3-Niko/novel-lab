@@ -215,7 +215,8 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> Dict[str, Any]:
     for i, fp in enumerate(chapter_files, 1):
         try:
             content = fp.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        except (UnicodeDecodeError, OSError) as exc:
+            print(f"[warn] 导出跳过无法读取的章节 {fp.name}: {exc}")
             continue
 
         # 提取标题（第一行）
