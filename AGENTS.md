@@ -147,8 +147,9 @@ git config core.hooksPath .githooks
 | 文件 | 用途 | 可信度 |
 |---|---|---|
 | `PROJECT_LAW.md` | 三铁律条文 | ✅ 权威 |
-| `RULES.md` | 可执行规则全集（15 章，含拆书实操经验） | ✅ 大体可用（§二为历史存档） |
+| `RULES.md` | 可执行规则全集 | ✅ 大体可用 |
 | `AGENTS.md` | 本文件 | ✅ 权威 |
-| `PROJECT_SUMMARY.md` | 项目总结 | ❌ **严重过时**（称 17 资产 / 33 测试），待重写 |
-| `HANDOFF.md` | 交接文档 | ❌ **过时**，待重写 |
-| `docs/` | PRD / DESIGN / 架构 / 复盘 | ⚠️ 混合，注意日期 |
+| `PROJECT_SUMMARY.md` | 项目总结 | ✅ 已重写（2026-09-11，基于实测） |
+| `HANDOFF.md` | 交接文档 | ✅ 已重写（2026-09-11，基于实测） |
+| `docs/DESIGN_gui_phase2_writing_quality.md` | 阶段二设计（W10-W18） | ✅ 权威 |
+| `docs/compose/spec/` | Compose Next 特性文档 | ✅ 按需 |
