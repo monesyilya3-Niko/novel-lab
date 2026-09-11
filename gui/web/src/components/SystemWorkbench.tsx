@@ -79,18 +79,18 @@ function SystemStatusPanel() {
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>磁盘占用</Typography>
-        <Typography variant="body2">资产：{fmtSize(disk.assets_bytes)} | 报告：{fmtSize(disk.reports_bytes)}</Typography>
-        <Typography variant="body2">语料：{fmtSize(disk.corpus_bytes)} | 写作：{fmtSize(disk.novel_bytes)}</Typography>
-        <Typography variant="body2">数据库：{fmtSize(disk.db_bytes)} | 总计：{fmtSize(disk.total_bytes)}</Typography>
+        <Typography variant="body2">资产：{fmtSize(Number(disk.assetsBytes ?? disk.assets_bytes ?? 0))} | 报告：{fmtSize(Number(disk.reportsBytes ?? disk.reports_bytes ?? 0))}</Typography>
+        <Typography variant="body2">语料：{fmtSize(Number(disk.corpusBytes ?? disk.corpus_bytes ?? 0))} | 写作：{fmtSize(Number(disk.novelBytes ?? disk.novel_bytes ?? 0))}</Typography>
+        <Typography variant="body2">数据库：{fmtSize(Number(disk.dbBytes ?? disk.db_bytes ?? 0))} | 总计：{fmtSize(Number(disk.totalBytes ?? disk.total_bytes ?? 0))}</Typography>
       </Paper>
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>数据统计</Typography>
         <Typography variant="body2">
-          资产 {String(counts.assets ?? 0)} 个 | 报告 {String(counts.reports ?? 0)} 份 | 已拆书 {((counts.book_names as string[]) ?? []).length} 本
+          资产 {String(counts.assets ?? 0)} 个 | 报告 {String(counts.reports ?? 0)} 份 | 已拆书 {((counts.bookNames ?? counts.book_names ?? []) as string[]).length} 本
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          {((counts.book_names as string[]) ?? []).join('、')}
+          {((counts.bookNames ?? counts.book_names ?? []) as string[]).join('、')}
         </Typography>
       </Paper>
 
@@ -224,28 +224,28 @@ function SettingsPanel() {
   if (error) return <Alert severity="error">{error}</Alert>
   if (!settings) return <CircularProgress />
 
-  const paths = settings.paths as Record<string, string>
-  const env = settings.env_overrides as Record<string, string>
+  const paths = (settings.paths ?? {}) as Record<string, string>
+  const env = (settings.envOverrides ?? settings.env_overrides ?? {}) as Record<string, string>
 
   return (
     <Box>
       <Typography variant="h6" gutterBottom>系统设置</Typography>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>服务</Typography>
-        <Typography variant="body2">端口：{settings.port as number}</Typography>
-        <Typography variant="body2">批次大小：{settings.batch_size as number} 字符</Typography>
+        <Typography variant="body2">端口：{String(settings.port ?? '-')}</Typography>
+        <Typography variant="body2">批次大小：{String(settings.batchSize ?? settings.batch_size ?? '-')} 字符</Typography>
       </Paper>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>路径</Typography>
         {Object.entries(paths).map(([k, v]) => (
-          <Typography key={k} variant="body2" sx={{ fontSize: 12, fontFamily: 'monospace' }}>{k}: {v}</Typography>
+          <Typography key={k} variant="body2" sx={{ fontSize: 12, fontFamily: 'monospace' }}>{k}: {String(v)}</Typography>
         ))}
       </Paper>
       <Paper sx={{ p: 2 }}>
         <Typography variant="subtitle2" gutterBottom>环境变量覆盖</Typography>
         {Object.entries(env).map(([k, v]) => (
           <Typography key={k} variant="body2" sx={{ fontSize: 12, fontFamily: 'monospace' }}>
-            {k}: {v || '（未设置）'}
+            {k}: {v ? String(v) : '（未设置）'}
           </Typography>
         ))}
       </Paper>
