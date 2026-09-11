@@ -18,7 +18,7 @@ const WritingWorkbench = lazy(() => import('./components/WritingWorkbench'))
 const QualityWorkbench = lazy(() => import('./components/QualityWorkbench'))
 const SystemWorkbench = lazy(() => import('./components/SystemWorkbench'))
 const AdvancedWorkbench = lazy(() => import('./components/AdvancedWorkbench'))
-const Placeholder = lazy(() => import('./components/Placeholder'))
+const SettingsWorkbench = lazy(() => import('./components/SettingsWorkbench'))
 
 const theme = createTheme(muiThemeOptions)
 
@@ -68,7 +68,7 @@ function AppShell() {
               {workbench === 'writing' && <WritingWorkbench />}
               {workbench === 'quality' && <QualityWorkbench />}
               {workbench === 'system' && <SystemWorkbench />}
-              {workbench === 'settings' && <Placeholder title="设置" />}
+              {workbench === 'settings' && <SettingsWorkbench />}
             </Suspense>
           </Box>
         </Box>

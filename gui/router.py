@@ -320,6 +320,16 @@ def _h_get_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str,
     return ok(system_service.get_settings())
 
 
+def _h_update_settings(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import system_service
+    return ok(system_service.update_settings(body or {}))
+
+
+def _h_reset_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import system_service
+    return ok(system_service.reset_settings())
+
+
 # --- M1 高级分析 handlers ---
 
 def _h_distill_status(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
@@ -410,6 +420,8 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
     ("POST", re.compile(r"^/api/system/compliance$"), _h_compliance_scan),
     ("GET", re.compile(r"^/api/system/models$"), _h_model_info),
     ("GET", re.compile(r"^/api/system/settings$"), _h_get_settings),
+    ("PUT", re.compile(r"^/api/system/settings$"), _h_update_settings),
+    ("POST", re.compile(r"^/api/system/settings/reset$"), _h_reset_settings),
     # M1 高级分析
     ("GET", re.compile(r"^/api/advanced/distill/(?P<genre>[^/]+)$"), _h_distill_status),
     ("POST", re.compile(r"^/api/advanced/distill/(?P<genre>[^/]+)$"), _h_distill_run),

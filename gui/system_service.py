@@ -198,14 +198,46 @@ def model_info() -> Dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# 设置（只读展示当前配置）
+# 设置（读写配置）
 # ---------------------------------------------------------------------------
 
+_SETTINGS_FILE = config.STATE_ROOT / "settings.json"
+
+
+def _load_settings_file() -> Dict[str, Any]:
+    """读取 settings.json（不存在返回空 dict）。"""
+    if not _SETTINGS_FILE.is_file():
+        return {}
+    try:
+        data = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_settings_file(data: Dict[str, Any]) -> None:
+    """写入 settings.json（原子写）。"""
+    _SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _SETTINGS_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(_SETTINGS_FILE)
+
+
 def get_settings() -> Dict[str, Any]:
-    """当前系统设置（只读）。"""
+    """当前系统设置。优先级：环境变量 > settings.json > 默认值。"""
+    saved = _load_settings_file()
     return {
         "port": config.resolve_port(),
         "batch_size": config.batch_size_from_env(),
+        "thresholds": {
+            "consistency_target": saved.get("thresholds", {}).get("consistency_target", 90),
+            "quality_pass_line": saved.get("thresholds", {}).get("quality_pass_line", 75),
+            "quality_warn_line": saved.get("thresholds", {}).get("quality_warn_line", 60),
+        },
+        "writing": {
+            "default_words": saved.get("writing", {}).get("default_words", 2400),
+            "max_attempts": saved.get("writing", {}).get("max_attempts", 3),
+        },
         "paths": {
             "root": str(config.ROOT_DIR),
             "assets": str(config.ASSETS_ROOT),
@@ -219,4 +251,68 @@ def get_settings() -> Dict[str, Any]:
             "NOVEL_LAB_GUI_PORT": os.environ.get("NOVEL_LAB_GUI_PORT", ""),
             "NOVEL_LAB_GUI_BATCH_SIZE": os.environ.get("NOVEL_LAB_GUI_BATCH_SIZE", ""),
         },
+        "saved": saved,
     }
+
+
+def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
+    """更新设置（写入 settings.json）。只接受白名单字段。"""
+    if not updates or not isinstance(updates, dict):
+        raise ServiceError("updates 必须为 JSON 对象", 400)
+
+    saved = _load_settings_file()
+
+    # 阈值设置
+    if "thresholds" in updates:
+        th = updates["thresholds"]
+        if not isinstance(th, dict):
+            raise ServiceError("thresholds 必须为对象", 400)
+        saved.setdefault("thresholds", {})
+        for key in ("consistency_target", "quality_pass_line", "quality_warn_line"):
+            if key in th:
+                val = th[key]
+                if not isinstance(val, (int, float)) or not (0 <= val <= 100):
+                    raise ServiceError(f"{key} 必须为 0-100 的数值", 400)
+                saved["thresholds"][key] = int(val)
+        # 校验 pass_line >= warn_line
+        if saved["thresholds"].get("quality_pass_line", 75) < saved["thresholds"].get("quality_warn_line", 60):
+            raise ServiceError("quality_pass_line 必须 >= quality_warn_line", 400)
+
+    # 写作设置
+    if "writing" in updates:
+        wr = updates["writing"]
+        if not isinstance(wr, dict):
+            raise ServiceError("writing 必须为对象", 400)
+        saved.setdefault("writing", {})
+        if "default_words" in wr:
+            val = wr["default_words"]
+            if not isinstance(val, int) or not (100 <= val <= 20000):
+                raise ServiceError("default_words 必须为 100-20000 的整数", 400)
+            saved["writing"]["default_words"] = val
+        if "max_attempts" in wr:
+            val = wr["max_attempts"]
+            if not isinstance(val, int) or not (1 <= val <= 10):
+                raise ServiceError("max_attempts 必须为 1-10 的整数", 400)
+            saved["writing"]["max_attempts"] = val
+
+    # 端口/批次大小（需重启生效，仅记录）
+    if "port" in updates:
+        val = updates["port"]
+        if not isinstance(val, int) or not (1 <= val <= 65535):
+            raise ServiceError("port 必须为 1-65535 的整数", 400)
+        saved["port"] = val
+    if "batch_size" in updates:
+        val = updates["batch_size"]
+        if not isinstance(val, int) or not (100 <= val <= 100000):
+            raise ServiceError("batch_size 必须为 100-100000 的整数", 400)
+        saved["batch_size"] = val
+
+    _save_settings_file(saved)
+    return get_settings()
+
+
+def reset_settings() -> Dict[str, Any]:
+    """重置设置为默认值（删除 settings.json）。"""
+    if _SETTINGS_FILE.is_file():
+        _SETTINGS_FILE.unlink()
+    return get_settings()

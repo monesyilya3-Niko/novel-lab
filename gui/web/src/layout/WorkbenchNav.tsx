@@ -45,7 +45,7 @@ const NAV_ITEMS: WorkbenchNavItem[] = [
   { key: 'assets', label: '资产库', icon: <FolderOpenIcon /> },
   { key: 'advanced', label: '高级', icon: <AutoAwesomeIcon /> },
   { key: 'system', label: '系统', icon: <TuneIcon /> },
-  { key: 'settings', label: '设置', icon: <SettingsIcon />, placeholder: true },
+  { key: 'settings', label: '设置', icon: <SettingsIcon /> },
 ]
 
 export interface WorkbenchNavProps {
