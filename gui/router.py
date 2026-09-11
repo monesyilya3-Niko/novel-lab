@@ -320,6 +320,49 @@ def _h_get_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str,
     return ok(system_service.get_settings())
 
 
+# --- M1 高级分析 handlers ---
+
+def _h_distill_status(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    return ok(advanced_service.distill_status(params["genre"]))
+
+
+def _h_distill_run(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    return ok(advanced_service.distill_genre(params["genre"]))
+
+
+def _h_aggregate(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    return ok(advanced_service.aggregate_genre(params["genre"]))
+
+
+def _h_batch_status(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    return ok(advanced_service.batch_status())
+
+
+# --- M4 资产写入 handlers ---
+
+def _h_asset_update(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    b = body or {}
+    return ok(advanced_service.update_asset(
+        params["kind"], params["id"], b.get("content", {})))
+
+
+def _h_asset_delete(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    return ok(advanced_service.delete_asset(params["kind"], params["id"]))
+
+
+def _h_asset_create(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+    from gui import advanced_service
+    b = body or {}
+    return ok(advanced_service.create_asset(
+        b.get("name", ""), b.get("kind", ""), b.get("content", {})))
+
+
 # ---------------------------------------------------------------------------
 # 路由表
 # ---------------------------------------------------------------------------
@@ -367,6 +410,15 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
     ("POST", re.compile(r"^/api/system/compliance$"), _h_compliance_scan),
     ("GET", re.compile(r"^/api/system/models$"), _h_model_info),
     ("GET", re.compile(r"^/api/system/settings$"), _h_get_settings),
+    # M1 高级分析
+    ("GET", re.compile(r"^/api/advanced/distill/(?P<genre>[^/]+)$"), _h_distill_status),
+    ("POST", re.compile(r"^/api/advanced/distill/(?P<genre>[^/]+)$"), _h_distill_run),
+    ("GET", re.compile(r"^/api/advanced/aggregate/(?P<genre>[^/]+)$"), _h_aggregate),
+    ("GET", re.compile(r"^/api/advanced/batch-status$"), _h_batch_status),
+    # M4 资产写入
+    ("PUT", re.compile(r"^/api/assets/(?P<kind>[^/]+)/(?P<id>[^/]+)$"), _h_asset_update),
+    ("DELETE", re.compile(r"^/api/assets/(?P<kind>[^/]+)/(?P<id>[^/]+)$"), _h_asset_delete),
+    ("POST", re.compile(r"^/api/assets$"), _h_asset_create),
 ]
 
 

@@ -291,7 +291,7 @@ export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEven
 // ---------------------------------------------------------------------------
 
 /** 递归把 snake_case 键转为 camelCase（含数组和嵌套对象）。 */
-function deepToCamel<T>(obj: unknown): T {
+export function deepToCamel<T>(obj: unknown): T {
   if (Array.isArray(obj)) return obj.map(deepToCamel) as T
   if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
     const out: Record<string, unknown> = {}

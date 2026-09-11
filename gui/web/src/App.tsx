@@ -18,6 +18,7 @@ const AssetLibrary = lazy(() => import('./components/AssetLibrary'))
 const WritingWorkbench = lazy(() => import('./components/WritingWorkbench'))
 const QualityWorkbench = lazy(() => import('./components/QualityWorkbench'))
 const SystemWorkbench = lazy(() => import('./components/SystemWorkbench'))
+const AdvancedWorkbench = lazy(() => import('./components/AdvancedWorkbench'))
 const Placeholder = lazy(() => import('./components/Placeholder'))
 
 const theme = createTheme(muiThemeOptions)
@@ -66,6 +67,7 @@ export default function App() {
                   {workbench === 'home' && <HomeDashboard />}
                   {workbench === 'analysis' && <AnalysisView />}
                   {workbench === 'assets' && <AssetLibrary />}
+                  {workbench === 'advanced' && <AdvancedWorkbench />}
                   {workbench === 'writing' && <WritingWorkbench />}
                   {workbench === 'quality' && <QualityWorkbench />}
                   {workbench === 'system' && <SystemWorkbench />}

@@ -13,6 +13,7 @@ import InsightsIcon from '@mui/icons-material/Insights'
 import EditNoteIcon from '@mui/icons-material/EditNote'
 import FactCheckIcon from '@mui/icons-material/FactCheck'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import SettingsIcon from '@mui/icons-material/Settings'
 import TuneIcon from '@mui/icons-material/Tune'
 
@@ -22,6 +23,7 @@ export type WorkbenchKey =
   | 'writing'
   | 'quality'
   | 'assets'
+  | 'advanced'
   | 'system'
   | 'settings'
 
@@ -41,6 +43,7 @@ const NAV_ITEMS: WorkbenchNavItem[] = [
   { key: 'writing', label: '写作', icon: <EditNoteIcon /> },
   { key: 'quality', label: '质检', icon: <FactCheckIcon /> },
   { key: 'assets', label: '资产库', icon: <FolderOpenIcon /> },
+  { key: 'advanced', label: '高级', icon: <AutoAwesomeIcon /> },
   { key: 'system', label: '系统', icon: <TuneIcon /> },
   { key: 'settings', label: '设置', icon: <SettingsIcon />, placeholder: true },
 ]
