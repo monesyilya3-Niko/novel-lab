@@ -23,8 +23,7 @@ novel-lab 设计为**单机本application**：
 
 **请勿公开 issue 报告安全漏洞。**
 
-1. 使用 GitHub [Security Advisories → Report a vulnerability](https://github.com/monesyilya3-Niko/novel-lab/security/advisories/new) 私密报告
-2. 或邮件联系 monesyilya3@gmail.com（标题注明 `[novel-lab security]`）
+使用 GitHub [Security Advisories → Report a vulnerability](https://github.com/monesyilya3-Niko/novel-lab/security/advisories/new) 私密报告（不使用公开 issue、不接受邮件报告）。
 
 包含：影响版本、复现步骤、影响评估。收到后 72 小时内确认，修复协调后公开致谢（除非你希望匿名）。
 

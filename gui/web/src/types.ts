@@ -231,6 +231,8 @@ export interface QcDimension {
   layer: string
   score: number
   issues: QcIssue[]
+  /** 引擎原始数据（部分维度含 perChapter：章号 → 原始小分） */
+  raw?: Record<string, unknown>
 }
 
 export interface QcLayer {

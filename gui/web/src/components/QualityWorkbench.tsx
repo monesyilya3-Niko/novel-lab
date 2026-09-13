@@ -15,6 +15,7 @@ import Chip from '@mui/material/Chip'
 import { qualityApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { QualityTaskState, QcReportItem } from '../types'
 import { friendlyError } from '../api/client'
+import QcVisuals from './QcVisuals'
 
 const VERDICT_LABELS: Record<string, string> = {
   PASS: '通过',
@@ -258,6 +259,11 @@ function QcPanel() {
                   {layer.layer} {layer.label}：{layer.score?.toFixed(1)}分（{layer.dimensions.length} 维）
                 </Typography>
               ))}
+            </Box>
+          )}
+          {taskState.status === 'done' && taskState.layers.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <QcVisuals layers={taskState.layers} issues={taskState.issues} />
             </Box>
           )}
           {taskState.reportMd && <Alert severity="success" sx={{ mt: 1 }}>报告已落盘：{taskState.reportMd}</Alert>}

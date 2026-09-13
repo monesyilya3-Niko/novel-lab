@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import CssBaseline from '@mui/material/CssBaseline'
@@ -18,6 +18,7 @@ import { AppProvider, useApp } from './state/AppContext'
 import { useThemeMode } from './state/ThemeModeContext'
 import { buildMuiTheme } from './theme'
 import WorkbenchNav from './layout/WorkbenchNav'
+import type { WorkbenchKey } from './layout/WorkbenchNav'
 import ErrorBoundary from './components/ErrorBoundary'
 import OnboardingWizard, { isOnboarded } from './components/OnboardingWizard'
 
@@ -74,11 +75,30 @@ export default function App() {
   )
 }
 
+const WORKBENCH_ORDER: WorkbenchKey[] = [
+  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings',
+]
+
 function AppShell() {
   const { workbench, setWorkbench, overview } = useApp()
   const wide = useMediaQuery('(min-width: 961px)')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [onboarded, setOnboarded] = useState(isOnboarded)
+
+  // 键盘快捷键：Alt+1..8 切换工作台（输入框聚焦时不劫持）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey) return
+      const n = Number(e.key)
+      if (!Number.isInteger(n) || n < 1 || n > WORKBENCH_ORDER.length) return
+      const target = e.target as HTMLElement | null
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+      e.preventDefault()
+      setWorkbench(WORKBENCH_ORDER[n - 1])
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setWorkbench])
 
 
   const nav = (

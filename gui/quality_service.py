@@ -21,7 +21,9 @@ _log = get_logger("quality_service")
 # 任务注册表
 # ---------------------------------------------------------------------------
 _QUALITY_TASKS: Dict[str, Dict[str, Any]] = {}
-_QUALITY_LOCK = threading.Lock()
+# RLock：qc() 提交路径在外层持锁后还会调 _active_quality_count()（同样拿锁），
+# 非重入 Lock 会自死锁（GUI 质检台 QC 按钮曾因此完全不可用）。
+_QUALITY_LOCK = threading.RLock()
 
 _ACTIVE_STATUSES = frozenset({"pending", "running"})
 _MAX_CONCURRENT_QUALITY = 2

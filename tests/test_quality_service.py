@@ -175,3 +175,29 @@ class TestListQcReports(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestQcSubmitNoDeadlock(unittest.TestCase):
+    """回归：qc() 提交路径的并发检查在持锁状态下调用 _active_quality_count()，
+    非重入 Lock 会自死锁（GUI 质检台 QC 按钮曾因此完全不可用）。
+    修复为 RLock 后，提交必须立即返回 running 态。"""
+
+    def test_qc_submit_returns_promptly(self):
+        # 隔离的小章节目录（corpus 相对目标在 setUpModule 已 patch 到 _TMP）
+        ch_dir = config.CORPUS_DIR / "qa_deadlock_chapters"
+        ch_dir.mkdir(parents=True, exist_ok=True)
+        body = "第一章 测试\n\n" + "他推门而入。\n" * 30
+        (ch_dir / "001.txt").write_text(body, encoding="utf-8")
+        import time
+        t0 = time.time()
+        r = quality_service.qc(target="qa_deadlock_chapters")
+        elapsed = time.time() - t0
+        self.assertEqual(r["status"], "running")
+        self.assertLess(elapsed, 5.0, f"qc() 提交耗时 {elapsed:.1f}s——疑似锁自死锁回归")
+        # 等后台线程收尾，避免泄漏到其他用例
+        for _ in range(30):
+            st = quality_service.qc_task_state(r["task_id"])
+            if st["status"] in ("done", "error"):
+                break
+            time.sleep(1)
+        self.assertEqual(st["status"], "done")
