@@ -10,6 +10,21 @@ novel-lab 是一套本地优先（local-first）的网文创作辅助系统，�
 
 双形态交付：**CLI 引擎**（`novel.py`，20+ 中文子命令）+ **GUI 工作台**（浏览器访问 `http://127.0.0.1:8000/`）。
 
+| 亮色首页 | 暗色首页 | 暗色写作台 |
+|---|---|---|
+| ![亮色首页](docs/screenshots/home-light.png) | ![暗色首页](docs/screenshots/home-dark.png) | ![暗色写作台](docs/screenshots/writing-dark.png) |
+
+## 下载安装
+
+从 [Releases](https://github.com/monesyilya3-Niko/novel-lab/releases) 下载：
+
+| 产物 | 适合 | 用法 |
+|---|---|---|
+| `novel-lab-setup-v*.exe` | 普通用户 | 双击安装（免管理员），开始菜单/桌面快捷方式启动 |
+| `novel-lab-portable-v*.zip` | 绿色党/便携场景 | 解压后双击 `Start.bat` |
+
+两者都**内置 Python 运行时**，无需安装任何依赖；完全本地运行，不上传任何数据。
+
 ## 功能总览
 
 | 模块 | 能力 |
