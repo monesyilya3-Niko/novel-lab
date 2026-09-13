@@ -63,6 +63,18 @@ jobs:
         run: npm run test -- --run
       - name: Type check + build
         run: npm run build
+      - name: E2E smoke (Playwright)
+        working-directory: .
+        run: |
+          # 起本地服务（纯标准库后端，ubuntu 可直接跑），等就绪后跑 e2e
+          python3 -m gui.server --port 8000 --no-browser &
+          for i in $(seq 1 20); do
+            curl -sf http://127.0.0.1:8000/ >/dev/null && break
+            sleep 1
+          done
+          cd gui/web
+          npx playwright install chromium
+          npx playwright test
       - name: Dist freshness check
         run: |
           # dist 预构建产物按设计入库（用户免装 Node）；校验它与 src 同步。

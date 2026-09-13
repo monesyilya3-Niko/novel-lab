@@ -42,7 +42,8 @@ export default function AdvancedWorkbench() {
 function DistillPanel() {
   const [genre, setGenre] = useState('campus-redemption')
   const [status, setStatus] = useState<Record<string, unknown> | null>(null)
-  const [result, setResult] = useState('')
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [rawOpen, setRawOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const loadStatus = async () => {
@@ -56,17 +57,21 @@ function DistillPanel() {
 
   const doDistill = async () => {
     setLoading(true)
-    setResult('')
+    setResult(null)
     try {
       const data = await advancedApi.distillRun(genre)
-      setResult(JSON.stringify(data, null, 2))
+      setResult(data as Record<string, unknown>)
       loadStatus()
     } catch (e) {
-      setResult(friendlyError(e))
+      setResult({ error: friendlyError(e) })
     } finally {
       setLoading(false)
     }
   }
+
+  const books = (result?.books as string[]) ?? []
+  const written = (result?.written as string[]) ?? []
+  const dimensions = (result?.dimensions as string[]) ?? []
 
   return (
     <Box>
@@ -89,9 +94,39 @@ function DistillPanel() {
         </Paper>
       )}
       {result && (
-        <Paper sx={{ p: 1, bgcolor: '#f5f5f5' }}>
-          <pre style={{ fontSize: 12, margin: 0 }}>{result}</pre>
-        </Paper>
+        result.error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>{String(result.error)}</Alert>
+        ) : (
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+              蒸馏完成 — {books.length} 本书目 · {written.length} 个产出
+            </Typography>
+            <Typography variant="caption" color="text.secondary">参与书目</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
+              {books.map((b) => <Chip key={b} label={b} size="small" variant="outlined" />)}
+            </Box>
+            <Typography variant="caption" color="text.secondary">蒸馏维度</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
+              {dimensions.map((d) => <Chip key={d} label={d} size="small" color="primary" variant="outlined" />)}
+            </Box>
+            <Typography variant="caption" color="text.secondary">产出文件（已入库）</Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+              {written.map((w) => (
+                <Typography key={w} component="li" variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+                  {w}
+                </Typography>
+              ))}
+            </Box>
+            <Button size="small" onClick={() => setRawOpen((v) => !v)} sx={{ mt: 1 }}>
+              {rawOpen ? '收起原始 JSON' : '查看原始 JSON'}
+            </Button>
+            {rawOpen && (
+              <Box component="pre" sx={{ fontSize: 12, m: 0, mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1, overflow: 'auto' }}>
+                {JSON.stringify(result, null, 2)}
+              </Box>
+            )}
+          </Paper>
+        )
       )}
     </Box>
   )
@@ -147,6 +182,7 @@ function AssetEditPanel() {
   const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
   const [selected, setSelected] = useState('')
   const [content, setContent] = useState('')
+  const [savedContent, setSavedContent] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -157,8 +193,24 @@ function AssetEditPanel() {
         const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
         setAssets(items)
       })
-      .catch((e) => setError(`加载资产失败: ${e}`))
+      .catch((e) => setError(friendlyError(e)))
   }, [])
+
+  const selectedAsset = assets.find((a) => `${a.kind}:${a.id}` === selected)
+  const dirty = content !== savedContent
+  // 活体 JSON 校验：输入即反馈，保存前就知道合不合法
+  const validation = (() => {
+    if (!content.trim()) return { ok: false, msg: '内容为空' }
+    try {
+      const v = JSON.parse(content)
+      if (typeof v !== 'object' || v === null || Array.isArray(v)) {
+        return { ok: false, msg: '顶层必须是 JSON 对象' }
+      }
+      return { ok: true, msg: 'JSON 合法' }
+    } catch (e) {
+      return { ok: false, msg: `JSON 错误：${e instanceof Error ? e.message : String(e)}` }
+    }
+  })()
 
   const loadAsset = async () => {
     if (!selected) return
@@ -167,7 +219,10 @@ function AssetEditPanel() {
       const [kind, ...rest] = selected.split(':')
       const id = rest.join(':')
       const data = await assetApi.detail(kind, id)
-      setContent(JSON.stringify((data as Record<string, unknown>)?.content ?? data, null, 2))
+      const text = JSON.stringify((data as Record<string, unknown>)?.content ?? data, null, 2)
+      setContent(text)
+      setSavedContent(text)
+      setMessage('')
     } catch (e) {
       setMessage(friendlyError(e))
     } finally {
@@ -176,7 +231,7 @@ function AssetEditPanel() {
   }
 
   const saveAsset = async () => {
-    if (!selected || !content) return
+    if (!selected || !content || !validation.ok) return
     setLoading(true)
     setMessage('')
     try {
@@ -184,6 +239,7 @@ function AssetEditPanel() {
       const [kind, ...rest] = selected.split(':')
       const id = rest.join(':')
       await assetApi.update(kind, id, parsed)
+      setSavedContent(content)
       setMessage('保存成功')
     } catch (e) {
       setMessage(friendlyError(e))
@@ -196,16 +252,27 @@ function AssetEditPanel() {
     <Box>
       <Typography variant="h6" gutterBottom>资产编辑</Typography>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <TextField select label="选择资产" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 300 }} size="small">
+      <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+        <TextField select label="选择资产" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 300, flex: 1 }} size="small">
           {assets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{a.kind}）</MenuItem>)}
         </TextField>
         <Button variant="outlined" onClick={loadAsset} disabled={!selected || loading}>加载</Button>
-        <Button variant="contained" onClick={saveAsset} disabled={!content || loading}>
+        <Button variant="contained" onClick={saveAsset} disabled={!content || loading || !validation.ok || !dirty}>
           {loading ? <CircularProgress size={20} /> : '保存'}
         </Button>
       </Box>
-      {message && <Alert severity={message === '保存成功' ? 'success' : 'error'} sx={{ mb: 2 }}>{message}</Alert>}
+      {selectedAsset && (
+        <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Chip label={selectedAsset.kind} size="small" color="primary" variant="outlined" />
+          <Chip label={validation.ok ? '✓ JSON 合法' : '✗ JSON 错误'} size="small" color={validation.ok ? 'success' : 'error'} variant="outlined" />
+          {dirty && <Chip label="未保存修改" size="small" color="warning" />}
+          {selectedAsset.name && <Typography variant="caption" color="text.secondary">{selectedAsset.name}</Typography>}
+        </Box>
+      )}
+      {!validation.ok && content.trim() && (
+        <Alert severity="warning" sx={{ mb: 1 }}>{validation.msg}</Alert>
+      )}
+      {message && <Alert severity={message === '保存成功' ? 'success' : 'error'} sx={{ mb: 1 }}>{message}</Alert>}
       <TextField
         label="资产 JSON 内容" multiline rows={16} fullWidth value={content}
         onChange={(e) => setContent(e.target.value)} size="small"
