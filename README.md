@@ -1,5 +1,7 @@
 # novel-lab · 网文拆书与创作工作台
 
+[![CI](https://github.com/monesyilya3-Niko/novel-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/monesyilya3-Niko/novel-lab/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 把优秀小说拆成可复用的结构化资产，再用这些资产驱动 AI 创作。
 
 novel-lab 是一套本地优先（local-first）的网文创作辅助系统，覆盖全链路：
@@ -85,7 +87,7 @@ python -m gui.launch
 ## 开发
 
 ```bash
-python run_tests.py        # 全量测试（353 用例基线）
+python run_tests.py        # 全量测试（373 用例基线）
 git config core.hooksPath .githooks   # 启用提交前自动测试
 ```
 
