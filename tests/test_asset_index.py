@@ -147,6 +147,12 @@ class TestAssetIndex(unittest.TestCase):
         self.assertEqual(ov["total_reports"], 2)
         self.assertEqual(ov["total_genre_packs"], 1)
         self.assertIn("book", ov["assets_by_kind"])
+        # total_assets 只统计真资产（ASSET_KINDS），report/book 是虚拟 kind，
+        # 已由 total_reports/total_books 单独展示——计入会虚报（首页曾显示 69 而实际 55）。
+        expected_assets = sum(
+            v for k, v in ov["assets_by_kind"].items() if k not in ("report", "book")
+        )
+        self.assertEqual(ov["total_assets"], expected_assets)
 
 
 class TestListBooksSummary(unittest.TestCase):

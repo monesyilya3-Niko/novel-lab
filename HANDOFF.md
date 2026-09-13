@@ -172,10 +172,10 @@ $PY run_tests.py    # 全量 353 用例
 
 | 优先级 | 事项 |
 |---|---|
-| P1 | 前端主包 1.7MB 代码分割 |
+| ~~P1~~ | ~~前端主包 1.7MB 代码分割~~ **已完成**（2026-09-12 实测：主入口 `index-*.js` 仅 20KB，echarts 隔离为独立 chunk，按视图分块加载） |
+| P2 | npm audit：echarts 5.6.0 XSS（moderate，GHSA-fgmj-fm8m-jvvx，渲染自有统计数据、实际暴露低）；vite 6 依赖的 esbuild dev-server 漏洞（仅开发期，不进产物；修复需跨 vite 8 大版本）。两者均为**有意接受的已知风险**，升级前需回归前端构建与图表渲染 |
 | P2 | 服务常驻实测（`gui/autostart/install_task.bat`） |
 | P2 | 备份/回滚演练 |
-| P2 | npm audit echarts moderate 漏洞 |
 | — | 番茄抓书工具链未实测 |
 
 ---

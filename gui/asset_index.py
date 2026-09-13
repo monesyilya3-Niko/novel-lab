@@ -408,7 +408,14 @@ class AssetIndex:
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 
     def get_overview(self) -> Dict[str, Any]:
-        """首页概览聚合（SQL 聚合为主，空则回退扫描计数）。"""
+        """首页概览聚合（SQL 聚合为主，空则回退扫描计数）。
+
+        total_assets 只统计 ASSET_KINDS（真资产卡）；report/book 是虚拟 kind，
+        已由 total_reports/total_books 单独展示，计入 total_assets 会虚报。
+        """
+        def _asset_total(counts: Dict[str, int]) -> int:
+            return sum(counts.get(k, 0) for k in ASSET_KINDS)
+
         if self._db_ready():
             counts = db.count_by_kind()
             assets_by_kind = self.count_by_kind()
@@ -416,8 +423,7 @@ class AssetIndex:
                 "total_books": len(db.get_books()),
                 "total_genre_packs": counts.get("genre_pack", 0),
                 "total_reports": len(db.list_reports()),
-                # M5：total_assets 必须等于 sum(assets_by_kind)，不能用另一套 counts。
-                "total_assets": sum(assets_by_kind.values()),
+                "total_assets": _asset_total(assets_by_kind),
                 "assets_by_kind": assets_by_kind,
                 "model_configured": self._model_configured(),
                 "recent_activity": [],
@@ -428,7 +434,7 @@ class AssetIndex:
             "total_books": counts.get("book", 0),
             "total_genre_packs": counts.get("genre_pack", 0),
             "total_reports": counts.get("report", 0),
-            "total_assets": sum(counts.values()),
+            "total_assets": _asset_total(counts),
             "assets_by_kind": counts,
             "model_configured": data["model_configured"],
             "recent_activity": [],
