@@ -60,3 +60,6 @@ build/dist/
 
 # 番茄抓书本地 venv（fontTools/numpy/Pillow）
 .niko-fanqie-venv/
+
+# 指纹拆书实验产物（分析报告/指纹库，本地输出不入库；pyproject 打包已排除）
+指纹拆书/
