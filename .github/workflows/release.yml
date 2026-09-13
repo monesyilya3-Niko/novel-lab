@@ -37,7 +37,7 @@ jobs:
             git log --no-merges --pretty=format:"- %s" "$RANGE" | grep -E "^- fix" || echo "- 无"
             echo
             echo "## 🔧 其他"
-            git log --no-merges --pretty=format:"- %s" "$RANGE" | grep -E "^- (perf|refactor|docs|chore|test|ci)" || echo "- 无"
+            git log --no-merges --pretty=format:"- %s" "$RANGE" | grep -E "^- (build|perf|refactor|docs|chore|test|ci)" || echo "- 无"
           } > notes.md
           cat notes.md
       - name: Create GitHub Release
