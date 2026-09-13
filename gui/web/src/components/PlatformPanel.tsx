@@ -10,6 +10,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import { platformApi } from '../api/client'
+import { friendlyError } from '../api/client'
 
 interface Platform {
   id: string
@@ -46,7 +47,7 @@ export default function PlatformPanel() {
       })
       setResult(data)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }

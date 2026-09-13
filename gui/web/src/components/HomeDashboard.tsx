@@ -8,34 +8,35 @@ import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
 import Alert from '@mui/material/Alert'
-import CircularProgress from '@mui/material/CircularProgress'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import StyleIcon from '@mui/icons-material/Style'
 import ArticleIcon from '@mui/icons-material/Article'
 import FolderIcon from '@mui/icons-material/Folder'
+import AsyncBoundary from './common/AsyncBoundary'
 import { useApp } from '../state/AppContext'
 import PieChart from './charts/PieChart'
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
+import { friendlyError } from '../api/client'
 
 const KIND_LABELS: Record<string, string> = {
   voice: '声线卡',
   structure: '结构观测',
   commercial: '商业观测',
   craft: '笔法卡',
-  genre_pack: '题材包',
-  prose_card: '文风卡',
+  genrePack: '题材包',
+  proseCard: '文风卡',
   report: '报告',
   book: '语料',
 }
 
 export default function HomeDashboard() {
   const { overview, refreshOverview, setWorkbench } = useApp()
-  const [loadError, setLoadError] = useState('')
+  const [loadError, setLoadError] = useState<unknown>(null)
 
   useEffect(() => {
     refreshOverview()
-      .then(() => setLoadError(''))
-      .catch((e) => setLoadError(String(e)))
+      .then(() => setLoadError(null))
+      .catch((e) => setLoadError(friendlyError(e)))
   }, [refreshOverview])
 
   const pieData = useMemo(() => {
@@ -47,30 +48,32 @@ export default function HomeDashboard() {
       .map(([k, v]) => ({ name: KIND_LABELS[k] ?? k, value: v }))
   }, [overview])
 
-  if (!overview) {
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', gap: 2 }}>
-        {loadError ? (
-          <>
-            <Typography variant="body2" color="error">加载失败：{loadError}</Typography>
-            <Button variant="outlined" size="small" onClick={() => { setLoadError(''); refreshOverview().catch((e) => setLoadError(String(e))) }}>重试</Button>
-          </>
-        ) : (
-          <CircularProgress />
-        )}
-      </Box>
-    )
-  }
-
-  const kpis = [
+  const kpis = overview ? [
     { label: '已拆书', value: overview.totalBooks, icon: <MenuBookIcon />, color: 'primary.main' },
     { label: '题材包', value: overview.totalGenrePacks, icon: <StyleIcon />, color: '#9c27b0' },
     { label: '报告', value: overview.totalReports, icon: <ArticleIcon />, color: 'success.main' },
     { label: '资产总数', value: overview.totalAssets, icon: <FolderIcon />, color: 'info.main' },
-  ]
+  ] : []
+
+  const retry = () => {
+    setLoadError('')
+    refreshOverview().catch((e) => setLoadError(e))
+  }
 
   return (
     <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+      <AsyncBoundary
+        loading={!overview && !loadError}
+        error={loadError}
+        onRetry={retry}
+        empty={!!overview && overview.totalAssets === 0 && overview.totalBooks === 0}
+        emptyTitle="还没有任何书籍数据"
+        emptyHint="从「分析」页导入一本 TXT 开始拆书"
+        emptyCta={{ label: '去分析拆书', onClick: () => setWorkbench('analysis' as WorkbenchKey) }}
+        minHeight={420}
+      >
+      {overview && (
+      <>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           项目概览
@@ -159,6 +162,9 @@ export default function HomeDashboard() {
           </Card>
         </Grid>
       </Grid>
+      </>
+      )}
+    </AsyncBoundary>
     </Box>
   )
 }

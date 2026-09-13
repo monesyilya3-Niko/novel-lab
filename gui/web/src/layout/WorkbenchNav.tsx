@@ -4,8 +4,6 @@ import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import Badge from '@mui/material/Badge'
-import Tooltip from '@mui/material/Tooltip'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import HomeIcon from '@mui/icons-material/Home'
@@ -32,9 +30,7 @@ export interface WorkbenchNavItem {
   label: string
   icon: React.ReactNode
   /** 建设中占位（阶段一：写作/质检/系统/设置）。 */
-  placeholder?: boolean
   /** 状态徽标数（可选）。 */
-  badge?: number
 }
 
 const NAV_ITEMS: WorkbenchNavItem[] = [
@@ -52,10 +48,9 @@ export interface WorkbenchNavProps {
   active: WorkbenchKey
   onChange: (key: WorkbenchKey) => void
   /** 各工作台徽标（key → number）。 */
-  badges?: Partial<Record<WorkbenchKey, number>>
 }
 
-export default function WorkbenchNav({ active, onChange, badges }: WorkbenchNavProps) {
+export default function WorkbenchNav({ active, onChange }: WorkbenchNavProps) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Typography
@@ -67,7 +62,6 @@ export default function WorkbenchNav({ active, onChange, badges }: WorkbenchNavP
       <List component="nav" disablePadding sx={{ px: 1 }}>
         {NAV_ITEMS.map((item) => {
           const selected = active === item.key
-          const badge = badges?.[item.key]
           const content = (
             <ListItemButton
               selected={selected}
@@ -90,18 +84,9 @@ export default function WorkbenchNav({ active, onChange, badges }: WorkbenchNavP
                 primary={item.label}
                 primaryTypographyProps={{ fontSize: 14, fontWeight: selected ? 600 : 400 }}
               />
-              {badge !== undefined && badge > 0 && (
-                <Badge badgeContent={badge} color="secondary" sx={{ mr: 1 }} />
-              )}
             </ListItemButton>
           )
-          return item.placeholder ? (
-            <Tooltip key={item.key} title="建设中" placement="right">
-              <Box>{content}</Box>
-            </Tooltip>
-          ) : (
-            <React.Fragment key={item.key}>{content}</React.Fragment>
-          )
+          return <React.Fragment key={item.key}>{content}</React.Fragment>
         })}
       </List>
     </Box>

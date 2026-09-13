@@ -1,4 +1,9 @@
 // REST/SSE 客户端封装。统一做 snake_case（后端）↔ camelCase（前端）转换。
+//
+// 架构（P3 重构）：
+// - 单一请求核心 typedRequest<T>：超时（AbortController）、res.ok 校验、
+//   非 JSON 容错、错误中文化、deepToCamel 全局转换。
+// - 领域映射函数消费 camelCase 数据（不再有 snake/camel 双轨 hack）。
 
 import type {
   ApiResponse,
@@ -17,26 +22,51 @@ import type {
 } from '../types'
 
 const BASE = '/api'
+const DEFAULT_TIMEOUT_MS = 30_000
+
+/** 业务错误：带 HTTP 状态码与用户可读的中文消息。 */
+export class ApiError extends Error {
+  readonly code: number
+  constructor(message: string, code: number) {
+    super(message)
+    this.name = 'ApiError'
+    this.code = code
+  }
+}
+
+/** 把底层异常翻译为用户可读中文（AsyncBoundary/告警条统一展示）。 */
+export function friendlyError(e: unknown): string {
+  if (e instanceof ApiError) return e.message
+  if (e instanceof DOMException && e.name === 'AbortError') return '请求超时，请重试'
+  if (e instanceof TypeError) return '无法连接服务——请确认 novel-lab 正在运行'
+  if (e instanceof Error && e.message) return e.message
+  return '发生未知错误，请重试'
+}
 
 // ---------------------------------------------------------------------------
 // 字段转换
 // ---------------------------------------------------------------------------
 
-function toCamel<T>(obj: Record<string, unknown>): T {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    const key = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
-    out[key] = v
+/** 递归把 snake_case 键转为 camelCase（含数组和嵌套对象）。 */
+export function deepToCamel<T>(obj: unknown): T {
+  if (Array.isArray(obj)) return obj.map(deepToCamel) as T
+  if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      const key = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
+      out[key] = deepToCamel(v)
+    }
+    return out as T
   }
-  return out as T
+  return obj as T
 }
 
 function batchFromSnake(b: Record<string, unknown>): Batch {
   return {
-    chapterIndex: b.chapter_index as number,
-    batchIndex: b.batch_index as number,
-    charStart: b.char_start as number,
-    charEnd: b.char_end as number,
+    chapterIndex: b.chapterIndex as number,
+    batchIndex: b.batchIndex as number,
+    charStart: b.charStart as number,
+    charEnd: b.charEnd as number,
     text: (b.text ?? '') as string,
     status: (b.status ?? 'pending') as Batch['status'],
   }
@@ -46,36 +76,60 @@ function chapterFromSnake(c: Record<string, unknown>): Chapter {
   return {
     index: c.index as number,
     title: c.title as string,
-    batchCount: c.batch_count as number,
+    batchCount: c.batchCount as number,
     batches: ((c.batches ?? []) as Record<string, unknown>[]).map(batchFromSnake),
   }
 }
 
 function bookFromSnake(b: Record<string, unknown>): Book {
   return {
-    bookId: b.book_id as string,
+    bookId: b.bookId as string,
     title: b.title as string,
-    sourcePath: b.source_path as string,
-    totalChapters: b.total_chapters as number,
+    sourcePath: b.sourcePath as string,
+    totalChapters: b.totalChapters as number,
     chapters: ((b.chapters ?? []) as Record<string, unknown>[]).map(chapterFromSnake),
   }
 }
 
 // ---------------------------------------------------------------------------
-// 请求封装
+// 请求核心（唯一出口；post/put/del/get 是薄别名）
 // ---------------------------------------------------------------------------
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
-  const json = (await res.json()) as ApiResponse<unknown>
-  if (json.code !== 0) {
-    throw new Error(json.message || `请求失败 (code=${json.code})`)
+async function typedRequest<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<T> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: ctrl.signal,
+    })
+  } finally {
+    clearTimeout(timer)
   }
-  return json.data as T
+
+  let json: ApiResponse<unknown>
+  try {
+    json = (await res.json()) as ApiResponse<unknown>
+  } catch {
+    // 非 JSON 响应（代理/崩溃页等）
+    throw new ApiError(`服务返回异常响应 (HTTP ${res.status})`, res.status)
+  }
+  if (json.code !== 0) {
+    throw new ApiError(json.message || `请求失败 (code=${json.code})`, json.code)
+  }
+  return deepToCamel<T>(json.data)
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  return typedRequest<T>(method, path, body)
 }
 
 // ---------------------------------------------------------------------------
@@ -97,7 +151,7 @@ export async function getChapter(bookId: string, idx: number): Promise<Chapter> 
   return {
     index: data.index as number,
     title: data.title as string,
-    batchCount: data.batch_count as number,
+    batchCount: data.batchCount as number,
     text: data.text as string,
     batches: ((data.batches ?? []) as Record<string, unknown>[]).map(batchFromSnake),
   } as Chapter
@@ -122,6 +176,10 @@ export async function startAnalysis(
   }))
 }
 
+function toCamel<T>(obj: Record<string, unknown>): T {
+  return deepToCamel<T>(obj)
+}
+
 export async function pauseAnalysis(bookId: string): Promise<{ cursor: string }> {
   return toCamel(await request<Record<string, unknown>>('POST', '/analyze/pause', { book_id: bookId }))
 }
@@ -143,7 +201,7 @@ export async function getStatus(bookId?: string): Promise<StatusInfo> {
   const data = await request<Record<string, unknown>>('GET', `/status${q}`)
   return {
     status: data.status as StatusInfo['status'],
-    bookId: data.book_id as string | null,
+    bookId: data.bookId as string | null,
     cursor: data.cursor as string,
     done: data.done as number,
     total: data.total as number,
@@ -153,7 +211,7 @@ export async function getStatus(bookId?: string): Promise<StatusInfo> {
 export async function getModels(): Promise<{ models: ModelInfo[]; anyConfigured: boolean }> {
   const data = await request<Record<string, unknown>>('GET', '/config/models')
   const models = ((data.models ?? []) as Record<string, unknown>[]).map((m) => toCamel<ModelInfo>(m))
-  return { models, anyConfigured: data.any_configured as boolean }
+  return { models, anyConfigured: data.anyConfigured as boolean }
 }
 
 export async function getAsset(
@@ -183,13 +241,13 @@ function assetItemFromSnake(a: Record<string, unknown>): AssetItem {
     path: a.path as string,
     size: a.size as number,
     mtime: a.mtime as number,
-    bookId: (a.book_id ?? undefined) as string | undefined,
+    bookId: (a.bookId ?? undefined) as string | undefined,
   }
 }
 
 function chapterScoreFromSnake(c: Record<string, unknown>): ChapterScore {
   return {
-    chapterIndex: c.chapter_index as number,
+    chapterIndex: c.chapterIndex as number,
     title: c.title as string,
     consistency: c.consistency as number,
     quality: c.quality as number,
@@ -197,8 +255,7 @@ function chapterScoreFromSnake(c: Record<string, unknown>): ChapterScore {
 }
 
 export async function getOverview(): Promise<Overview> {
-  const data = await request<Record<string, unknown>>('GET', '/overview')
-  return toCamel<Overview>(data)
+  return request<Overview>('GET', '/overview')
 }
 
 export async function listAssets(kind?: string, offset = 0, limit = 50): Promise<AssetListResult> {
@@ -230,14 +287,14 @@ export async function getReport(reportId: string): Promise<{ id: string; name: s
 export async function getBookResults(bookId: string): Promise<BookResults> {
   const data = await request<Record<string, unknown>>('GET', `/book/${bookId}/results`)
   return {
-    bookId: data.book_id as string,
+    bookId: data.bookId as string,
     title: data.title as string,
-    voiceCard: (data.voice_card ?? {}) as Record<string, unknown>,
+    voiceCard: (data.voiceCard ?? {}) as Record<string, unknown>,
     structure: (data.structure ?? {}) as Record<string, unknown>,
     commercial: (data.commercial ?? {}) as Record<string, unknown>,
-    craftCard: (data.craft_card ?? {}) as Record<string, unknown>,
-    chapterScores: ((data.chapter_scores ?? []) as Record<string, unknown>[]).map(chapterScoreFromSnake),
-    reportIds: (data.report_ids ?? []) as string[],
+    craftCard: (data.craftCard ?? {}) as Record<string, unknown>,
+    chapterScores: ((data.chapterScores ?? []) as Record<string, unknown>[]).map(chapterScoreFromSnake),
+    reportIds: (data.reportIds ?? []) as string[],
   }
 }
 
@@ -279,70 +336,21 @@ export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEven
         done: data.done as number,
         total: data.total as number,
       })
-    } catch {
-      // 忽略无法解析的帧
+    } catch (e) {
+      console.warn('[sse] 无法解析的事件帧', e)
     }
   }
   return () => es.close()
 }
 
 // ---------------------------------------------------------------------------
-// W16/W17 阶段二：写作（M2）+ 质检（M3）
+// 阶段二：写作（M2）+ 质检（M3）——薄别名组
 // ---------------------------------------------------------------------------
 
-/** 递归把 snake_case 键转为 camelCase（含数组和嵌套对象）。 */
-export function deepToCamel<T>(obj: unknown): T {
-  if (Array.isArray(obj)) return obj.map(deepToCamel) as T
-  if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
-    const out: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      const key = k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())
-      out[key] = deepToCamel(v)
-    }
-    return out as T
-  }
-  return obj as T
-}
-
-async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
-  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
-  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
-  return deepToCamel<T>(json.data)
-}
-
-async function put<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
-  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
-  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
-  return deepToCamel<T>(json.data)
-}
-
-async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { method: 'DELETE' })
-  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
-  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
-  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
-  return deepToCamel<T>(json.data)
-}
-
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`)
-  if (!res.ok && res.status >= 500) throw new Error(`HTTP ${res.status}`)
-  const json = await res.json().catch(() => ({ code: res.status, message: `HTTP ${res.status}`, data: null }))
-  if (json.code !== 0) throw new Error(json.message || `HTTP ${res.status}`)
-  return deepToCamel<T>(json.data)
-}
+const post = <T>(path: string, body?: unknown) => typedRequest<T>('POST', path, body)
+const put = <T>(path: string, body?: unknown) => typedRequest<T>('PUT', path, body)
+const del = <T>(path: string) => typedRequest<T>('DELETE', path)
+const get = <T>(path: string) => typedRequest<T>('GET', path)
 
 // 写作
 export const writingApi = {
@@ -419,12 +427,12 @@ export function subscribeTaskEvents(taskId: string, onEvent: (e: Record<string, 
       const data = JSON.parse(msg.data) as Record<string, unknown>
       if (data.status === 'connected') return
       onEvent(data)
-    } catch {
-      // 忽略
+    } catch (e) {
+      console.warn('[sse] 无法解析的任务事件', e)
     }
   }
   es.onerror = () => {
-    // SSE 断线：EventSource 会自动重连，此处仅记录
+    // SSE 断线：EventSource 会自动重连
   }
   return () => es.close()
 }

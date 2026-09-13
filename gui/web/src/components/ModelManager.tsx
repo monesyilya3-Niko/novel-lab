@@ -19,6 +19,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import KeyIcon from '@mui/icons-material/Key'
 import { modelApi } from '../api/client'
+import { friendlyError } from '../api/client'
 
 interface ModelInfo {
   id: string
@@ -63,7 +64,7 @@ export default function ModelManager() {
       const data = await modelApi.list()
       setModels((data.models ?? []) as ModelInfo[])
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -124,7 +125,7 @@ export default function ModelManager() {
       setShowAdd(false)
       loadModels()
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     }
   }
 
@@ -135,7 +136,7 @@ export default function ModelManager() {
       setMessage(`模型 ${id} 已删除`)
       loadModels()
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     }
   }
 
@@ -148,7 +149,7 @@ export default function ModelManager() {
       setApiKey('')
       loadModels()
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     }
   }
 
@@ -163,7 +164,7 @@ export default function ModelManager() {
         setError(`模型 ${id} 连接失败: ${String(data.error ?? '未知错误')}`)
       }
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setTesting(null)
     }

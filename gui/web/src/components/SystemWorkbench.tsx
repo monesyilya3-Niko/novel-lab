@@ -11,6 +11,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import { systemApi } from '../api/client'
 import ModelManager from './ModelManager'
+import { friendlyError } from '../api/client'
 
 export default function SystemWorkbench() {
   const [tab, setTab] = useState(0)
@@ -48,7 +49,7 @@ function SystemStatusPanel() {
       const data = await systemApi.status()
       setStatus(data as Record<string, unknown>)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -80,9 +81,9 @@ function SystemStatusPanel() {
 
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>磁盘占用</Typography>
-        <Typography variant="body2">资产：{fmtSize(Number(disk.assetsBytes ?? disk.assets_bytes ?? 0))} | 报告：{fmtSize(Number(disk.reportsBytes ?? disk.reports_bytes ?? 0))}</Typography>
-        <Typography variant="body2">语料：{fmtSize(Number(disk.corpusBytes ?? disk.corpus_bytes ?? 0))} | 写作：{fmtSize(Number(disk.novelBytes ?? disk.novel_bytes ?? 0))}</Typography>
-        <Typography variant="body2">数据库：{fmtSize(Number(disk.dbBytes ?? disk.db_bytes ?? 0))} | 总计：{fmtSize(Number(disk.totalBytes ?? disk.total_bytes ?? 0))}</Typography>
+        <Typography variant="body2">资产：{fmtSize(Number(disk.assetsBytes ?? 0))} | 报告：{fmtSize(Number(disk.reportsBytes ?? 0))}</Typography>
+        <Typography variant="body2">语料：{fmtSize(Number(disk.corpusBytes ?? 0))} | 写作：{fmtSize(Number(disk.novelBytes ?? 0))}</Typography>
+        <Typography variant="body2">数据库：{fmtSize(Number(disk.dbBytes ?? 0))} | 总计：{fmtSize(Number(disk.totalBytes ?? 0))}</Typography>
       </Paper>
 
       <Paper sx={{ p: 2, mb: 2 }}>
@@ -131,7 +132,7 @@ function CompliancePanel() {
       const data = await systemApi.compliance()
       setResults(data as Record<string, unknown>)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -186,14 +187,14 @@ function SettingsPanel() {
   useEffect(() => {
     systemApi.settings()
       .then((data) => setSettings(data as Record<string, unknown>))
-      .catch((e) => setError(String(e)))
+      .catch((e) => setError(friendlyError(e)))
   }, [])
 
   if (error) return <Alert severity="error">{error}</Alert>
   if (!settings) return <CircularProgress />
 
   const paths = (settings.paths ?? {}) as Record<string, string>
-  const env = (settings.envOverrides ?? settings.env_overrides ?? {}) as Record<string, string>
+  const env = (settings.envOverrides ?? {}) as Record<string, string>
 
   return (
     <Box>

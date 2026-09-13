@@ -14,6 +14,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import * as api from '../api/client'
 import type { AssetItem, AssetKind } from '../types'
+import { friendlyError } from '../api/client'
 
 const KIND_LABELS: Record<AssetKind, string> = {
   voice: '声线卡',
@@ -58,7 +59,7 @@ export default function AssetLibrary() {
       setItems(res.items)
       setTotal(res.total)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -77,7 +78,7 @@ export default function AssetLibrary() {
       const d = await api.getAssetDetail(item.kind, item.id)
       setDetail(d)
     } catch (e) {
-      setDetail({ error: String(e) })
+      setDetail({ error: friendlyError(e) })
     } finally {
       setDetailLoading(false)
     }

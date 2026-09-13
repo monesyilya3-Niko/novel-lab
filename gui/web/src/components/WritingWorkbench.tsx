@@ -15,6 +15,7 @@ import Divider from '@mui/material/Divider'
 import { writingApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
 import StylePanel from './StylePanel'
+import { friendlyError } from '../api/client'
 
 export default function WritingWorkbench() {
   const [tab, setTab] = useState(0)
@@ -73,7 +74,7 @@ function InjectPanel() {
       const r = await writingApi.inject({ voice, genre_pack: genrePack || undefined, craft: craft || undefined, save: true })
       setPrompt(r.prompt)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -175,7 +176,7 @@ function GeneratePanel() {
         setRunning(false)
       }
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
       setRunning(false)
     }
   }
@@ -188,7 +189,7 @@ function GeneratePanel() {
       })
       setImportResult(JSON.stringify(r, null, 2))
     } catch (e) {
-      setImportResult(String(e))
+      setImportResult(friendlyError(e))
     }
   }
 
@@ -287,7 +288,7 @@ function ScorePanel() {
       const r = await writingApi.score({ voice, text })
       setResult(r)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -364,7 +365,7 @@ function AssemblePanel() {
       const r = await writingApi.assemble({ name, genre })
       setResult(JSON.stringify(r, null, 2))
     } catch (e) {
-      setResult(String(e))
+      setResult(friendlyError(e))
     } finally {
       setLoading(false)
     }

@@ -1,9 +1,11 @@
-// ECharts 统一封装：主题 / initOpts / notMerge / resize 处理。
-// 内部包裹 ReactECharts，收敛图表初始化差异，其余图表组件继承本组件。
-import React, { useMemo } from 'react'
-import ReactECharts from 'echarts-for-react'
+// ECharts 统一封装：直接使用 echarts 原生 API（弃用 echarts-for-react 包装——
+// 其实例化路径在 echarts 6 + Vite 7 组合下静默失败且无报错，自研更可控）。
+// 统一主题 / setOption / resize / dispose，其余图表组件继承本组件。
+import { useEffect, useMemo, useRef } from 'react'
+import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { chartDefaults } from '../../theme'
+import { useThemeMode } from '../../state/ThemeModeContext'
 
 export interface BaseChartProps {
   /** ECharts option（series/data 由调用方传入）。 */
@@ -22,7 +24,7 @@ export interface BaseChartProps {
 }
 
 /**
- * 基础图表组件：统一 initOpts（背景透明 / 字体 / 色板）、notMerge、resize。
+ * 基础图表组件：统一 initOpts（背景透明 / 字体 / 色板）、setOption、resize。
  * 所有具体图表（RadarChart / BarChart / GaugeChart / PieChart）复用此组件，
  * 保证视觉与交互一致。
  */
@@ -35,30 +37,59 @@ export default function BaseChart({
   ariaLabel,
   style,
 }: BaseChartProps) {
-  // 合并默认文本样式与色板，调用方 option 优先级更高。
+  const { isDark } = useThemeMode()
+  const elRef = useRef<HTMLDivElement>(null)
+  const instRef = useRef<echarts.ECharts | null>(null)
+
+  // 合并默认文本样式与色板（随暗色模式联动），调用方 option 优先级更高。
   const merged = useMemo<EChartsOption>(
     () => ({
-      color: [...chartDefaults.color],
-      textStyle: chartDefaults.textStyle,
+      color: [...chartDefaults(isDark).color],
+      textStyle: chartDefaults(isDark).textStyle,
       ...option,
     }),
-    [option],
+    [option, isDark],
   )
 
+  // 初始化 / dispose（仅挂载期执行一次）
+  useEffect(() => {
+    if (!elRef.current) return
+    const inst = echarts.init(elRef.current, undefined, {
+      renderer: 'canvas',
+      locale: 'ZH',
+    })
+    instRef.current = inst
+    return () => {
+      inst.dispose()
+      instRef.current = null
+    }
+  }, [])
+
+  // option / 主题变化 → setOption
+  useEffect(() => {
+    instRef.current?.setOption(merged, notMerge)
+  }, [merged, notMerge])
+
+  // 容器尺寸自适应
+  useEffect(() => {
+    if (disableResize) return
+    const ro = new ResizeObserver(() => instRef.current?.resize())
+    if (elRef.current) ro.observe(elRef.current)
+    return () => ro.disconnect()
+  }, [disableResize])
+
+  // loading 状态
+  useEffect(() => {
+    if (loading) instRef.current?.showLoading()
+    else instRef.current?.hideLoading()
+  }, [loading])
+
   return (
-    <div role="img" aria-label={ariaLabel} style={{ width: '100%', ...style }}>
-      <ReactECharts
-        option={merged}
-        notMerge={notMerge}
-        lazyUpdate
-        showLoading={loading}
-        style={{ height, width: '100%' }}
-        opts={{
-          renderer: 'canvas',
-          locale: 'ZH',
-        }}
-        {...(disableResize ? {} : { autoResize: true })}
-      />
-    </div>
+    <div
+      ref={elRef}
+      role="img"
+      aria-label={ariaLabel}
+      style={{ width: '100%', height, ...style }}
+    />
   )
 }

@@ -14,6 +14,7 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Chip from '@mui/material/Chip'
 import { qualityApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { QualityTaskState, QcReportItem } from '../types'
+import { friendlyError } from '../api/client'
 
 export default function QualityWorkbench() {
   const [tab, setTab] = useState(0)
@@ -67,7 +68,7 @@ function CheckPanel() {
       const r = await qualityApi.check(body)
       setResult(r)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -139,7 +140,7 @@ function BookQualityPanel() {
       const r = await qualityApi.book({ target })
       setResult(r)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -218,7 +219,7 @@ function QcPanel() {
         setRunning(false)
       }
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
       setRunning(false)
     }
   }

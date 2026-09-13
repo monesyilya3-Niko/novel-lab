@@ -19,7 +19,9 @@ import * as api from '../api/client'
 import BarChart from './charts/BarChart'
 import RadarChart from './charts/RadarChart'
 import MarkdownReport from './MarkdownReport'
-import { palette } from '../theme'
+import { chartSeries, palette } from '../theme'
+import { useThemeMode } from '../state/ThemeModeContext'
+import { friendlyError } from '../api/client'
 
 // 资产卡展示（字段级键值对，避免裸 JSON 堆叠）。
 function AssetCard({ title, data, color }: { title: string; data: Record<string, unknown>; color: string }) {
@@ -123,6 +125,8 @@ function AlertBox({ severity, children }: { severity: 'error' | 'info' | 'warnin
 type ResultTab = 'overview' | 'scores' | 'reports'
 
 export default function AnalysisResultView() {
+  const { isDark } = useThemeMode()
+  const series = chartSeries(isDark)
   const { book, bookResults, loadBookResults } = useApp()
   const [tab, setTab] = useState<ResultTab>('overview')
   const [loading, setLoading] = useState(false)
@@ -135,7 +139,7 @@ export default function AnalysisResultView() {
     setLoading(true)
     setError('')
     loadBookResults(bookId)
-      .catch((e) => setError(String(e)))
+      .catch((e) => setError(friendlyError(e)))
       .finally(() => setLoading(false))
   }, [bookId, loadBookResults])
 
@@ -230,16 +234,16 @@ export default function AnalysisResultView() {
       {tab === 'overview' && (
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
-            <AssetCard title="声线卡" data={bookResults.voiceCard} color={palette.chartSeries[0]} />
+            <AssetCard title="声线卡" data={bookResults.voiceCard} color={series[0]} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <AssetCard title="结构观测" data={bookResults.structure} color={palette.chartSeries[1]} />
+            <AssetCard title="结构观测" data={bookResults.structure} color={series[1]} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <AssetCard title="商业观测" data={bookResults.commercial} color={palette.chartSeries[2]} />
+            <AssetCard title="商业观测" data={bookResults.commercial} color={series[2]} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <AssetCard title="笔法卡" data={bookResults.craftCard} color={palette.chartSeries[3]} />
+            <AssetCard title="笔法卡" data={bookResults.craftCard} color={series[3]} />
           </Grid>
         </Grid>
       )}

@@ -8,6 +8,7 @@ import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import { styleApi } from '../api/client'
+import { friendlyError } from '../api/client'
 
 interface StyleCard {
   name: string
@@ -42,7 +43,7 @@ export default function StylePanel() {
       const data = await styleApi.analyze({ text, name: styleName || '未命名' })
       setResult(data)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -55,7 +56,7 @@ export default function StylePanel() {
       setMessage(`风格「${styleName}」已保存`)
       loadStyles()
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     }
   }
 
@@ -65,7 +66,7 @@ export default function StylePanel() {
       setMessage(`风格「${name}」已删除`)
       loadStyles()
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     }
   }
 

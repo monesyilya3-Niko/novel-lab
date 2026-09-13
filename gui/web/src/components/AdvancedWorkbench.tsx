@@ -13,6 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import { advancedApi, assetApi } from '../api/client'
 import PlatformPanel from './PlatformPanel'
+import { friendlyError } from '../api/client'
 
 export default function AdvancedWorkbench() {
   const [tab, setTab] = useState(0)
@@ -61,7 +62,7 @@ function DistillPanel() {
       setResult(JSON.stringify(data, null, 2))
       loadStatus()
     } catch (e) {
-      setResult(String(e))
+      setResult(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -107,7 +108,7 @@ function BatchStatusPanel() {
   useEffect(() => {
     advancedApi.batchStatus()
       .then((data) => setStatus(data as Record<string, unknown>))
-      .catch((e) => setError(String(e)))
+      .catch((e) => setError(friendlyError(e)))
   }, [])
 
   const books = (status?.books ?? []) as Record<string, unknown>[]
@@ -168,7 +169,7 @@ function AssetEditPanel() {
       const data = await assetApi.detail(kind, id)
       setContent(JSON.stringify((data as Record<string, unknown>)?.content ?? data, null, 2))
     } catch (e) {
-      setMessage(String(e))
+      setMessage(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -185,7 +186,7 @@ function AssetEditPanel() {
       await assetApi.update(kind, id, parsed)
       setMessage('保存成功')
     } catch (e) {
-      setMessage(String(e))
+      setMessage(friendlyError(e))
     } finally {
       setLoading(false)
     }

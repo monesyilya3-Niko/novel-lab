@@ -10,6 +10,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Chip from '@mui/material/Chip'
 import { systemApi } from '../api/client'
+import { friendlyError } from '../api/client'
 
 interface Settings {
   port: number
@@ -50,7 +51,7 @@ export default function SettingsWorkbench() {
       setDefaultWords(wr?.defaultWords ?? 2400)
       setMaxAttempts(wr?.maxAttempts ?? 3)
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
@@ -77,7 +78,7 @@ export default function SettingsWorkbench() {
       setSettings(data as unknown as Settings)
       setMessage('设置已保存')
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setSaving(false)
     }
@@ -97,7 +98,7 @@ export default function SettingsWorkbench() {
       setMaxAttempts(3)
       setMessage('已重置为默认值')
     } catch (e) {
-      setError(String(e))
+      setError(friendlyError(e))
     } finally {
       setSaving(false)
     }
