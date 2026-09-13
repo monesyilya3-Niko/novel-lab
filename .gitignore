@@ -56,3 +56,4 @@ gui/state/
 
 # MiMoCode 本地配置目录（技能安装等，不入库）
 .mimocode/
+build/dist/
