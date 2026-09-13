@@ -2,6 +2,15 @@
 
 本文件记录面向用户的显著变更。1.0.0 起由 [release-please](https://github.com/googleapis/release-please) 按 Conventional Commits 自动维护。
 
+## [0.1.1](https://github.com/monesyilya3-Niko/novel-lab/compare/v0.1.0...v0.1.1) (2026-09-13)
+
+
+### Miscellaneous
+
+* 三次验证 release-please（JSON body PATCH 后） ([43ded61](https://github.com/monesyilya3-Niko/novel-lab/commit/43ded6124cbf1d1eeca9f85fe1522553a3333243))
+* 二次验证 release-please 权限设置 ([d02e5f5](https://github.com/monesyilya3-Niko/novel-lab/commit/d02e5f50ccdd57ea85bbb676a0306a5b988eaa5b))
+* 触发 release-please 验证（v0.1.0 基线后首跑） ([d3a8a8a](https://github.com/monesyilya3-Niko/novel-lab/commit/d3a8a8a843a657501f61168067d3a525df199f5d))
+
 ## [Unreleased]
 
 ### Fixed
