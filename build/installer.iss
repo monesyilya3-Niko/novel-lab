@@ -28,7 +28,6 @@ ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
-UninstallDisplayIcon={app}\app\gui\web\dist\favicon.ico
 
 [Tasks]
 Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务："
