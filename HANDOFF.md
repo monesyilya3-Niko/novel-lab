@@ -176,7 +176,7 @@ $PY run_tests.py    # 全量 353 用例
 | ~~P2~~ | ~~npm audit echarts/esbuild 漏洞~~ **已清零**（2026-09-13：echarts 6.1.0 + vite 7 升级后 `npm audit` 0 vulnerabilities） |
 | P2 | 服务常驻实测（`gui/autostart/install_task.bat`；安装器/绿色版已提供正式启动方式，此项降级为可选） |
 | ~~P2~~ | ~~备份/回滚演练~~ **已加固**（2026-09-13：启动 + 每日首次请求自动备份，`gui/auto_backup.py`；备份/回滚 CLI 原有） |
-| — | 番茄抓书工具链未实测 |
+| ~~—~~ | ~~番茄抓书工具链未实测~~ **已实测**（2026-09-13：单章探针全通——依赖导入/字体映射 362 条/单章抓取解码 98 段 2355 字；venv 用 `uv venv .niko-fanqie-venv` + 阿里云源装 fonttools/numpy/pillow，探针脚本 `corpus/fanqie/_probe_toolchain.py`） |
 | — | lint 债治理清单：`docs/lint-debt.md`（ruff/ESLint 基线豁免项与治理时机） |
 
 ## 九、开发期工具链（2026-09-13 起）
