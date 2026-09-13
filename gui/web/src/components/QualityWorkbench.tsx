@@ -197,7 +197,7 @@ function QcPanel() {
   const sseUnsubRef = useRef<(() => void) | null>(null)
 
   useEffect(() => {
-    qualityApi.reports().then(setReports).catch(() => setReports([]))
+    qualityApi.reports().then((rs) => setReports(Array.isArray(rs) ? rs : [])).catch(() => setReports([]))
     return () => { sseUnsubRef.current?.() }
   }, [])
 
@@ -218,7 +218,7 @@ function QcPanel() {
               setRunning(false)
               unsub()
               sseUnsubRef.current = null
-              qualityApi.reports().then(setReports).catch(() => setReports([]))
+              qualityApi.reports().then((rs) => setReports(Array.isArray(rs) ? rs : [])).catch(() => setReports([]))
             }
           } catch { /* ignore */ }
         })
@@ -252,7 +252,7 @@ function QcPanel() {
           </Typography>
           {(taskState.status === 'running' || taskState.status === 'pending') && <LinearProgress sx={{ mt: 1 }} />}
           {taskState.status === 'error' && <Alert severity="error" sx={{ mt: 1 }}>{taskState.error}</Alert>}
-          {taskState.layers.length > 0 && (
+          {(taskState.layers ?? []).length > 0 && (
             <Box sx={{ mt: 1 }}>
               {taskState.layers.map((layer) => (
                 <Typography key={layer.layer} variant="body2">
@@ -261,9 +261,9 @@ function QcPanel() {
               ))}
             </Box>
           )}
-          {taskState.status === 'done' && taskState.layers.length > 0 && (
+          {taskState.status === 'done' && (taskState.layers ?? []).length > 0 && (
             <Box sx={{ mt: 2 }}>
-              <QcVisuals layers={taskState.layers} issues={taskState.issues} />
+              <QcVisuals layers={taskState.layers ?? []} issues={taskState.issues ?? []} />
             </Box>
           )}
           {taskState.reportMd && <Alert severity="success" sx={{ mt: 1 }}>报告已落盘：{taskState.reportMd}</Alert>}

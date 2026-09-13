@@ -18,10 +18,16 @@ const LAYER_COLORS: Record<string, string> = {
 
 const PASS_LINE = 70
 
-export default function QcVisuals({ layers, issues }: { layers: QcLayer[]; issues: QcIssue[] }) {
+export default function QcVisuals({
+  layers = [],
+  issues = [],
+}: {
+  layers?: QcLayer[]
+  issues?: QcIssue[]
+}) {
   // ---- 12 维总览（条形）----
   const barOption = useMemo<EChartsOption | null>(() => {
-    const dims = layers.flatMap((l) =>
+    const dims = (layers ?? []).flatMap((l) =>
       l.dimensions.map((d) => ({ label: `${l.label}·${d.label}`, score: d.score, layer: l.layer })),
     )
     if (!dims.length) return null
@@ -57,8 +63,8 @@ export default function QcVisuals({ layers, issues }: { layers: QcLayer[]; issue
 
   // ---- 章节×维度热力图（仅含有 raw.perChapter 的维度，维度内归一）----
   const heat = useMemo(() => {
-    const dims = layers.flatMap((l) =>
-      l.dimensions.map((d) => ({ label: `${l.label}·${d.label}`, raw: d.raw as Record<string, unknown> | undefined })),
+    const dims = (layers ?? []).flatMap((l) =>
+      (l.dimensions ?? []).map((d) => ({ label: `${l.label}·${d.label}`, raw: d.raw as Record<string, unknown> | undefined })),
     )
     const withPc = dims
       .map((d) => {
@@ -109,7 +115,7 @@ export default function QcVisuals({ layers, issues }: { layers: QcLayer[]; issue
   // ---- 章节问题分布（按严重度堆叠）----
   const issueOption = useMemo<EChartsOption | null>(() => {
     const byChapter = new Map<number, Record<string, number>>()
-    for (const i of issues) {
+    for (const i of issues ?? []) {
       if (i.chapter == null) continue
       const rec = byChapter.get(i.chapter) ?? {}
       rec[i.severity] = (rec[i.severity] ?? 0) + 1
