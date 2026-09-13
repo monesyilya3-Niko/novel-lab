@@ -12,6 +12,8 @@
 ### Changed
 
 - 根目录 QA 调试产物归档至 `docs/archive/qa-artifacts/`
+- 根目录 Agent 协作文档（HANDOFF / RULES / PROJECT_LAW / PROJECT_SUMMARY）归档至 `docs/internal/`；无许可第三方参考内容与本地拆书实验产物移出版本库（仅本地留存，已加入 `.gitignore`）
+- README 新增 CI / License 徽章；截图区移除「暗色首页」（首页暂不响应暗色模式，修复后补回）
 
 ## [1.0.0-baseline] - 2026-09-13
 
