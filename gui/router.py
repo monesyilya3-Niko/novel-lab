@@ -1,7 +1,8 @@
 """REST 路由表 + 请求分发 + JSON 序列化 + 统一错误码。
 
 响应统一包裹：``{"code": 0, "data": ..., "message": ""}``。
-code 约定：0 成功；400 参数错误；404 资源不存在；409 状态冲突；500 内部错误。
+code 约定：0 成功；400 参数错误；403 路径越权（导入限定项目根内）；
+404 资源不存在；409 状态冲突；413 请求体超限（>10MB）；500 内部错误。
 """
 from __future__ import annotations
 
@@ -56,13 +57,17 @@ def _h_get_book(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]
 
 def _h_get_chapter(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
     book_id = params["book_id"]
-    idx = int(params["idx"])
+    idx = _safe_int(params.get("idx"), -1, "idx")
+    if idx < 0:
+        raise ServiceError("缺少或非法 idx", 400)
     return ok(services.get_chapter(book_id, idx))
 
 
 def _h_split_batch(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     book_id = params["book_id"]
-    idx = int(params["idx"])
+    idx = _safe_int(params.get("idx"), -1, "idx")
+    if idx < 0:
+        raise ServiceError("缺少或非法 idx", 400)
     batch_size = (body or {}).get("batch_size")
     return ok(services.split_chapter_batches(book_id, idx, batch_size))
 

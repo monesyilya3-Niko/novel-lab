@@ -1,6 +1,8 @@
-# API 密钥绝不进版本库
+# API 密钥绝不进版本库（Windows 下 .secrets.bin 为 DPAPI 密文，同样不入库）
 config/.secrets.json
 **/.secrets.json
+config/.secrets.bin
+**/.secrets.bin
 
 # 范文原文（版权材料，只在本地留存）
 corpus/

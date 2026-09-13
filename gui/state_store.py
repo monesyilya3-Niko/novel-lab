@@ -14,7 +14,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from gui import config
+from gui.logging_setup import get_logger
 from gui import db
+
+_log = get_logger("state_store")
 
 SCHEMA_VERSION = 1
 
@@ -92,7 +95,7 @@ def load_state(book_id: str) -> Dict[str, Any]:
         with path.open("r", encoding="utf-8") as fh:
             return json.load(fh)
     except (json.JSONDecodeError, OSError) as exc:
-        print(f"[warn] 状态文件损坏，按空白状态重建 book_id={book_id} ({path.name}): {exc}")
+        _log.warning(f"状态文件损坏，按空白状态重建 book_id={book_id} ({path.name}): {exc}")
         return new_state(book_id, "")
 
 
@@ -122,7 +125,7 @@ def save_state(state: Dict[str, Any]) -> None:
     try:
         upsert_task(state)
     except Exception as exc:  # noqa: BLE001 — 库未初始化/损坏时静默降级。
-        print(f"[warn] SQLite 权威写入失败（降级副本已落盘）book_id="
+        _log.warning(f"SQLite 权威写入失败（降级副本已落盘）book_id="
               f"{state.get('book_id')}: {exc}")
 
 
@@ -224,7 +227,7 @@ def list_books_summary() -> List[Dict[str, Any]]:
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 跳过无法解析的状态文件 {fp.name}: {exc}")
+            _log.warning(f"跳过无法解析的状态文件 {fp.name}: {exc}")
             continue
         if not isinstance(data, dict) or "book_id" not in data:
             continue
@@ -292,7 +295,7 @@ def load_task(book_id: str) -> Dict[str, Any]:
             try:
                 batch_state = json.loads(batch_state) if batch_state else {}
             except json.JSONDecodeError as exc:
-                print(f"[warn] SQLite batch_state 损坏，批进度丢失 book_id={book_id}: {exc}")
+                _log.warning(f"SQLite batch_state 损坏，批进度丢失 book_id={book_id}: {exc}")
                 batch_state = {}
         return {
             "book_id": row.get("book_id", book_id),

@@ -76,25 +76,13 @@ def save_models(cfg: dict):
 
 
 def load_secrets() -> dict:
-    if not SECRETS_FILE.exists():
-        return {}
-    try:
-        with open(SECRETS_FILE, encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
-        return {}
+    import secret_store
+    return secret_store.load_secrets()
 
 
 def save_secrets(secrets: dict):
-    _ensure_config_dir()
-    with open(SECRETS_FILE, "w", encoding="utf-8") as f:
-        json.dump(secrets, f, ensure_ascii=False, indent=2)
-    # 尽量收紧权限（Windows 上 chmod 效果有限，但 Linux/Mac 有效）
-    try:
-        os.chmod(SECRETS_FILE, 0o600)
-    except Exception:
-        pass
+    import secret_store
+    secret_store.save_secrets(secrets)
 
 
 def resolve_api_key(model_id: str, model: dict) -> str:

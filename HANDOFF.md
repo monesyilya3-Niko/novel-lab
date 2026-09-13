@@ -175,7 +175,7 @@ $PY run_tests.py    # 全量 353 用例
 | ~~P1~~ | ~~前端主包 1.7MB 代码分割~~ **已完成**（2026-09-12 实测：主入口 `index-*.js` 仅 20KB，echarts 隔离为独立 chunk，按视图分块加载） |
 | ~~P2~~ | ~~npm audit echarts/esbuild 漏洞~~ **已清零**（2026-09-13：echarts 6.1.0 + vite 7 升级后 `npm audit` 0 vulnerabilities） |
 | P2 | 服务常驻实测（`gui/autostart/install_task.bat`） |
-| P2 | 备份/回滚演练 |
+| ~~P2~~ | ~~备份/回滚演练~~ **已加固**（2026-09-13：启动 + 每日首次请求自动备份，`gui/auto_backup.py`；备份/回滚 CLI 原有） |
 | — | 番茄抓书工具链未实测 |
 | — | lint 债治理清单：`docs/lint-debt.md`（ruff/ESLint 基线豁免项与治理时机） |
 

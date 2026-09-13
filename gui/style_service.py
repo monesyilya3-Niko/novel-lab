@@ -11,7 +11,10 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from gui import config
+from gui.logging_setup import get_logger
 from gui.services import ServiceError
+
+_log = get_logger("style_service")
 
 # 风格资产目录
 STYLES_DIR = config.ASSETS_ROOT / "styles"
@@ -126,7 +129,7 @@ def list_styles() -> List[Dict[str, Any]]:
                 "metrics": data.get("metrics", {}),
             })
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 跳过无法解析的文风档案 {fp.name}: {exc}")
+            _log.warning(f"跳过无法解析的文风档案 {fp.name}: {exc}")
             continue
     return styles
 

@@ -4,10 +4,12 @@
 """
 from __future__ import annotations
 
+import hmac
 import json
 import mimetypes
 import os
 import queue
+import re
 import socket
 import sys
 import threading
@@ -16,10 +18,13 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse, parse_qs, unquote
 
-from gui import config, router
+from gui import auto_backup, config, router
 from gui import db
+from gui.logging_setup import get_logger, setup_logging
 from gui.sse import broker
 from gui.services import ServiceError
+
+_log = get_logger("server")
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -29,7 +34,33 @@ class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     # ------------------------------------------------------------------
+    def _check_auth(self) -> bool:
+        """NOVEL_LAB_TOKEN 启用时校验 /api/* 的访问令牌；拒绝时已回 401。
+
+        支持两种凭证：X-Auth-Token 请求头（常规 fetch）；?auth= 查询参数
+        （仅 EventSource 场景需要）。比较用 hmac.compare_digest 防时序侧信道。
+        静态壳（index.html/assets）不设防——数据全部经 /api/* 流动。
+        """
+        token = config.API_TOKEN
+        if not token:
+            auto_backup.daily_backup_if_due()
+            return True
+        path = unquote(urlparse(self.path).path)
+        if not (path == "/api" or path.startswith("/api/")):
+            return True
+        supplied = self.headers.get("X-Auth-Token", "")
+        query = parse_qs(urlparse(self.path).query)
+        if not supplied and "auth" in query:
+            supplied = query["auth"][0]
+        if supplied and hmac.compare_digest(supplied, token):
+            auto_backup.daily_backup_if_due()
+            return True
+        self._send_json(router.err(401, "缺少或非法访问令牌（NOVEL_LAB_TOKEN 已启用）"), 401)
+        return False
+
     def do_GET(self) -> None:
+        if not self._check_auth():
+            return
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
@@ -58,6 +89,8 @@ class _Handler(BaseHTTPRequestHandler):
         self._serve_static(path)
 
     def do_POST(self) -> None:
+        if not self._check_auth():
+            return
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
@@ -76,6 +109,8 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_PUT(self) -> None:
         """CRITICAL：M4 资产更新需要 PUT 支持。"""
+        if not self._check_auth():
+            return
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
@@ -93,6 +128,8 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_DELETE(self) -> None:
         """CRITICAL：M4 资产删除需要 DELETE 支持。"""
+        if not self._check_auth():
+            return
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
@@ -227,14 +264,16 @@ class _Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def log_message(self, format: str, *args: Any) -> None:
-        # 精简日志，避免刷屏。
-        pass
+        # HTTP 访问日志：INFO 级落盘（gui_state/logs/gui.log），不刷控制台。
+        # ?auth= 查询参数脱敏，避免令牌进入日志。
+        line = format % args
+        line = re.sub(r"([?&])auth=[^ ]+", r"auth=***", line)
+        _log.info("http %s %s", self.address_string(), line)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     """常驻入口（W09）：``python -m gui.server`` 阻塞运行，重复启动被单实例锁拦截。"""
     import argparse
-    import sys
     from pathlib import Path as _P
 
     # 确保项目根在 sys.path 上（``python gui/server.py`` 直接执行也可）。
@@ -242,6 +281,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     if str(_root) not in sys.path:
         sys.path.insert(0, str(_root))
 
+    setup_logging()
     parser = argparse.ArgumentParser(description="novel-lab GUI 常驻服务")
     parser.add_argument("--port", type=int, default=None, help="指定端口（默认 8000，占用自动 +1）")
     parser.add_argument("--no-browser", action="store_true", help="启动后不自动弹浏览器")
@@ -466,7 +506,7 @@ class GuiServer:
         except OSError:
             pass
         shown = observed_pid if observed_pid is not None else "非法内容"
-        print(f"[server] 检测到 stale lock（pid={shown} 已退出），已清理")
+        _log.info("检测到 stale lock（pid=%s 已退出），已清理", shown)
         return True
 
     def _release_lock(self) -> None:
@@ -505,16 +545,19 @@ class GuiServer:
             db.init_schema()
             db.apply_migrations()
         except Exception as exc:  # noqa: BLE001 — 库损坏不阻断服务，降级为内存/扫描。
-            print(f"[GUI] 警告: 持久化层初始化失败（降级运行）: {exc}")
+            _log.warning("持久化层初始化失败（降级运行）: %s", exc)
+
+        # 自动备份：启动时一次（每日备份由请求闸点触发，见 auto_backup）
+        auto_backup.startup_backup()
 
         # W15/D3：启动自清理 scratch 残留
         try:
             from gui import quality_service
             n = quality_service.clean_stale_scratch()
             if n:
-                print(f"[GUI] 启动清理 scratch 残留 {n} 个文件")
+                _log.info("启动清理 scratch 残留 %d 个文件", n)
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] 启动清理 scratch 失败（不影响服务启动）: {exc}")
+            _log.warning("启动清理 scratch 失败（不影响服务启动）: %s", exc)
 
         host, port = self._bind_port()
         self._httpd = ThreadingHTTPServer((host, port), _Handler)
@@ -538,7 +581,7 @@ class GuiServer:
         try:
             db.close()
         except Exception as exc:  # noqa: BLE001
-            print(f"[warn] 关闭时 SQLite 刷盘失败: {exc}", file=sys.stderr)
+            _log.warning("关闭时 SQLite 刷盘失败: %s", exc)
         self._release_lock()
 
 

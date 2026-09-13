@@ -12,7 +12,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from gui import config, engine_adapter
+from gui.logging_setup import get_logger
 from gui.services import ServiceError
+
+_log = get_logger("quality_service")
 
 # ---------------------------------------------------------------------------
 # 任务注册表
@@ -138,7 +141,7 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
             try:
                 gp_data = json.loads(gp_fp.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
-                print(f"[warn] 题材包加载失败，本次检查不带题材约束 {gp_fp.name}: {exc}")
+                _log.warning(f"题材包加载失败，本次检查不带题材约束 {gp_fp.name}: {exc}")
 
     qc = engine_adapter.chapter_check(text, gp_data)
     result: Dict[str, Any] = {"quality": qc}
@@ -156,7 +159,7 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
                     "details": cons.get("details", []),
                 }
             except (json.JSONDecodeError, OSError) as exc:
-                print(f"[warn] voice-card 加载失败，跳过一致性打分 {voice_fp.name}: {exc}")
+                _log.warning(f"voice-card 加载失败，跳过一致性打分 {voice_fp.name}: {exc}")
 
     return result
 
@@ -215,7 +218,7 @@ def list_qc_reports() -> List[Dict[str, Any]]:
                     "created_at": data.get("meta", {}).get("created_at"),
                 })
             except (json.JSONDecodeError, OSError) as exc:
-                print(f"[warn] 跳过无法解析的质检报告 {fp.name}: {exc}")
+                _log.warning(f"跳过无法解析的质检报告 {fp.name}: {exc}")
                 continue
     return reports
 

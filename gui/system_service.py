@@ -10,7 +10,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from gui import config, engine_adapter
+from gui.logging_setup import get_logger
 from gui.services import ServiceError
+
+_log = get_logger("system_service")
 
 
 def _ensure_scripts_path() -> None:
@@ -152,7 +155,7 @@ def compliance_scan(voice: Optional[str] = None,
             try:
                 asset = json.loads(fp.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
-                print(f"[warn] 合规扫描跳过无法解析的资产 {fp.name}: {exc}")
+                _log.warning(f"合规扫描跳过无法解析的资产 {fp.name}: {exc}")
                 continue
             errors, warns = compliance_mod.scan_asset(asset, set())
             results.append({
@@ -211,7 +214,7 @@ def _load_settings_file() -> Dict[str, Any]:
         data = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
     except (json.JSONDecodeError, OSError) as exc:
-        print(f"[warn] settings.json 损坏，回退为空配置（阈值/写作配置将用默认值）: {exc}")
+        _log.warning(f"settings.json 损坏，回退为空配置（阈值/写作配置将用默认值）: {exc}")
         return {}
 
 

@@ -5,10 +5,10 @@
 novel-lab 设计为**单机本application**：
 
 - HTTP 服务硬编码绑定 `127.0.0.1`，不接受外部网络连接
-- API 无内建认证（单机信任模型）；支持通过环境变量 `NOVEL_LAB_TOKEN` 启用 `X-Auth-Token` 头校验（可选纵深防御）
+- API 默认无认证（单机信任模型）；设置环境变量 `NOVEL_LAB_TOKEN` 后所有 `/api/*` 请求须携带 `X-Auth-Token` 头（SSE 可用 `?auth=` 查询参数），比较使用常数时间算法
 - CORS 仅回显本机 Origin
 - 静态文件与 API 路径参数均做路径穿越防护；SQL 全参数化
-- API 密钥存储于 `config/.secrets.json`（已被 `.gitignore` 排除，永不入库）
+- API 密钥存储：Windows 下经 **DPAPI 加密**（`config/.secrets.bin`，与当前系统用户绑定，泄漏的密文无法在他人机器解密）；发现旧明文 `.secrets.json` 时自动迁移加密并删除。非 Windows 降级为 0600 权限明文 JSON。两类文件均被 `.gitignore` 排除，永不入库
 
 **请不要把服务改绑到 0.0.0.0 或公网暴露**——这不在设计威胁模型内，等于把本机文件系统和已配置的 API 密钥暴露给局域网。
 

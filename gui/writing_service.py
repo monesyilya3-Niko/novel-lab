@@ -13,7 +13,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from gui import config, engine_adapter, migrate
+from gui.logging_setup import get_logger
 from gui.services import ServiceError
+
+_log = get_logger("writing_service")
 
 # ---------------------------------------------------------------------------
 # 任务注册表（进程内，不落库）
@@ -246,7 +249,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
         try:
             metrics = json.loads(metrics_fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 量化指标加载失败，注入提示将不含统计画像 {metrics_fp.name}: {exc}")
+            _log.warning(f"量化指标加载失败，注入提示将不含统计画像 {metrics_fp.name}: {exc}")
 
     written: List[str] = []
 

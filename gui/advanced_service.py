@@ -12,7 +12,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from gui import config, migrate
+from gui.logging_setup import get_logger
 from gui.services import ServiceError
+
+_log = get_logger("advanced_service")
 
 
 # ---------------------------------------------------------------------------
@@ -36,7 +39,7 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
             if data.get("meta", {}).get("genre") == genre:
                 books.append(fp.stem.replace("-voice-card", ""))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 跳过无法解析的 voice-card {fp.name}: {exc}")
+            _log.warning(f"跳过无法解析的 voice-card {fp.name}: {exc}")
             continue
 
     if book_names:
@@ -94,7 +97,7 @@ def distill_status(genre: str) -> Dict[str, Any]:
             if data.get("meta", {}).get("genre") == genre:
                 books.append(fp.stem.replace("-voice-card", ""))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 跳过无法解析的 voice-card {fp.name}: {exc}")
+            _log.warning(f"跳过无法解析的 voice-card {fp.name}: {exc}")
             continue
 
     return {
@@ -130,7 +133,7 @@ def aggregate_genre(genre: str) -> Dict[str, Any]:
             if data.get("meta", {}).get("genre") == genre:
                 books.append(fp.stem.replace("-voice-card", ""))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 跳过无法解析的 voice-card {fp.name}: {exc}")
+            _log.warning(f"跳过无法解析的 voice-card {fp.name}: {exc}")
             continue
 
     if len(books) < 3:

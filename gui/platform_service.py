@@ -7,7 +7,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
+from gui.logging_setup import get_logger
 from gui.services import ServiceError
+
+_log = get_logger("platform_service")
 
 # 平台配置
 PLATFORMS = {
@@ -213,7 +216,7 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> Dict[str, Any]:
         try:
             content = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:
-            print(f"[warn] 导出跳过无法读取的章节 {fp.name}: {exc}")
+            _log.warning(f"导出跳过无法读取的章节 {fp.name}: {exc}")
             continue
 
         # 提取标题（第一行）

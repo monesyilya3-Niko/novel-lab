@@ -23,7 +23,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from gui import config
+from gui.logging_setup import get_logger
 from gui import db
+
+_log = get_logger("asset_index")
 
 # kind 白名单（资产卡，单一来源）。任何新 kind 需在此显式登记，防路径穿越与越权读取。
 ASSET_KINDS = ("voice", "structure", "commercial", "craft", "genre_pack", "prose_card", "trope")
@@ -379,7 +382,7 @@ class AssetIndex:
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 资产详情加载失败，content 置空 {fp.name}: {exc}")
+            _log.warning(f"资产详情加载失败，content 置空 {fp.name}: {exc}")
             data = {}
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 
@@ -403,7 +406,7 @@ class AssetIndex:
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 资产详情加载失败，content 置空 {fp.name}: {exc}")
+            _log.warning(f"资产详情加载失败，content 置空 {fp.name}: {exc}")
             data = {}
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 

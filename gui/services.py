@@ -12,8 +12,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from gui import config, engine_adapter, state_store, asset_index
+from gui.logging_setup import get_logger
 from gui import db
 from gui.sse import broker
+
+_log = get_logger("services")
 
 # 每个 pass 分析的 kind 名（串行顺序）。
 PASS_ORDER = ("pass1_structure", "pass2_character", "pass3_style", "pass4_commercial")
@@ -431,7 +434,7 @@ def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str
     try:
         return json.loads(ap.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        print(f"[warn] pass 资产加载失败，按空结果返回 {ap.name}: {exc}")
+        _log.warning(f"pass 资产加载失败，按空结果返回 {ap.name}: {exc}")
         return {}
 
 
@@ -616,7 +619,7 @@ def _load_assembled_card(book_id: str, card_type: str) -> Dict[str, Any]:
                 try:
                     return json.loads(fp.read_text(encoding="utf-8"))
                 except (json.JSONDecodeError, OSError) as exc:
-                    print(f"[warn] 资产卡加载失败 {fp.name}: {exc}")
+                    _log.warning(f"资产卡加载失败 {fp.name}: {exc}")
                     continue
     return {}
 
@@ -675,7 +678,7 @@ def _collect_chapter_scores(book_id: str, voice: Dict[str, Any]) -> List[Dict[st
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            print(f"[warn] 跳过无法解析的批状态 {fp.name}: {exc}")
+            _log.warning(f"跳过无法解析的批状态 {fp.name}: {exc}")
             continue
         if not isinstance(data, dict):
             continue

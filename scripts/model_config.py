@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from llm_client import (  # noqa: E402
     load_models, save_models, load_secrets, save_secrets,
     test_model, DEFAULT_ROUTES, MODELS_FILE, SECRETS_FILE,
+    secret_store,
 )
 
 # 常见服务商预设。省去翻文档找 base_url 的功夫
@@ -278,13 +279,13 @@ def cmd_add(args):
         if not key and not args.no_key:
             print("\n密钥可用两种方式（任选其一）：")
             print(f"  A. 环境变量 {p.get('api_key_env') or '(自定义)'}  — 更安全，推荐")
-            print("  B. 存入本地 .secrets.json          — 方便，已自动 gitignore")
+            print("  B. 存入本地加密密钥库              — Windows DPAPI 加密（.secrets.bin），已自动 gitignore")
             key = input("现在输入 API Key (直接回车跳过): ").strip()
         if key:
             s = load_secrets()
             s[mid] = key
             save_secrets(s)
-            print(f"[OK] 密钥已存入 {SECRETS_FILE}")
+            print(f"[OK] 密钥已存入 {SECRETS_FILE}（{secret_store.storage_mode()}）")
 
     print(f"\n下一步: python model_config.py test {mid}")
     return 0

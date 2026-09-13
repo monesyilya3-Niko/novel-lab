@@ -56,6 +56,11 @@ PROMPTS_DIR = ROOT_DIR / "prompts" / "generated"
 # 可选的端口环境变量覆盖（便于自动化测试 / 部署）。
 _ENV_PORT = os.environ.get("NOVEL_LAB_GUI_PORT", "").strip()
 
+# 可选访问令牌（纵深防御）：设置后所有 /api/* 请求须带 X-Auth-Token 头
+# （SSE 的 EventSource 无法自定义头，额外接受 ?auth= 查询参数）。
+# 未设置时维持本机免认证模型。参见 SECURITY.md。
+API_TOKEN = os.environ.get("NOVEL_LAB_TOKEN", "").strip()
+
 
 def resolve_port(preferred: int | None = None) -> int:
     """解析最终端口：参数 > 环境变量 > 默认值。L5：校验 1–65535。"""
