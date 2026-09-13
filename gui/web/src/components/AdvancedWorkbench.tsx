@@ -107,7 +107,7 @@ function DistillPanel() {
             </Box>
             <Typography variant="caption" color="text.secondary">蒸馏维度</Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-              {dimensions.map((d) => <Chip key={d} label={d} size="small" color="primary" variant="outlined" />)}
+              {dimensions.map((d) => <Chip key={d} label={DIM_LABELS[d] ?? d} size="small" color="primary" variant="outlined" />)}
             </Box>
             <Typography variant="caption" color="text.secondary">产出文件（已入库）</Typography>
             <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
@@ -135,6 +135,21 @@ function DistillPanel() {
 // ---------------------------------------------------------------------------
 // 批量状态面板
 // ---------------------------------------------------------------------------
+
+const PASS_SHORT: Record<string, string> = {
+  pass1_structure: 'P1 结构',
+  pass2_character: 'P2 人物',
+  pass3_style: 'P3 文风',
+  pass4_commercial: 'P4 商业',
+  pass5_aggregate: 'P5 聚合',
+}
+
+const DIM_LABELS: Record<string, string> = {
+  'voice-card': '声线卡',
+  'craft-card': '笔法卡',
+  'structure-obs': '结构观测',
+  'commercial-obs': '商业观测',
+}
 
 function BatchStatusPanel() {
   const [status, setStatus] = useState<Record<string, unknown> | null>(null)
@@ -165,7 +180,7 @@ function BatchStatusPanel() {
           </Box>
           <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
             {Object.entries(b.passes as Record<string, boolean>).map(([k, v]) => (
-              <Chip key={k} label={k.replace('pass', 'P').replace('_structure', '').replace('_character', '').replace('_style', '').replace('_commercial', '').replace('_craft', '')} size="small" color={v ? 'success' : 'default'} variant={v ? 'filled' : 'outlined'} />
+              <Chip key={k} label={PASS_SHORT[k] ?? k} size="small" color={v ? 'success' : 'default'} variant={v ? 'filled' : 'outlined'} />
             ))}
           </Box>
         </Paper>

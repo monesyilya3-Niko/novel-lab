@@ -90,6 +90,7 @@ export type AssetKind =
   | 'craft'
   | 'genre_pack'
   | 'prose_card'
+  | 'trope'
   | 'report'
   | 'book'
 

@@ -16,6 +16,13 @@ import { qualityApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { QualityTaskState, QcReportItem } from '../types'
 import { friendlyError } from '../api/client'
 
+const VERDICT_LABELS: Record<string, string> = {
+  PASS: '通过',
+  WARN: '警告',
+  FAIL: '不通过',
+}
+const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
+
 export default function QualityWorkbench() {
   const [tab, setTab] = useState(0)
   return (
@@ -102,7 +109,7 @@ function CheckPanel() {
           {quality && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1">
-                章节质量：{quality.score}/100 <Chip label={quality.verdict} size="small" color={quality.verdict === 'PASS' ? 'success' : quality.verdict === 'WARN' ? 'warning' : 'error'} />
+                章节质量：{quality.score}/100 <Chip label={verdictLabel(quality.verdict)} size="small" color={quality.verdict === 'PASS' ? 'success' : quality.verdict === 'WARN' ? 'warning' : 'error'} />
               </Typography>
               {(quality.details ?? []).slice(0, 10).map((d, i) => (
                 <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>{d}</Typography>
@@ -162,7 +169,7 @@ function BookQualityPanel() {
       {result && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle1">
-            判定：<Chip label={verdict ?? '?'} size="small" color={verdict === 'PASS' ? 'success' : verdict === 'WARN' ? 'warning' : 'error'} />
+            判定：<Chip label={verdictLabel(verdict)} size="small" color={verdict === 'PASS' ? 'success' : verdict === 'WARN' ? 'warning' : 'error'} />
           </Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>共 {issues.length} 个问题</Typography>
           {issues.slice(0, 20).map((iss, i) => (
@@ -239,7 +246,7 @@ function QcPanel() {
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1">
             状态：{taskState.status}
-            {taskState.verdict && <> | 判定：<Chip label={taskState.verdict} size="small" color={taskState.verdict === 'PASS' ? 'success' : taskState.verdict === 'WARN' ? 'warning' : 'error'} /></>}
+            {taskState.verdict && <> | 判定：<Chip label={verdictLabel(taskState.verdict)} size="small" color={taskState.verdict === 'PASS' ? 'success' : taskState.verdict === 'WARN' ? 'warning' : 'error'} /></>}
             {taskState.totalScore != null && <> | 总分 {taskState.totalScore.toFixed(1)}</>}
           </Typography>
           {(taskState.status === 'running' || taskState.status === 'pending') && <LinearProgress sx={{ mt: 1 }} />}

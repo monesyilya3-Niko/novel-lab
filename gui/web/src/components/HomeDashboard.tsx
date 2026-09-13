@@ -25,6 +25,7 @@ const KIND_LABELS: Record<string, string> = {
   craft: '笔法卡',
   genrePack: '题材包',
   proseCard: '文风卡',
+  trope: '桥段',
   report: '报告',
   book: '语料',
 }

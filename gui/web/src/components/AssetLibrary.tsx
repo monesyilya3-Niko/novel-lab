@@ -23,6 +23,7 @@ const KIND_LABELS: Record<AssetKind, string> = {
   craft: '笔法卡',
   genre_pack: '题材包',
   prose_card: '文风卡',
+  trope: '桥段',
   report: '报告',
   book: '语料',
 }
@@ -34,6 +35,7 @@ const ALL_KINDS: AssetKind[] = [
   'craft',
   'genre_pack',
   'prose_card',
+  'trope',
   'report',
   'book',
 ]
