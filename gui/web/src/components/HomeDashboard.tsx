@@ -40,8 +40,10 @@ export default function HomeDashboard() {
 
   const pieData = useMemo(() => {
     if (!overview) return []
+    // report/book 是虚拟 kind，已由「报告」「已拆书」卡片单独展示，
+    // 不属于「资产类型分布」——计入会让饼图与「资产总数」卡片口径打架。
     return Object.entries(overview.assetsByKind)
-      .filter(([, v]) => v > 0)
+      .filter(([k, v]) => v > 0 && k !== 'report' && k !== 'book')
       .map(([k, v]) => ({ name: KIND_LABELS[k] ?? k, value: v }))
   }, [overview])
 
