@@ -63,3 +63,6 @@ build/dist/
 
 # 指纹拆书实验产物（分析报告/指纹库，本地输出不入库；pyproject 打包已排除）
 指纹拆书/
+
+# 第三方参考技能（上游无 LICENSE 文件，不入 MIT 仓库；本地留存自用）
+reference/oh-story-claudecode/
