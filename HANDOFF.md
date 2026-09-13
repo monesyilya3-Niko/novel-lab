@@ -183,7 +183,7 @@ $PY run_tests.py    # 全量 353 用例
 
 - **Python 侧**：ruff（`pyproject.toml`，本地 `uvx ruff check .`；CI 强制）+ coverage；铁律三由 `tests/test_stdlib_only.py` 自动守护（第三方 import 任何层级禁止；gui 层模块级 import scripts/ 仅 engine_adapter）
 - **前端侧**：ESLint 9（typescript-eslint + react-hooks）+ Prettier + vitest（`npm run lint/test:run/coverage`）；vite 7 + vitest 5
-- **CI**：`.github/workflows/ci.yml`（Python 3.13 windows-latest：ruff + 全量测试 + coverage；Node 22：lint + vitest + 构建 + **dist 新鲜度校验**）+ release-please 语义化发布
+- **CI**：`.github/workflows/ci.yml`（Python 3.13 windows-latest：ruff + 全量测试 + coverage；Node 22：lint + vitest + 构建 + **dist 新鲜度校验**）+ Release 工作流（推 v* tag 自动从 Conventional Commits 生成发布说明并创建 Release）
 - **本地安装工具**：`uvx --default-index https://mirrors.aliyun.com/pypi/simple/ ruff check .`（pypi 直连不稳时走阿里云镜像）
 
 ---

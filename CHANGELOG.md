@@ -1,6 +1,6 @@
 # Changelog
 
-本文件记录面向用户的显著变更。1.0.0 起由 [release-please](https://github.com/googleapis/release-please) 按 Conventional Commits 自动维护。
+本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
 ## [Unreleased]
 

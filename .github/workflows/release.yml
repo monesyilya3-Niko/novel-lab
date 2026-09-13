@@ -1,0 +1,49 @@
+name: Release
+
+# 推送 v* tag 即创建 GitHub Release：
+#   git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z
+# 发布说明自动从上一 tag 以来的 Conventional Commits 生成。
+# （曾评估 release-please：其 PR 模式依赖仓库"允许 Actions 创建 PR"设置，
+#   API 无法可靠开启；单人维护场景直接发 Release 更简单。）
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract previous tag
+        id: prev
+        run: |
+          echo "tag=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
+      - name: Build release notes from Conventional Commits
+        run: |
+          PREV="${{ steps.prev.outputs.tag }}"
+          RANGE="HEAD"
+          if [ -n "$PREV" ]; then RANGE="$PREV..HEAD"; fi
+          {
+            echo "## ✨ 新功能"
+            git log --no-merges --pretty=format:"- %s" "$RANGE" | grep -E "^- feat" || echo "- 无"
+            echo
+            echo "## 🐛 修复"
+            git log --no-merges --pretty=format:"- %s" "$RANGE" | grep -E "^- fix" || echo "- 无"
+            echo
+            echo "## 🔧 其他"
+            git log --no-merges --pretty=format:"- %s" "$RANGE" | grep -E "^- (perf|refactor|docs|chore|test|ci)" || echo "- 无"
+          } > notes.md
+          cat notes.md
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file notes.md
