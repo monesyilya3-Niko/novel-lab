@@ -10,7 +10,6 @@ M2.2 章节生成时，这个 prompt 作为 system 消息喂给 LLM。
 """
 import argparse
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -611,7 +610,7 @@ def main():
     print(f"  genre-prose-card: {'已注入' if genre_prose_card else '未注入'}")
     print(f"  craft-card: {'已注入' if craft_card else '未注入'}")
     print(f"  distilled: {'已注入' if distilled else '未注入'}")
-    print(f"  （直接作为 system 消息喂给写作 LLM）")
+    print("  （直接作为 system 消息喂给写作 LLM）")
 
 
 if __name__ == "__main__":

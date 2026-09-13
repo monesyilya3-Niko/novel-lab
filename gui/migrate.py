@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import sys
 import time
@@ -30,7 +29,6 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from gui import config, db  # noqa: E402
-from gui.asset_index import ASSET_KINDS  # noqa: E402
 
 # 书卡后缀（book_id 推断用，优先级从长到短，含 distilled）。
 _BOOK_CARD_SUFFIXES = (

@@ -5,9 +5,9 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from gui import config, engine_adapter
+from gui import config
 from gui.services import ServiceError
 
 

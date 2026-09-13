@@ -15,8 +15,6 @@ novel-lab 回归测试（纯标准库 unittest，零第三方依赖）
   python -m unittest discover    # 等价方式
 """
 import importlib.util
-import json
-import os
 import sys
 import tempfile
 import unittest
@@ -39,22 +37,34 @@ def _load(name: str):
 
 
 class TestWritePyImportRe(unittest.TestCase):
-    """回归 #1：write.py 必须能 import re，且质量门禁不因 NameError 失效。"""
+    """回归 #1：质量门禁不得因缺失 import 而静默失效。
+
+    历史背景（2026-09-05 修复 0d59039）：write.py 的 run_consistency 曾调用
+    不存在的 main_probe，NameError 被 except 吞掉；当时 re.search 也在
+    write.py 内。修复后 re.search 的真实调用已完全移至 book_quality.py，
+    write.py 中的 `import re` 成为死代码并于 2026-09-13 ruff 基线清理中
+    删除——本测试随之改为守护真实的 re 用法所在模块。
+    """
+
+    def test_book_quality_uses_re_search(self):
+        """re.search 的真实调用位于 book_quality.py（全书质检正文扫描）。"""
+        src = (SCRIPTS / "book_quality.py").read_text(encoding="utf-8")
+        self.assertIn("import re", src, "book_quality.py 缺失 import re")
+        self.assertIn("re.search", src, "book_quality.py 应实际使用 re.search")
 
     def test_write_module_imports_re(self):
-        mod = _load("write")
-        self.assertTrue(
-            hasattr(mod, "re"),
-            "write.py 缺失 import re——会导致全书质检代码 NameError 被 except 吞掉",
-        )
+        """write.py 的质量门禁依赖 consistency.score_text（原 re 用法的替代实现）。
 
-    def test_write_uses_re_search(self):
-        mod = _load("write")
-        # 确认 re 确实被质量门禁代码引用（而非仅 import 未用）。
-        # 注意：re.search 的实际调用位于 book_quality.py（line 347 附近），write.py 中
-        # 仅 import re 供质检路径使用——此处校验 write.py 的 import 未被删除即可。
+        write.py 采用函数级延迟 import（与 gui 层同款模式），故检查源码而非模块属性。
+        """
         src = (SCRIPTS / "write.py").read_text(encoding="utf-8")
-        self.assertIn("import re", src, "write.py 应保留 import re 供全书质检使用")
+        self.assertIn("import consistency", src, "write.py 缺失 import consistency")
+        self.assertIn("score_text", src, "write.py 应调用 consistency.score_text()")
+
+    def test_write_kept_no_stale_re_import(self):
+        """write.py 不再保留仅供质检路径使用的死 import re（真实用法在 book_quality.py）。"""
+        src = (SCRIPTS / "write.py").read_text(encoding="utf-8")
+        self.assertNotIn("import re", src, "write.py 的 import re 已是死代码，勿重新引入")
 
     def test_run_consistency_calls_real_score_text(self):
         """回归 #1 核心：run_consistency 应调用真实存在的 score_text，而非不存在的 main_probe。"""

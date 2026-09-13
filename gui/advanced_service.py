@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from gui import config, engine_adapter, migrate
+from gui import config, migrate
 from gui.services import ServiceError
 
 
@@ -119,7 +119,6 @@ def aggregate_genre(genre: str) -> Dict[str, Any]:
     import sys
     if str(config.SCRIPTS_DIR) not in sys.path:
         sys.path.insert(0, str(config.SCRIPTS_DIR))
-    import pass5_aggregate as agg_mod
 
     # 检查书数
     books = []

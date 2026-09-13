@@ -1,0 +1,33 @@
+# novel-lab 开发期工具链配置。
+# 注意：本项目发布不使用 pyproject 打包元数据（绿色版/安装器分发），
+# 此文件仅承载 ruff / coverage 等开发工具配置。
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+exclude = ["gui/web", ".worktrees", "docs/archive", "指纹拆书"]
+
+[tool.ruff.lint]
+# 基线从宽：默认规则集（pyflakes + 关键 pycodestyle）。
+# E501 行宽不作为硬门禁（存量 CLI 文案含长中文行），由 review 把关。
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    # ---- 已知风格债，有意豁免（治理清单见 docs/lint-debt.md）----
+    "E402",  # gui 层函数级延迟 import 依赖 sys.path 引导（engine_adapter 既有设计）
+    "E701",  # 单行多语句（存量 CLI 短分支）
+    "E702",  # 分号多语句（存量）
+    "E741",  # 单字符变量名 l/I（存量量化循环）
+    "F841",  # 局部变量赋值未使用（存量，部分为元组解包占位）
+]
+
+[tool.coverage.run]
+source = ["gui", "scripts"]
+omit = [
+    "gui/web/*",
+    "*/__pycache__/*",
+    "scripts/llm_client.py",  # 外部模型通道（已封存，MODELS.md）
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

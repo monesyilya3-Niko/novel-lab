@@ -4,8 +4,6 @@ M2.3 风格一致性自检 — 生成章 vs voice-card 逐维打分
 """
 import argparse
 import json
-import re
-import sys
 from pathlib import Path
 
 # 直陈式情绪词（出现即扣分）
@@ -245,7 +243,7 @@ def consistency_check(voice_card_path: str, chapter_path: str):
     banned_score, banned_details = check_banned(chapter_text, banned)
     imagery_score, imagery_details = check_imagery(chapter_text, imagery)
     total_score = voice_score + emotion_score + narration_score + banned_score + imagery_score
-    print(f"=== 风格一致性自检 ===")
+    print("=== 风格一致性自检 ===")
     print(f"章: {Path(chapter_path).name} ({len(chapter_text)} 字)")
     print()
     print(f"[1] 角色声线 (35): {voice_score:.1f}")

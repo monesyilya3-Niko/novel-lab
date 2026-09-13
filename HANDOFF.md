@@ -173,10 +173,18 @@ $PY run_tests.py    # 全量 353 用例
 | 优先级 | 事项 |
 |---|---|
 | ~~P1~~ | ~~前端主包 1.7MB 代码分割~~ **已完成**（2026-09-12 实测：主入口 `index-*.js` 仅 20KB，echarts 隔离为独立 chunk，按视图分块加载） |
-| P2 | npm audit：echarts 5.6.0 XSS（moderate，GHSA-fgmj-fm8m-jvvx，渲染自有统计数据、实际暴露低）；vite 6 依赖的 esbuild dev-server 漏洞（仅开发期，不进产物；修复需跨 vite 8 大版本）。两者均为**有意接受的已知风险**，升级前需回归前端构建与图表渲染 |
+| ~~P2~~ | ~~npm audit echarts/esbuild 漏洞~~ **已清零**（2026-09-13：echarts 6.1.0 + vite 7 升级后 `npm audit` 0 vulnerabilities） |
 | P2 | 服务常驻实测（`gui/autostart/install_task.bat`） |
 | P2 | 备份/回滚演练 |
 | — | 番茄抓书工具链未实测 |
+| — | lint 债治理清单：`docs/lint-debt.md`（ruff/ESLint 基线豁免项与治理时机） |
+
+## 九、开发期工具链（2026-09-13 起）
+
+- **Python 侧**：ruff（`pyproject.toml`，本地 `uvx ruff check .`；CI 强制）+ coverage；铁律三由 `tests/test_stdlib_only.py` 自动守护（第三方 import 任何层级禁止；gui 层模块级 import scripts/ 仅 engine_adapter）
+- **前端侧**：ESLint 9（typescript-eslint + react-hooks）+ Prettier + vitest（`npm run lint/test:run/coverage`）；vite 7 + vitest 5
+- **CI**：`.github/workflows/ci.yml`（Python 3.13 windows-latest：ruff + 全量测试 + coverage；Node 22：lint + vitest + 构建 + **dist 新鲜度校验**）+ release-please 语义化发布
+- **本地安装工具**：`uvx --default-index https://mirrors.aliyun.com/pypi/simple/ ruff check .`（pypi 直连不稳时走阿里云镜像）
 
 ---
 

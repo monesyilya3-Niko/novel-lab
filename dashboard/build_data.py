@@ -12,7 +12,6 @@ dashboard-data.js（全局变量 window.__NOVEL_LAB__），供 index.html 纯前
 """
 import json
 import os
-import re
 from datetime import datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

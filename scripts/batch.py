@@ -17,7 +17,6 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import sampler
 import metrics as metrics_mod
-import llm_client
 import validate as validate_mod
 import compliance as compliance_mod
 import normalize as norm
@@ -154,7 +153,7 @@ def main():
             results.append(r)
 
     if args.report and results:
-        print(f"\n生成拆书报告:")
+        print("\n生成拆书报告:")
         generate_reports(results, ROOT / "reports")
 
     print(f"\n完成: 成功 {len(results)} / {len(books)} 本")

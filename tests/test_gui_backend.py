@@ -10,12 +10,9 @@
 """
 from __future__ import annotations
 
-import json
-import os
 import shutil
 import sys
 import tempfile
-import threading
 import unittest
 from pathlib import Path
 
@@ -24,7 +21,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from gui import config, state_store, engine_adapter, router, services  # noqa: E402
-from gui import services as svc  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

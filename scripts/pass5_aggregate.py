@@ -20,14 +20,12 @@ import argparse
 import json
 import re
 import sys
-from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 import llm_client
 import validate as validate_mod
-import compliance as compliance_mod
 
 ASSETS = ROOT / "assets"
 IRON_THRESHOLD = 0.8   # ≥80% → 铁律
@@ -279,7 +277,7 @@ def main():
     print(f"✓ 题材包已入库: {out}")
     print(f"  铁律 {len(pack.get('language_rules', {}).get('iron_rules', []))} 条, "
           f"必需要素 {len(pack.get('language_rules', {}).get('required_elements', []))} 条")
-    print(f"\n→ 题材包可被 inject.py 注入写作（--genre-pack 参数）")
+    print("\n→ 题材包可被 inject.py 注入写作（--genre-pack 参数）")
 
 
 if __name__ == "__main__":

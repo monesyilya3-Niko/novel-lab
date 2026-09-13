@@ -12,7 +12,6 @@ Schema 校验脚本 — 纯标准库，零依赖
 """
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -146,7 +145,7 @@ def validate_voice_card(d):
         if check_obj(para, "narration.paragraph"):
             for f in ("avg_lines", "single_line_para_ratio"):
                 if f in para and not is_num(para[f]):
-                    err(f"应为数字", f"narration.paragraph.{f}")
+                    err("应为数字", f"narration.paragraph.{f}")
 
     dlg = d.get("dialogue")
     if check_obj(dlg, "dialogue"):

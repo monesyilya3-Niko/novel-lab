@@ -594,7 +594,7 @@ def to_markdown(report: QCReport) -> str:
     lines.append(f"- 阈值: PASS≥{m.get('pass_line', 75)} / WARN≥{m.get('warn_line', 60)}")
     sev = m.get("severity_count", {})
     if sev:
-        lines.append(f"- 严重度分布: " + " / ".join(
+        lines.append("- 严重度分布: " + " / ".join(
             f"{k} {v}" for k, v in sorted(sev.items(), key=lambda kv: ["critical", "high", "medium", "low"].index(kv[0]) if kv[0] in ["critical", "high", "medium", "low"] else 9)))
     lines.append("")
     lines.append("## 四层十二维")

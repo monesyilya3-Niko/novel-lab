@@ -441,7 +441,7 @@ def main():
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
-        print(f"全书内容质检")
+        print("全书内容质检")
         print(f"{'='*50}")
         print(f"章节: {result['total_chapters']} | 问题: {result['total_issues']} | 判定: {result['verdict']}")
         print()

@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     host, port = server.start()
     url = f"http://{host}:{port}/"
     print(f"[GUI] novel-lab 书籍分析服务已启动: {url}")
-    print(f"[GUI] 按 Ctrl+C 停止。")
+    print("[GUI] 按 Ctrl+C 停止。")
 
     if not args.no_browser:
         try:

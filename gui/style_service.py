@@ -8,9 +8,9 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from gui import config, engine_adapter
+from gui import config
 from gui.services import ServiceError
 
 # 风格资产目录

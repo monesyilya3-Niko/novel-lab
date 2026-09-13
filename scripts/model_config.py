@@ -15,14 +15,13 @@
   remove <model_id>       删除模型
 """
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from llm_client import (  # noqa: E402
     load_models, save_models, load_secrets, save_secrets,
-    test_model, DEFAULT_ROUTES, MODELS_FILE, SECRETS_FILE, CONFIG_DIR,
+    test_model, DEFAULT_ROUTES, MODELS_FILE, SECRETS_FILE,
 )
 
 # 常见服务商预设。省去翻文档找 base_url 的功夫
@@ -269,7 +268,7 @@ def cmd_add(args):
     cfg["models"][mid] = p
     if not cfg["roles"]:
         cfg["roles"] = {"default": mid, "cheap": mid, "strong": mid}
-        print(f"\n[i] 首个模型，已自动绑定为 default / cheap / strong")
+        print("\n[i] 首个模型，已自动绑定为 default / cheap / strong")
     save_models(cfg)
     print(f"\n[OK] 模型 '{mid}' 已添加 → {MODELS_FILE}")
 
@@ -277,9 +276,9 @@ def cmd_add(args):
     if p.get("protocol") != "ollama" and p.get("api_key_env") != "":
         key = args.key
         if not key and not args.no_key:
-            print(f"\n密钥可用两种方式（任选其一）：")
+            print("\n密钥可用两种方式（任选其一）：")
             print(f"  A. 环境变量 {p.get('api_key_env') or '(自定义)'}  — 更安全，推荐")
-            print(f"  B. 存入本地 .secrets.json          — 方便，已自动 gitignore")
+            print("  B. 存入本地 .secrets.json          — 方便，已自动 gitignore")
             key = input("现在输入 API Key (直接回车跳过): ").strip()
         if key:
             s = load_secrets()

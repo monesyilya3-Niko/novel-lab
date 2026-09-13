@@ -12,7 +12,6 @@ LLM 输出归一化 — 把中文自由键转成 schema 结构
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 # --------------------------------------------------------------------------

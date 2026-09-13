@@ -4,12 +4,9 @@
 """
 from __future__ import annotations
 
-import json
-import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from gui import config
 from gui.services import ServiceError
 
 # 平台配置

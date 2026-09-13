@@ -1,0 +1,18 @@
+name: Release Please
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        with:
+          # GitHub 自动提供的 GITHUB_TOKEN 即可（无跨仓需求）
+          token: ${{ secrets.GITHUB_TOKEN }}

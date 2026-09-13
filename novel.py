@@ -91,7 +91,7 @@ def cmd_status():
     else:
         print("\n[模型] 未配置外部模型 —— LLM 层由 WorkBuddy 内置智能承担"
               "（pass1-5 分析与写作改写由 AI 直接读文本完成，无 API 依赖）")
-    print(f"\n提示: 'novel 拆书 --help' 查看各子命令详细用法")
+    print("\n提示: 'novel 拆书 --help' 查看各子命令详细用法")
     return 0
 
 
@@ -280,7 +280,7 @@ def main():
                 for issue in qa["issues"][:5]:
                     print(f"    · {issue['detail'][:60]}")
 
-        print(f"\n分析完成。资产目录: assets/ | 报告目录: reports/")
+        print("\n分析完成。资产目录: assets/ | 报告目录: reports/")
         return 0
 
     if args.cmd == "拆书":
@@ -340,7 +340,7 @@ def main():
                 for d in vc_details:
                     print(f"  {d}")
             if qc['issues']:
-                print(f"\n需改进:")
+                print("\n需改进:")
                 for i in qc['issues']:
                     print(f"  ⚠ {i}")
         return 0
@@ -351,7 +351,7 @@ def main():
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:
-            print(f"全书内容质检")
+            print("全书内容质检")
             print(f"{'='*50}")
             print(f"章节: {result['total_chapters']} | 问题: {result['total_issues']} | 判定: {result['verdict']}")
             print()

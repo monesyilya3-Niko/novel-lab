@@ -131,7 +131,7 @@ export default function StylePanel() {
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="subtitle2">{s.name}</Typography>
                   <Typography variant="caption" color="text.secondary">
-                    句长 {String(s.metrics?.avg_sentence_length ?? '-')} 字 | 对话 {((Number(s.metrics?.dialogue_ratio) ?? 0) * 100).toFixed(0)}%
+                    句长 {String(s.metrics?.avg_sentence_length ?? '-')} 字 | 对话 {(Number(s.metrics?.dialogue_ratio ?? 0) * 100).toFixed(0)}%
                   </Typography>
                 </Box>
                 <Button size="small" color="error" onClick={() => doDelete(s.name)}>删除</Button>

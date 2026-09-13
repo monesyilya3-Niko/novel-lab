@@ -10,7 +10,6 @@ import re
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple
-from urllib.parse import urlparse, parse_qs
 
 from gui import engine_adapter, services
 from gui.services import ServiceError

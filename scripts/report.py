@@ -11,7 +11,6 @@ M3 拆书报告渲染器 — 资产 JSON → 可交付的 Markdown 拆书报告
 import argparse
 import json
 import re
-import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
