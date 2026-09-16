@@ -105,14 +105,73 @@ def _chapter_number(issue_chapter) -> int:
 # 1. 数字/年龄矛盾
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 中文数字支持（2026-09-16 新增）
+# ---------------------------------------------------------------------------
+# 旧实现只认阿拉伯数字，而中文小说里的年龄/天数/金额绝大多数写作汉字数字，
+# 导致本项检测在中文长篇上「零覆盖」——报 0 问题并不代表一致，而是读不到数据。
+# 现同时接受阿拉伯数字与汉字数字。
+
+_CN_DIGITS = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+              "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_CN_UNITS = {"十": 10, "百": 100, "千": 1000}
+
+
+def _cn_to_int(token: str):
+    """把「十八」「二十三」「一百二十」等中文数字转为 int。
+
+    Args:
+        token: 阿拉伯数字串或中文数字串。
+
+    Returns:
+        int: 解析结果；无法解析时返回 None（调用方跳过）。
+    """
+    if not token:
+        return None
+    if token.isdigit():
+        return int(token)
+    if any(ch not in _CN_DIGITS and ch not in _CN_UNITS for ch in token):
+        return None
+    total = section = number = 0
+    for ch in token:
+        if ch in _CN_DIGITS:
+            number = _CN_DIGITS[ch]
+        else:
+            unit = _CN_UNITS[ch]
+            section += (number or 1) * unit
+            number = 0
+    return total + section + number
+
+
+# 实体名候选里出现这些字，几乎可以断定不是人名（而是「已经不是」「我那时候」这类片段）
+# 含「第」：防止「温霜禾第二天」被切成实体名「温霜禾第」（序号类时间词归时间线检测）
+_NAME_STOP_CHARS = set(
+    "的了着过是不没有在就也都很又再被把给对从和与而但却因为所以之其于则若即使得"
+    "个些来去上下里外中间时候我你他她它这那们第"
+    "零〇一二两三四五六七八九十百千"
+)
+
+
+def _looks_like_name(name: str) -> bool:
+    """粗筛实体名候选：2-4 字且不含功能字。"""
+    if not name or not (2 <= len(name) <= 4):
+        return False
+    return not any(ch in _NAME_STOP_CHARS for ch in name)
+
+
 # 同一实体 + 数值类别 的抽取模式：捕获 实体名 + 数值 + 单位
 # （单位限定为年龄/年份/天数/金额/身高/手机号，避免把普通量词误判为矛盾）
-AGE_RE = re.compile(r'([\u4e00-\u9fff]{2,4})\s*(\d{1,3})\s*岁')
-YEAR_RE = re.compile(r'([\u4e00-\u9fff]{2,4})\s*第?\s*(\d{1,4})\s*年')
-DAY_RE = re.compile(r'([\u4e00-\u9fff]{2,4})\s*(\d{1,3})\s*天')
-MONEY_RE = re.compile(r'([\u4e00-\u9fff]{2,4})\s*(\d{1,6})\s*[元块]')
-HEIGHT_RE = re.compile(r'([\u4e00-\u9fff]{2,4})\s*(\d{2,3})\s*(?:cm|厘米)')
-PHONE_RE = re.compile(r'([\u4e00-\u9fff]{2,4})\s*(?:电话|手机|号码|拨打|拨了)?\s*(\d{11})')
+# 实体名用非贪婪匹配，避免把紧随其后的汉字数字吞进名字里。
+_NAME_CLS = r'[\u4e00-\u9fff]{2,4}?'
+_NUM_CLS = r'(?:[0-9]+|[零〇一二两三四五六七八九十百千]+)'
+_GAP_CLS = r'[\s，,、]{0,2}'
+
+AGE_RE = re.compile(r'(' + _NAME_CLS + r')' + _GAP_CLS + r'(' + _NUM_CLS + r')\s*岁')
+YEAR_RE = re.compile(r'(' + _NAME_CLS + r')' + _GAP_CLS + r'第?\s*(' + _NUM_CLS + r')\s*年')
+DAY_RE = re.compile(r'(' + _NAME_CLS + r')' + _GAP_CLS + r'(' + _NUM_CLS + r')\s*天')
+MONEY_RE = re.compile(r'(' + _NAME_CLS + r')' + _GAP_CLS + r'(' + _NUM_CLS + r')\s*[元块]')
+HEIGHT_RE = re.compile(r'(' + _NAME_CLS + r')' + _GAP_CLS + r'(' + _NUM_CLS + r')\s*(?:cm|厘米)')
+PHONE_RE = re.compile(r'(' + _NAME_CLS + r')' + _GAP_CLS + r'(?:电话|手机|号码|拨打|拨了)?\s*(\d{11})')
 
 # 每个数值类别对应的抽取器与标签
 _NUM_PATTERNS = [
@@ -129,17 +188,23 @@ _NUM_PATTERN_MAP = {t[0]: t for t in _NUM_PATTERNS}
 
 
 def _check_number_contradictions(texts: dict) -> list:
-    """检测同一实体数值类别在不同章出现互斥取值。"""
+    """检测同一实体数值类别在不同章出现互斥取值。
+
+    2026-09-16：同时接受阿拉伯数字与汉字数字；实体名候选经 `_looks_like_name`
+    粗筛（剔除「已经不是」「我那时候」这类非人名片段），避免汉字数字放开后误报激增。
+    """
     issues = []
-    # entity_name -> {类别: {取值: 首次出现章号}}
+    # entity_name -> {类别: {取值(int): 首次出现章号}}
     entity_values = {}
     for ch in sorted(texts.keys()):
         text = texts[ch]
         for cat, pat, label in _NUM_PATTERNS:
-            for name, val in pat.findall(text):
+            for name, raw in pat.findall(text):
                 name = name.strip()
-                val = val.strip()
-                if not name or not val:
+                if not _looks_like_name(name):
+                    continue
+                val = _cn_to_int(raw.strip())
+                if val is None:
                     continue
                 rec = entity_values.setdefault(name, {}).setdefault(cat, {})
                 if val not in rec:
@@ -166,80 +231,73 @@ def _check_number_contradictions(texts: dict) -> list:
 # 2. 时间线矛盾
 # ---------------------------------------------------------------------------
 
-# 相对时间锚点：命中的章会建立/推进相对时间，检测单调性
-# 每个模式映射到 (天数偏移, 是否跨章推进标记)
-_TIME_PATTERNS = [
-    (re.compile(r'(?:^|[^前昨明])昨天'), "昨天"),
-    (re.compile(r'(?:^|[^昨明])今天'), "今天"),
-    (re.compile(r'(?:^|[^昨今])明天'), "明天"),
-    (re.compile(r'第二天|次日'), "第二天"),
-    (re.compile(r'第\s*(\d{1,3})\s*天'), None),  # 第N天，动态处理
-    (re.compile(r'(\d{1,3})\s*天后'), None),      # N天后
-    (re.compile(r'(\d{1,3})\s*年前'), None),      # N年前
-    (re.compile(r'(\d{1,3})\s*年(?:前|之前)'), None),
-]
+# 对白（引号内）与比喻中的时间词不构成叙述时间锚点
+_QUOTE_RE = re.compile(r'“[^”]*”|「[^」]*」|『[^』]*』|"[^"]*"')
+_SIMILE_TIME_RE = re.compile(
+    r'(?:好像|仿佛|如同|像是|似的|像)[^。！？\n]{0,6}?(?:昨天|今天|前天|明天)')
+
+# 句首「第N天」：句中用法（如「哭完以后，第二天仍要起床」）属惯用语，不作锚点
+_DAY_ORDINAL_RE = re.compile(
+    r'(?:^|[。！？…\n])\s*第\s*([0-9]{1,3}|[零〇一二两三四五六七八九十百千]{1,3})\s*天')
+# 同一枚举窗口：两次锚点相距超过该字数，视为不同场景，互不约束
+_SAME_SCENE_WINDOW = 1000
 
 
-def _extract_relative_time(text: str) -> list:
-    """从文本抽取相对时间信号，返回 [(offset, 标签)]，offset 为相对天数。
+def _narration_only(text: str) -> str:
+    """剥离引号内对白与比喻中的时间词，只保留叙述骨架。"""
+    cleaned = _QUOTE_RE.sub('', text or '')
+    return _SIMILE_TIME_RE.sub('', cleaned)
 
-    offset 语义（越大越靠后）：
-      昨天=-1, 今天=0, 明天=+1, 第二天=+1, 第N天=N-1, N天后=+N, N年前=-N*365
-    无法确定的返回空列表。
-    """
-    signals = []
-    for pat, label in _TIME_PATTERNS:
-        if label == "昨天":
-            if pat.search(text):
-                signals.append((-1, "昨天"))
-        elif label == "今天":
-            if pat.search(text):
-                signals.append((0, "今天"))
-        elif label == "明天":
-            if pat.search(text):
-                signals.append((1, "明天"))
-        elif label == "第二天":
-            if pat.search(text):
-                signals.append((1, "第二天"))
-        elif label is None and "第" in pat.pattern:
-            for m in pat.finditer(text):
-                signals.append((int(m.group(1)) - 1, f"第{m.group(1)}天"))
-        elif label is None and "天后" in pat.pattern:
-            for m in pat.finditer(text):
-                signals.append((int(m.group(1)), f"{m.group(1)}天后"))
-        elif label is None and ("年前" in pat.pattern or "年(?:前|之前)" in pat.pattern):
-            for m in pat.finditer(text):
-                signals.append((-int(m.group(1)) * 365, f"{m.group(1)}年前"))
-    return signals
+
+def _extract_day_ordinals(text: str) -> list:
+    """抽取「句首第N天」锚点，返回 [(N, 位置)]，按出现顺序。"""
+    out = []
+    for m in _DAY_ORDINAL_RE.finditer(_narration_only(text)):
+        n = _cn_to_int(m.group(1))
+        if n:
+            out.append((n, m.start()))
+    return out
 
 
 def _check_timeline_contradictions(texts: dict) -> list:
-    """检测相对时间单调性破坏。"""
+    """章内「第N天」日序单调性检测（2026-09-16 重写）。
+
+    为什么重写：
+        旧实现把「昨天/今天/明天」也当作时间锚点，并以**全书不回落的最高水位线**
+        逐章比较（`prev_max = max(prev_max, ch_max)`）。结果是：只要书中任意一章
+        出现「明天」，此后**任何不含前瞻时间词的章节都会被判「时间线倒退」**。
+        在一本 157 章的长篇上实测产生 33 条误报（占 21% 章节），并直接把
+        「逻辑合理」维度打到 0 分、连带 QC 判定 FAIL。
+        根因是把**相对指代**（昨天/明天是相对于本章当下，不是书内绝对位置）
+        当成了**绝对位置**；且不区分对白与比喻。
+
+    现在只保留可证明的信号：
+        同一场景窗口（`_SAME_SCENE_WINDOW` 字）内的「句首第N天」日序必须单调。
+        例如「第三天…第二天…第三天…」出现在同一段叙述里，即为编号错误。
+        句中「第二天」、对白里的时间词、比喻（「好像昨天才见过」）一律不计入。
+
+    Returns:
+        list[dict]: issue 列表，type 固定为 `timeline_contradiction`。
+    """
     issues = []
-    chapters = sorted(texts.keys())
-    # 记录每章「最靠前」与「最靠后」的相对时间，用于相邻章单调性比较
-    prev_max = None  # 前一章的相对时间上界
-    prev_ch = None
-    for ch in chapters:
-        text = texts[ch]
-        signals = _extract_relative_time(text)
-        if not signals:
-            continue
-        # 本章相对时间范围
-        ch_min = min(s[0] for s in signals)
-        ch_max = max(s[0] for s in signals)
-        # 与前一章比较：若本章上界 < 前一章上界，说明时间倒退（单调性破坏）
-        if prev_max is not None and ch_max < prev_max:
-            issues.append({
-                "type": "timeline_contradiction",
-                "severity": "high",
-                "chapter": ch,
-                "detail": f"Ch{prev_ch} 相对时间推进到 {prev_max}，Ch{ch} 却回溯到 {ch_max}，"
-                          f"时间线疑似倒退",
-            })
-        # 更新前章上界（用本章上界作为后续比较基准，允许同一天多章）
-        prev_max = max(prev_max, ch_max) if prev_max is not None else ch_max
-        prev_ch = ch
+    for ch in sorted(texts.keys()):
+        seq = _extract_day_ordinals(texts[ch])
+        prev_n = prev_pos = None
+        for n, pos in seq:
+            if n == 1:
+                # 「第一天」显式开启一次新的计数，不与之前的日序比较
+                prev_n = prev_pos = None
+                continue
+            if (prev_n is not None and n < prev_n
+                    and (pos - prev_pos) <= _SAME_SCENE_WINDOW):
+                issues.append({
+                    "type": "timeline_contradiction",
+                    "severity": "medium",
+                    "chapter": ch,
+                    "detail": f"同一段叙述内先写「第{prev_n}天」、后写「第{n}天」"
+                              f"（相距 {pos - prev_pos} 字），日序疑似编号错误",
+                })
+            prev_n, prev_pos = n, pos
     return issues
 
 

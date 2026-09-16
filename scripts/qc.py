@@ -219,12 +219,24 @@ def _dim_structure(texts: dict) -> DimensionScore:
 
 
 def _dim_character_arc(texts: dict, voice_card: dict) -> DimensionScore:
-    """D4 人物弧线 → consistency.check_voices（声线执行度）。"""
+    """D4 人物弧线 → consistency.check_voices（声线执行度）。
+
+    2026-09-16 修复：声线卡存在但 `dialogue.character_voices` 为空列表时，
+    `check_voices` 返回 0 分（"本章无角色出场，无法检查声线"），使本维度被
+    一张**不含本书角色**的通用卡直接打到 0。现与「无 voice-card」分支保持一致，
+    按「无法评估」跳过（记 100 并在 raw 中标注 skipped），避免空卡污染总分。
+    """
     if not voice_card:
         return DimensionScore(key="character_arc", label="人物弧线", layer="L2",
                               score=100.0, weight=1.0, issues=[],
                               raw={"source": "consistency.check_voices", "skipped": "无 voice-card"})
-    voices = voice_card.get("dialogue", {}).get("character_voices", [])
+    voices = voice_card.get("dialogue", {}).get("character_voices", []) or []
+    if not voices:
+        return DimensionScore(
+            key="character_arc", label="人物弧线", layer="L2",
+            score=100.0, weight=1.0, issues=[],
+            raw={"source": "consistency.check_voices",
+                 "skipped": "声线卡无角色（character_voices 为空）"})
     full = _full_text(texts)
     score, details = consistency.check_voices(full, voices)
     # check_voices 满分 35，归一为百分制
@@ -247,13 +259,26 @@ def _dim_setting(texts: dict, entities: dict) -> DimensionScore:
 
 
 def _dim_craft(texts: dict, voice_card: dict) -> DimensionScore:
-    """D6 手法运用 → consistency.score_text 五维（声线/情绪/叙述/禁忌/意象）。"""
+    """D6 手法运用 → consistency.score_text 五维（声线/情绪/叙述/禁忌/意象）。
+
+    2026-09-16 修复：`score_text` 的五维满分合计 100（声线 35 / 情绪 20 /
+    叙述 15 / 禁忌 20 / 意象 10）。当声线卡不含角色时，35 分的「角色声线」
+    子项恒为 0，会把本维度**凭空压到 65 分**。现改为按可评估子项
+    （情绪 20 + 叙述 15 + 禁忌 20 + 意象 10 = 65）重归一，并在 raw 中标注。
+    """
     if not voice_card:
         return DimensionScore(key="craft", label="手法运用", layer="L3",
                               score=100.0, weight=1.0, issues=[],
                               raw={"source": "consistency.score_text", "skipped": "无 voice-card"})
     full = _full_text(texts)
     total, details, raw = consistency.score_text(voice_card, full, label="全书")
+    voices = voice_card.get("dialogue", {}).get("character_voices", []) or []
+    if not voices:
+        evaluable_max = 65  # 情绪20 + 叙述15 + 禁忌20 + 意象10
+        evaluable = (raw.get("emotion", 0) + raw.get("narration", 0)
+                     + raw.get("banned", 0) + raw.get("imagery", 0))
+        total = round(evaluable / evaluable_max * 100, 1)
+        raw = dict(raw, renormalized="声线卡无角色，按可评估子项 65 分制重归一")
     issues = [{"type": "craft", "severity": "low", "chapter": 0,
                "detail": d.strip()} for d in details if "→" in d]
     return DimensionScore(
