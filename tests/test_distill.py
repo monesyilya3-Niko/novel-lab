@@ -9,7 +9,8 @@ novel-lab 蒸馏层回归测试（纯标准库 unittest，零第三方依赖）
   4. resolve_conflict 冲突标记与稳定 id
   5. score_confidence 置信度评分与 over_generalized
   6. detect_blindspots 盲区诊断
-  7. distill_genre 编排产出符合 schema
+  7. distill_genre 编排产出符合 schema（distilled 走 Task 1 的专用校验契约，
+     不按 voice-card 顶层字段断言）
   8. render_distilled 渲染（必守/建议/分歧/盲区）
 
 用法：
@@ -45,6 +46,7 @@ CORE = _load("distill_core")
 RENDER = _load("distill_render")
 RETRIEVE = _load("retrieve")
 INJECT = _load("inject")
+VALIDATE = _load("validate")
 
 
 class TestAlign(unittest.TestCase):
@@ -177,15 +179,17 @@ class TestBlindspots(unittest.TestCase):
 
 
 class TestDistillGenre(unittest.TestCase):
-    """distill_genre 编排产出 schema 正确。"""
+    """distill_genre 编排产出 schema 正确（distilled 专用契约，非 voice-card）。"""
+
+    def _distill(self):
+        """用真实平铺资产（assets/*.json）采集 campus-redemption；无资产则跳过。"""
+        assets_dir = ROOT / "assets"
+        if not any(assets_dir.glob("*-voice-card.json")):
+            self.skipTest("无资产目录")
+        return CORE.distill_genre("campus-redemption")
 
     def test_schema(self):
-        # 用真实平铺资产（assets/*.json），按 meta.genre 采集 campus-redemption。
-        assets_dir = ROOT / "assets"
-        has_voice = any(assets_dir.glob("*-voice-card.json"))
-        if not has_voice:
-            self.skipTest("无资产目录")
-        result = CORE.distill_genre("campus-redemption")
+        result = self._distill()
         for dim in CORE.DIMENSIONS:
             d = result[dim]
             self.assertIn("meta", d)
@@ -197,6 +201,24 @@ class TestDistillGenre(unittest.TestCase):
                 self.assertIn("id", r)
                 self.assertIn("confidence", r)
                 self.assertTrue(0.0 <= r["confidence"] <= 1.0)
+
+    def test_each_dimension_passes_distilled_validation(self):
+        """每个维度都必须通过 distilled 专用校验（Task 1 契约，rules=[] 亦合法）。"""
+        result = self._distill()
+        for dim in CORE.DIMENSIONS:
+            errors, warns = VALIDATE.validate_asset_data("distilled", result[dim])
+            self.assertEqual(errors, [], f"{dim} distilled 硬错误: {errors}")
+            self.assertEqual(warns, [], f"{dim} distilled 警告: {warns}")
+
+    def test_distilled_is_not_voice_card_shape(self):
+        """蒸馏产物判为 distilled，且不含 voice-card 顶层字段（勿再按 voice-card 断言）。"""
+        result = self._distill()
+        for dim in CORE.DIMENSIONS:
+            d = result[dim]
+            self.assertEqual(VALIDATE.auto_kind(d), "distilled",
+                             f"{dim} 蒸馏产物应判为 distilled")
+            for field in ("narration", "dialogue", "emotion_handling", "banned"):
+                self.assertNotIn(field, d, f"{dim} 不应含 voice-card 顶层字段 '{field}'")
 
 
 class TestRenderDistilled(unittest.TestCase):
