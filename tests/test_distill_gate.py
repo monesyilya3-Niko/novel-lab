@@ -11,6 +11,8 @@ distill.py 写盘门禁回归测试（纯标准库 unittest，零第三方依赖
   3. 警告不阻断写盘；``rules=[]`` 的蒸馏结果必须被允许（brief 明确要求）。
   4. ``run_distill`` 返回键 ``genre`` / ``written`` / ``dimensions`` 保持兼容，
      写盘统一走门禁函数（相关用例 patch 掉真实写盘，绝不触碰生产 assets/）。
+  5. ``meta.genre`` 白名单：payload 自带的 genre 参与拼输出文件名，含路径分隔符
+     或上跳的非法值必须在写盘前拦下（``validate_distilled`` 本身不校验 genre）。
 
 用法：
   python run_tests.py            # 自动 discover 本文件（pattern test_*.py）
@@ -29,13 +31,33 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(SCRIPTS))
 
 
+def _source_of(mod):
+    """返回模块的源文件绝对路径；无 ``__file__`` 时返回 None。"""
+    try:
+        return Path(mod.__file__).resolve()
+    except (AttributeError, TypeError, OSError):
+        return None
+
+
 def _load(name: str):
-    """按文件名从 scripts/ 动态加载模块（与 test_distill/test_validate 同模式）。"""
-    path = SCRIPTS / f"{name}.py"
-    spec = importlib.util.spec_from_file_location(name, path)
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[name] = mod
-    spec.loader.exec_module(mod)
+    """按文件名从 scripts/ 动态加载模块，且同一源文件只加载一次。
+
+    ``distill.py`` 通过 ``from validate import validate_asset_data`` 拿到的是
+    ``sys.modules["validate"]`` 里的那个实例。若本文件再独立加载第二份 ``validate``，
+    门禁实际读写的 ``ERRORS`` / ``WARNS`` 与测试断言的就会是**两个不同模块实例**的
+    全局变量，使「门禁不得污染全局状态」的断言退化为恒真（假绿）。因此这里复用
+    ``sys.modules`` 中同路径的既有实例，从根上消除同一文件被加载两次。
+
+    注：必须先注册进 ``sys.modules`` 再 ``exec_module``——``dataclass`` 等装饰器
+    会通过 ``sys.modules[__module__]`` 反查本模块。
+    """
+    path = (SCRIPTS / f"{name}.py").resolve()
+    mod = sys.modules.get(name)
+    if mod is None or _source_of(mod) != path:
+        spec = importlib.util.spec_from_file_location(name, path)
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[name] = mod
+        spec.loader.exec_module(mod)
     return mod
 
 
@@ -123,11 +145,42 @@ class TestValidateDistilledPayload(unittest.TestCase):
         self.assertTrue(warns, "sources 为空应触发警告")
 
     def test_does_not_pollute_global_validate_state(self):
+        """门禁不得污染 validate 的全局 ``ERRORS`` / ``WARNS``。
+
+        断言对象必须是**门禁实际使用的那个 validate 模块实例**：``distill.py`` 中的
+        ``validate_asset_data`` 取自 ``sys.modules["validate"]``，其 ``__globals__``
+        就是该模块的 ``__dict__``。若测试另加载一份 validate 副本再去读它的全局变量，
+        断言读到的是另一个模块的状态，两边永远相等（恒真假绿）。故这里先用
+        ``assertIs`` 把「同一实例」钉死，再对 ``__globals__`` 内的真实状态做断言；
+        另加一次调用计数，防止门禁压根没调校验器时断言空转。
+        """
+        gate_globals = DISTILL.validate_asset_data.__globals__
+        self.assertIs(gate_globals, VALIDATE.__dict__,
+                      "测试必须与门禁共享同一个 validate 模块实例，否则断言恒真")
+
+        self.addCleanup(VALIDATE.reset)  # 用完还原，不给后续用例留污染
         VALIDATE.reset()
         VALIDATE.err("调用前已存在的错误", "pre")
-        before = list(VALIDATE.ERRORS)
-        DISTILL.validate_distilled_payload(valid_distilled("structure-obs"))
-        self.assertEqual(VALIDATE.ERRORS, before, "门禁不得污染 validate 全局状态")
+        before_errors = list(VALIDATE.ERRORS)
+        before_warns = list(VALIDATE.WARNS)
+        self.assertTrue(before_errors, "前置条件：哨兵错误应已注入，否则断言无意义")
+
+        calls = []
+        real = DISTILL.validate_asset_data
+
+        def spy(kind, data):
+            calls.append(kind)
+            return real(kind, data)
+
+        with mock.patch.object(DISTILL, "validate_asset_data", side_effect=spy):
+            DISTILL.validate_distilled_payload(valid_distilled("structure-obs"))
+
+        self.assertEqual(calls, ["distilled"],
+                         "门禁必须真的调用 validate_asset_data，否则本用例空转")
+        self.assertEqual(gate_globals["ERRORS"], before_errors,
+                         "门禁不得污染 validate 全局 ERRORS")
+        self.assertEqual(gate_globals["WARNS"], before_warns,
+                         "门禁不得污染 validate 全局 WARNS")
 
 
 class TestDistillGate(unittest.TestCase):
@@ -136,8 +189,9 @@ class TestDistillGate(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
+        self.tmp_root = Path(self._tmp.name)
         # 目录故意不存在：既验证会按需创建，也验证校验失败时不会创建。
-        self.assets_dir = Path(self._tmp.name) / "assets"
+        self.assets_dir = self.tmp_root / "assets"
 
     def test_valid_payloads_are_written_after_validation(self):
         payloads = {dim: valid_distilled(dim) for dim in CORE.DIMENSIONS}
@@ -160,6 +214,27 @@ class TestDistillGate(unittest.TestCase):
         with self.assertRaises(ValueError):
             DISTILL.write_distilled_outputs(payloads, self.assets_dir)
         self.assertFalse(self.assets_dir.exists(), "校验失败不得创建 assets 目录")
+
+    def test_illegal_meta_genre_writes_nothing(self):
+        """HIGH：``meta.genre`` 参与拼输出文件名，非法值必须在写盘前拦下。
+
+        覆盖 ``write_distilled_outputs`` 内新增的 ``meta.genre`` 白名单分支。
+        ``validate_distilled`` 对 ``meta.genre`` 只做 ``check_str(min_len=2)``
+        （类型 + 长度），**不校验字符集**，故 ``"../evil"`` / ``"a/b"`` 能通过
+        distilled 校验，本分支是唯一防线——禁用后 ``"../evil"`` 会真的把文件写到
+        ``assets/`` 之外（见 task-4-report.md 的红灯证据）。
+        """
+        for illegal in ("../evil", "..", "", "a/b", "a\\b", None):
+            with self.subTest(genre=illegal):
+                payloads = valid_payloads()
+                payloads["voice-card"]["meta"]["genre"] = illegal
+                with self.assertRaises(ValueError) as ctx:
+                    DISTILL.write_distilled_outputs(payloads, self.assets_dir)
+                self.assertIn("非法 meta.genre", str(ctx.exception))
+                self.assertFalse(self.assets_dir.exists(),
+                                 "非法 meta.genre 不得创建 assets 目录")
+                self.assertEqual(list(self.tmp_root.rglob("*")), [],
+                                 "校验失败不得在临时目录留下任何文件/目录")
 
     def test_missing_dimension_writes_nothing(self):
         payloads = valid_payloads()
