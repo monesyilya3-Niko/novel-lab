@@ -370,5 +370,117 @@ class TestBackupRetention(unittest.TestCase):
         self.assertLessEqual(n, migrate.BACKUP_KEEP, f"备份数 {n} 超过上限")
 
 
+class TestMigrateLegacyKindUpgrade(unittest.TestCase):
+    """C-1 回归：存量库被**旧代码**迁移过（asset_key 用旧 kind），重跑迁移必须原地升级。
+
+    存量行的特征：``asset_key`` 是旧 kind（如 ``trope:genre-prose-card-index`` /
+    ``voice:...-voice-card-distilled``），``path`` 与磁盘文件一致。新代码推断出的
+    ``asset_key``（``prose_card_index:`` / ``distilled:``）与旧行不冲突，但 ``assets.path``
+    是 UNIQUE —— 只按 asset_key 做 UPSERT 会 ``IntegrityError``，被 ``db.tx()`` 整体回滚，
+    导致迁移**永久失败**、新 kind 永远进不了库。
+
+    修复要求：按 path 冲突时把历史行**原地**改写成新 ``asset_key`` + 新 ``kind``
+    （不删行、不重建库、不改其它 kind 行为），且保持幂等。
+    """
+
+    # (文件名, 文件内容, 旧 asset_key, 旧 kind, 新 kind)
+    _LEGACY = (
+        ("genre-prose-card-index.json",
+         '{"cards":{"xianxia":{"file":"genre-prose-card-genre-xianxia.json"}}}',
+         "trope:genre-prose-card-index", "trope", "prose_card_index"),
+        ("campus-redemption-voice-card-distilled.json",
+         '{"meta":{}}',
+         "voice:campus-redemption-voice-card-distilled", "voice", "distilled"),
+    )
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="migrate_upgrade_"))
+        self._orig = {
+            "ASSETS_ROOT": config.ASSETS_ROOT,
+            "REPORTS_DIR": config.REPORTS_DIR,
+            "CORPUS_DIR": config.CORPUS_DIR,
+            "CONFIG_DIR": config.CONFIG_DIR,
+            "STATE_ROOT": config.STATE_ROOT,
+            # STATE_JSON_DIR 与 STATE_ROOT 成对隔离，避免夹具落到真实 gui/state/。
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.ASSETS_ROOT = self._tmp / "assets"
+        config.REPORTS_DIR = self._tmp / "reports"
+        config.CORPUS_DIR = self._tmp / "corpus"
+        config.CONFIG_DIR = self._tmp / "config"
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.STATE_JSON_DIR = self._tmp / "gui_state"
+        for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
+                  config.CONFIG_DIR, config.STATE_ROOT, config.STATE_JSON_DIR):
+            d.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+
+    def _n(self, table: str) -> int:
+        return db.get_conn().execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()["n"]
+
+    def _seed_legacy_db(self) -> dict:
+        """建库并预置「旧代码迁移过」的存量行，返回 {文件名: 行 id}。"""
+        db.init_schema()
+        seeded = {}
+        for fname, content, old_key, old_kind, _new_kind in self._LEGACY:
+            fp = config.ASSETS_ROOT / fname
+            fp.write_text(content, encoding="utf-8")
+            # path 必须与 run_migrate 写入口径一致（_rel_path），才构成真实的 path 冲突。
+            path = migrate._rel_path(fp)
+            with db.tx() as conn:
+                cur = conn.execute(
+                    "INSERT INTO assets (asset_key, kind, name, path) VALUES (?, ?, ?, ?)",
+                    (old_key, old_kind, fp.stem, path))
+                seeded[fname] = cur.lastrowid
+        return seeded
+
+    def _row_by_path(self, fname: str):
+        path = migrate._rel_path(config.ASSETS_ROOT / fname)
+        return db.get_conn().execute(
+            "SELECT id, asset_key, kind, path FROM assets WHERE path = ?", (path,)).fetchone()
+
+    def test_legacy_rows_upgraded_in_place(self):
+        """修复前：run_migrate() 抛 IntegrityError（assets.path UNIQUE）→ 整事务回滚。"""
+        seeded = self._seed_legacy_db()
+        n_before = self._n("assets")
+        self.assertEqual(n_before, len(self._LEGACY))
+
+        result = migrate.run_migrate()  # 修复前在此抛 IntegrityError。
+
+        self.assertGreaterEqual(self._n("assets"), n_before, "历史行不得被删除")
+        self.assertEqual(result["assets"], self._n("assets"))
+        for fname, _content, old_key, _old_kind, new_kind in self._LEGACY:
+            stem = Path(fname).stem
+            new_key = f"{new_kind}:{stem}"
+            row = self._row_by_path(fname)
+            self.assertIsNotNone(row, f"历史行丢失: {fname}")
+            self.assertEqual(row["kind"], new_kind, f"{fname} 的 kind 未升级")
+            self.assertEqual(row["asset_key"], new_key,
+                             f"{fname} 的 asset_key 未对齐 kind:stem 口径")
+            self.assertEqual(row["id"], seeded[fname], "应为原地更新，而非删旧插新")
+            self.assertIsNone(
+                db.get_conn().execute(
+                    "SELECT 1 FROM assets WHERE asset_key = ?", (old_key,)).fetchone(),
+                f"旧 asset_key 残留: {old_key}")
+            # 详情定位口径（get_asset_detail → asset_key = kind:name）必须能命中。
+            self.assertIsNotNone(db.get_asset_by_key(new_key))
+        self.assertTrue(migrate.check()["ok"], "升级后库与磁盘应对账一致")
+
+    def test_legacy_upgrade_is_idempotent(self):
+        """升级后再跑一次仍幂等（同一份新代码连跑两次行数不变）。"""
+        self._seed_legacy_db()
+        migrate.run_migrate()
+        before = (self._n("assets"), self._n("reports"), self._n("books"))
+        migrate.run_migrate()
+        after = (self._n("assets"), self._n("reports"), self._n("books"))
+        self.assertEqual(before, after, "升级路径必须幂等")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

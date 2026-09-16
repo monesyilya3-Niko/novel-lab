@@ -297,6 +297,19 @@ def _upsert_book(conn: Any, book_id: str, title: str, source_path: Optional[str]
 def _upsert_asset(conn: Any, asset_key: str, kind: str, name: str, path: str,
                   book_id: Optional[str], genre: Optional[str], size: Optional[int],
                   mtime: Optional[float], meta_json: str) -> None:
+    """资产 UPSERT（幂等）。链式 ``ON CONFLICT``（SQLite 3.35.0+）覆盖两个唯一约束：
+
+    1. ``asset_key`` 冲突（``kind:stem`` 相同）→ 更新非键列，重复迁移不重复插行。
+    2. ``path`` 冲突（同一文件已存在别的 ``asset_key``）→ **存量库被旧代码迁移过**的
+       场景：老版本把 ``genre-prose-card-index.json`` 判为 ``trope``、把 ``*-distilled``
+       判为对应基础卡，库里留有 ``trope:genre-prose-card-index`` /
+       ``voice:xxx-voice-card-distilled`` 这类旧 kind 行（path 与文件一致）。新代码推断出的
+       ``asset_key`` 与旧行不冲突，但 ``assets.path`` 是 UNIQUE——只处理 asset_key 会
+       ``IntegrityError``，被 ``db.tx()`` 整体回滚，迁移**永久失败**、新 kind 进不了库。
+       故按 path 命中时把历史行**原地**改写成新 ``asset_key`` + 新 ``kind``
+       （``path`` 已等于 ``excluded.path``，无需回写）：既不删行、不重建库，也避免
+       ``asset_key`` 与 ``get_asset_detail``/``_item_id`` 的 ``kind:stem`` 口径漂移。
+    """
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     conn.execute(
         """
@@ -307,6 +320,16 @@ def _upsert_asset(conn: Any, asset_key: str, kind: str, name: str, path: str,
             kind = excluded.kind,
             name = excluded.name,
             path = excluded.path,
+            book_id = excluded.book_id,
+            genre = excluded.genre,
+            size = excluded.size,
+            mtime = excluded.mtime,
+            meta_json = excluded.meta_json,
+            updated_at = excluded.updated_at
+        ON CONFLICT(path) DO UPDATE SET
+            asset_key = excluded.asset_key,
+            kind = excluded.kind,
+            name = excluded.name,
             book_id = excluded.book_id,
             genre = excluded.genre,
             size = excluded.size,
