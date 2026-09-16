@@ -191,7 +191,7 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
         except (UnicodeDecodeError, OSError) as exc:
             raise ServiceError(f"读取章节失败: {exc}", 400)
 
-    voice_data = _load_asset_json(voice)
+    voice_data = _load_asset_of_kind(voice, "voice")
     cons = engine_adapter.score_text(voice_data, text, label=label)
     raw = cons.get("raw", {})
     dims = {
@@ -335,7 +335,7 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
     if chapter_no < 1:
         raise ServiceError("chapter_no 必须 ≥ 1", 400)
 
-    voice_data = _load_asset_json(voice)
+    voice_data = _load_asset_of_kind(voice, "voice")
     novel_dir = config.NOVEL_DIR / project
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
 
@@ -439,7 +439,7 @@ def import_chapter(project: str, chapter_no: int, content: str,
     }
 
     if voice:
-        voice_data = _load_asset_json(voice)
+        voice_data = _load_asset_of_kind(voice, "voice")
         cons = engine_adapter.score_text(voice_data, content, label=f"第{chapter_no}章")
         qc = engine_adapter.chapter_check(content, None)
         pass_line, _ = engine_adapter.resolve_thresholds(

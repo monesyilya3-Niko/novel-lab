@@ -194,6 +194,15 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
 
+    # 资产内容契约：voice 只接受 voice 卡。校验必须在 _materialize_text 建 scratch
+    # **之前**完成——否则校验抛 400 时清理用的 try/finally 尚未进入，每次调用都会
+    # 泄漏一个 scratch 目录（与 qc() 的前置校验对齐）。
+    voice_path = None
+    if voice:
+        vfp = _checked_asset_path(voice, "voice")
+        if vfp:
+            voice_path = str(vfp)
+
     chapter_dir: Optional[str] = None
     scratch_fp: Optional[Path] = None
     if target:
@@ -207,12 +216,6 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
         scratch_fp = _materialize_text(text, task_id)
         # HIGH：传单文件路径而非父目录（book_quality_check 支持 is_file）
         chapter_dir = str(scratch_fp)
-
-    voice_path = None
-    if voice:
-        vfp = _checked_asset_path(voice, "voice")
-        if vfp:
-            voice_path = str(vfp)
 
     try:
         return engine_adapter.book_quality_check(chapter_dir, voice_card_path=voice_path)

@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from gui import config, quality_service  # noqa: E402
-from gui.services import ServiceError  # noqa: E402
+from gui.services import ServiceError, detect_asset_kind  # noqa: E402
 
 _TMP = None
 _SAVED = {}
@@ -58,10 +58,34 @@ def setUpModule():
     }
     (config.ASSETS_ROOT / "campus-redemption-voice-card-distilled.json").write_text(
         json.dumps(distilled, ensure_ascii=False), encoding="utf-8")
+    # 缺 meta.dimension、仅靠 rules/blindspots/stats 三元组自证的蒸馏卡：
+    # scripts/validate.py 的 auto_kind 用 OR 语义（dimension ∈ 四维 **或** 三元组），
+    # 服务层必须同构，否则这类卡会被放行当 voice 用。
+    distilled_triple_only = {
+        "meta": {"genre": "campus-redemption"},
+        "rules": [], "blindspots": [], "stats": {},
+    }
+    (config.ASSETS_ROOT / "campus-redemption-voice-card-distilled-triple-only.json").write_text(
+        json.dumps(distilled_triple_only, ensure_ascii=False), encoding="utf-8")
     # 测试章节目录
     ch_dir = config.NOVEL_DIR / "testproj" / "chapters"
     ch_dir.mkdir(parents=True, exist_ok=True)
     (ch_dir / "chapter-001.txt").write_text("这是第一章测试内容。" * 50, encoding="utf-8")
+
+
+def _scratch_entries() -> set:
+    """STATE_ROOT/scratch/ 下的现存条目名（用于断言校验失败不残留 scratch）。"""
+    root = config.STATE_ROOT / "scratch"
+    return {p.name for p in root.iterdir()} if root.is_dir() else set()
+
+
+def _assert_kind_mismatch(tc: unittest.TestCase, exc: BaseException,
+                          expected: str, actual: str) -> None:
+    """断言错误表达的是「内容 kind 与参数期望不符」，而非仅仅出现某个关键词。"""
+    msg = str(exc)
+    tc.assertIn("kind 不匹配", msg)
+    tc.assertIn(f"内容自证为 {actual}", msg)
+    tc.assertIn(f"不能作为 {expected} 使用", msg)
 
 
 def tearDownModule():
@@ -172,7 +196,7 @@ class TestAssetKindContract(unittest.TestCase):
                 text="她推门而入。" * 30,
                 voice="voice:campus-redemption-voice-card-distilled")
         self.assertEqual(ctx.exception.code, 400)
-        self.assertIn("distilled", str(ctx.exception))
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
 
     def test_check_valid_voice_still_works(self):
         r = quality_service.check(text="她推门而入。" * 30, voice="voice:testbook-voice-card")
@@ -184,7 +208,30 @@ class TestAssetKindContract(unittest.TestCase):
                 target="testproj/chapters",
                 voice="voice:campus-redemption-voice-card-distilled")
         self.assertEqual(ctx.exception.code, 400)
-        self.assertIn("distilled", str(ctx.exception))
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+
+    def test_book_text_path_rejects_distilled_without_scratch(self):
+        """I1：book() 的 text 路径先建 scratch 再校验 voice，校验抛 400 时
+        清理用的 try/finally 尚未进入，会每次泄漏一个 scratch 目录。"""
+        before = _scratch_entries()
+        with self.assertRaises(ServiceError) as ctx:
+            quality_service.book(
+                text="她推门而入。" * 30,
+                voice="voice:campus-redemption-voice-card-distilled")
+        self.assertEqual(ctx.exception.code, 400)
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+        self.assertEqual(_scratch_entries(), before, "校验失败后不得残留 scratch 目录")
+
+    def test_qc_text_path_rejects_distilled_without_scratch(self):
+        """qc() 的前置校验对齐用例：text 路径校验失败同样不得留 scratch。"""
+        before = _scratch_entries()
+        with self.assertRaises(ServiceError) as ctx:
+            quality_service.qc(
+                text="她推门而入。" * 30,
+                voice="voice:campus-redemption-voice-card-distilled")
+        self.assertEqual(ctx.exception.code, 400)
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+        self.assertEqual(_scratch_entries(), before, "校验失败后不得残留 scratch 目录")
 
     def test_qc_rejects_distilled_as_voice_before_thread(self):
         """校验必须在启动后台线程之前完成：错误同步 400，且不占用并发槽位。"""
@@ -194,8 +241,38 @@ class TestAssetKindContract(unittest.TestCase):
                 target="testproj/chapters",
                 voice="voice:campus-redemption-voice-card-distilled")
         self.assertEqual(ctx.exception.code, 400)
-        self.assertIn("distilled", str(ctx.exception))
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
         self.assertEqual(quality_service._active_quality_count(), before)
+
+
+class TestDistilledDetectionParity(unittest.TestCase):
+    """I2：detect_asset_kind 必须与 scripts/validate.py:auto_kind 同构。
+
+    validate.py 用 OR 语义识别蒸馏卡：
+      ``meta.dimension ∈ 四维`` **或** ``rules/blindspots/stats 三元组齐备``。
+    服务层若用 AND，缺 meta.dimension 的蒸馏卡会被放行当 voice 用（口径分叉）。
+    """
+
+    def test_triple_only_without_dimension_is_distilled(self):
+        data = {"meta": {"genre": "campus-redemption"},
+                "rules": [], "blindspots": [], "stats": {}}
+        self.assertEqual(detect_asset_kind(data), "distilled")
+
+    def test_dimension_only_without_triple_is_distilled(self):
+        data = {"meta": {"dimension": "voice-card"}}
+        self.assertEqual(detect_asset_kind(data), "distilled")
+
+    def test_dimension_outside_four_values_not_distilled(self):
+        """dimension 必须落在四个合法值内，非法值不得单独构成 distilled 识别依据。"""
+        self.assertIsNone(detect_asset_kind({"meta": {"dimension": "not-a-dimension"}}))
+
+    def test_check_rejects_triple_only_distilled_as_voice(self):
+        with self.assertRaises(ServiceError) as ctx:
+            quality_service.check(
+                text="她推门而入。" * 30,
+                voice="voice:campus-redemption-voice-card-distilled-triple-only")
+        self.assertEqual(ctx.exception.code, 400)
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
 
 
 class TestConcurrencyLimit(unittest.TestCase):

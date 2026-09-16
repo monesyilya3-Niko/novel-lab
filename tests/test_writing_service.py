@@ -96,6 +96,15 @@ def tearDownModule():
         shutil.rmtree(_TMP, ignore_errors=True)
 
 
+def _assert_kind_mismatch(tc: unittest.TestCase, exc: BaseException,
+                          expected: str, actual: str) -> None:
+    """断言错误表达的是「内容 kind 与参数期望不符」，而非仅仅出现某个关键词。"""
+    msg = str(exc)
+    tc.assertIn("kind 不匹配", msg)
+    tc.assertIn(f"内容自证为 {actual}", msg)
+    tc.assertIn(f"不能作为 {expected} 使用", msg)
+
+
 class TestSanitizeProject(unittest.TestCase):
     def test_empty_rejected(self):
         with self.assertRaises(ServiceError):
@@ -150,19 +159,59 @@ class TestInjectAssetKindContract(unittest.TestCase):
         with self.assertRaises(ServiceError) as ctx:
             writing_service.inject(voice="voice:campus-redemption-voice-card-distilled")
         self.assertEqual(ctx.exception.code, 400)
-        self.assertIn("distilled", str(ctx.exception))
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
 
     def test_index_as_prose_card_rejected_400(self):
         with self.assertRaises(ServiceError) as ctx:
             writing_service.inject(voice="voice:testbook-voice-card",
                                    prose_card="prose_card:genre-prose-card-index")
         self.assertEqual(ctx.exception.code, 400)
-        self.assertIn("prose_card_index", str(ctx.exception))
+        _assert_kind_mismatch(self, ctx.exception, expected="prose_card",
+                              actual="prose_card_index")
 
     def test_real_prose_card_accepted(self):
         r = writing_service.inject(voice="voice:testbook-voice-card",
                                    prose_card="prose_card:genre-prose-card-genre-xianxia")
         self.assertIn("prose_card", r["injected_kinds"])
+
+
+class TestScoringPathsRejectWrongKind(unittest.TestCase):
+    """I3：score / generate / import_chapter 的 voice 也必须走 kind 校验路径。
+
+    这三处此前直接用不校验 kind 的 ``_load_asset_json``，distilled 仍可进入
+    单书评分与写作；修复后应同步 400。
+    """
+
+    DISTILLED = "voice:campus-redemption-voice-card-distilled"
+
+    def test_score_rejects_distilled_as_voice(self):
+        with self.assertRaises(ServiceError) as ctx:
+            writing_service.score(voice=self.DISTILLED, text="她推门而入。" * 30)
+        self.assertEqual(ctx.exception.code, 400)
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+
+    def test_generate_rejects_distilled_as_voice(self):
+        # 必须 patch 模型判据：本机 config/models.json 已配置模型，未修复前 generate
+        # 会带着 distilled 卡走进 LLM 分支起后台线程（联网），故此处强制降级路径。
+        with patch.object(writing_service.engine_adapter,
+                          "any_model_configured", return_value=False):
+            with self.assertRaises(ServiceError) as ctx:
+                writing_service.generate(voice=self.DISTILLED, project="kind_gate_proj",
+                                         chapter_no=1, task="写一段测试")
+        self.assertEqual(ctx.exception.code, 400)
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+
+    def test_import_chapter_rejects_distilled_as_voice(self):
+        with self.assertRaises(ServiceError) as ctx:
+            writing_service.import_chapter(project="kind_gate_proj", chapter_no=2,
+                                           content="这是测试章节内容。" * 50,
+                                           voice=self.DISTILLED)
+        self.assertEqual(ctx.exception.code, 400)
+        _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+
+    def test_score_valid_voice_still_works(self):
+        r = writing_service.score(voice="voice:testbook-voice-card", text="她推门而入。" * 30)
+        self.assertIn("consistency", r)
 
 
 class TestListProjects(unittest.TestCase):

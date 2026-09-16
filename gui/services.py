@@ -73,11 +73,11 @@ def detect_asset_kind(data: Any) -> Optional[str]:
     # 题材文风卡索引：cards 寻址映射（_count/_description 为可选元信息）。
     if isinstance(data.get("cards"), (dict, list)):
         return "prose_card_index"
-    # 跨书蒸馏卡：meta.dimension 为四维之一，且 rules/blindspots/stats 三元组齐备。
+    # 跨书蒸馏卡：``meta.dimension ∈ 四维`` **或** ``rules/blindspots/stats 三元组齐备``。
+    # OR 语义与 scripts/validate.py:auto_kind 严格同构——用 AND 会把「缺 meta.dimension、
+    # 仅三元组」的蒸馏卡漏判，从而被放行当 voice 用（口径分叉）。
     if (meta.get("dimension") in _DISTILLED_DIMENSIONS
-            and isinstance(data.get("rules"), list)
-            and isinstance(data.get("blindspots"), list)
-            and isinstance(data.get("stats"), dict)):
+            or all(k in data for k in ("rules", "blindspots", "stats"))):
         return "distilled"
     return None
 
