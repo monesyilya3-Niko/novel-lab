@@ -598,29 +598,33 @@ def get_report(report_id: str) -> Dict[str, Any]:
 
 
 def _load_assembled_card(book_id: str, card_type: str) -> Dict[str, Any]:
-    """从 assets/{book_id}/ 或 assets/ 根目录定位组装卡。
+    """从 assets/{book_id}/ 或 assets/ 根目录定位**单书基础组装卡**。
 
     阶段一沿用旧 DESIGN A6：整书跑完统一组装，命名 ``{book_id}-{card_type}.json``，
     落在 assets/ 根目录下（当前资产落盘即 assets/ 根目录）；若缺失返回空 dict 降级。
+
+    只认基础卡后缀：``*-distilled.json`` 是**跨书题材蒸馏产物**（无单书归属，
+    kind=distilled），不得作为单书基础卡 fallback 返回；需要蒸馏结果时由
+    writing inject 的显式 ``distilled`` 参数加载（见 writing_service）。
     """
     mapping = {
-        "voice": ("voice-card", "voice-card-distilled"),
-        "structure": ("structure-obs", "structure-obs-distilled"),
-        "commercial": ("commercial-obs", "commercial-obs-distilled"),
-        "craft": ("craft-card", "craft-card-distilled"),
+        "voice": "voice-card",
+        "structure": "structure-obs",
+        "commercial": "commercial-obs",
+        "craft": "craft-card",
     }
-    candidates = mapping.get(card_type, ())
+    suffix = mapping.get(card_type)
+    if suffix is None:
+        return {}
     # 优先 assets/{book_id}/ 子目录，其次 assets/ 根目录。
-    search_dirs = [config.ASSETS_ROOT / book_id, config.ASSETS_ROOT]
-    for suffix in candidates:
-        for d in search_dirs:
-            fp = d / f"{book_id}-{suffix}.json"
-            if fp.is_file():
-                try:
-                    return json.loads(fp.read_text(encoding="utf-8"))
-                except (json.JSONDecodeError, OSError) as exc:
-                    _log.warning(f"资产卡加载失败 {fp.name}: {exc}")
-                    continue
+    for d in (config.ASSETS_ROOT / book_id, config.ASSETS_ROOT):
+        fp = d / f"{book_id}-{suffix}.json"
+        if fp.is_file():
+            try:
+                return json.loads(fp.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError) as exc:
+                _log.warning(f"资产卡加载失败 {fp.name}: {exc}")
+                continue
     return {}
 
 

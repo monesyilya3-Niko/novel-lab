@@ -11,8 +11,13 @@
 
 kind 白名单（单一来源）：
     voice | structure | commercial | craft | genre_pack | prose_card | trope
+    | distilled | prose_card_index
 
-除 7 类资产卡外，``list_assets``/``get_overview`` 为兼容阶段一前端，仍将
+其中 ``distilled``（跨书题材蒸馏卡）与 ``prose_card_index``（题材文风卡寻址索引）
+都是**独立 kind**：前者不再冒充对应的基础卡（voice/structure/commercial/craft），
+后者不再与 ``trope`` 混用；二者均无单书归属（``book_id`` 为 None）。
+
+除 9 类资产卡外，``list_assets``/``get_overview`` 为兼容阶段一前端，仍将
 「报告（report）」与「书（book）」作为虚拟 kind 暴露（内部分别来自 reports/books 表）。
 """
 from __future__ import annotations
@@ -29,7 +34,8 @@ from gui import db
 _log = get_logger("asset_index")
 
 # kind 白名单（资产卡，单一来源）。任何新 kind 需在此显式登记，防路径穿越与越权读取。
-ASSET_KINDS = ("voice", "structure", "commercial", "craft", "genre_pack", "prose_card", "trope")
+ASSET_KINDS = ("voice", "structure", "commercial", "craft", "genre_pack", "prose_card", "trope",
+               "distilled", "prose_card_index")
 
 # 兼容阶段一的「虚拟 kind」：报告与书（内部映射到 reports/books 表，不落入 assets.kind）。
 VIRTUAL_KINDS = ("report", "book")
@@ -38,14 +44,18 @@ VIRTUAL_KINDS = ("report", "book")
 _ALL_KINDS = ASSET_KINDS + VIRTUAL_KINDS
 
 # assets 目录文件名后缀 → kind 映射（顺序即匹配优先级，扫描回退源用）。
+# 长后缀必须排在短后缀之前：四个 ``-*-distilled`` 若排在其基础后缀之后，
+# ``-voice-card`` 会先命中把蒸馏卡误判为 voice；``genre-prose-card-index``
+# 同理会被通用的 ``genre-prose-card-`` 吞掉。
 _SUFFIX_KIND = (
-    ("-voice-card-distilled", "voice"),
+    ("-voice-card-distilled", "distilled"),
+    ("-structure-obs-distilled", "distilled"),
+    ("-commercial-obs-distilled", "distilled"),
+    ("-craft-card-distilled", "distilled"),
+    ("genre-prose-card-index", "prose_card_index"),
     ("-voice-card", "voice"),
-    ("-structure-obs-distilled", "structure"),
     ("-structure-obs", "structure"),
-    ("-commercial-obs-distilled", "commercial"),
     ("-commercial-obs", "commercial"),
-    ("-craft-card-distilled", "craft"),
     ("-craft-card", "craft"),
     ("-genre-pack", "genre_pack"),
     ("genre-prose-card-", "prose_card"),
@@ -214,6 +224,9 @@ class AssetIndex:
     def _book_id_from_name(kind: str, stem: str) -> Optional[str]:
         if kind == "report":
             return stem
+        # 跨书蒸馏卡（题材级聚合）与题材文风卡索引（寻址表）：均无单书归属。
+        if kind in ("distilled", "prose_card_index"):
+            return None
         for suffix in ("-voice-card", "-structure-obs", "-commercial-obs", "-craft-card", "-genre-pack"):
             if suffix in stem:
                 return stem.split(suffix)[0]

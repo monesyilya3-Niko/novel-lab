@@ -9,6 +9,9 @@
 
 kind 推断（§6.2）：文件名 + JSON 内容双重判定，**不再用旧 _SUFFIX_KIND 硬编码**；
 ``trope-library.json`` 靠 ``tropes`` 键、``genre-prose-card-index.json`` 靠 ``cards`` 键识别。
+``*-distilled.json``（跨书蒸馏卡）判为 ``distilled``、索引判为 ``prose_card_index``——
+二者都是独立 kind，不冒充基础卡（voice/structure/commercial/craft）也不与 ``trope`` 混用；
+蒸馏与索引在 ``assets`` 表 ``book_id`` 一律为 NULL。
 未命中规则的资产归 ``trope`` 兜底（宁多勿丢），单列 ``unrecognized`` 清单供复核。
 
 仅标准库：argparse / json / os / pathlib / shutil / sqlite3（经 gui.db）。
@@ -39,6 +42,13 @@ _BOOK_CARD_SUFFIXES = (
     "-genre-pack",
 )
 
+# 蒸馏卡后缀（跨书题材聚合产物）：kind=distilled，须在基础卡后缀之前判定，
+# 否则 ``-voice-card`` 会先命中，把蒸馏卡冒充成 voice 基础卡。
+_DISTILLED_SUFFIXES = (
+    "-voice-card-distilled", "-structure-obs-distilled",
+    "-commercial-obs-distilled", "-craft-card-distilled",
+)
+
 # 报告后缀 → 报告类型。
 _REPORT_SUFFIX = (
     ("-拆书报告.md", "book"),
@@ -63,7 +73,11 @@ def infer_book_id(stem: str) -> Optional[str]:
     # 题材文风卡 / trope 库 / 索引文件：无归属书。
     if "genre-prose-card-" in stem or stem in ("trope-library", "genre-prose-card-index"):
         return None
-    # 跨书蒸馏卡：campus-redemption-*（无 _chosen 前缀，按后缀剥离后不含 _chosen）。
+    # 跨书蒸馏卡（题材级聚合，无单书归属）：显式覆盖 distilled 后缀，
+    # 避免被下面的基础卡后缀剥离出「看似有归属」的前缀。
+    if stem.endswith(_DISTILLED_SUFFIXES):
+        return None
+    # 基础书卡：剥离后缀取前缀，仅当前缀含 _chosen（单书卡）时才有归属。
     for suffix in _BOOK_CARD_SUFFIXES:
         if stem.endswith(suffix):
             prefix = stem[: -len(suffix)]
@@ -88,23 +102,27 @@ def infer_kind(name: str, content: Dict[str, Any]) -> str:
     # 1. trope-library（含 tropes 键）→ trope
     if "trope-library" in stem and isinstance(content.get("tropes"), (dict, list)):
         return "trope"
-    # 2. genre-prose-card-index（含 cards 键）→ trope（D1：索引归 trope 类「其他」）
+    # 2. genre-prose-card-index（含 cards 键）→ prose_card_index（题材寻址表，
+    #    独立 kind；须在通用 genre-prose-card- 之前判定，否则被吞成 prose_card）。
     if "genre-prose-card-index" in stem and isinstance(content.get("cards"), (dict, list)):
-        return "trope"
+        return "prose_card_index"
     # 3. genre-prose-card-*（meta.kind == genre-prose-card）→ prose_card
     if "genre-prose-card-" in stem and meta_kind == "genre-prose-card":
         return "prose_card"
     # 3b. 兜底：文件名即含 genre-prose-card-（即便 meta.kind 缺失）也归 prose_card。
     if "genre-prose-card-" in stem:
         return "prose_card"
-    # 4-8. 书卡 / 题材包后缀。
-    if stem.endswith("-voice-card") or stem.endswith("-voice-card-distilled"):
+    # 4. 跨书蒸馏卡（*-distilled）→ distilled（须在基础卡后缀之前判定）。
+    if stem.endswith(_DISTILLED_SUFFIXES):
+        return "distilled"
+    # 5-9. 基础书卡 / 题材包后缀。
+    if stem.endswith("-voice-card"):
         return "voice"
-    if stem.endswith("-structure-obs") or stem.endswith("-structure-obs-distilled"):
+    if stem.endswith("-structure-obs"):
         return "structure"
-    if stem.endswith("-commercial-obs") or stem.endswith("-commercial-obs-distilled"):
+    if stem.endswith("-commercial-obs"):
         return "commercial"
-    if stem.endswith("-craft-card") or stem.endswith("-craft-card-distilled"):
+    if stem.endswith("-craft-card"):
         return "craft"
     if stem.endswith("-genre-pack"):
         return "genre_pack"

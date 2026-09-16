@@ -4,9 +4,10 @@
 1. run_migrate() 迁移 55 资产 + 8 报告 + 4 书（构造样例，不硬编码生产数字，验证
    与磁盘扫描一致）。
 2. 幂等：重复 run_migrate 不重复插行。
-3. infer_kind：trope-library（tropes 键）/ genre-prose-card-index（cards 键）
-   / genre-prose-card-* / 书卡后缀 正确识别。
-4. infer_book_id：书卡前缀提取；蒸馏卡（无 _chosen）返回 None。
+3. infer_kind：trope-library（tropes 键）→ trope；genre-prose-card-index（cards 键）
+   → prose_card_index；genre-prose-card-* → prose_card；*-distilled → distilled；
+   基础书卡后缀 → voice/structure/commercial/craft/genre_pack。
+4. infer_book_id：书卡前缀提取；蒸馏卡与题材索引一律返回 None。
 5. check() 只读对账：迁移后一致；删除文件后 missing 被检出。
 6. backup()/rollback()：备份存在、回滚可恢复。
 
@@ -35,8 +36,22 @@ class TestMigrateInfer(unittest.TestCase):
             migrate.infer_kind("trope-library.json", {"tropes": {"x": 1}}), "trope")
 
     def test_infer_kind_prose_card_index(self):
+        # 题材文风卡索引是「题材寻址表」，不再与 trope 混用同一 kind。
         self.assertEqual(
-            migrate.infer_kind("genre-prose-card-index.json", {"cards": {"a": 1}}), "trope")
+            migrate.infer_kind("genre-prose-card-index.json", {"cards": {"a": 1}}),
+            "prose_card_index")
+
+    def test_infer_kind_distilled(self):
+        self.assertEqual(
+            migrate.infer_kind("campus-redemption-voice-card-distilled.json", {"meta": {}}),
+            "distilled",
+        )
+
+    def test_infer_kind_distilled_all_dimensions(self):
+        """四个维度后缀都必须判为 distilled，而非冒充对应基础卡。"""
+        for suffix in ("-voice-card", "-structure-obs", "-commercial-obs", "-craft-card"):
+            name = f"campus-redemption{suffix}-distilled.json"
+            self.assertEqual(migrate.infer_kind(name, {"meta": {}}), "distilled", name)
 
     def test_infer_kind_prose_card(self):
         self.assertEqual(
@@ -66,6 +81,9 @@ class TestMigrateInfer(unittest.TestCase):
     def test_infer_book_id_distilled_none(self):
         # 蒸馏卡无 _chosen 前缀 → None（跨书蒸馏，无单书归属）。
         self.assertIsNone(migrate.infer_book_id("campus-redemption-voice-card-distilled"))
+
+    def test_index_has_no_book_id(self):
+        self.assertIsNone(migrate.infer_book_id("genre-prose-card-index"))
 
     def test_infer_book_id_trope_none(self):
         self.assertIsNone(migrate.infer_book_id("trope-library"))
@@ -122,12 +140,16 @@ class TestMigrateFlow(unittest.TestCase):
             "REPORTS_DIR": config.REPORTS_DIR,
             "CORPUS_DIR": config.CORPUS_DIR,
             "STATE_ROOT": config.STATE_ROOT,
+            # R1：STATE_JSON_DIR 与 STATE_ROOT 必须成对隔离，避免夹具落到真实 gui/state/。
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
         }
         config.ASSETS_ROOT = cls._tmp / "assets"
         config.REPORTS_DIR = cls._tmp / "reports"
         config.CORPUS_DIR = cls._tmp / "corpus"
         config.STATE_ROOT = cls._tmp / "gui_state"
-        for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR, config.STATE_ROOT):
+        config.STATE_JSON_DIR = cls._tmp / "gui_state"
+        for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
+                  config.STATE_ROOT, config.STATE_JSON_DIR):
             d.mkdir(parents=True, exist_ok=True)
 
         # 构造样例数据（覆盖全部 kind + 已拆/未拆书）。
@@ -201,6 +223,19 @@ class TestMigrateFlow(unittest.TestCase):
         # 蒸馏卡 book_id 应为 NULL（或不存在 book_id）。
         for r in rows:
             self.assertIsNone(r["book_id"])
+
+    def test_distilled_and_index_kinds_in_db(self):
+        """distilled / prose_card_index 落入 assets.kind 且 book_id=NULL（不再冒充基础卡）。"""
+        migrate.run_migrate()
+        rows = {r["name"]: r for r in db.list_asset_rows(limit=100000)}
+
+        dis = rows["campus-redemption-voice-card-distilled"]
+        self.assertEqual(dis["kind"], "distilled")
+        self.assertIsNone(dis["book_id"], "蒸馏卡无单书归属")
+
+        index = rows["genre-prose-card-index"]
+        self.assertEqual(index["kind"], "prose_card_index")
+        self.assertIsNone(index["book_id"], "题材索引无单书归属")
 
     def test_genre_pack_registers_genre_and_display_name(self):
         """FIX-2：题材包靠 meta.id 推断，genres 表应出现 campus-redemption + 中文名。"""

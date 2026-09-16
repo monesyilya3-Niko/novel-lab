@@ -1,7 +1,8 @@
 """资产索引服务单元测试（阶段一 W02）。
 
 覆盖：
-1. 扫描 assets/reports/corpus/config 分类计数正确。
+1. 扫描 assets/reports/corpus/config 分类计数正确（含 distilled / prose_card_index
+   与基础卡的 kind 区分）。
 2. 缓存 TTL 生效（force / invalidate）。
 3. 分页 offset/limit 正确。
 4. path 相对化 + kind 白名单防路径穿越。
@@ -36,19 +37,23 @@ class TestAssetIndex(unittest.TestCase):
             "CORPUS_DIR": config.CORPUS_DIR,
             "CONFIG_DIR": config.CONFIG_DIR,
             "STATE_ROOT": config.STATE_ROOT,
+            # R1：STATE_JSON_DIR 与 STATE_ROOT 必须成对隔离，避免夹具落到真实 gui/state/。
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
         }
         config.ASSETS_ROOT = cls._tmp / "assets"
         config.REPORTS_DIR = cls._tmp / "reports"
         config.CORPUS_DIR = cls._tmp / "corpus"
         config.CONFIG_DIR = cls._tmp / "config"
         config.STATE_ROOT = cls._tmp / "gui_state"
+        config.STATE_JSON_DIR = cls._tmp / "gui_state"
 
         # 造数据。
         (config.ASSETS_ROOT).mkdir(parents=True)
         (config.REPORTS_DIR).mkdir(parents=True)
         (config.CORPUS_DIR).mkdir(parents=True)
         (config.CONFIG_DIR).mkdir(parents=True)
-        (config.STATE_ROOT).mkdir(parents=True)
+        (config.STATE_ROOT).mkdir(parents=True, exist_ok=True)
+        (config.STATE_JSON_DIR).mkdir(parents=True, exist_ok=True)
 
         # assets：voice / structure / commercial / craft / genre_pack / prose_card。
         (config.ASSETS_ROOT / "bookA-voice-card.json").write_text('{"meta":{"source_title":"A"}}', encoding="utf-8")
@@ -58,6 +63,11 @@ class TestAssetIndex(unittest.TestCase):
         (config.ASSETS_ROOT / "bookA-genre-pack.json").write_text('{"meta":{}}', encoding="utf-8")
         (config.ASSETS_ROOT / "genre-prose-card-genre-xianxia.json").write_text('{"meta":{}}', encoding="utf-8")
         (config.ASSETS_ROOT / "trope-library.json").write_text('{"meta":{}}', encoding="utf-8")  # 不归类
+        # 跨书蒸馏卡与题材索引：必须与基础卡区分 kind，且无单书归属。
+        (config.ASSETS_ROOT / "campus-redemption-voice-card-distilled.json").write_text(
+            '{"meta":{"dimension":"voice-card"}}', encoding="utf-8")
+        (config.ASSETS_ROOT / "genre-prose-card-index.json").write_text(
+            '{"cards":{"xianxia":{"file":"genre-prose-card-genre-xianxia.json"}}}', encoding="utf-8")
 
         # reports：拆书报告 + 笔法分析。
         (config.REPORTS_DIR / "bookA-拆书报告.md").write_text("# 拆书报告", encoding="utf-8")
@@ -89,8 +99,44 @@ class TestAssetIndex(unittest.TestCase):
         self.assertEqual(counts.get("craft"), 1)
         self.assertEqual(counts.get("genre_pack"), 1)
         self.assertEqual(counts.get("prose_card"), 1)
+        # distilled / prose_card_index 各自独立成 kind（此前分别被算作 voice / trope）。
+        self.assertEqual(counts.get("distilled"), 1)
+        self.assertEqual(counts.get("prose_card_index"), 1)
         self.assertEqual(counts.get("report"), 2)
         self.assertEqual(counts.get("book"), 2)
+
+    def test_base_distilled_index_kinds_distinct(self):
+        """同一目录下基础卡 / distilled / index 三类 kind 必须可区分。"""
+        by_name = {it["name"]: it for it in self.idx.scan(force=True)["items"]}
+
+        base = by_name["bookA-voice-card"]
+        self.assertEqual(base["kind"], "voice")
+        self.assertEqual(base["book_id"], "bookA")
+
+        distilled = by_name["campus-redemption-voice-card-distilled"]
+        self.assertEqual(distilled["kind"], "distilled", "蒸馏卡不得冒充 voice 基础卡")
+        self.assertIsNone(distilled["book_id"], "跨书蒸馏卡无单书归属")
+
+        index = by_name["genre-prose-card-index"]
+        self.assertEqual(index["kind"], "prose_card_index", "题材索引不得与 trope 混用")
+        self.assertIsNone(index["book_id"], "题材索引无单书归属")
+
+    def test_classify_and_book_id_boundaries(self):
+        """后缀分类顺序与 book_id 边界（长后缀优先，索引优先于通用 prose-card）。"""
+        classify = asset_index.AssetIndex._classify_asset_name
+        for suffix in ("-voice-card", "-structure-obs", "-commercial-obs", "-craft-card"):
+            self.assertEqual(
+                classify(f"campus-redemption{suffix}-distilled.json"), "distilled", suffix)
+            self.assertEqual(classify(f"bookA{suffix}.json"),
+                             {"-voice-card": "voice", "-structure-obs": "structure",
+                              "-commercial-obs": "commercial", "-craft-card": "craft"}[suffix])
+        self.assertEqual(classify("genre-prose-card-index.json"), "prose_card_index")
+        self.assertEqual(classify("genre-prose-card-genre-xianxia.json"), "prose_card")
+
+        book_id = asset_index.AssetIndex._book_id_from_name
+        self.assertEqual(book_id("voice", "bookA-voice-card"), "bookA")
+        self.assertIsNone(book_id("distilled", "campus-redemption-voice-card-distilled"))
+        self.assertIsNone(book_id("prose_card_index", "genre-prose-card-index"))
 
     def test_path_relative(self):
         for it in self.idx.scan(force=True)["items"]:
@@ -99,7 +145,9 @@ class TestAssetIndex(unittest.TestCase):
 
     def test_pagination(self):
         res = self.idx.list_assets(None, offset=0, limit=3)
-        self.assertEqual(res["total"], 10)  # 6 asset + 2 report + 2 book = 10（未归类 trope 不计入）
+        # 8 asset（6 基础/题材 + distilled + index）+ 2 report + 2 book = 12
+        # （trope-library 未归类，不计入）。
+        self.assertEqual(res["total"], 12)
         self.assertEqual(len(res["items"]), 3)
         res2 = self.idx.list_assets(None, offset=3, limit=3)
         self.assertEqual(len(res2["items"]), 3)
