@@ -28,13 +28,19 @@ def setUpModule():
     _SAVED["ROOT_DIR"] = config.ROOT_DIR
     config.ROOT_DIR = Path(_TMP)
     for name in ("STATE_ROOT", "STATE_JSON_DIR", "ASSETS_ROOT", "NOVEL_DIR",
-                 "CORPUS_DIR", "REPORTS_DIR"):
+                 "CORPUS_DIR", "REPORTS_DIR", "PROMPTS_DIR", "CONFIG_DIR"):
         _SAVED[name] = getattr(config, name)
         setattr(config, name, config.ROOT_DIR / name.lower())
+    # 派生常量同样重定向到临时根（保持与 config 中的派生关系一致）。
+    for name in ("DB_PATH", "LOCK_PATH"):
+        _SAVED[name] = getattr(config, name)
+    config.DB_PATH = config.STATE_ROOT / "index.db"
+    config.LOCK_PATH = config.STATE_ROOT / ".lock"
     config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
     config.NOVEL_DIR.mkdir(parents=True, exist_ok=True)
     config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
     config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+    config.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     # 测试 voice-card
     vc = {
         "meta": {"title": "测试书", "genre": "campus-redemption", "confidence": 0.9},
@@ -45,6 +51,13 @@ def setUpModule():
     }
     (config.ASSETS_ROOT / "testbook-voice-card.json").write_text(
         json.dumps(vc, ensure_ascii=False), encoding="utf-8")
+    # 测试 distilled（跨书题材蒸馏卡）：靠 meta.dimension + rules/blindspots/stats 自证。
+    distilled = {
+        "meta": {"dimension": "voice-card", "genre": "campus-redemption"},
+        "rules": [], "blindspots": [], "stats": {},
+    }
+    (config.ASSETS_ROOT / "campus-redemption-voice-card-distilled.json").write_text(
+        json.dumps(distilled, ensure_ascii=False), encoding="utf-8")
     # 测试章节目录
     ch_dir = config.NOVEL_DIR / "testproj" / "chapters"
     ch_dir.mkdir(parents=True, exist_ok=True)
@@ -144,6 +157,45 @@ class TestBook(unittest.TestCase):
     def test_book_with_target_dir(self):
         r = quality_service.book(target="testproj/chapters")
         self.assertIsInstance(r, dict)
+
+
+class TestAssetKindContract(unittest.TestCase):
+    """Task 6：错误 kind 的资产（distilled 当 voice）必须同步拒绝为 400。
+
+    distilled 是跨书题材蒸馏卡，不是单书 voice 卡；把它当 voice 传入会让打分/
+    质检用错维度的资产，因此服务层要在解析后立刻按内容契约拒绝。
+    """
+
+    def test_check_rejects_distilled_as_voice(self):
+        with self.assertRaises(ServiceError) as ctx:
+            quality_service.check(
+                text="她推门而入。" * 30,
+                voice="voice:campus-redemption-voice-card-distilled")
+        self.assertEqual(ctx.exception.code, 400)
+        self.assertIn("distilled", str(ctx.exception))
+
+    def test_check_valid_voice_still_works(self):
+        r = quality_service.check(text="她推门而入。" * 30, voice="voice:testbook-voice-card")
+        self.assertIn("consistency", r)
+
+    def test_book_rejects_distilled_as_voice(self):
+        with self.assertRaises(ServiceError) as ctx:
+            quality_service.book(
+                target="testproj/chapters",
+                voice="voice:campus-redemption-voice-card-distilled")
+        self.assertEqual(ctx.exception.code, 400)
+        self.assertIn("distilled", str(ctx.exception))
+
+    def test_qc_rejects_distilled_as_voice_before_thread(self):
+        """校验必须在启动后台线程之前完成：错误同步 400，且不占用并发槽位。"""
+        before = quality_service._active_quality_count()
+        with self.assertRaises(ServiceError) as ctx:
+            quality_service.qc(
+                target="testproj/chapters",
+                voice="voice:campus-redemption-voice-card-distilled")
+        self.assertEqual(ctx.exception.code, 400)
+        self.assertIn("distilled", str(ctx.exception))
+        self.assertEqual(quality_service._active_quality_count(), before)
 
 
 class TestConcurrencyLimit(unittest.TestCase):

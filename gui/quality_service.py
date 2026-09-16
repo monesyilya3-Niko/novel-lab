@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 from gui import config, engine_adapter
 from gui.logging_setup import get_logger
-from gui.services import ServiceError
+from gui.services import ServiceError, assert_asset_kind
 
 _log = get_logger("quality_service")
 
@@ -122,6 +122,26 @@ def _safe_asset_path(ref: str) -> Optional[Path]:
     return fp if fp.is_file() else None
 
 
+def _checked_asset_path(ref: str, expected: str) -> Optional[Path]:
+    """解析资产引用 → 读取 JSON → 内容契约校验，返回可用路径。
+
+    - 引用非法 / 文件不存在 / JSON 损坏：返回 None（沿用调用方「跳过该资产」语义）；
+    - 内容自证为其它 kind（distilled 当 voice、index 当 prose_card）：抛 ServiceError(400)。
+
+    识别逻辑统一在 ``services.assert_asset_kind``，此处不重复实现。
+    """
+    fp = _safe_asset_path(ref)
+    if fp is None:
+        return None
+    try:
+        data = json.loads(fp.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as exc:
+        _log.warning(f"资产加载失败，跳过该资产 {fp.name}: {exc}")
+        return None
+    assert_asset_kind(data, expected, ref)
+    return fp
+
+
 def check(target: Optional[str] = None, text: Optional[str] = None,
           voice: Optional[str] = None, genre_pack: Optional[str] = None) -> Dict[str, Any]:
     """单章双维度检查：质量 12 维 + 一致性 5 维。"""
@@ -153,6 +173,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
         if voice_fp:
             try:
                 voice_data = json.loads(voice_fp.read_text(encoding="utf-8"))
+                # 内容契约：voice 参数只接受 voice 卡（distilled/index 在此同步 400）。
+                assert_asset_kind(voice_data, "voice", voice)
                 cons = engine_adapter.score_text(voice_data, text, label=target or "粘贴文本")
                 raw = cons.get("raw", {})
                 result["consistency"] = {
@@ -188,8 +210,8 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
 
     voice_path = None
     if voice:
-        vfp = config.ASSETS_ROOT / f"{voice.split(':')[-1]}.json"
-        if vfp.is_file():
+        vfp = _checked_asset_path(voice, "voice")
+        if vfp:
             voice_path = str(vfp)
 
     try:
@@ -236,6 +258,14 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
     """启动 qc 长任务（四层十二维）。并发上限 2（D6）。"""
     task_id = f"q-{uuid.uuid4().hex[:12]}"
 
+    # 资产内容契约：voice 只接受 voice 卡。校验必须在建 scratch / 登记任务 / 启动后台
+    # 线程**之前**完成——否则错误会被吞进任务注册表，前端只能轮询到 error，而非同步 400。
+    voice_path = None
+    if voice:
+        vfp = _checked_asset_path(voice, "voice")
+        if vfp:
+            voice_path = str(vfp)
+
     # 解析章节目录
     if target:
         fp = resolve_chapter_target(target)
@@ -261,7 +291,6 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
             return None
         return str(p) if p.is_file() else None
 
-    voice_path = _asset_path(voice)
     gp_path = _asset_path(genre_pack)
     asset_path = _asset_path(asset)
     book_path = _asset_path(book)

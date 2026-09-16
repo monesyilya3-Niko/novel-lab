@@ -32,6 +32,76 @@ class ServiceError(Exception):
 
 
 # ---------------------------------------------------------------------------
+# 资产内容契约（不接触磁盘）
+#
+# 资产引用（``voice:<name>``）只给出**文件名**，文件名不保证与内容一致：
+# 蒸馏卡历史上就落成 ``*-voice-card-distilled.json`` 这类基础卡后缀。因此服务层
+# 在解析出 JSON 后必须按**内容**复核 kind，否则 distilled 会被当成单书 voice 卡
+# 参与打分/注入，静默产出错误结果。
+#
+# 识别逻辑只此一份（单一来源）：服务层各函数一律调 ``assert_asset_kind``，不得复制。
+# ---------------------------------------------------------------------------
+
+# 跨书蒸馏卡的四维取值（与 scripts/validate.py、distill_core.DIMENSIONS 同源语义）。
+_DISTILLED_DIMENSIONS = ("voice-card", "craft-card", "structure-obs", "commercial-obs")
+
+# 自证 kind → 出现时的改用建议（错误消息用，明确提示应传哪个参数）。
+_KIND_HINTS = {
+    "distilled": "该文件是跨书题材蒸馏卡（distilled），不是单书基础卡；请通过 distilled 参数传入",
+    "prose_card_index": "该文件是题材文风卡索引（prose_card_index，仅含题材→卡片文件的寻址表）；"
+                        "请改用索引 cards 中指向的 genre-prose-card 卡片文件（prose_card 参数）",
+    "prose_card": "该文件是题材文风卡；请通过 prose_card 参数传入",
+}
+
+
+def detect_asset_kind(data: Any) -> Optional[str]:
+    """按**内容**识别资产 kind（不接触磁盘）；无法自证的返回 None。
+
+    Returns:
+        ``"prose_card"`` / ``"prose_card_index"`` / ``"distilled"`` / ``None``。
+
+    ``None`` 表示该资产不含自证字段（基础卡 voice/structure/commercial/craft、
+    题材包等都属此类），调用方无从也无需反查其真实 kind。
+    """
+    if not isinstance(data, dict):
+        return None
+    meta = data.get("meta")
+    meta = meta if isinstance(meta, dict) else {}
+    # 题材文风卡：显式 meta.kind 标记（索引不含此标记）。
+    if meta.get("kind") == "genre-prose-card":
+        return "prose_card"
+    # 题材文风卡索引：cards 寻址映射（_count/_description 为可选元信息）。
+    if isinstance(data.get("cards"), (dict, list)):
+        return "prose_card_index"
+    # 跨书蒸馏卡：meta.dimension 为四维之一，且 rules/blindspots/stats 三元组齐备。
+    if (meta.get("dimension") in _DISTILLED_DIMENSIONS
+            and isinstance(data.get("rules"), list)
+            and isinstance(data.get("blindspots"), list)
+            and isinstance(data.get("stats"), dict)):
+        return "distilled"
+    return None
+
+
+def assert_asset_kind(data: Any, expected: str, ref: str) -> None:
+    """断言资产内容与期望 kind 一致；不一致抛 ``ServiceError(msg, 400)``。
+
+    只对**能自证 kind** 的资产（distilled / prose_card_index / prose_card）做拒绝：
+    例如 distilled 当作 voice 传入、index 当作 prose_card 传入。
+
+    Args:
+        data: 已解析的资产 JSON。
+        expected: 该参数期望的 kind（voice/structure/commercial/craft/prose_card/distilled）。
+        ref: 原始资产引用（仅用于错误消息定位）。
+    """
+    actual = detect_asset_kind(data)
+    if actual is None or actual == expected:
+        return
+    hint = _KIND_HINTS.get(actual, "")
+    raise ServiceError(
+        f"资产 kind 不匹配：{ref} 的内容自证为 {actual}，不能作为 {expected} 使用。{hint}", 400)
+
+
+# ---------------------------------------------------------------------------
 # 运行时全局（进程内单例）
 # ---------------------------------------------------------------------------
 

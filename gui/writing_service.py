@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from gui import config, engine_adapter, migrate
 from gui.logging_setup import get_logger
-from gui.services import ServiceError
+from gui.services import ServiceError, assert_asset_kind
 
 _log = get_logger("writing_service")
 
@@ -79,6 +79,18 @@ def _load_asset_json(ref: str) -> Dict[str, Any]:
         raise ServiceError(f"资产文件损坏: {exc}", 500)
 
 
+def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
+    """加载资产引用并按**内容契约**校验 kind。
+
+    文件名不保证与内容一致（蒸馏卡历史上落成 ``*-voice-card-distilled.json``），
+    因此 distilled 当 voice、index 当 prose_card 等错配必须在此同步拒绝（400），
+    而不是把错误资产塞进 prompt。识别逻辑统一在 ``services.assert_asset_kind``。
+    """
+    data = _load_asset_json(ref)
+    assert_asset_kind(data, expected, ref)
+    return data
+
+
 # ---------------------------------------------------------------------------
 # 同步能力
 # ---------------------------------------------------------------------------
@@ -109,18 +121,23 @@ def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str
            distilled: Optional[str] = None, prose_card: Optional[str] = None,
            context_intent: Optional[str] = None, tracking_state: Optional[str] = None,
            save: bool = False) -> Dict[str, Any]:
-    """资产 → 写作 system prompt。"""
-    voice_data = _load_asset_json(voice)
+    """资产 → 写作 system prompt。
+
+    每个资产参数只接受对应 kind 的内容：distilled 必须走 ``distilled`` 参数
+    （不得塞进 voice/structure/commercial/craft），``prose_card`` 必须是文风卡本身
+    而非题材索引；错配由 ``_load_asset_of_kind`` 同步拒绝为 400。
+    """
+    voice_data = _load_asset_of_kind(voice, "voice")
     prompt = engine_adapter.build_writing_prompt(
         voice_data,
-        structure=_load_asset_json(structure) if structure else None,
-        commercial=_load_asset_json(commercial) if commercial else None,
+        structure=_load_asset_of_kind(structure, "structure") if structure else None,
+        commercial=_load_asset_of_kind(commercial, "commercial") if commercial else None,
         genre_pack=_load_asset_json(genre_pack) if genre_pack else None,
-        craft_card=_load_asset_json(craft) if craft else None,
-        distilled=_load_asset_json(distilled) if distilled else None,
+        craft_card=_load_asset_of_kind(craft, "craft") if craft else None,
+        distilled=_load_asset_of_kind(distilled, "distilled") if distilled else None,
         context_intent=context_intent,
         tracking_state=_load_asset_json(tracking_state) if tracking_state else None,
-        genre_prose_card=_load_asset_json(prose_card) if prose_card else None,
+        genre_prose_card=_load_asset_of_kind(prose_card, "prose_card") if prose_card else None,
     )
     injected_kinds = ["voice"]
     if structure:

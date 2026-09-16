@@ -31,14 +31,20 @@ def setUpModule():
     _SAVED["ROOT_DIR"] = config.ROOT_DIR
     config.ROOT_DIR = Path(_TMP)
     for name in ("STATE_ROOT", "STATE_JSON_DIR", "ASSETS_ROOT", "NOVEL_DIR",
-                 "CORPUS_DIR", "PROMPTS_DIR", "REPORTS_DIR"):
+                 "CORPUS_DIR", "PROMPTS_DIR", "REPORTS_DIR", "CONFIG_DIR"):
         _SAVED[name] = getattr(config, name)
         setattr(config, name, config.ROOT_DIR / name.lower())
+    # 派生常量同样重定向到临时根（保持与 config 中的派生关系一致）。
+    for name in ("DB_PATH", "LOCK_PATH"):
+        _SAVED[name] = getattr(config, name)
+    config.DB_PATH = config.STATE_ROOT / "index.db"
+    config.LOCK_PATH = config.STATE_ROOT / ".lock"
     # 建必要目录
     config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
     config.NOVEL_DIR.mkdir(parents=True, exist_ok=True)
     config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
     config.PROMPTS_DIR.mkdir(parents=True, exist_ok=True)
+    config.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     # 写一个测试 voice-card
     vc = {
         "meta": {"title": "测试书", "genre": "campus-redemption", "confidence": 0.9},
@@ -49,6 +55,38 @@ def setUpModule():
     }
     (config.ASSETS_ROOT / "testbook-voice-card.json").write_text(
         json.dumps(vc, ensure_ascii=False), encoding="utf-8")
+    # 跨书题材蒸馏卡（distilled）：meta.dimension + rules/blindspots/stats 自证。
+    distilled = {
+        "meta": {"dimension": "voice-card", "genre": "campus-redemption",
+                 "books_count": 3, "source_books": ["书甲", "书乙", "书丙"]},
+        "rules": [{
+            "id": "r1", "dimension": "voice-card", "field": "句长",
+            "kind": "hard", "books_count": 3, "value": "短句为主",
+            "confidence": 1.0, "conflict": False, "over_generalized": False,
+            "blindspot_books": [],
+        }],
+        "blindspots": [], "stats": {},
+    }
+    (config.ASSETS_ROOT / "campus-redemption-voice-card-distilled.json").write_text(
+        json.dumps(distilled, ensure_ascii=False), encoding="utf-8")
+    # 题材文风卡寻址索引（prose_card_index）：只有 cards 映射，不是卡片本身。
+    index = {
+        "_description": "题材文风卡索引：题材中文名 → id / 落库文件名。",
+        "_count": 1,
+        "cards": {"东方仙侠": {"id": "genre-xianxia",
+                              "file": "genre-prose-card-genre-xianxia.json"}},
+    }
+    (config.ASSETS_ROOT / "genre-prose-card-index.json").write_text(
+        json.dumps(index, ensure_ascii=False), encoding="utf-8")
+    # 真正的题材文风卡（prose_card 正向对照）。
+    prose = {
+        "meta": {"kind": "genre-prose-card", "genre": "东方仙侠"},
+        "language_rules": {"sentence": "短句"},
+        "prose": {"imagery": ["剑"]},
+        "structure": {}, "commercial": {},
+    }
+    (config.ASSETS_ROOT / "genre-prose-card-genre-xianxia.json").write_text(
+        json.dumps(prose, ensure_ascii=False), encoding="utf-8")
 
 
 def tearDownModule():
@@ -94,6 +132,37 @@ class TestLoadAssetJson(unittest.TestCase):
     def test_valid_asset_loads(self):
         data = writing_service._load_asset_json("voice:testbook-voice-card")
         self.assertIn("meta", data)
+
+
+class TestInjectAssetKindContract(unittest.TestCase):
+    """Task 6：inject 的每个资产参数只接受对应 kind；distilled 走专门参数。"""
+
+    def test_voice_plus_distilled_param(self):
+        """合法 voice + distilled 参数：两者都注入，prompt 含蒸馏规则段。"""
+        r = writing_service.inject(
+            voice="voice:testbook-voice-card",
+            distilled="distilled:campus-redemption-voice-card-distilled")
+        self.assertIn("voice", r["injected_kinds"])
+        self.assertIn("distilled", r["injected_kinds"])
+        self.assertIn("蒸馏规则", r["prompt"])
+
+    def test_distilled_as_voice_rejected_400(self):
+        with self.assertRaises(ServiceError) as ctx:
+            writing_service.inject(voice="voice:campus-redemption-voice-card-distilled")
+        self.assertEqual(ctx.exception.code, 400)
+        self.assertIn("distilled", str(ctx.exception))
+
+    def test_index_as_prose_card_rejected_400(self):
+        with self.assertRaises(ServiceError) as ctx:
+            writing_service.inject(voice="voice:testbook-voice-card",
+                                   prose_card="prose_card:genre-prose-card-index")
+        self.assertEqual(ctx.exception.code, 400)
+        self.assertIn("prose_card_index", str(ctx.exception))
+
+    def test_real_prose_card_accepted(self):
+        r = writing_service.inject(voice="voice:testbook-voice-card",
+                                   prose_card="prose_card:genre-prose-card-genre-xianxia")
+        self.assertIn("prose_card", r["injected_kinds"])
 
 
 class TestListProjects(unittest.TestCase):
