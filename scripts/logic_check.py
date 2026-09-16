@@ -74,10 +74,11 @@ def _load_texts(source: Path) -> dict:
     """把章节目录/单章文件/novel_dir 归一为 {章号:int -> 文本:str}（兼容包装）。
 
     2026-09-16: 委托 `chapter_loader.load_chapter_texts()`（单一事实来源）。
-    双根语义**保留**：`discover_chapter_files()` 用 `rglob` 递归扫描，因此传入
-    novel_dir 时，novel_dir 自身的 `*.txt` 与其 `chapters/` 子目录下的章节会一并
-    加载（不会被简化为「只看 chapters」）。同章号冲突按 loader 规则抛
-    `ChapterLoadError`，不再静默覆盖。
+    双根语义**保留**：传入 novel_dir 时，novel_dir 自身的 `*.txt` 与其 `chapters/`
+    子目录下的章节都会加载（不会被简化为「只看 chapters」）。常规嵌套的 `chapters/`
+    由 `rglob` 递归覆盖；仅当 `chapters` 指向 novel_dir 之外的符号链接时，loader 才
+    显式补扫第二根并合并——同一物理文件只加载一次，不产生假冲突。同章号冲突按
+    loader 规则抛 `ChapterLoadError`，不再静默覆盖。
 
     路径不存在时返回空 dict（`main()` 据此报「未找到章节文件」并以非零退出）。
     """

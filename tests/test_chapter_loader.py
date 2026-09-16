@@ -17,10 +17,12 @@
 用法：
   python -m unittest discover -s tests -p "test_chapter_loader.py" -v
 """
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
@@ -34,6 +36,19 @@ import chapter_loader  # noqa: E402
 import logic_check  # noqa: E402
 import qc  # noqa: E402
 import book_quality  # noqa: E402
+
+
+def _link_directory(target: Path, link: Path) -> bool:
+    """尝试创建指向 target 的目录符号链接；环境不支持时返回 False。
+
+    Windows 需要开发者模式或 SeCreateSymbolicLinkPrivilege，普通用户/受限环境可能
+    失败，因此调用方必须准备确定性等价用例（把外部目录直接作为第二扫描根）。
+    """
+    try:
+        os.symlink(target, link, target_is_directory=True)
+    except (OSError, NotImplementedError, AttributeError):
+        return False
+    return True
 
 
 class TestChapterLoader(unittest.TestCase):
@@ -137,6 +152,38 @@ class TestChapterLoader(unittest.TestCase):
             f.write_text("第七章", encoding="utf-8")
             self.assertEqual(chapter_loader.load_chapter_texts(f), {7: "第七章"})
 
+    def test_single_file_chapter_zero_keeps_zero(self):
+        """chapter-0.txt 的章号 0 必须保留；只有取不到数字才回退第 1 章。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "chapter-0.txt"
+            f.write_text("第零章", encoding="utf-8")
+            self.assertEqual(chapter_loader.load_chapter_texts(f), {0: "第零章"})
+
+    def test_candidates_are_absolute_for_relative_source(self):
+        """source 传相对路径时，candidates 仍须是绝对路径；错误信息保持相对可读。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            book = root / "书"
+            book.mkdir()
+            (book / "第001章.txt").write_text("A", encoding="utf-8")
+            (book / "chapter-001.txt").write_text("B", encoding="utf-8")
+            old_cwd = os.getcwd()
+            os.chdir(root)
+            try:
+                with self.assertRaises(chapter_loader.ChapterLoadError) as ctx:
+                    chapter_loader.load_chapter_texts(Path("书"))
+            finally:
+                os.chdir(old_cwd)
+            exc = ctx.exception
+            self.assertTrue(all(p.is_absolute() for p in exc.candidates), exc.candidates)
+            self.assertEqual(
+                exc.candidates,
+                sorted([book / "第001章.txt", book / "chapter-001.txt"]),
+            )
+            # 错误信息仍按「相对 source」列出候选，便于人读（不泄漏绝对前缀）
+            self.assertIn("第001章.txt", str(exc))
+            self.assertNotIn(str(root), str(exc))
+
     def test_result_is_sorted_by_chapter_number(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -161,6 +208,91 @@ class TestChapterLoader(unittest.TestCase):
                 diag["duplicates"][1],
                 sorted([root / "第001章.txt", root / "chapter-001.txt"]),
             )
+
+
+class TestDualRootSemantics(unittest.TestCase):
+    """双根语义回归（review fix round 1）。
+
+    旧 `logic_check._load_texts` 是显式双根 ``[source, source/"chapters"]``。统一加载器
+    只扫 ``source`` 时，常规嵌套 ``chapters/`` 仍被 ``rglob`` 递归覆盖，但
+    ``source/chapters`` 若是指向 source **之外** 的符号链接，``rglob`` 默认不跟随
+    （Python 3.13 ``recurse_symlinks=False``）→ 外部章节被静默漏掉。
+    本类锁定：外部根必须补扫并合并、常规嵌套不得重复加载、跨文件同章号仍须报错。
+    """
+
+    def test_scan_roots_does_not_rescan_covered_chapters(self):
+        """常规嵌套 chapters/ 已被第一根覆盖，不得再追加第二根（避免重复扫描）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "chapters").mkdir()
+            self.assertEqual(chapter_loader._scan_roots(root), [root])
+
+    def test_same_physical_file_from_two_roots_is_deduplicated(self):
+        """同一物理文件被两根扫到时只能算一个候选，否则会出现假冲突。
+
+        常规嵌套结构下 `chapters/` 里的文件既属于第一根的递归结果、又属于第二根，
+        若不做物理路径去重，第 2 章会被判成「两个候选」而误报 ChapterLoadError。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "chapter-001.txt").write_text("外层", encoding="utf-8")
+            (root / "chapters").mkdir()
+            (root / "chapters" / "chapter-002.txt").write_text("内层", encoding="utf-8")
+            with mock.patch.object(
+                chapter_loader, "_scan_roots", return_value=[root, root / "chapters"]
+            ):
+                loaded = chapter_loader.load_chapter_texts(root)
+            self.assertEqual(loaded, {1: "外层", 2: "内层"})
+
+    def test_external_chapters_symlink_is_merged(self):
+        """source/chapters 指向 source 之外时，外部章节必须显式补扫并合并。
+
+        环境不支持创建符号链接（Windows 需开发者模式/特权）时，退化为确定性等价用例：
+        把外部章节目录直接作为第二扫描根交给 loader——走的仍是同一条「合并 + 物理去重」
+        代码路径，因此语义等价、结果确定。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            book = tmp_path / "书"
+            book.mkdir()
+            (book / "chapter-001.txt").write_text("外层", encoding="utf-8")
+            external = tmp_path / "外部章节"
+            external.mkdir()
+            (external / "chapter-002.txt").write_text("外部第二章", encoding="utf-8")
+
+            if _link_directory(external, book / "chapters"):
+                loaded = logic_check._load_texts(book)
+            else:
+                with mock.patch.object(
+                    chapter_loader, "_scan_roots", return_value=[book, external]
+                ):
+                    loaded = logic_check._load_texts(book)
+            self.assertEqual(loaded, {1: "外层", 2: "外部第二章"})
+
+    def test_external_chapters_same_number_still_conflicts(self):
+        """外层与外部 chapters 的同章号是两个不同物理文件 → 仍须抛 ChapterLoadError。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            book = tmp_path / "书"
+            book.mkdir()
+            (book / "chapter-001.txt").write_text("外层", encoding="utf-8")
+            external = tmp_path / "外部章节"
+            external.mkdir()
+            (external / "chapter-001.txt").write_text("外部", encoding="utf-8")
+
+            linked = _link_directory(external, book / "chapters")
+            with self.assertRaises(chapter_loader.ChapterLoadError) as ctx:
+                if linked:
+                    chapter_loader.load_chapter_texts(book)
+                else:
+                    with mock.patch.object(
+                        chapter_loader, "_scan_roots", return_value=[book, external]
+                    ):
+                        chapter_loader.load_chapter_texts(book)
+            exc = ctx.exception
+            self.assertEqual(exc.chapter_number, 1)
+            self.assertEqual(len(exc.candidates), 2)
+            self.assertTrue(all(p.is_absolute() for p in exc.candidates), exc.candidates)
 
 
 class TestBackendIntegration(unittest.TestCase):
