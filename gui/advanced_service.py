@@ -59,7 +59,12 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
         sys.path.insert(0, str(config.SCRIPTS_DIR))
     import distill as distill_mod
 
-    result = distill_mod.run_distill(genre, book_names=books)
+    # 写盘门禁失败（payload 不合法）抛 ValueError；这是**可诊断的输入问题**，
+    # 必须转成 400 可读错误，否则会冒到路由层变成 500，用户只看到「服务器内部错误」。
+    try:
+        result = distill_mod.run_distill(genre, book_names=books)
+    except ValueError as exc:
+        raise ServiceError(f"蒸馏写盘门禁失败：{exc}", 400) from exc
     written = result.get("written", [])
 
     # 重索引

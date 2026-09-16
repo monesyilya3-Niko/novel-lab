@@ -576,7 +576,15 @@ def validate_genre_prose_card(d):
 # --------------------------------------------------------------------------
 
 def validate_distilled(d):
-    """多维蒸馏资产契约校验（schema/distilled.schema.json）。"""
+    """多维蒸馏资产契约校验（schema/distilled.schema.json）。
+
+    空维度豁免：``meta.source_books`` 只在该维度**确有贡献书**时要求非空。
+    ``distill_core._empty_distilled`` 在题材内某维度无任何贡献书时产出
+    ``source_books: []`` + ``books_count: 0`` + ``rules: []``，而 ``distill.py`` 的
+    写盘门禁对四个维度**全量**校验——若把空维度判死，部分覆盖题材（例如 3 本书
+    只有 voice-card）会从「可蒸馏」整体退化为零文件写出。故仅当三者同时成立
+    （无来源书 / 书数为 0 / 无规则）时放行 ``source_books`` 非空要求。
+    """
     reset()
     if not check_obj(d, "distilled"):
         return
@@ -587,6 +595,7 @@ def validate_distilled(d):
 
     dimension = None
     meta = d.get("meta")
+    rules = d.get("rules")
     if check_obj(meta, "meta"):
         for k in ("id", "schema_version", "dimension", "genre", "source_books", "books_count"):
             if k not in meta:
@@ -596,17 +605,22 @@ def validate_distilled(d):
             check_enum(dimension, DISTILLED_DIMENSIONS, "meta.dimension")
         check_str(meta.get("genre", ""), "meta.genre", min_len=2)
         sb = meta.get("source_books")
-        if check_list(sb, "meta.source_books", min_items=1):
+        bc = meta.get("books_count")
+        # 空维度（无贡献书）豁免 source_books 非空要求，见函数 docstring。
+        empty_dimension = (
+            isinstance(bc, int) and not isinstance(bc, bool) and bc == 0
+            and isinstance(sb, list) and not sb
+            and isinstance(rules, list) and not rules
+        )
+        if check_list(sb, "meta.source_books", min_items=0 if empty_dimension else 1):
             for x in sb:
                 if not isinstance(x, str) or not x.strip():
                     err("书 id 应为非空字符串", "meta.source_books[]")
-        bc = meta.get("books_count")
         if not isinstance(bc, int) or isinstance(bc, bool) or bc < 0:
             err(f"应为非负整数，实际 {bc!r}", "meta.books_count")
         elif isinstance(sb, list) and bc != len(sb):
             warn(f"books_count={bc} 与 source_books 长度 {len(sb)} 不一致", "meta.books_count")
 
-    rules = d.get("rules")
     if check_list(rules, "rules"):
         for i, r in enumerate(rules):
             p = f"rules[{i}]"

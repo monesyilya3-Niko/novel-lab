@@ -280,6 +280,43 @@ class TestDistilledValidation(unittest.TestCase):
         errors, _ = validate.validate_asset_data("distilled", d)
         self.assertEqual(errors, [])
 
+    def test_empty_dimension_passes(self):
+        """「无任何贡献书」的空维度必须放行（source_books=[] / books_count=0 / rules=[]）。
+
+        这是 `distill_core._empty_distilled` 在题材内某维度无贡献书时的真实产物；
+        写盘门禁对四维全量校验，若把空维度判死，部分覆盖题材（如 3 本书只有
+        voice-card）会从「可蒸馏」整体退化为零文件写出。
+        """
+        empty = copy.deepcopy(self.sample)
+        empty["meta"]["source_books"] = []
+        empty["meta"]["books_count"] = 0
+        empty["rules"] = []
+        errors, warns = validate.validate_asset_data("distilled", empty)
+        self.assertEqual(errors, [], f"空维度不应有硬错误: {errors}")
+        self.assertEqual(warns, [], f"空维度不应有警告: {warns}")
+
+    def test_empty_source_books_with_rules_still_rejects(self):
+        """反向锁定：空维度豁免**只**针对「无贡献书」——有规则却没有来源书仍报错。"""
+        bad = copy.deepcopy(self.sample)
+        bad["meta"]["source_books"] = []
+        bad["meta"]["books_count"] = 0
+        errors, _ = validate.validate_asset_data("distilled", bad)
+        self.assertTrue(
+            any("source_books" in e for e in errors),
+            f"有规则却无来源书必须报 source_books 硬错误: {errors}",
+        )
+
+    def test_non_empty_source_books_requirement_kept(self):
+        """反向锁定：有贡献书时仍要求 source_books 非空（不得把 minItems 一刀切成 0）。"""
+        bad = copy.deepcopy(self.sample)
+        bad["meta"]["source_books"] = []
+        bad["meta"]["books_count"] = 3
+        errors, _ = validate.validate_asset_data("distilled", bad)
+        self.assertTrue(
+            any("source_books" in e for e in errors),
+            f"books_count>0 却无来源书必须报硬错误: {errors}",
+        )
+
     def test_rule_dimension_mismatch_rejects(self):
         bad = copy.deepcopy(self.sample)
         bad["rules"] = [{"id": "x", "dimension": "craft-card", "field": "x",

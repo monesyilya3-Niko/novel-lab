@@ -21,9 +21,8 @@
         "distilled_at": { "type": "string", "description": "蒸馏时间戳（ISO 8601，允许缺省）" },
         "source_books": {
           "type": "array",
-          "minItems": 1,
           "items": { "type": "string" },
-          "description": "参与聚合的书 id 列表"
+          "description": "参与聚合的书 id 列表。该维度**无任何贡献书**时允许为空数组（此时必须同时满足 books_count=0 且 rules=[]，即空维度产物）；只要该维度产出了规则，就必须至少列出 1 本贡献书。"
         },
         "books_count": { "type": "integer", "minimum": 0, "description": "参与聚合的书数（应等于 source_books 长度）" }
       }

@@ -5,8 +5,10 @@ import json
 import shutil
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -65,6 +67,54 @@ class TestDistillStatus(unittest.TestCase):
     def test_empty_genre_rejected(self):
         with self.assertRaises(ServiceError):
             advanced_service.distill_status("")
+
+
+class TestDistillRunGateError(unittest.TestCase):
+    """I-1 回归：写盘门禁的 ``ValueError`` 必须转成 400 可读错误，而不是裸 500。
+
+    ``distill.run_distill`` 在门禁失败时抛 ``ValueError``；修复前服务层不捕获，
+    异常一路冒到路由层变成 500，用户只看到「服务器内部错误」，看不到门禁诊断文本。
+    """
+
+    GENRE = "gate-fail-genre"
+
+    @classmethod
+    def setUpClass(cls):
+        # 该题材需要 ≥2 本书才会走到 run_distill（否则先被「书数不足」拦下）。
+        for book in ("gatebook_a", "gatebook_b"):
+            (config.ASSETS_ROOT / f"{book}-voice-card.json").write_text(
+                json.dumps({"meta": {"source_title": book, "genre": cls.GENRE}},
+                           ensure_ascii=False),
+                encoding="utf-8",
+            )
+
+    def test_gate_value_error_becomes_service_error_400(self):
+        from unittest.mock import patch
+
+        gate_message = (
+            "distilled 写盘门禁失败（未写入任何文件）：\n"
+            "[craft-card] 数组至少 1 项，实际 0 项 (meta.source_books)"
+        )
+        # 用桩模块替换 sys.modules["distill"]：服务层函数内的 ``import distill``
+        # 会命中它。**不 import 真实的 distill**——否则会把 ``distill`` 与当时那份
+        # ``validate`` 绑定死在 sys.modules 里，破坏 test_distill_gate 对
+        # 「门禁与断言共享同一个 validate 实例」的前置断言。
+        stub = types.ModuleType("distill")
+        stub.run_distill = Mock(side_effect=ValueError(gate_message))
+
+        with patch.dict(sys.modules, {"distill": stub}):
+            with self.assertRaises(ServiceError) as ctx:
+                advanced_service.distill_genre(self.GENRE)
+
+        self.assertEqual(ctx.exception.code, 400, "门禁失败应是客户端可见的 400")
+        self.assertIn("写盘门禁失败", str(ctx.exception), "错误文本应保留门禁诊断")
+        stub.run_distill.assert_called_once()
+
+    def test_illegal_genre_still_service_error_400(self):
+        """既有契约不回退：非法 genre 仍是 400（不因新捕获分支变成 500）。"""
+        with self.assertRaises(ServiceError) as ctx:
+            advanced_service.distill_genre("../evil")
+        self.assertEqual(ctx.exception.code, 400)
 
 
 class TestBatchStatus(unittest.TestCase):

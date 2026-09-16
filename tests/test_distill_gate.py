@@ -129,6 +129,18 @@ class TestValidateDistilledPayload(unittest.TestCase):
         errors, _ = DISTILL.validate_distilled_payload(payload)
         self.assertEqual(errors, [])
 
+    def test_empty_dimension_payload_is_allowed(self):
+        """I-1 回归：``_empty_distilled`` 产物（无贡献书）必须零硬错误通过门禁。
+
+        这是部分覆盖题材的真实形态（如 3 本书只有 voice-card，其余三维为空）。
+        """
+        payload = CORE._empty_distilled(GENRE, "craft-card")
+        self.assertEqual(payload["meta"]["source_books"], [])
+        self.assertEqual(payload["meta"]["books_count"], 0)
+        errors, warns = DISTILL.validate_distilled_payload(payload)
+        self.assertEqual(errors, [], f"空维度不应有硬错误: {errors}")
+        self.assertEqual(warns, [], f"空维度不应有警告: {warns}")
+
     def test_errors_are_prefixed_with_dimension(self):
         payload = valid_distilled("voice-card")
         payload["rules"] = [{"id": "broken"}]
@@ -293,6 +305,34 @@ class TestDistillGate(unittest.TestCase):
         with self.assertRaises(ValueError):
             DISTILL.write_distilled_outputs(payloads, self.assets_dir)
         self.assertEqual(list(self.assets_dir.glob("*.json")), [])
+
+    def test_empty_dimension_writes_all_four_files(self):
+        """I-1 回归：某维度无资产（空维度）时仍必须写出四个文件。
+
+        修复前 ``validate_distilled`` 要求 ``meta.source_books`` 至少 1 项，而
+        ``_empty_distilled`` 产出 ``source_books: []``，于是门禁对四维全量校验时
+        必然抛 ``ValueError``——部分覆盖题材从「可蒸馏」退化为**零文件写出**。
+        """
+        payloads = valid_payloads()
+        empty_dim = "craft-card"
+        payloads[empty_dim] = CORE._empty_distilled(GENRE, empty_dim)
+
+        written = DISTILL.write_distilled_outputs(payloads, self.assets_dir)
+
+        self.assertEqual(len(written), 4, f"空维度也必须落盘: {written}")
+        self.assertTrue(all(Path(p).is_file() for p in written))
+        target = next(p for p in written if empty_dim in Path(p).name)
+        self.assertEqual(
+            json.loads(Path(target).read_text(encoding="utf-8"))["meta"]["source_books"],
+            [],
+            "空维度的 source_books 应原样保留空数组",
+        )
+
+    def test_all_four_dimensions_empty_still_writes(self):
+        """四维全空（极端部分覆盖）也不得整体失败。"""
+        payloads = {dim: CORE._empty_distilled(GENRE, dim) for dim in CORE.DIMENSIONS}
+        written = DISTILL.write_distilled_outputs(payloads, self.assets_dir)
+        self.assertEqual(len(written), 4)
 
 
 class TestRunDistillContract(unittest.TestCase):
