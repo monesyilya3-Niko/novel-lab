@@ -19,10 +19,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import secret_store  # noqa: E402  （独立模块，llm_client 内部为延迟 import，不能从它转出）
 from llm_client import (  # noqa: E402
     load_models, save_models, load_secrets, save_secrets,
     test_model, DEFAULT_ROUTES, MODELS_FILE, SECRETS_FILE,
-    secret_store,
 )
 
 # 常见服务商预设。省去翻文档找 base_url 的功夫
