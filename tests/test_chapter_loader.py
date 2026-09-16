@@ -17,6 +17,7 @@
 用法：
   python -m unittest discover -s tests -p "test_chapter_loader.py" -v
 """
+import contextlib
 import os
 import sys
 import tempfile
@@ -49,6 +50,37 @@ def _link_directory(target: Path, link: Path) -> bool:
     except (OSError, NotImplementedError, AttributeError):
         return False
     return True
+
+
+def _link_file(target: Path, link: Path) -> bool:
+    """尝试创建指向 target 的文件符号链接；环境不支持时返回 False。"""
+    try:
+        os.symlink(target, link)
+    except (OSError, NotImplementedError, AttributeError):
+        return False
+    return True
+
+
+@contextlib.contextmanager
+def _alias_fixture(target: Path, alias: Path):
+    """构造「两个不同文件名指向同一物理文件」的 fixture。
+
+    优先创建真实文件符号链接；环境不支持时退化为确定性等价 fixture：把 alias 的
+    物理路径 mock 成 target 的物理路径（`_resolve_physical` 是 loader 判定「同一
+    物理文件」的唯一依据），因此两条分支走的检测逻辑完全一致。
+    """
+    if _link_file(target, alias):
+        yield
+        return
+    alias.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
+    real = chapter_loader._resolve_physical
+    target_resolved = real(target)
+
+    def fake(path):
+        return target_resolved if Path(path) == alias else real(path)
+
+    with mock.patch.object(chapter_loader, "_resolve_physical", side_effect=fake):
+        yield
 
 
 class TestChapterLoader(unittest.TestCase):
@@ -293,6 +325,87 @@ class TestDualRootSemantics(unittest.TestCase):
             self.assertEqual(exc.chapter_number, 1)
             self.assertEqual(len(exc.candidates), 2)
             self.assertTrue(all(p.is_absolute() for p in exc.candidates), exc.candidates)
+
+
+class TestPhysicalAliasConflicts(unittest.TestCase):
+    """同一物理文件映射到不同章号（别名）必须显式失败（review fix round 2）。
+
+    缺陷背景：round 1 用全局物理路径集合去重，命中即 `continue`。当 ``chapter-002.txt``
+    是指向 ``chapter-001.txt`` 的别名时，第 2 章被**静默丢弃**——既没加载也没报错。
+    规则：同一物理文件 + **同一章号** → 去重（双根重复扫到、同名别名）；同一物理文件
+    + **不同章号** → 章号无法确定，抛 `ChapterAliasError`（`ChapterLoadError` 子类，
+    故 `except ChapterLoadError` / `except ValueError` 的调用方不受影响）。
+    """
+
+    def _alias_pair(self, tmp: str):
+        root = Path(tmp)
+        target = root / "chapter-001.txt"
+        target.write_text("第一章正文", encoding="utf-8")
+        alias = root / "chapter-002.txt"
+        return root, target, alias
+
+    def test_alias_with_different_number_raises_alias_error(self):
+        """chapter-002.txt 指向 chapter-001.txt → 显式报错，不得静默丢章。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, target, alias = self._alias_pair(tmp)
+            with _alias_fixture(target, alias):
+                with self.assertRaises(chapter_loader.ChapterAliasError) as ctx:
+                    chapter_loader.load_chapter_texts(root)
+            exc = ctx.exception
+            # 调用方兼容：仍是 ChapterLoadError / ValueError
+            self.assertIsInstance(exc, chapter_loader.ChapterLoadError)
+            self.assertIsInstance(exc, ValueError)
+            # 错误必须同时给出物理路径与两个章号
+            self.assertEqual(exc.chapter_numbers, (1, 2))
+            self.assertTrue(exc.physical_path.samefile(target), exc.physical_path)
+            self.assertIn(str(exc.physical_path), str(exc))
+            self.assertIn("第1章", str(exc))
+            self.assertIn("第2章", str(exc))
+            self.assertEqual(exc.chapter_number, 1)
+            self.assertEqual(exc.candidates, sorted([target, alias]))
+
+    def test_alias_conflict_recorded_in_diagnostics(self):
+        """诊断结构须记录别名冲突，且冲突章号不得出现在 files 中。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root, target, alias = self._alias_pair(tmp)
+            with _alias_fixture(target, alias):
+                diag = chapter_loader.discover_chapter_files(root)
+            for key in ("files", "ignored", "duplicates"):
+                self.assertIn(key, diag, "既有诊断键不得消失")
+            self.assertEqual(set(diag["files"]), set(), "别名冲突章号不得出现在 files")
+            self.assertEqual(len(diag["aliases"]), 1)
+            physical, by_number = next(iter(diag["aliases"].items()))
+            self.assertTrue(physical.samefile(target), physical)
+            self.assertEqual(sorted(by_number), [1, 2])
+            self.assertEqual(by_number[1], target)
+            self.assertEqual(by_number[2], alias)
+
+    def test_alias_with_same_number_is_still_deduplicated(self):
+        """同一物理文件 + 同一章号（第001章.txt → chapter-001.txt）仍只加载一次。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "chapter-001.txt"
+            target.write_text("正文", encoding="utf-8")
+            alias = root / "第001章.txt"
+            with _alias_fixture(target, alias):
+                self.assertEqual(chapter_loader.load_chapter_texts(root), {1: "正文"})
+
+    def test_book_quality_returns_error_dict_on_alias_conflict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, target, alias = self._alias_pair(tmp)
+            with _alias_fixture(target, alias):
+                result = book_quality.book_quality_check(str(root))
+            self.assertEqual(result.get("error_type"), "chapter_load")
+            self.assertNotIn("verdict", result, "别名冲突时不得返回伪造的质检结论")
+            self.assertIn("第1章", result["error"])
+            self.assertIn("第2章", result["error"])
+
+    def test_qc_load_texts_raises_value_error_on_alias_conflict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, target, alias = self._alias_pair(tmp)
+            with _alias_fixture(target, alias):
+                with self.assertRaises(ValueError):
+                    qc._load_texts(str(root))
 
 
 class TestBackendIntegration(unittest.TestCase):

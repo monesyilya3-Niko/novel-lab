@@ -77,8 +77,9 @@ def _load_texts(source: Path) -> dict:
     双根语义**保留**：传入 novel_dir 时，novel_dir 自身的 `*.txt` 与其 `chapters/`
     子目录下的章节都会加载（不会被简化为「只看 chapters」）。常规嵌套的 `chapters/`
     由 `rglob` 递归覆盖；仅当 `chapters` 指向 novel_dir 之外的符号链接时，loader 才
-    显式补扫第二根并合并——同一物理文件只加载一次，不产生假冲突。同章号冲突按
-    loader 规则抛 `ChapterLoadError`，不再静默覆盖。
+    显式补扫第二根并合并——同一物理文件只加载一次，不产生假冲突。冲突按 loader 规则
+    抛错：同一物理文件被多个章号引用（别名）抛 `ChapterAliasError`，同章号多个不同
+    物理文件抛 `ChapterLoadError`（两者都是 `ValueError` 子类），不再静默覆盖/丢章。
 
     路径不存在时返回空 dict（`main()` 据此报「未找到章节文件」并以非零退出）。
     """

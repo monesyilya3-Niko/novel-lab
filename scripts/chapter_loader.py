@@ -25,6 +25,10 @@
       补扫第二根并合并——``rglob`` 默认不跟随符号链接，不补扫会静默漏章。
     - 同一**物理文件**（按 ``Path.resolve()`` 归一，含符号链接别名）只加载一次，
       既避免两根重复扫到造成假冲突，也避免别名重复计入。
+    - 同一物理文件 + **同一章号**（第二根重复扫到、同名别名）→ 去重；
+      同一物理文件 + **不同章号**（如 ``chapter-002.txt`` 指向 ``chapter-001.txt``）
+      → 章号无法确定，抛 ``ChapterAliasError``（``ChapterLoadError`` 子类），
+      既不把它当第 2 章加载，也不静默丢章。
     - 同一章号对应多个**不同物理文件** → 抛 ``ChapterLoadError``，错误信息含章号与
       全部候选相对路径，禁止按遍历顺序静默覆盖。
     - 返回 dict 按章号升序。
@@ -34,13 +38,14 @@
     from chapter_loader import load_chapter_texts, discover_chapter_files
 
     texts = load_chapter_texts("novel/某书")      # {1: "...", 2: "..."}
-    diag = discover_chapter_files("novel/某书")   # 诊断：ignored / duplicates
+    diag = discover_chapter_files("novel/某书")   # 诊断：ignored / duplicates / aliases
 """
 import os
 import re
 from pathlib import Path
 
 __all__ = [
+    "ChapterAliasError",
     "ChapterLoadError",
     "EXCLUDED_DIR_NAMES",
     "discover_chapter_files",
@@ -67,10 +72,47 @@ class ChapterLoadError(ValueError):
         self.source = Path(source)
         self.chapter_number = int(chapter_number)
         self.candidates = sorted(_absolute(Path(c)) for c in candidates)
+        super().__init__(self._message())
+
+    def _message(self) -> str:
+        """错误文案。子类可覆盖——覆盖时须在调用 ``super().__init__`` 前备好自身属性。"""
         listed = "、".join(_display_path(p, self.source) for p in self.candidates)
-        super().__init__(
+        return (
             f"第{self.chapter_number}章存在 {len(self.candidates)} 个候选文件，"
             f"无法确定加载哪一个: {listed}（加载入口: {self.source}）"
+        )
+
+
+class ChapterAliasError(ChapterLoadError):
+    """同一物理文件被多个章号的文件名指向（别名），章号无法确定。
+
+    例：``chapter-002.txt`` 是指向 ``chapter-001.txt`` 的符号链接。此时既不能按第 2 章
+    加载（内容其实是第 1 章），也不能静默丢弃（会丢章），只能显式失败。
+
+    Attributes:
+        source: 加载入口（章节目录或单章文件）的 Path。
+        physical_path: 该物理文件的**绝对路径**（``Path.resolve()`` 结果）。
+        chapter_numbers: 涉及的章号元组（升序），长度 ≥ 2。
+        chapter_number / candidates: 继承自 `ChapterLoadError`，便于调用方统一处理
+            （``chapter_number`` = 最小章号；``candidates`` = 各章号对应的候选路径，
+            绝对路径、按路径排序）。
+    """
+
+    def __init__(self, source, physical_path, by_number):
+        items = sorted(by_number.items())          # 章号升序 → 结果确定
+        self.physical_path = _absolute(Path(physical_path))
+        self.chapter_numbers = tuple(number for number, _ in items)
+        self._alias_items = items
+        super().__init__(source, items[0][0], [path for _, path in items])
+
+    def _message(self) -> str:
+        listed = "、".join(
+            f"第{number}章 {_display_path(_absolute(Path(path)), self.source)}"
+            for number, path in self._alias_items
+        )
+        return (
+            f"同一物理文件被多个章号引用（别名），无法确定章号: {listed}"
+            f"（物理路径: {self.physical_path}；加载入口: {self.source}）"
         )
 
 
@@ -143,15 +185,19 @@ def discover_chapter_files(source) -> dict:
         source: 章节目录、单章 txt 文件路径；不存在时返回空结构。
 
     Returns:
-        dict: ``{"files": {章号: Path}, "ignored": [Path], "duplicates": {章号: [Path]}}``
+        dict: ``{"files": {章号: Path}, "ignored": [Path], "duplicates": {章号: [Path]},
+        "aliases": {物理路径: {章号: Path}}}``
 
-        - ``files``：章号唯一、可直接加载的文件（按章号升序）。
+        - ``files``：章号唯一、可直接加载的文件（按章号升序）。冲突章号（``duplicates``
+          或 ``aliases`` 涉及者）不会出现在这里。
         - ``ignored``：扫描到但未加载的文件（位于排除目录内，或文件名不含章号）。
-        - ``duplicates``：同章号命中多个**不同物理文件**（这些章号不会出现在
-          ``files`` 中）。
+        - ``duplicates``：同章号命中多个**不同物理文件**。
+        - ``aliases``：同一物理文件被多个章号引用（别名，如 ``chapter-002.txt`` 指向
+          ``chapter-001.txt``）——物理路径 → {章号: 候选路径}。`load_chapter_texts`
+          据此抛 `ChapterAliasError`，不静默丢章。
     """
     source = Path(source)
-    result = {"files": {}, "ignored": [], "duplicates": {}}
+    result = {"files": {}, "ignored": [], "duplicates": {}, "aliases": {}}
 
     if source.is_file():
         number = _chapter_number(source)
@@ -162,9 +208,10 @@ def discover_chapter_files(source) -> dict:
         return result
 
     candidates = {}       # 章号 → {物理路径: 候选路径}
+    aliases = {}          # 物理路径 → {章号: 候选路径}
     ignored = []
     ignored_seen = set()
-    accepted = set()      # 已接受的物理路径（跨根/跨章号去重）
+    accepted = {}         # 物理路径 → (已接受章号, 候选路径)
     for root in _scan_roots(source):
         for path in sorted(root.rglob("*.txt")):
             relative = path.relative_to(root)
@@ -175,10 +222,16 @@ def discover_chapter_files(source) -> dict:
                     ignored_seen.add(resolved)
                     ignored.append(path)
                 continue
-            if resolved in accepted:
-                # 同一物理文件（第二根重复扫到，或符号链接别名）只算一次候选
+            known = accepted.get(resolved)
+            if known is not None:
+                known_number, known_path = known
+                if known_number == number:
+                    # 同一物理文件 + 同一章号（第二根重复扫到、同名别名）→ 去重
+                    continue
+                # 同一物理文件映射到不同章号：章号无法确定，显式记录（禁止静默丢章）
+                aliases.setdefault(resolved, {known_number: known_path})[number] = path
                 continue
-            accepted.add(resolved)
+            accepted[resolved] = (number, path)
             candidates.setdefault(number, {})[resolved] = path
 
     files = {}
@@ -190,9 +243,17 @@ def discover_chapter_files(source) -> dict:
         else:
             files[number] = paths[0]
 
+    # 别名冲突涉及的章号一律从 files 移除：加载会整体失败，不给调用方「可加载」的假象
+    for number in {n for by_number in aliases.values() for n in by_number}:
+        files.pop(number, None)
+
     result["files"] = files
     result["ignored"] = ignored
     result["duplicates"] = duplicates
+    result["aliases"] = {
+        physical: dict(sorted(by_number.items()))
+        for physical, by_number in sorted(aliases.items(), key=lambda item: str(item[0]))
+    }
     return result
 
 
@@ -204,6 +265,11 @@ def _read_text(path: Path) -> str:
         raise UnicodeError(f"章节文件解码失败（非 UTF-8？）: {path} — {exc}") from exc
     except OSError as exc:
         raise OSError(f"章节文件读取失败: {path} — {exc}") from exc
+
+
+def _first_alias(aliases: dict):
+    """从诊断结果里挑一个确定性的别名冲突（最小章号优先，其次物理路径）。"""
+    return min(aliases.items(), key=lambda item: (min(item[1]), str(item[0])))
 
 
 def load_chapter_texts(source) -> dict:
@@ -218,10 +284,15 @@ def load_chapter_texts(source) -> dict:
         同一物理文件只加载一次。
 
     Raises:
+        ChapterAliasError: 同一物理文件被多个章号引用（别名），章号无法确定
+            （`ChapterLoadError` 子类，信息含物理路径与全部章号）。优先于下面一条检查。
         ChapterLoadError: 同一章号命中多个不同物理文件（信息含全部候选路径）。
         OSError / UnicodeError: 文件读取或解码失败（信息含问题文件路径）。
     """
     diagnostic = discover_chapter_files(source)
+    if diagnostic["aliases"]:
+        physical, by_number = _first_alias(diagnostic["aliases"])
+        raise ChapterAliasError(source, physical, by_number)
     if diagnostic["duplicates"]:
         number = min(diagnostic["duplicates"])
         raise ChapterLoadError(source, number, diagnostic["duplicates"][number])
@@ -244,3 +315,8 @@ if __name__ == "__main__":  # pragma: no cover - 诊断入口
         print(f"    第{number}章:")
         for p in paths:
             print(f"      * {p}")
+    print(f"  物理别名冲突: {len(diag['aliases'])}")
+    for physical, by_number in diag["aliases"].items():
+        print(f"    {physical}")
+        for number, p in by_number.items():
+            print(f"      第{number}章 → {p}")
