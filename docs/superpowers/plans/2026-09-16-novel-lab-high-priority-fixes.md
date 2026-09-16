@@ -726,3 +726,25 @@ Task 1、Task 2、Task 3 可由不同工程师并行实现，但如果在同一�
 - **架构审查意见已吸收:** `auto_kind` 增加可选 filename；index 迁移 kind 改为 `prose_card_index`；不改 `GENRE_KIND_ENUM`；保留 novel_dir 双根语义；只统一对白分子；诊断 API 落地为正式接口；401 仅作当前基线，最终以实际 `Ran N tests` 为准；不重建 portable build。
 - **Placeholder scan:** 每个任务都有精确文件、接口、命令、预期结果和提交点，没有未定义的实现步骤。
 - **Type consistency:** Task 1 的 `validate_asset_data` 被 Task 4/8 使用；Task 2 的 `ChapterLoadError`/`load_chapter_texts` 被三个入口使用；Task 3 的 `dialogue_char_count` 被 metrics/chapter_check 共用；Task 5 的 kind 值被 Task 6/7 使用，名称一致。
+
+---
+
+## 实现后记（2026-09-17 补记）
+
+本计划已全部实施完毕（19 个提交，`65ed7ef`..`c8b9ce5`）。实施过程中发现计划自身有三处措辞不一致或需裁决之处，记录如下，供后续读者对照代码时参考——**代码以本节的裁决为准**。
+
+| # | 计划中的不一致 | 裁决 | 理由与代价 |
+|---|---|---|---|
+| 1 | Task 8 Step 1 称 diagnostics 有 `loaded`/`ignored`/`duplicates` 三键，而 Task 2 Step 3.6 定义的是 `files` | 以 Task 2（接口定义处）为准：`files` / `ignored` / `duplicates`，并在 Task 2 修复轮次新增 `aliases`（共 4 键） | Task 2 是该 API 的定义处；`aliases` 是修复「同一物理文件多章号被静默丢章」时必须暴露的诊断。代价：Task 8 原文的 `loaded` 是笔误，读者需以本节为准。测试统一用**子集断言**，键集合可扩展。 |
+| 2 | Task 1 Step 3.5 描述 distilled 判定为 `meta.dimension` **或** `rules`/`blindspots`/`stats`（OR 读法），Task 6 Step 3.1 描述为 `meta.dimension` **与** 三元组（AND 读法） | 统一为 **OR**（`validate.py` 与 `gui/services.py` 同构） | 本任务的目标是「拒绝 distilled 混入单书评分」：若服务层用 AND、校验器用 OR，则「缺 `meta.dimension` 的蒸馏卡」会被服务层放行当 voice 用——正好漏掉要拦的目标。代价：OR 使「带 `meta.dimension` 的基础卡」理论上会被判 distilled；当前生产者（`scripts/assemble.py`）不产出该字段，55 个真实资产零误判，属潜伏风险而非现实风险。 |
+| 3 | Task 3 Step 1 断言 `dialogue_ratio('「甲乙」丙丁') == 0.5`，与同任务「保持去空白总字符分母」自相矛盾 | 以实现为准：`2/6 ≈ 0.3333` | `0.5` 只有在分母剔除引号时才成立，而那会违反 spec 的分母约束。代价：该示例数字不可作为权威。 |
+
+另有三项实施中新增、计划未预先授权的决定，同样记录：
+
+| # | 决定 | 理由与代价 |
+|---|---|---|
+| 4 | `tests/test_thresholds.py` 的抬高判定线由 `65` 改为 `70` | 该 fixture 使用 `「」` 对白，引号口径修正后其得分由 62 升至 68，`warn=65` 时原用例必红。改动保留原断言意图（抬高线使 WARN→FAIL），`pass=80 > warn=70` 合法。代价：计划文件未预先授权该编辑。 |
+| 5 | 蒸馏写盘门禁对「空维度」放行：仅当 `books_count == 0` **且** `source_books == []` **且** `rules == []` 三者同时成立 | `distill_core._empty_distilled` 在「某维度无任何贡献书」时正是产出该形态，而门禁原本要求 `source_books` 至少 1 项，会把「部分覆盖题材」从可蒸馏变成整体失败。代价：豁免是结构级判定，若 `_empty_distilled` 未来带上非空 `blindspots`/`stats` 需同步复核。 |
+| 6 | index 在**校验器**中名为 `genre-prose-card-index`，在 **GUI/迁移** 中名为 `prose_card_index` | 校验器 kind 直接对应资产文件名（便于 CLI 指定），GUI kind 需与既有 `genre_pack`/`prose_card` 同一命名风格。代价：多一层名称映射，已在两处注释与测试中固定。 |
+
+**最终验证结果**：全量 `Ran 558 tests / OK`；前端 vitest 28 passed；`tsc -b && vite build` 退出码 0；55 个生产资产只读校验 **0 REJECT**（修复前 5 个 REJECT）、1 个既有 WARN；`git diff --check` 无空白错误；分支未改动 `assets/`、小说正文、`corpus/`、便携版。
