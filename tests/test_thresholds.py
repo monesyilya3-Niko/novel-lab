@@ -181,9 +181,12 @@ class TestChapterCheckThresholds(unittest.TestCase):
         self.assertEqual(self.default_result["verdict"], "WARN",
                          "默认阈值(75/60)下该文本应为 WARN")
 
-        # 抬高 pass 到 80、warn 到 65：原 70 分不再满足 WARN，应 FAIL
+        # 抬高 pass 到 80、warn 到 70：固定文本得分（68）不再满足 WARN，应 FAIL
+        # （2026-09-16 Task 3：对白抽取统一四类引号后，本 fixture 的「」对白被正确
+        #   计入，对话维度由 2 分升到 8 分、总分 62→68，故抬高线由 65 提到 70，
+        #   以保持「抬高判定线使 WARN 变 FAIL」的断言意图。权重与档位未改。）
         raised = CHAPTER_CHECK.chapter_check(
-            _TEXT_60_74, _pack(80, 65))
+            _TEXT_60_74, _pack(80, 70))
         self.assertEqual(
             raised["verdict"], "FAIL",
             f"pass=80 时得分 {score} 应判 FAIL（阈值抬高后不再 WARN）",

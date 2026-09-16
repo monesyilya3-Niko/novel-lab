@@ -19,9 +19,11 @@ from pathlib import Path
 
 CJK_RE = re.compile(r'[\u4e00-\u9fff]+')
 SENT_RE = re.compile(r'[。！？!?…;；\n]')
-# 仅中文引号对
-OPEN_QUOTES = '「『“‘'
-CLOSE_QUOTES = '」』”’'
+# 四类成对引号：开引号 → 对应闭引号。
+# ASCII 双引号自身既是开也是闭，扫描时按「开/关」切换处理。
+PAIR_CLOSE = {'"': '"', '“': '”', '「': '」', '『': '』', '‘': '’'}
+# 开引号集合（ASCII " 单独处理，见 dialogue_char_count）
+OPEN_QUOTES = '“「『‘'
 
 # 五感词库（精简版，可扩展）
 SENSORY = {
@@ -62,18 +64,56 @@ def bigram_freq(text, top=30):
     return [{"gram": g, "count": c} for g, c in grams.most_common(top)]
 
 
-def dialogue_ratio(text):
-    """引号内字符数 / 总字符数（近似对话占比）。"""
-    total_chars = len(re.sub(r'\s', '', text))
-    inside = 0
+def dialogue_char_count(text):
+    """统计引号内字符数（近似对白字数），支持四类成对引号。
+
+    支持：ASCII ``"..."``、中文双引号 ``“...”``、直角引号 ``「...」``、
+    双直角引号 ``『...』``（并兼容 ``‘...’``）。
+
+    扫描规则（单一配对状态，避免不同类型引号互相误闭合）：
+      - ASCII ``"`` 在开/关之间切换；
+      - 其他开引号仅在当前没有打开引号时打开（嵌套开引号忽略，不计入正文）；
+      - 只有与当前打开引号配对的闭引号才结束对白；
+      - 其他类型的闭引号按正文字符累计，但不结束当前对白；
+      - 开闭引号本身不累计；文末仍未闭合时保留已累计数量（对不完整草稿容错）。
+
+    Args:
+        text: 正文字符串。
+
+    Returns:
+        int: 引号内字符总数（开闭引号本身不计）。
+    """
     count = 0
+    close_char = None  # 当前打开引号对应的闭引号；None 表示不在对白中
     for ch in text:
-        if ch in OPEN_QUOTES:
-            inside += 1
-        elif ch in CLOSE_QUOTES:
-            inside -= 1
-        elif inside > 0:
+        if ch == '"':
+            if close_char is None:
+                close_char = '"'
+            elif close_char == '"':
+                close_char = None
+            else:
+                count += 1  # 其他引号对未闭合时的 ASCII 引号按正文计
+        elif ch in OPEN_QUOTES:
+            if close_char is None:
+                close_char = PAIR_CLOSE[ch]
+            # 已有打开引号时的嵌套开引号忽略（引号本身不累计）
+        elif close_char is None:
+            continue
+        elif ch == close_char:
+            close_char = None
+        else:
             count += 1
+    return count
+
+
+def dialogue_ratio(text):
+    """引号内字符数 / 总字符数（近似对话占比）。
+
+    分子统一走 :func:`dialogue_char_count`（四类引号同一口径）；
+    分母保持既有口径：去空白后的总字符数。
+    """
+    total_chars = len(re.sub(r'\s', '', text))
+    count = dialogue_char_count(text)
     return round(count / total_chars, 4) if total_chars else 0.0
 
 

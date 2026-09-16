@@ -26,6 +26,8 @@ import re
 import sys
 from pathlib import Path
 
+from metrics import dialogue_char_count
+
 # 直陈式情绪词（出现即扣分）
 DIRECT_EMOTION = ["很愤怒", "很生气", "感到难过", "非常开心", "很伤心", "感到害怕",
                   "很紧张", "很幸福", "很沮丧", "很兴奋", "很失落", "很委屈",
@@ -78,10 +80,13 @@ def check_word_count(text: str) -> tuple:
 
 
 def check_dialogue_ratio(text: str) -> tuple:
-    """2. 对话占比（12 分）— 2026-09-05 由 15 分降回 docstring 权重"""
-    # 统计引号内文本
-    quotes = re.findall(r'["\u201c\u201d]([^"\u201c\u201d]{1,})["\u201c\u201d]', text)
-    dialogue_chars = sum(len(q) for q in quotes)
+    """2. 对话占比（12 分）— 2026-09-05 由 15 分降回 docstring 权重
+
+    分子统一走 metrics.dialogue_char_count（四类引号同一口径，2026-09-16 Task 3）；
+    分母保持既有口径：汉字数。评分档位不变。
+    """
+    # 统计引号内文本（ASCII " / 中文双引号 “” / 直角引号 「」 / 双直角引号 『』）
+    dialogue_chars = dialogue_char_count(text)
     total = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if total == 0:
         return 0, "无文本"
