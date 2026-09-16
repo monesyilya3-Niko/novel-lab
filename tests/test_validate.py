@@ -174,6 +174,77 @@ class TestValidateAssetData(unittest.TestCase):
         self.assertEqual(validate.ERRORS, before_errors)
         self.assertEqual(validate.WARNS, before_warns)
 
+    def test_preset_globals_not_leaked_into_result(self):
+        """预置的全局错误/警告不得混进返回结果（reset 必须由本接口自己保证）。
+
+        回归：validate_asset_data 曾在保存旧引用后依赖各 validator 首行的 reset，
+        校验器一旦不再 reset，预置内容就会混入返回值。
+        """
+        validate.reset()
+        validate.err("预置硬错误-不应出现在返回结果里", "preset")
+        validate.warn("预置警告-不应出现在返回结果里", "preset")
+        errors_ref, warns_ref = validate.ERRORS, validate.WARNS
+        errors_snapshot, warns_snapshot = list(validate.ERRORS), list(validate.WARNS)
+        self.assertTrue(errors_snapshot, "用例前置条件：全局 ERRORS 应非空")
+        self.assertTrue(warns_snapshot, "用例前置条件：全局 WARNS 应非空")
+
+        errors, warns = validate.validate_asset_data("distilled", DISTILLED_SAMPLE)
+
+        self.assertEqual(errors, [], "干净资产不应返回预置错误")
+        self.assertEqual(warns, [], "干净资产不应返回预置警告")
+        self.assertFalse([t for t in errors + warns if "预置" in t],
+                         f"返回结果混入了预置内容: {errors + warns}")
+        # 全局引用与内容均恢复原状
+        self.assertIs(validate.ERRORS, errors_ref, "应恢复原 ERRORS 列表对象")
+        self.assertIs(validate.WARNS, warns_ref, "应恢复原 WARNS 列表对象")
+        self.assertEqual(validate.ERRORS, errors_snapshot)
+        self.assertEqual(validate.WARNS, warns_snapshot)
+
+    def test_preset_globals_restored_after_failing_validation(self):
+        """校验产生硬错误时，返回结果只含本次错误，且全局状态仍恢复原状。"""
+        validate.reset()
+        validate.err("预置硬错误-不应出现在返回结果里", "preset")
+        errors_ref, warns_ref = validate.ERRORS, validate.WARNS
+        errors_snapshot, warns_snapshot = list(validate.ERRORS), list(validate.WARNS)
+
+        errors, warns = validate.validate_asset_data("distilled", {"meta": {}})
+
+        self.assertTrue(errors, "残缺资产应返回硬错误")
+        self.assertFalse([t for t in errors + warns if "预置" in t],
+                         f"返回结果混入了预置内容: {errors + warns}")
+        self.assertIs(validate.ERRORS, errors_ref)
+        self.assertIs(validate.WARNS, warns_ref)
+        self.assertEqual(validate.ERRORS, errors_snapshot)
+        self.assertEqual(validate.WARNS, warns_snapshot)
+
+    def test_interface_owns_reset_even_if_validator_skips_it(self):
+        """本接口必须自己 reset，不得依赖被调 validator 首行的 reset()。
+
+        注入一个**故意不 reset** 的临时校验器：预置的全局错误必须被本接口隔离掉，
+        否则返回值会混入与本次校验无关的历史内容。
+        """
+        validate.reset()
+        validate.err("预置硬错误-不应出现在返回结果里", "preset")
+        errors_ref, warns_ref = validate.ERRORS, validate.WARNS
+        errors_snapshot = list(validate.ERRORS)
+
+        def _no_reset_validator(_d):
+            validate.err("本次校验自身的硬错误", "injected")
+
+        validate.DISPATCH["__no-reset-probe__"] = _no_reset_validator
+        try:
+            errors, warns = validate.validate_asset_data("__no-reset-probe__", {})
+        finally:
+            del validate.DISPATCH["__no-reset-probe__"]
+
+        self.assertEqual(len(errors), 1, f"应只返回本次校验的错误，实际 {errors}")
+        self.assertIn("本次校验自身的硬错误", errors[0])
+        self.assertFalse([t for t in errors + warns if "预置" in t],
+                         f"返回结果混入了预置内容: {errors + warns}")
+        self.assertIs(validate.ERRORS, errors_ref)
+        self.assertIs(validate.WARNS, warns_ref)
+        self.assertEqual(validate.ERRORS, errors_snapshot)
+
     def test_unknown_kind_reports_error(self):
         errors, _ = validate.validate_asset_data("no-such-kind", {})
         self.assertTrue(any("no-such-kind" in e for e in errors))

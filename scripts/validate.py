@@ -705,10 +705,13 @@ def validate_asset_data(kind: str, data: dict):
     """按 kind 校验 data，返回 (硬错误, 警告) 纯文本列表。
 
     内部保存/恢复全局 ERRORS/WARNS，避免蒸馏门禁污染后续校验。
+    保存旧引用后**显式** reset()，不依赖各 validator 首行的 reset——
+    否则校验器的实现细节会决定本接口的返回值是否干净。
     """
     global ERRORS, WARNS
     saved_errors, saved_warns = ERRORS, WARNS
     try:
+        reset()
         fn = DISPATCH.get(kind)
         if fn is None:
             return ([f"未知资产类型 '{kind}'，允许值 {sorted(DISPATCH)}"], [])
