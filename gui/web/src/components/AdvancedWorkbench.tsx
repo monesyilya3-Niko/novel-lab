@@ -13,6 +13,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import { advancedApi, assetApi } from '../api/client'
 import PlatformPanel from './PlatformPanel'
+import { kindLabel } from '../assetKindLabels'
 import { friendlyError } from '../api/client'
 
 export default function AdvancedWorkbench() {
@@ -273,7 +274,7 @@ function AssetEditPanel() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
         <TextField select label="选择资产" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 300, flex: 1 }} size="small">
-          {editableAssets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{a.kind}）</MenuItem>)}
+          {editableAssets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{kindLabel(a.kind)}）</MenuItem>)}
         </TextField>
         <Button variant="outlined" onClick={loadAsset} disabled={!selected || loading}>加载</Button>
         <Button variant="contained" onClick={saveAsset} disabled={!content || loading || !validation.ok || !dirty}>
@@ -287,7 +288,7 @@ function AssetEditPanel() {
       )}
       {selectedAsset && (
         <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Chip label={selectedAsset.kind} size="small" color="primary" variant="outlined" />
+          <Chip label={kindLabel(selectedAsset.kind)} size="small" color="primary" variant="outlined" />
           <Chip label={validation.ok ? '✓ JSON 合法' : '✗ JSON 错误'} size="small" color={validation.ok ? 'success' : 'error'} variant="outlined" />
           {dirty && <Chip label="未保存修改" size="small" color="warning" />}
           {selectedAsset.name && <Typography variant="caption" color="text.secondary">{selectedAsset.name}</Typography>}

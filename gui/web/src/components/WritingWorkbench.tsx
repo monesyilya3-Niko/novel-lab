@@ -45,6 +45,7 @@ export default function WritingWorkbench() {
 
 function InjectPanel() {
   const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
+  const [distilledAssets, setDistilledAssets] = useState<{ id: string; name: string; kind: string }[]>([])
   const [voice, setVoice] = useState('')
   const [genrePack, setGenrePack] = useState('')
   const [craft, setCraft] = useState('')
@@ -64,11 +65,17 @@ function InjectPanel() {
         if (gp) setGenrePack(gp.id)
         const cc = items.find((a) => a.kind === 'craft')
         if (cc) setCraft(cc.id)
-        // distilled 独立成 kind：默认选中第一张蒸馏卡（不再冒充 voice 卡出现在 voice 下拉里）
-        const dd = items.find((a) => a.kind === 'distilled')
-        if (dd) setDistilled(dd.id)
       })
       .catch(() => setAssets([]))
+    // 蒸馏卡按 kind 单独拉取：混在首页列表里会在资产总数超 100 被分页截断时静默选不到。
+    assetApi.list({ kind: 'distilled', limit: 50 })
+      .then((j) => {
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
+        setDistilledAssets(items)
+        // distilled 独立成 kind：默认选中第一张蒸馏卡（不再冒充 voice 卡出现在 voice 下拉里）
+        if (items.length > 0) setDistilled(items[0].id)
+      })
+      .catch(() => setDistilledAssets([]))
   }, [])
 
   const doInject = async () => {
@@ -106,7 +113,7 @@ function InjectPanel() {
         </TextField>
         <TextField select label="蒸馏规则（可选）" value={distilled} onChange={(e) => setDistilled(e.target.value)} sx={{ minWidth: 220 }} size="small">
           <MenuItem value="">无</MenuItem>
-          {byKind('distilled').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+          {distilledAssets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <Button variant="contained" onClick={doInject} disabled={!voice || loading}>
           {loading ? <CircularProgress size={20} /> : '生成 Prompt'}

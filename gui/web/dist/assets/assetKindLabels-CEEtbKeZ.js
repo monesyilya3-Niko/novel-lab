@@ -1,0 +1,1 @@
+const e={voice:"声线卡",structure:"结构观测",commercial:"商业观测",craft:"笔法卡",genre_pack:"题材包",prose_card:"文风卡",distilled:"蒸馏规则",prose_card_index:"题材文风卡索引",trope:"桥段",report:"报告",book:"语料"};function o(r){return e[r]??r}export{e as K,o as k};
