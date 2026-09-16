@@ -6,9 +6,9 @@ Schema 校验脚本 — 纯标准库，零依赖
 不符合的输出直接拒绝入库（exit code 1），WARN 级别仅提示（exit code 2）。
 
 用法:
-  python validate.py <asset.json> [--kind voice-card|genre-pack|trope-library|craft-card|structure-obs|commercial-obs]
+  python validate.py <asset.json> [--kind voice-card|genre-pack|trope-library|craft-card|structure-obs|commercial-obs|genre-prose-card|distilled|genre-prose-card-index]
 
---kind 缺省时按文件内容自动推断。
+--kind 缺省时按文件内容（辅以文件名）自动推断。
 """
 import argparse
 import json
@@ -32,6 +32,13 @@ LANG_SUBTYPE_ENUM = {"直白", "偶有潜台词", "大量潜台词"}
 # 题材白名单：craft-card / voice-card 的 meta.genre 必须 ∈ 此集合。
 # 后续扩展题材包时在此追加（铁律一）。
 KNOWN_GENRES = {"campus-redemption"}
+
+# 蒸馏维度枚举：distilled 资产的 meta.dimension 与 rules[].dimension 都必须 ∈ 此集合。
+DISTILLED_DIMENSIONS = ("voice-card", "craft-card", "structure-obs", "commercial-obs")
+# distilled 规则的必填键（缺一即硬错误）。
+DISTILLED_RULE_REQUIRED = ("id", "dimension", "field", "kind", "books_count", "value",
+                           "confidence", "conflict", "over_generalized", "blindspot_books")
+DISTILLED_RULE_KINDS = ("hard", "soft")
 
 ERRORS = []   # 硬错误：拒绝入库
 WARNS = []    # 警告：可入库但需复核
@@ -560,6 +567,158 @@ def validate_genre_prose_card(d):
 
 
 # --------------------------------------------------------------------------
+# distilled 校验（2026-09-16 新增）
+#
+# 此前 distilled 资产（meta.dimension 派生自 voice-card/craft-card/…）无专用校验器，
+# auto_kind 兜底判为 voice-card → 触发大量 voice-card 硬错误 REJECT。
+# 本校验器只认 distilled 自身契约：顶层 meta/rules/blindspots/stats、
+# 规则必填键、dimension 一致性、confidence 范围、bool 字段、blindspot_books 列表。
+# --------------------------------------------------------------------------
+
+def validate_distilled(d):
+    """多维蒸馏资产契约校验（schema/distilled.schema.json）。"""
+    reset()
+    if not check_obj(d, "distilled"):
+        return
+
+    for k in ("meta", "rules", "blindspots", "stats"):
+        if k not in d:
+            err(f"缺少必填字段 '{k}'", "distilled")
+
+    dimension = None
+    meta = d.get("meta")
+    if check_obj(meta, "meta"):
+        for k in ("id", "schema_version", "dimension", "genre", "source_books", "books_count"):
+            if k not in meta:
+                err(f"缺少必填字段 '{k}'", "meta")
+        dimension = meta.get("dimension")
+        if "dimension" in meta:
+            check_enum(dimension, DISTILLED_DIMENSIONS, "meta.dimension")
+        check_str(meta.get("genre", ""), "meta.genre", min_len=2)
+        sb = meta.get("source_books")
+        if check_list(sb, "meta.source_books", min_items=1):
+            for x in sb:
+                if not isinstance(x, str) or not x.strip():
+                    err("书 id 应为非空字符串", "meta.source_books[]")
+        bc = meta.get("books_count")
+        if not isinstance(bc, int) or isinstance(bc, bool) or bc < 0:
+            err(f"应为非负整数，实际 {bc!r}", "meta.books_count")
+        elif isinstance(sb, list) and bc != len(sb):
+            warn(f"books_count={bc} 与 source_books 长度 {len(sb)} 不一致", "meta.books_count")
+
+    rules = d.get("rules")
+    if check_list(rules, "rules"):
+        for i, r in enumerate(rules):
+            p = f"rules[{i}]"
+            if not check_obj(r, p):
+                continue
+            for k in DISTILLED_RULE_REQUIRED:
+                if k not in r:
+                    err(f"缺少必填键 '{k}'", p)
+            check_str(r.get("id", ""), p + ".id", min_len=1)
+            check_str(r.get("field", ""), p + ".field", min_len=1)
+            check_enum(r.get("kind"), DISTILLED_RULE_KINDS, p + ".kind")
+            r_dim = r.get("dimension")
+            if r_dim not in DISTILLED_DIMENSIONS:
+                err(f"dimension={r_dim!r} 不在允许集合 {list(DISTILLED_DIMENSIONS)}", p + ".dimension")
+            elif dimension is not None and r_dim != dimension:
+                err(f"dimension={r_dim!r} 与 meta.dimension={dimension!r} 不一致（禁止跨维度混装）",
+                    p + ".dimension")
+            rbc = r.get("books_count")
+            if not isinstance(rbc, int) or isinstance(rbc, bool) or rbc < 0:
+                err(f"books_count 应为非负整数，实际 {rbc!r}", p + ".books_count")
+            check_probability(r.get("confidence"), p + ".confidence")
+            check_bool(r.get("conflict"), p + ".conflict")
+            check_bool(r.get("over_generalized"), p + ".over_generalized")
+            check_list(r.get("blindspot_books"), p + ".blindspot_books")
+            if "sources" in r and not r.get("sources"):
+                warn("sources 为空——规则缺逐书溯源", p + ".sources")
+
+    blindspots = d.get("blindspots")
+    if check_list(blindspots, "blindspots"):
+        for i, b in enumerate(blindspots):
+            p = f"blindspots[{i}]"
+            if not check_obj(b, p):
+                continue
+            for k in ("book", "dimension", "field", "note"):
+                if k not in b:
+                    warn(f"缺少 '{k}'", p)
+
+    if "stats" in d:
+        check_obj(d.get("stats"), "stats")
+
+
+# --------------------------------------------------------------------------
+# genre-prose-card-index 校验（2026-09-16 新增）
+#
+# 索引是「题材中文名 → {id, file}」的寻址表，**不是**文风卡本身，
+# 不得走 voice-card / genre-prose-card 校验（否则必报缺 narration 等硬错误）。
+# --------------------------------------------------------------------------
+
+def validate_genre_prose_card_index(d):
+    """题材文风卡索引契约校验（schema/genre-prose-card-index.schema.json）。"""
+    reset()
+    if not check_obj(d, "genre-prose-card-index"):
+        return
+
+    for k in ("_count", "_description", "cards"):
+        if k not in d:
+            err(f"缺少必填字段 '{k}'", "genre-prose-card-index")
+
+    cnt = d.get("_count")
+    if not isinstance(cnt, int) or isinstance(cnt, bool) or cnt < 0:
+        err(f"_count 应为非负整数，实际 {cnt!r}", "_count")
+
+    if "_description" in d:
+        check_str(d.get("_description"), "_description", min_len=1)
+
+    cards = d.get("cards")
+    if check_obj(cards, "cards"):
+        for name, card in cards.items():
+            p = f"cards[{name!r}]"
+            if not isinstance(name, str) or not name.strip():
+                err("题材名（键）应为非空字符串", "cards")
+            if not check_obj(card, p):
+                continue
+            for k in ("id", "file"):
+                v = card.get(k)
+                if not isinstance(v, str) or not v.strip():
+                    err(f"缺少非空字符串 '{k}'，实际 {v!r}", p)
+
+
+# --------------------------------------------------------------------------
+# 纯数据接口：供门禁/测试复用，不依赖调用方读取全局 ERRORS/WARNS
+# --------------------------------------------------------------------------
+
+def _clean_lines(lines):
+    """去掉 err()/warn() 的 '✗' / '⚠' 前缀，返回纯文本列表。"""
+    out = []
+    for line in lines:
+        t = line.strip()
+        if t[:1] in ("✗", "⚠"):
+            t = t[1:].strip()
+        out.append(t)
+    return out
+
+
+def validate_asset_data(kind: str, data: dict):
+    """按 kind 校验 data，返回 (硬错误, 警告) 纯文本列表。
+
+    内部保存/恢复全局 ERRORS/WARNS，避免蒸馏门禁污染后续校验。
+    """
+    global ERRORS, WARNS
+    saved_errors, saved_warns = ERRORS, WARNS
+    try:
+        fn = DISPATCH.get(kind)
+        if fn is None:
+            return ([f"未知资产类型 '{kind}'，允许值 {sorted(DISPATCH)}"], [])
+        fn(data)
+        return (_clean_lines(ERRORS), _clean_lines(WARNS))
+    finally:
+        ERRORS, WARNS = saved_errors, saved_warns
+
+
+# --------------------------------------------------------------------------
 
 DISPATCH = {
     "voice-card": validate_voice_card,
@@ -569,6 +728,9 @@ DISPATCH = {
     "structure-obs": validate_structure_obs,
     "commercial-obs": validate_commercial_obs,
     "genre-prose-card": validate_genre_prose_card,
+    # 2026-09-16 新增：此前二者无专用校验器，被兜底误判为 voice-card（大量硬错误 REJECT）
+    "distilled": validate_distilled,
+    "genre-prose-card-index": validate_genre_prose_card_index,
 }
 
 AUTO_HINTS = {
@@ -589,11 +751,28 @@ AUTO_HINTS = {
 GENRE_PACK_NESTED = ("commercial", "language_rules", "structure", "world_conventions")
 
 
-def auto_kind(d: dict) -> str:
+def auto_kind(d: dict, filename: str | None = None) -> str:
+    """按内容（可选按文件名）推断资产类型。
+
+    ``filename`` 可选——旧的单参数调用继续有效；CLI 会传入 ``path.name``，
+    因为索引文件的判定依赖文件名线索（内容只有 cards 键，不足以自证）。
+    """
+    meta = d.get("meta")
+    if not isinstance(meta, dict):
+        meta = {}
     # 阶段②：genre-prose-card 是显式 meta.kind 字段，须优先判断，
     # 否则会落到兜底 voice-card 造成误判（历史 bug 同款）。
-    if (d.get("meta") or {}).get("kind") == "genre-prose-card":
+    if meta.get("kind") == "genre-prose-card":
         return "genre-prose-card"
+    # 2026-09-16：题材文风卡索引（题材名 → id/file 寻址表），须在 distilled/voice-card 之前判定。
+    if filename and "genre-prose-card-index" in filename and isinstance(d.get("cards"), dict):
+        return "genre-prose-card-index"
+    # 2026-09-16：蒸馏资产（多维聚合产物）自身不是 voice-card，靠 meta.dimension 或
+    # rules/blindspots/stats 三元组识别，避免兜底 voice-card 造成整份资产 REJECT。
+    if meta.get("dimension") in DISTILLED_DIMENSIONS:
+        return "distilled"
+    if all(k in d for k in ("rules", "blindspots", "stats")):
+        return "distilled"
     keys = set(d.keys())
     for kind, hints in AUTO_HINTS.items():
         if kind == "genre-pack":
@@ -619,7 +798,7 @@ def main():
         print(f"JSON 解析失败: {e}")
         sys.exit(1)
 
-    kind = args.kind or auto_kind(d)
+    kind = args.kind or auto_kind(d, path.name)
     DISPATCH[kind](d)
 
     # 阶段② · 题材隔离校验：断言 meta.id 与文件名一致（防串味，共享知识约定 9）。
