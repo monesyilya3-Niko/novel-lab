@@ -430,6 +430,11 @@ def import_chapter(project: str, chapter_no: int, content: str,
         raise ServiceError("content 不能为空", 400)
 
     novel_dir = config.NOVEL_DIR / project
+    # 资产内容契约：voice 的加载与 kind 校验必须在 ensure_novel_structure/save_chapter
+    # **之前**完成（与 score()/generate() 的顺序一致）。否则校验抛 400 时章节文件已落盘、
+    # state.json 的 current_chapter/word_count_today 已被推进——修正后重试还会重复累加字数。
+    voice_data = _load_asset_of_kind(voice, "voice") if voice else None
+
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
     chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
 
@@ -438,8 +443,7 @@ def import_chapter(project: str, chapter_no: int, content: str,
         "chapter_no": chapter_no, "char_count": len(content),
     }
 
-    if voice:
-        voice_data = _load_asset_of_kind(voice, "voice")
+    if voice_data is not None:
         cons = engine_adapter.score_text(voice_data, content, label=f"第{chapter_no}章")
         qc = engine_adapter.chapter_check(content, None)
         pass_line, _ = engine_adapter.resolve_thresholds(

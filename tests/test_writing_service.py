@@ -105,6 +105,20 @@ def _assert_kind_mismatch(tc: unittest.TestCase, exc: BaseException,
     tc.assertIn(f"不能作为 {expected} 使用", msg)
 
 
+def _project_snapshot(project: str) -> tuple:
+    """novel/<project> 的副作用快照：(chapters 下文件相对路径, state.json 文本或 None)。
+
+    用于断言「kind 校验失败不产生磁盘副作用与状态推进」。
+    """
+    pdir = config.NOVEL_DIR / project
+    chapters = pdir / "chapters"
+    files = (sorted(str(p.relative_to(pdir)) for p in chapters.rglob("*") if p.is_file())
+             if chapters.is_dir() else [])
+    state_fp = pdir / "state.json"
+    state = state_fp.read_text(encoding="utf-8") if state_fp.is_file() else None
+    return files, state
+
+
 class TestSanitizeProject(unittest.TestCase):
     def test_empty_rejected(self):
         with self.assertRaises(ServiceError):
@@ -202,12 +216,23 @@ class TestScoringPathsRejectWrongKind(unittest.TestCase):
         _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
 
     def test_import_chapter_rejects_distilled_as_voice(self):
+        """400 必须发生在落盘之前：不得新增章节文件，也不得创建/推进 state.json。
+
+        旧实现先 ``ensure_novel_structure`` + ``save_chapter`` 再校验 voice，
+        因此 400 时 chapters/ 已多出 chapter-002.txt、state.json 的
+        current_chapter 与 word_count_today 已被推进（修正后重试还会重复累加）。
+        """
+        project = "kind_gate_proj"
+        before = _project_snapshot(project)
         with self.assertRaises(ServiceError) as ctx:
-            writing_service.import_chapter(project="kind_gate_proj", chapter_no=2,
+            writing_service.import_chapter(project=project, chapter_no=2,
                                            content="这是测试章节内容。" * 50,
                                            voice=self.DISTILLED)
         self.assertEqual(ctx.exception.code, 400)
         _assert_kind_mismatch(self, ctx.exception, expected="voice", actual="distilled")
+        files_after, state_after = _project_snapshot(project)
+        self.assertEqual(files_after, before[0], "kind 校验失败不得在 chapters/ 下落盘章节")
+        self.assertEqual(state_after, before[1], "kind 校验失败不得创建或推进 state.json")
 
     def test_score_valid_voice_still_works(self):
         r = writing_service.score(voice="voice:testbook-voice-card", text="她推门而入。" * 30)
