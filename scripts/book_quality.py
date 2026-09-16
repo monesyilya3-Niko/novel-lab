@@ -24,6 +24,8 @@ import sys
 from pathlib import Path
 from collections import Counter, defaultdict
 
+import chapter_loader
+
 # --------------------------------------------------------------------------
 # 1. 跨章重复检测
 # --------------------------------------------------------------------------
@@ -333,22 +335,18 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
     2026-09-05: 人名检测支持实体表——自动探测章节目录上两级/同级的
     settings/entities.json（write.py 入库结构为 novel_dir/settings/），
     也可由调用方通过 prev_chapters_dir 之外的方式扩展。
+
+    2026-09-16: 章节加载统一委托 `chapter_loader.load_chapter_texts()`——备份/构建
+    目录被排除，同章号冲突不再静默覆盖，而是返回
+    `{"error": ..., "error_type": "chapter_load"}`（保持主函数错误 JSON 兼容）。
     """
     chapter_path = Path(chapter_dir)
 
-    # 加载章节文本
-    texts = {}
-    if chapter_path.is_file():
-        # 单章文件
-        text = chapter_path.read_text(encoding='utf-8')
-        texts[1] = text
-    elif chapter_path.is_dir():
-        # 章节目录（递归，兼容 chapters/arc-N/chapter-NNN.txt 的嵌套结构）
-        for f in sorted(chapter_path.rglob('*.txt')):
-            m = re.search(r'(\d+)', f.stem)
-            if m:
-                ch_num = int(m.group(1))
-                texts[ch_num] = f.read_text(encoding='utf-8')
+    # 加载章节文本（统一委托 chapter_loader：排除备份/构建目录 + 同章号冲突显式报错）
+    try:
+        texts = chapter_loader.load_chapter_texts(chapter_path)
+    except chapter_loader.ChapterLoadError as exc:
+        return {"error": str(exc), "error_type": "chapter_load"}
 
     if not texts:
         return {"error": "未找到章节文件"}

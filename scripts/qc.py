@@ -39,7 +39,6 @@ QC 统一质检入口 — 四层十二维整合（纯标准库，零第三方依
 """
 import argparse
 import json
-import re
 import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -50,6 +49,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 # 复用既有脚本（导入即用，零改动）
 import book_quality
 import chapter_check
+import chapter_loader
 import compliance
 import consistency
 import logic_check
@@ -98,20 +98,13 @@ class QCReport:
 # ---------------------------------------------------------------------------
 
 def _load_texts(chapter_dir: str) -> dict:
-    """加载章节文本为 {章号:int -> 文本:str}（兼容 book_quality 的加载逻辑）。"""
-    p = Path(chapter_dir)
-    texts = {}
-    if p.is_file():
-        m = re.search(r'(\d+)', p.stem)
-        ch = int(m.group(1)) if m else 1
-        texts[ch] = p.read_text(encoding="utf-8")
-        return texts
-    if p.is_dir():
-        for f in sorted(p.rglob("*.txt")):
-            m = re.search(r'(\d+)', f.stem)
-            if m:
-                texts[int(m.group(1))] = f.read_text(encoding="utf-8")
-    return texts
+    """加载章节文本为 {章号:int -> 文本:str}。
+
+    2026-09-16: 委托 `chapter_loader.load_chapter_texts()`——与 book_quality /
+    logic_check 共用同一套发现规则（排除备份/构建目录，同章号冲突抛
+    `ChapterLoadError`，它是 `ValueError` 子类，故调用方按 ValueError 处理即可）。
+    """
+    return chapter_loader.load_chapter_texts(chapter_dir)
 
 
 def _load_json(path) -> dict:
@@ -431,6 +424,11 @@ def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: st
 
     Returns:
         QCReport: 完整报告。
+
+    Raises:
+        ValueError: 未找到章节文件，或章节加载冲突
+            （`chapter_loader.ChapterLoadError` 是 ValueError 子类）。
+            不吞异常、不返回伪造的空报告，由服务层记录错误。
     """
     texts = _load_texts(chapter_dir)
     if not texts:

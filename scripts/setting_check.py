@@ -30,6 +30,8 @@ import re
 import sys
 from pathlib import Path
 
+import chapter_loader
+
 # 从 logic_check 复用实体加载（同目录导入，纯标准库）
 try:
     from logic_check import load_entities, _load_texts
@@ -49,23 +51,12 @@ except ImportError:  # 直接以脚本方式运行时的兜底（独立可用）
         return {}
 
     def _load_texts(source):
-        texts = {}
-        source = Path(source)
-        if source.is_file():
-            m = re.search(r'(\d+)', source.stem)
-            texts[int(m.group(1)) if m else 1] = source.read_text(encoding="utf-8")
-            return texts
-        if not source.is_dir():
-            return {}
-        roots = [source]
-        if (source / "chapters").is_dir():
-            roots.append(source / "chapters")
-        for root in roots:
-            for f in sorted(root.rglob("*.txt")):
-                m = re.search(r'(\d+)', f.stem)
-                if m:
-                    texts[int(m.group(1))] = f.read_text(encoding="utf-8")
-        return texts
+        """兜底：委托 chapter_loader，与 logic_check 共用同一套发现规则。
+
+        此处**不得**再实现一遍递归扫描——两套规则会漂移（这正是 2026-09-16 统一
+        加载器的起因）。
+        """
+        return chapter_loader.load_chapter_texts(source)
 
 
 # ---------------------------------------------------------------------------
@@ -268,7 +259,12 @@ def main():
     args = ap.parse_args()
 
     source = Path(args.source)
-    texts = _load_texts(source)
+    try:
+        texts = _load_texts(source)
+    except (OSError, UnicodeError, chapter_loader.ChapterLoadError) as exc:
+        # 章节加载失败（同章号冲突/读取失败）：与 logic_check.main 一致，输出错误并非零退出
+        print(f"[X] {exc}", file=sys.stderr)
+        sys.exit(1)
     if not texts:
         print("[X] 未找到章节文件", file=sys.stderr)
         sys.exit(1)

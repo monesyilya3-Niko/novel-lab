@@ -46,11 +46,28 @@ class TestWritePyImportRe(unittest.TestCase):
     删除——本测试随之改为守护真实的 re 用法所在模块。
     """
 
-    def test_book_quality_uses_re_search(self):
-        """re.search 的真实调用位于 book_quality.py（全书质检正文扫描）。"""
+    def test_book_quality_uses_re_module(self):
+        """re 的真实调用位于 book_quality.py（全书质检正文扫描）。
+
+        2026-09-16 迁移：章号抽取（原 `re.search(r'(\\d+)', f.stem)`）已随章节加载
+        统一迁至 `scripts/chapter_loader.py`，book_quality 的 `re` 用法只剩正文
+        扫描（`re.findall`）。本断言随之改为守护真实存在的用法，避免"死断言"。
+        """
         src = (SCRIPTS / "book_quality.py").read_text(encoding="utf-8")
         self.assertIn("import re", src, "book_quality.py 缺失 import re")
-        self.assertIn("re.search", src, "book_quality.py 应实际使用 re.search")
+        self.assertIn("re.findall", src, "book_quality.py 应实际使用 re 扫描正文")
+
+    def test_chapter_loading_has_single_source(self):
+        """回归 #2 延伸：章节加载必须统一委托 chapter_loader，不得残留第二套实现。
+
+        历史缺陷：book_quality / qc / logic_check / setting_check 各自实现
+        `rglob("*.txt")` 直扫，备份目录会被当正文，同章号静默覆盖。
+        """
+        for name in ("book_quality", "qc", "logic_check", "setting_check"):
+            src = (SCRIPTS / f"{name}.py").read_text(encoding="utf-8")
+            self.assertIn("chapter_loader", src, f"{name}.py 未接入 chapter_loader")
+            self.assertNotIn('"*.txt"', src, f"{name}.py 仍保留旧的 rglob 直扫实现")
+            self.assertNotIn("'*.txt'", src, f"{name}.py 仍保留旧的 rglob 直扫实现")
 
     def test_write_module_imports_re(self):
         """write.py 的质量门禁依赖 consistency.score_text（原 re 用法的替代实现）。

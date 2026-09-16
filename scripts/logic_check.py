@@ -30,6 +30,8 @@ import re
 import sys
 from pathlib import Path
 
+import chapter_loader
+
 # 闪回/回忆/梦境标记——出现在这些语境里的状态不作为硬矛盾（宽容处理）
 FLASHBACK_MARKERS = [
     "回忆", "回想", "想起", "记得", "当年", "从前", "曾经", "那时", "那时候",
@@ -69,25 +71,17 @@ def load_entities(novel_dir: Path) -> dict:
 
 
 def _load_texts(source: Path) -> dict:
-    """把章节目录/单章文件/novel_dir 归一为 {章号:int -> 文本:str}。"""
-    texts = {}
-    source = Path(source)
-    if source.is_file():
-        m = re.search(r'(\d+)', source.stem)
-        texts[int(m.group(1)) if m else 1] = source.read_text(encoding="utf-8")
-        return texts
-    if not source.is_dir():
-        return {}
-    # 支持 chapters 目录本身，或 novel_dir（此时定位 chapters 子目录）
-    roots = [source]
-    if (source / "chapters").is_dir():
-        roots.append(source / "chapters")
-    for root in roots:
-        for f in sorted(root.rglob("*.txt")):
-            m = re.search(r'(\d+)', f.stem)
-            if m:
-                texts[int(m.group(1))] = f.read_text(encoding="utf-8")
-    return texts
+    """把章节目录/单章文件/novel_dir 归一为 {章号:int -> 文本:str}（兼容包装）。
+
+    2026-09-16: 委托 `chapter_loader.load_chapter_texts()`（单一事实来源）。
+    双根语义**保留**：`discover_chapter_files()` 用 `rglob` 递归扫描，因此传入
+    novel_dir 时，novel_dir 自身的 `*.txt` 与其 `chapters/` 子目录下的章节会一并
+    加载（不会被简化为「只看 chapters」）。同章号冲突按 loader 规则抛
+    `ChapterLoadError`，不再静默覆盖。
+
+    路径不存在时返回空 dict（`main()` 据此报「未找到章节文件」并以非零退出）。
+    """
+    return chapter_loader.load_chapter_texts(Path(source))
 
 
 def _chapter_number(issue_chapter) -> int:
@@ -468,7 +462,12 @@ def main():
     args = ap.parse_args()
 
     source = Path(args.source)
-    texts = _load_texts(source)
+    try:
+        texts = _load_texts(source)
+    except (OSError, UnicodeError, chapter_loader.ChapterLoadError) as exc:
+        # 章节加载失败（同章号冲突/读取失败）：输出错误并非零退出，不静默产出空结果
+        print(f"[X] {exc}", file=sys.stderr)
+        sys.exit(1)
     if not texts:
         print("[X] 未找到章节文件", file=sys.stderr)
         sys.exit(1)
