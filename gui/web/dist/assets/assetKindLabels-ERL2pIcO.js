@@ -1,0 +1,1 @@
+const t={voice:"声线卡",structure:"结构观测",commercial:"商业观测",craft:"笔法卡",genre_pack:"题材包",prose_card:"文风卡",distilled:"蒸馏规则",prose_card_index:"题材文风卡索引",trope:"桥段",report:"报告",book:"语料"},o=Object.fromEntries(Object.keys(t).map(e=>[e.replace(/_([a-z])/g,(r,c)=>c.toUpperCase()),e]));function a(e){const r=o[e]??e;return t[r]??e}export{t as K,a as k};

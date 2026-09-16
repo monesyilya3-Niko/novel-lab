@@ -8,13 +8,17 @@
 
 - `tests/test_logic_check.py`：24 个用例，为下列三处修复建立回归护栏
 - `tests/test_model_config.py`：4 个用例，守住 `model_config` 可导入底线
-- `tests/test_asset_contract_e2e.py`：12 个用例，把蒸馏卡与题材文风卡索引的契约串成端到端护栏——内存四维蒸馏输出 → 专用校验 → 渲染 → 注入写作 prompt → 服务边界拒绝「蒸馏当单书卡打分」；索引判为独立 kind；章节加载诊断结构（`files` / `ignored` / `duplicates` / `aliases`）。全部使用内存对象或临时目录，不读写真实资产
+- 前端新增 `assetKindLabels.test.ts` 与 `HomeDashboard.test.tsx`（共 7 个用例），锁定「同一张标签表同时服务 snake_case 与 camelCase 键、首页饼图不出现原始英文 kind / undefined」
+- `tests/test_asset_contract_e2e.py`：18 个用例，把蒸馏卡与题材文风卡索引的契约串成端到端护栏——内存四维蒸馏输出 → 专用校验 → 渲染 → 注入写作 prompt → 服务边界拒绝「蒸馏当单书卡打分」；索引判为独立 kind；部分覆盖题材（某维度无贡献书）仍写出四个文件；章节加载诊断结构（`files` / `ignored` / `duplicates` / `aliases`）。全部使用内存对象或临时目录，不读写真实资产
 - 资产体系新增两个独立 kind：`distilled`（跨书题材蒸馏卡）与 `genre-prose-card-index`（题材文风卡寻址索引），各有专用校验契约；GUI 资产库把两者列为独立分类（「蒸馏规则」「题材文风卡索引」），写作台新增「蒸馏规则（可选）」独立下拉
 
 ### Fixed
 
 - **蒸馏/index 资产被套用单书卡校验（整份 REJECT）**：`validate.py` 此前没有 distilled 与题材文风卡索引的校验器，`auto_kind` 兜底把它们判成 `voice-card`，于是「缺少 narration / dialogue / emotion_handling / banned」等单书卡硬错误全部报在蒸馏卡与索引上，四个 `*-distilled.json` 与题材文风卡索引均无法通过校验。现新增 `validate_distilled` 与 `validate_genre_prose_card_index`（并注册进 `DISPATCH`），`auto_kind` 支持按文件名线索识别索引、按 `meta.dimension` 或 `rules`/`blindspots`/`stats` 三元组识别蒸馏卡；`validate_asset_data(kind, data)` 提供纯数据校验结果，且不污染全局 `ERRORS`/`WARNS`
 - **蒸馏写盘无结构门禁**：`distill.py` 曾直接 `json.dump` 四维结果落盘，残缺 payload 会安静写进 `assets/`。现 `write_distilled_outputs` 在**任何 mkdir/写文件之前**对四个维度全量校验（维度齐备、`meta.dimension` 与输出维度一致、`meta.genre` 白名单、distilled 专用契约），任一硬错误即抛 `ValueError` 且不留半成品；警告不阻断写盘
+- **部分覆盖题材的蒸馏被门禁判死（零文件写出）**：写盘门禁要求 `meta.source_books` 至少 1 项，而某维度**无任何贡献书**时蒸馏产物天然是 `source_books: []`（`books_count: 0`、`rules: []`），于是「3 本书只有 voice-card」这类部分覆盖题材从「可蒸馏」变成整体失败、一个文件都不写。现空维度（无来源书 / 书数为 0 / 无规则三者同时成立）豁免该要求，其余情况仍要求非空；同时 GUI 服务层把门禁的 `ValueError` 转成 400 可读错误（原先冒到路由层变成 500，用户只看到「服务器内部错误」）
+- **单文件重索引破坏资产 key 口径**：`gui/migrate.py` 的 `sync_asset` 用 `asset_key=stem` 重索引，而迁移与详情定位都用 `kind:stem`（`get_asset_by_key(f"{kind}:{name}")`）——写盘后重索引会另插一行重复资产，或在 path 冲突时把既有行的 `asset_key` 静默改写掉，详情查询随即落空。现统一为 `f"{kind}:{stem}"` 且 path 用 `_rel_path`（与 `run_migrate` 同口径）
+- GUI 首页资产类型分布的标签改为复用共享表 `assetKindLabels.ts`（原先首页另有一份本地表，键为 camelCase 且缺 `distilled` / `prose_card_index`，「蒸馏规则」「题材文风卡索引」在饼图里显示成原始英文 kind）
 - **章节加载污染与静默覆盖**：`book_quality` / `qc` / `logic_check` 各自递归扫 `*.txt` 并 `texts[num] = read_text()` 直接赋值，导致 `_备份/`、`备份/`、`backup/`、`.git/`、`build/`、`dist/` 下的旧稿被当正文参与质检；同一章号命中多个文件时又按遍历顺序静默覆盖、结果不可复现。现统一委托 `chapter_loader`：排除备份/构建目录（大小写不敏感）、文件名取不到章号记入 `ignored`、同一章号命中多个**不同物理文件**抛 `ChapterLoadError`、同一物理文件被多个章号引用（别名）抛 `ChapterAliasError`，并保留 `novel_dir` 与其 `chapters/` 的双根语义（外部符号链接补扫、同一物理文件只加载一次）
 - **章节评分与量化指标漏算四角引号**：对白统计只认 `"` 与 `“”`，以 `「」`、`『』` 成文的章节对白占比被算成 0，连带影响节奏类维度。现 `metrics.dialogue_char_count` 统一四类引号口径，`chapter_check` 与 `metrics` 共用同一分子
 - **单书评分/注入接受错配 kind**：资产引用只给文件名，而蒸馏卡历史上落成 `*-voice-card-distilled.json` 这类基础卡后缀，服务层会把它当单书 voice 卡打分、把索引当文风卡注入。现服务层按**内容**自证 kind（`assert_asset_kind`），蒸馏卡当 voice、索引当 prose-card 传入一律以 400 拒绝；GUI 侧两者独立成 kind 与独立分类，不再与 `voice` / `prose_card` 混用

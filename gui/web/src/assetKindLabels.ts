@@ -16,7 +16,14 @@ export const KIND_LABELS: Record<AssetKind, string> = {
   book: '语料',
 }
 
-/** 取中文标签；后端返回未知 kind 时回退原值，避免界面渲染出 undefined。 */
+// 后端 snake_case → deepToCamel 后的 camelCase（genre_pack → genrePack）。
+// 概览接口的 assetsByKind 键走的就是 camelCase，必须与共享表共用同一份标签。
+const CAMEL_TO_SNAKE: Record<string, string> = Object.fromEntries(
+  Object.keys(KIND_LABELS).map((k) => [k.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase()), k]),
+)
+
+/** 取中文标签；同时接受后端 snake_case 与 deepToCamel 后的 camelCase 键，未知 kind 回退原值。 */
 export function kindLabel(kind: string): string {
-  return (KIND_LABELS as Record<string, string>)[kind] ?? kind
+  const key = CAMEL_TO_SNAKE[kind] ?? kind
+  return (KIND_LABELS as Record<string, string>)[key] ?? kind
 }

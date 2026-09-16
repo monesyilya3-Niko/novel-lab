@@ -482,5 +482,98 @@ class TestMigrateLegacyKindUpgrade(unittest.TestCase):
         self.assertEqual(before, after, "升级路径必须幂等")
 
 
+class TestSyncAssetKeyConvention(unittest.TestCase):
+    """I-2 回归：``sync_asset`` 必须与 ``run_migrate`` / ``asset_index._item_id`` 同口径。
+
+    单文件重索引曾用 ``asset_key=stem``，而迁移与详情定位都用 ``kind:stem``
+    （``get_asset_detail`` → ``db.get_asset_by_key(f"{kind}:{name}")``）：写盘后重索引
+    会把同一份文件变成「另一个 key」的行，或在 path 冲突时把既有行的 ``asset_key``
+    静默改写掉，详情查询随即落空。这里锁定「重索引后 key 不变、命中仍成立」。
+    """
+
+    _FILES = (
+        ("campus-redemption-voice-card-distilled.json",
+         '{"meta":{"dimension":"voice-card","genre":"campus-redemption"}}'),
+        ("book_a-voice-card.json",
+         '{"meta":{"source_title":"book_a","genre":"campus-redemption"}}'),
+    )
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="migrate_sync_"))
+        self._orig = {
+            "ASSETS_ROOT": config.ASSETS_ROOT,
+            "REPORTS_DIR": config.REPORTS_DIR,
+            "CORPUS_DIR": config.CORPUS_DIR,
+            "CONFIG_DIR": config.CONFIG_DIR,
+            "STATE_ROOT": config.STATE_ROOT,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.ASSETS_ROOT = self._tmp / "assets"
+        config.REPORTS_DIR = self._tmp / "reports"
+        config.CORPUS_DIR = self._tmp / "corpus"
+        config.CONFIG_DIR = self._tmp / "config"
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.STATE_JSON_DIR = self._tmp / "gui_state"
+        for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
+                  config.CONFIG_DIR, config.STATE_ROOT, config.STATE_JSON_DIR):
+            d.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+
+    def _seed(self) -> None:
+        for fname, content in self._FILES:
+            (config.ASSETS_ROOT / fname).write_text(content, encoding="utf-8")
+
+    def test_sync_asset_keeps_kind_stem_asset_key(self):
+        """迁移后调用 sync_asset：asset_key 不得改变，且 ``kind:stem`` 仍能命中。"""
+        self._seed()
+        migrate.run_migrate()
+
+        for fname, _content in self._FILES:
+            with self.subTest(fname=fname):
+                fp = config.ASSETS_ROOT / fname
+                content = json.loads(fp.read_text(encoding="utf-8"))
+                kind = migrate.infer_kind(fname, content)
+                key = f"{kind}:{fp.stem}"
+
+                before = db.get_asset_by_key(key)
+                self.assertIsNotNone(before, f"迁移后应能按 {key} 命中详情")
+
+                migrate.sync_asset(fp)
+
+                after = db.get_asset_by_key(key)
+                self.assertIsNotNone(after, f"sync_asset 后 {key} 必须仍能命中")
+                self.assertEqual(after["asset_key"], key,
+                                 "sync_asset 不得改写为 stem 口径")
+                self.assertEqual(after["kind"], kind)
+                self.assertEqual(after["id"], before["id"],
+                                 "应为同一行的原地更新，而非另插一行")
+                self.assertEqual(after["path"], before["path"],
+                                 "path 必须与 run_migrate 的 _rel_path 口径一致")
+                self.assertIsNone(
+                    db.get_asset_by_key(fp.stem),
+                    f"不得残留 stem 口径的 asset_key: {fp.stem}")
+
+    def test_sync_asset_does_not_add_rows(self):
+        """重索引是 UPSERT，不得让库比磁盘多出重复行。"""
+        self._seed()
+        migrate.run_migrate()
+        n_before = db.get_conn().execute(
+            "SELECT COUNT(*) AS n FROM assets").fetchone()["n"]
+
+        for fname, _content in self._FILES:
+            migrate.sync_asset(config.ASSETS_ROOT / fname)
+
+        n_after = db.get_conn().execute(
+            "SELECT COUNT(*) AS n FROM assets").fetchone()["n"]
+        self.assertEqual(n_before, n_after, "重索引不得插入重复行")
+        self.assertTrue(migrate.check()["ok"], "重索引后库与磁盘应对账一致")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

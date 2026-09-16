@@ -17,18 +17,7 @@ import { useApp } from '../state/AppContext'
 import PieChart from './charts/PieChart'
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
 import { friendlyError } from '../api/client'
-
-const KIND_LABELS: Record<string, string> = {
-  voice: '声线卡',
-  structure: '结构观测',
-  commercial: '商业观测',
-  craft: '笔法卡',
-  genrePack: '题材包',
-  proseCard: '文风卡',
-  trope: '桥段',
-  report: '报告',
-  book: '语料',
-}
+import { kindLabel } from '../assetKindLabels'
 
 export default function HomeDashboard() {
   const { overview, refreshOverview, setWorkbench } = useApp()
@@ -44,9 +33,10 @@ export default function HomeDashboard() {
     if (!overview) return []
     // report/book 是虚拟 kind，已由「报告」「已拆书」卡片单独展示，
     // 不属于「资产类型分布」——计入会让饼图与「资产总数」卡片口径打架。
+    // 键是 deepToCamel 后的 camelCase（proseCard / genrePack），共享表两种键都认。
     return Object.entries(overview.assetsByKind)
       .filter(([k, v]) => v > 0 && k !== 'report' && k !== 'book')
-      .map(([k, v]) => ({ name: KIND_LABELS[k] ?? k, value: v }))
+      .map(([k, v]) => ({ name: kindLabel(k), value: v }))
   }, [overview])
 
   const kpis = overview ? [

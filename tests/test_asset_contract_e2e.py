@@ -70,6 +70,19 @@ VALIDATE = _load("validate")
 LOADER = _load("chapter_loader")
 INJECT = _load("inject")
 
+
+def distill_gate():
+    """延迟取 ``distill`` 模块（写盘门禁 ``write_distilled_outputs``）。
+
+    **不能**在模块级加载：``distill.py`` 模块级 ``from validate import
+    validate_asset_data`` 会把「当时那份」``validate`` 实例绑定进自己的全局，而
+    ``tests/test_distill.py`` 的 ``_load`` 会**替换** ``sys.modules["validate"]``。
+    若在模块级加载 ``distill``，``test_distill_gate`` 中「门禁与断言必须共享同一个
+    validate 实例」的前置断言就会误报（两条 import 链绑到了不同实例）。
+    延迟到用例执行期取模块即可保证与最终实例一致，且与运行顺序无关。
+    """
+    return _load("distill")
+
 GENRE = "e2e-fixture"
 BOOKS = ("book_a", "book_b", "book_c")
 
@@ -212,6 +225,36 @@ def distill_in_memory(genre: str = GENRE) -> dict:
         return CORE.distill_genre(genre)
 
 
+def partial_memory_assets() -> dict:
+    """**部分覆盖**题材的内存资产：三本书只有 voice-card，其余三维无任何贡献书。"""
+    full = memory_assets()
+    return {dim: (full[dim] if dim == "voice-card" else {}) for dim in CORE.DIMENSIONS}
+
+
+def distill_partial_in_memory(genre: str = GENRE) -> dict:
+    """部分覆盖题材的真实 ``distill_genre`` 编排（不读、不写真实 assets/）。"""
+    with mock.patch.object(
+        CORE,
+        "collect_assets",
+        side_effect=lambda *args, **kwargs: copy.deepcopy(partial_memory_assets()),
+    ):
+        return CORE.distill_genre(genre)
+
+
+def _link_file(target: Path, link: Path) -> bool:
+    """尝试创建指向 target 的文件符号链接；环境不支持时返回 False。
+
+    与 ``tests/test_chapter_loader.py`` 同写法：**只有 ``os.symlink`` 在 try 内**，
+    调用方据返回值选择分支——绝不把 ``yield`` 放进 ``try``（否则 with 体内抛出的
+    ``OSError`` / ``AttributeError`` 会被 ``except`` 吞掉，并让 with 体二次执行）。
+    """
+    try:
+        os.symlink(target, link)
+    except (OSError, NotImplementedError, AttributeError):
+        return False
+    return True
+
+
 @contextlib.contextmanager
 def physical_alias(target: Path, alias: Path):
     """构造「两个不同文件名指向同一物理文件」的临时 fixture。
@@ -221,12 +264,9 @@ def physical_alias(target: Path, alias: Path):
     ``_resolve_physical`` 是 loader 判定「同一物理文件」的唯一依据，两条分支
     走的检测逻辑完全一致。
     """
-    try:
-        os.symlink(target, alias)
+    if _link_file(target, alias):
         yield
         return
-    except (OSError, NotImplementedError, AttributeError):
-        pass
 
     alias.write_text(target.read_text(encoding="utf-8"), encoding="utf-8")
     real = LOADER._resolve_physical
@@ -319,6 +359,55 @@ class TestDistilledEndToEnd(unittest.TestCase):
                 self.distilled["voice-card"], "voice", "fixture-voice-card.json"
             )
         self.assertEqual(ctx.exception.code, 400)
+
+
+# ---------------------------------------------------------------------------
+# 1b. 部分覆盖题材（I-1）：某维度无贡献书时仍必须写出四个文件
+# ---------------------------------------------------------------------------
+
+class TestPartialCoverageGenre(unittest.TestCase):
+    """I-1 回归：题材只覆盖部分维度时，四维蒸馏产物仍全部通过门禁并落盘。
+
+    修复前 ``validate_distilled`` 对 ``meta.source_books`` 用 ``min_items=1``，而
+    ``_empty_distilled`` 在「该维度无任何贡献书」时产出 ``source_books: []``——
+    ``write_distilled_outputs`` 对四维全量校验，任一空维度即抛 ``ValueError``，
+    部分覆盖题材从「可蒸馏」变成整体失败、零文件写出。
+    """
+
+    def test_empty_dimensions_pass_validation(self):
+        """空维度必须零硬错误，且保持 ``source_books=[] / books_count=0 / rules=[]``。"""
+        distilled = distill_partial_in_memory()
+        self.assertEqual(sorted(distilled), sorted(CORE.DIMENSIONS))
+
+        for dim in CORE.DIMENSIONS:
+            if dim == "voice-card":
+                continue
+            with self.subTest(dimension=dim):
+                payload = distilled[dim]
+                self.assertEqual(payload["meta"]["source_books"], [])
+                self.assertEqual(payload["meta"]["books_count"], 0)
+                self.assertEqual(payload["rules"], [])
+                errors, _ = VALIDATE.validate_asset_data("distilled", payload)
+                self.assertEqual(errors, [], f"{dim} 空维度硬错误: {errors}")
+
+    def test_non_empty_dimension_keeps_its_books(self):
+        """对照：有贡献书的维度仍必须带出三本书与规则（豁免不得放大）。"""
+        voice = distill_partial_in_memory()["voice-card"]
+        self.assertEqual(sorted(voice["meta"]["source_books"]), sorted(BOOKS))
+        self.assertEqual(voice["meta"]["books_count"], len(BOOKS))
+        self.assertTrue(voice["rules"], "voice-card 有资产，应产出规则")
+
+    def test_partial_coverage_still_writes_four_files(self):
+        """端到端：部分覆盖题材必须写出四个文件（不读不写真实 assets/）。"""
+        distilled = distill_partial_in_memory()
+        with tempfile.TemporaryDirectory() as tmp:
+            written = distill_gate().write_distilled_outputs(distilled, Path(tmp))
+            self.assertEqual(len(written), 4, f"应写出四个文件: {written}")
+            self.assertTrue(all(Path(p).is_file() for p in written))
+            names = sorted(Path(p).name for p in written)
+            self.assertEqual(
+                names, sorted(f"{GENRE}-{d}-distilled.json" for d in CORE.DIMENSIONS)
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -492,6 +581,33 @@ class TestChapterLoaderDiagnostics(unittest.TestCase):
             self.assertEqual(diag["ignored"], [])
             self.assertEqual(diag["duplicates"], {})
             self.assertEqual(diag["aliases"], {})
+
+
+class TestPhysicalAliasFixture(unittest.TestCase):
+    """M-9 回归：``physical_alias`` 只允许把 ``os.symlink`` 放进 ``try``。
+
+    修复前 ``yield`` 被包在 ``try`` 内，``with`` 体内抛出的 ``OSError`` /
+    ``AttributeError`` 会被 ``except`` 吞掉，随后走降级分支并**二次执行** ``with``
+    体——真实失败被掩盖，断言还会在错误的执行次数上成立。
+
+    用 mock 强制走「symlink 成功」分支，使本用例不依赖本机符号链接权限。
+    """
+
+    def test_body_exception_propagates_and_body_runs_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "chapter-001.txt"
+            target.write_text("第一章正文", encoding="utf-8")
+            alias = root / "chapter-002.txt"
+            runs = []
+
+            with mock.patch("os.symlink"):  # 强制 symlink 成功，不碰真实符号链接权限
+                with self.assertRaises(OSError):
+                    with physical_alias(target, alias):
+                        runs.append(1)
+                        raise OSError("with 体内的真实失败")
+
+            self.assertEqual(runs, [1], "with 体只允许执行一次（不得被吞异常后二次执行）")
 
 
 if __name__ == "__main__":

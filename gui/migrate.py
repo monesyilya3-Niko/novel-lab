@@ -587,6 +587,11 @@ def sync_asset(fp: Path) -> None:
 
     复用 infer_kind / infer_book_id / infer_genre + _upsert_asset（db.tx 内）。
     不调 run_migrate()（避免每次 backup() 与全量扫描）。
+
+    ``asset_key`` 与 ``path`` 必须与 :func:`run_migrate` / :meth:`AssetIndex._item_id`
+    同口径（``f"{kind}:{stem}"`` / ``_rel_path``）：详情定位走
+    ``get_asset_by_key(f"{kind}:{name}")``，若重索引用 ``asset_key=stem``，要么另插一行
+    重复资产，要么在 path 冲突时把既有行的 ``asset_key`` 静默改写掉，详情查询随即落空。
     """
     from gui import db as _db
 
@@ -613,7 +618,7 @@ def sync_asset(fp: Path) -> None:
 
     with _db.tx() as conn:
         _upsert_asset(
-            conn, asset_key=stem, kind=kind, name=stem, path=str(fp),
+            conn, asset_key=f"{kind}:{stem}", kind=kind, name=stem, path=_rel_path(fp),
             book_id=book_id, genre=genre, size=size, mtime=mtime, meta_json=meta_json)
 
 
