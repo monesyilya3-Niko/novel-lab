@@ -92,6 +92,56 @@ def memory_voice_card() -> dict:
     }
 
 
+def memory_valid_voice_card() -> dict:
+    """内存**结构合法**的单书 voice-card（正向对照，不落盘）。
+
+    覆盖单书卡契约的全部必填项：``meta`` 的 source_title / genre / extracted_at /
+    sample_chapters / confidence，以及 narration / dialogue / emotion_handling /
+    banned 四个必填段（另含 imagery / provenance，避免落到硬错误）。
+
+    存在的意义是**反向排除「校验器一律拒绝」**：下面的反向断言只能证明「蒸馏卡
+    过不了单书卡校验」，若没有这张合法卡做对照，同样的断言在「校验器对任何输入
+    都报错」的实现下也会通过。
+    """
+    return {
+        "meta": {
+            "source_title": "fixture-book",
+            "genre": "campus-redemption",
+            "extracted_at": "2026-09-16T00:00:00Z",
+            "sample_chapters": [1, 2, 3],
+            "confidence": 0.8,
+        },
+        "narration": {
+            "pov": "第三人称限知",
+            "sentence_rhythm": {
+                "avg_length": 18,
+                "short_ratio": 0.4,
+                "long_ratio": 0.2,
+                "burst_pattern": "短句起手，长句收束",
+            },
+            "paragraph": {"avg_lines": 3, "single_line_para_ratio": 0.3},
+        },
+        "dialogue": {
+            "dialogue_ratio": 0.3,
+            "subtext_level": "偶有潜台词",
+            "character_voices": [],
+        },
+        "emotion_handling": {
+            "mode": "混合式",
+            "examples": [
+                {"pattern": "动作外化收束情绪", "anti_pattern": "直白喊出情绪"}
+            ],
+        },
+        "imagery": {
+            "high_freq_metaphor_domains": ["雨", "光"],
+            "sensory_preference": {"视觉": 0.5, "听觉": 0.5},
+            "signature_devices": ["通感"],
+        },
+        "banned": {"never_used_words": ["竟然"]},
+        "provenance": {"contains_verbatim": False},
+    }
+
+
 def memory_index() -> dict:
     """内存题材文风卡索引（寻址表，非文风卡本身）。"""
     return {
@@ -215,16 +265,26 @@ class TestDistilledEndToEnd(unittest.TestCase):
                 )
 
     def test_distilled_is_rejected_by_single_book_contract(self):
-        """反向锁定：若把蒸馏卡当单书 voice-card 校验，必然报硬错误。
+        """反向锁定：若把蒸馏卡当单书 voice-card 校验，必然报出**单书卡必填段缺失**。
 
         这正是历史 bug 的形态（蒸馏资产套用单书卡校验 → 整份 REJECT）。
+
+        断言的是**具体缺失字段**而不是「errors 非空」：后者对任意残缺 dict 都成立，
+        无法区分「校验器按单书卡契约精确拒绝」与「校验器一律拒绝」。
         """
+        required_sections = ("narration", "dialogue", "emotion_handling", "banned")
         for dimension in CORE.DIMENSIONS:
             with self.subTest(dimension=dimension):
                 errors, _ = VALIDATE.validate_asset_data(
                     "voice-card", self.distilled[dimension]
                 )
-                self.assertTrue(errors, "蒸馏卡不应能通过单书 voice-card 校验")
+                joined = "\n".join(errors)
+                for section in required_sections:
+                    self.assertIn(
+                        f"缺少必填字段 '{section}'",
+                        joined,
+                        f"{dimension} 蒸馏卡按单书卡校验应报缺少 '{section}'：{errors}",
+                    )
 
     def test_render_distilled_and_render_all(self):
         """渲染：单维含标记；四维合渲染不崩溃且带出蒸馏段。"""
@@ -262,7 +322,41 @@ class TestDistilledEndToEnd(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 2. genre-prose-card-index：独立 kind，不得当文风卡消费
+# 2. 正向对照：合法单书卡必须通过——证明校验器不是「一律拒绝」
+# ---------------------------------------------------------------------------
+
+class TestSingleBookVoiceCardPositiveControl(unittest.TestCase):
+    """正向对照：结构合法的单书卡零硬错误通过。
+
+    没有这条对照，上面所有「errors 非空」的反向断言都无法排除「校验器把任何
+    输入都判错」这一可能；有了它，反向断言才真正锁定「拒绝的原因是缺单书卡
+    必填字段」。卡片完全在内存构造，不读真实 assets。
+    """
+
+    def test_valid_single_book_voice_card_passes(self):
+        """结构合法的单书卡：errors == []，且 kind 自证为 voice-card。"""
+        card = memory_valid_voice_card()
+        errors, _ = VALIDATE.validate_asset_data("voice-card", card)
+        self.assertEqual(errors, [], f"合法单书卡不应有硬错误: {errors}")
+        self.assertEqual(
+            VALIDATE.auto_kind(card, "fixture-voice-card.json"),
+            "voice-card",
+            "结构合法的单书卡必须被判为 voice-card",
+        )
+
+    def test_missing_required_section_is_the_reason(self):
+        """判别力对照：从合法卡里删掉 narration，报错必须精确指向该字段。
+
+        证明校验器「通过」与「拒绝」之间的差别确实来自必填段本身。
+        """
+        card = memory_valid_voice_card()
+        del card["narration"]
+        errors, _ = VALIDATE.validate_asset_data("voice-card", card)
+        self.assertIn("缺少必填字段 'narration'", "\n".join(errors))
+
+
+# ---------------------------------------------------------------------------
+# 3. genre-prose-card-index：独立 kind，不得当文风卡消费
 # ---------------------------------------------------------------------------
 
 class TestIndexKindContract(unittest.TestCase):
@@ -279,12 +373,35 @@ class TestIndexKindContract(unittest.TestCase):
         self.assertFalse([e for e in errors if "voice-card" in e])
 
     def test_index_is_rejected_by_card_contracts(self):
-        """反向锁定：按单书卡 / 文风卡契约校验索引必然报硬错误。"""
+        """反向锁定：按单书卡 / 文风卡契约校验索引必然报出**该类卡的必填项缺失**。
+
+        同样断言具体缺失字段而非「errors 非空」——索引只有 ``cards`` 顶层键，
+        任意卡契约都会报错，笼统的「非空」断言无法证明拒绝理由正确。
+        """
         index = memory_index()
-        for kind in ("voice-card", "genre-prose-card"):
+        expected_missing = {
+            "voice-card": (
+                "缺少必填字段 'meta'",
+                "缺少必填字段 'narration'",
+                "缺少必填字段 'dialogue'",
+                "缺少必填字段 'emotion_handling'",
+                "缺少必填字段 'banned'",
+            ),
+            "genre-prose-card": (
+                "缺少必填字段 'language_rules'",
+                "缺少必填字段 'prose'",
+            ),
+        }
+        for kind, needles in expected_missing.items():
             with self.subTest(kind=kind):
                 errors, _ = VALIDATE.validate_asset_data(kind, index)
-                self.assertTrue(errors, f"索引不应能通过 {kind} 校验")
+                joined = "\n".join(errors)
+                for needle in needles:
+                    self.assertIn(
+                        needle,
+                        joined,
+                        f"索引按 {kind} 校验应报 {needle}：{errors}",
+                    )
 
     def test_service_boundary_rejects_index_as_prose_card(self):
         from gui.services import ServiceError, assert_asset_kind
@@ -295,7 +412,7 @@ class TestIndexKindContract(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# 3. chapter_loader 诊断结构（临时目录，不碰真实小说正文）
+# 4. chapter_loader 诊断结构（临时目录，不碰真实小说正文）
 # ---------------------------------------------------------------------------
 
 class TestChapterLoaderDiagnostics(unittest.TestCase):
@@ -364,7 +481,7 @@ class TestChapterLoaderDiagnostics(unittest.TestCase):
                     LOADER.load_chapter_texts(root)
 
     def test_missing_path_returns_empty_diagnostics(self):
-        """不存在的路径：结构仍完整（三键齐备）且为空。"""
+        """不存在的路径：结构仍完整（files / ignored / duplicates / aliases 四键齐备）且为空。"""
         with tempfile.TemporaryDirectory() as tmp:
             diag = LOADER.discover_chapter_files(Path(tmp) / "不存在")
             self.assertTrue(
