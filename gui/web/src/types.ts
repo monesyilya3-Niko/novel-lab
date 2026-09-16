@@ -90,6 +90,10 @@ export type AssetKind =
   | 'craft'
   | 'genre_pack'
   | 'prose_card'
+  // 跨书题材蒸馏卡（distilled）与题材文风卡寻址索引（prose_card_index）各自独立成 kind，
+  // 不得与 voice / prose_card 混用（后端 services.assert_asset_kind 按内容拒绝错配）。
+  | 'distilled'
+  | 'prose_card_index'
   | 'trope'
   | 'report'
   | 'book'

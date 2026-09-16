@@ -48,6 +48,7 @@ function InjectPanel() {
   const [voice, setVoice] = useState('')
   const [genrePack, setGenrePack] = useState('')
   const [craft, setCraft] = useState('')
+  const [distilled, setDistilled] = useState('')
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -63,6 +64,9 @@ function InjectPanel() {
         if (gp) setGenrePack(gp.id)
         const cc = items.find((a) => a.kind === 'craft')
         if (cc) setCraft(cc.id)
+        // distilled 独立成 kind：默认选中第一张蒸馏卡（不再冒充 voice 卡出现在 voice 下拉里）
+        const dd = items.find((a) => a.kind === 'distilled')
+        if (dd) setDistilled(dd.id)
       })
       .catch(() => setAssets([]))
   }, [])
@@ -71,7 +75,7 @@ function InjectPanel() {
     setLoading(true)
     setError('')
     try {
-      const r = await writingApi.inject({ voice, genre_pack: genrePack || undefined, craft: craft || undefined, save: true })
+      const r = await writingApi.inject({ voice, genre_pack: genrePack || undefined, craft: craft || undefined, distilled: distilled || undefined, save: true })
       setPrompt(r.prompt)
     } catch (e) {
       setError(friendlyError(e))
@@ -99,6 +103,10 @@ function InjectPanel() {
         <TextField select label="craft-card（可选）" value={craft} onChange={(e) => setCraft(e.target.value)} sx={{ minWidth: 220 }} size="small">
           <MenuItem value="">无</MenuItem>
           {byKind('craft').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+        </TextField>
+        <TextField select label="蒸馏规则（可选）" value={distilled} onChange={(e) => setDistilled(e.target.value)} sx={{ minWidth: 220 }} size="small">
+          <MenuItem value="">无</MenuItem>
+          {byKind('distilled').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <Button variant="contained" onClick={doInject} disabled={!voice || loading}>
           {loading ? <CircularProgress size={20} /> : '生成 Prompt'}

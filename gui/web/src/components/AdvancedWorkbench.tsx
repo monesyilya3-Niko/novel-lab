@@ -212,6 +212,10 @@ function AssetEditPanel() {
   }, [])
 
   const selectedAsset = assets.find((a) => `${a.kind}:${a.id}` === selected)
+  // 题材文风卡索引（prose_card_index）只是题材→卡片文件的寻址表，不是可编辑卡片：
+  // 不进可编辑下拉，避免手改索引内容破坏寻址（查看请走「资产库」）。
+  const editableAssets = assets.filter((a) => a.kind !== 'prose_card_index')
+  const hasProseCardIndex = assets.some((a) => a.kind === 'prose_card_index')
   const dirty = content !== savedContent
   // 活体 JSON 校验：输入即反馈，保存前就知道合不合法
   const validation = (() => {
@@ -269,13 +273,18 @@ function AssetEditPanel() {
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Box sx={{ display: 'flex', gap: 2, mb: 1, flexWrap: 'wrap' }}>
         <TextField select label="选择资产" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 300, flex: 1 }} size="small">
-          {assets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{a.kind}）</MenuItem>)}
+          {editableAssets.map((a) => <MenuItem key={a.id} value={`${a.kind}:${a.id}`}>{a.name}（{a.kind}）</MenuItem>)}
         </TextField>
         <Button variant="outlined" onClick={loadAsset} disabled={!selected || loading}>加载</Button>
         <Button variant="contained" onClick={saveAsset} disabled={!content || loading || !validation.ok || !dirty}>
           {loading ? <CircularProgress size={20} /> : '保存'}
         </Button>
       </Box>
+      {hasProseCardIndex && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+          题材文风卡索引（prose_card_index）为只读寻址表，不在可编辑列表中，请在「资产库」中查看。
+        </Typography>
+      )}
       {selectedAsset && (
         <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           <Chip label={selectedAsset.kind} size="small" color="primary" variant="outlined" />
