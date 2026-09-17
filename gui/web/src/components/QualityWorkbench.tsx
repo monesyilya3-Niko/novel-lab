@@ -156,6 +156,11 @@ function BookQualityPanel() {
 
   const issues = (result?.issues ?? []) as { type?: string; severity?: string; detail?: string; chapter?: number }[]
   const verdict = result?.verdict as string | undefined
+  // 2026-09-17（终审 M-5）：book_quality_check 的 issues 最多 issues_limit 条，而
+  // total_issues 是真实总数。截断时若不说明，界面会像「共 61 个问题」却只列出 50 条。
+  const issuesTruncated = result?.issues_truncated === true
+  const totalIssues = result?.total_issues as number | undefined
+  const issuesLimit = result?.issues_limit as number | undefined
 
   return (
     <Box>
@@ -173,6 +178,11 @@ function BookQualityPanel() {
             判定：<Chip label={verdictLabel(verdict)} size="small" color={verdict === 'PASS' ? 'success' : verdict === 'WARN' ? 'warning' : 'error'} />
           </Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>共 {issues.length} 个问题</Typography>
+          {issuesTruncated && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              共 {totalIssues} 条，仅显示前 {issuesLimit} 条
+            </Typography>
+          )}
           {issues.slice(0, 20).map((iss, i) => (
             <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>
               [{iss.severity}] {iss.type} {iss.chapter ? `Ch${iss.chapter}` : ''} — {iss.detail}
