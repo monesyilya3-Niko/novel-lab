@@ -7,7 +7,7 @@
   → 输出 JSON 质检报告
 
 检测维度（共 6 大类）：
-  1. 跨章重复（重复章节/重复段落/重复句子）
+  1. 跨章/章内重复（重复章节/重复段落/跨章重复句子/章内重复句子）
   2. 情节连贯性（人物状态/时间线/逻辑矛盾）
   3. 文笔风格一致性（句式/比喻/情绪写法）
   4. 凑字数检测（废话/重复描写/无意义堆砌）
@@ -77,7 +77,15 @@ def check_duplicate_paragraphs(texts: dict) -> list:
 
 
 def check_duplicate_sentences(texts: dict) -> list:
-    """检测跨章重复句子（>12字，跨≥3章）"""
+    """检测跨章重复句子（>12字，跨≥2章）
+
+    2026-09-17（第二轮 Task A，报告 P0-2）：召回门槛由「≥3 章」下调为「≥2 章」——
+    只在相邻两章重复的句子是读者最易察觉的形态，此前永远不报。严重度分档：
+      - 2 章  → `low`（新增档，不参与 critical/high 判定规则）
+      - ≥3 章 → `medium`（与调整前完全一致，不回退）
+    另新增 `adjacent` 布尔字段：重复章号中是否存在相邻章（差值为 1）。
+    句子切分正则与 12 字门槛保持不变。
+    """
     issues = []
     sent_chapters = defaultdict(set)
     for ch, text in texts.items():
@@ -86,13 +94,60 @@ def check_duplicate_sentences(texts: dict) -> list:
             if len(sent) >= 12:
                 sent_chapters[sent].add(ch)
     for sent, chs in sent_chapters.items():
-        if len(chs) >= 3:
+        if len(chs) >= 2:
+            chapters = sorted(chs)
+            adjacent = any(b - a == 1 for a, b in zip(chapters, chapters[1:]))
+            detail = f"句子「{sent[:30]}…」在 {len(chs)} 章重复"
+            if adjacent:
+                detail += "（相邻章）"
             issues.append({
                 "type": "duplicate_sentence",
-                "severity": "medium",
-                "chapters": sorted(chs),
-                "detail": f"句子「{sent[:30]}…」在 {len(chs)} 章重复"
+                "severity": "medium" if len(chs) >= 3 else "low",
+                "chapters": chapters,
+                "adjacent": adjacent,
+                "detail": detail,
             })
+    return issues
+
+
+def check_intra_chapter_repeats(texts: dict) -> list:
+    """检测章内重复句子（≥10 字的句子在同一章内出现 ≥2 次）
+
+    2026-09-17（第二轮 Task A，报告 P0-2）：段落检测只认「>30 字整段完全相同」，
+    识别不了「同一句碎片散布在多个段落中」的形态（项目曾发生 2000 字里 937 字重复的
+    automerge 事故却被判 PASS）。本检查按**章内重复句占比**补上这一召回缺口。
+
+    占比 `ratio = dups / 句子总数`（dups = 各重复句多出的出现次数之和）：
+      - `ratio >= 0.25`          → `high`
+      - `0.10 <= ratio < 0.25`   → `medium`
+      - `ratio < 0.10`           → `low`
+    每章最多报 1 条（聚合）；无重复句或句子总数为 0 时跳过该章。
+    """
+    issues = []
+    for ch in sorted(texts.keys()):
+        sents = [s.strip() for s in re.split(r'(?<=[。！？…])', texts[ch])]
+        sents = [s for s in sents if len(s) >= 10]
+        if not sents:
+            continue
+        counter = Counter(sents)
+        dups = sum(n - 1 for n in counter.values() if n > 1)
+        if dups == 0:
+            continue
+        ratio = dups / len(sents)
+        if ratio >= 0.25:
+            severity = "high"
+        elif ratio >= 0.10:
+            severity = "medium"
+        else:
+            severity = "low"
+        longest = max((s for s, n in counter.items() if n > 1), key=len)
+        issues.append({
+            "type": "intra_chapter_repeat",
+            "severity": severity,
+            "chapter": ch,
+            "detail": (f"Ch{ch} 章内重复句 {dups}/{len(sents)}（占比 {ratio:.0%}），"
+                       f"最长重复句「{longest[:30]}…」"),
+        })
     return issues
 
 
@@ -389,6 +444,8 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
         all_issues.extend(check_word_padding(single))
         all_issues.extend(check_fabrication(single, entities))
         all_issues.extend(check_ai_flavor(single))
+        # 章内重复句检测（单章也要检测，故放在逐章循环内）
+        all_issues.extend(check_intra_chapter_repeats(single))
 
     all_issues.extend(check_style_consistency(texts, voice_card))
     
