@@ -1,5 +1,5 @@
 window.__NOVEL_LAB__ = {
-  "generated_at": "2026-09-08 03:41:29",
+  "generated_at": "2026-09-17 12:33:17",
   "books": [
     {
       "id": "chireng_chosen",
@@ -2106,13 +2106,14 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "voice-card",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-07T16:27:01",
+        "distilled_at": "2026-09-11T04:59:49",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
-          "sangshi_chosen"
+          "sangshi_chosen",
+          "suyixinjian_chosen"
         ],
-        "books_count": 3
+        "books_count": 4
       },
       "rules": [
         {
@@ -2120,7 +2121,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.pov",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": "第三人称限知",
           "sources": [
             {
@@ -2134,6 +2135,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "第三人称限知"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "第三人称限知"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "第三人称限知",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "第三人称限知",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "第三人称限知",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "第三人称限知",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2146,7 +2181,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.tense_feel",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": "贴身跟随主角感官，叙述者几乎不介入",
           "sources": [
             {
@@ -2160,6 +2195,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "贴身跟随主角感官，叙述者几乎不介入"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "近距离、慢镜头式的凝视感，叙述贴着主角的感官走，像一部长镜头"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "贴身跟随主角，几乎无叙述者介入",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "贴身跟随主角感官，叙述者几乎不介入",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "贴身跟随主角感官，叙述者几乎不介入",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "近距离、慢镜头式的凝视感，叙述贴着主角的感官走，像一部长镜头",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2172,7 +2241,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.sentence_rhythm.avg_length",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": 0,
           "sources": [
             {
@@ -2186,6 +2255,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2198,7 +2301,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.sentence_rhythm.short_ratio",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": 0,
           "sources": [
             {
@@ -2212,6 +2315,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2224,7 +2361,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.sentence_rhythm.long_ratio",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": 0,
           "sources": [
             {
@@ -2238,6 +2375,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2250,8 +2421,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.sentence_rhythm.burst_pattern",
           "kind": "hard",
-          "books_count": 3,
-          "value": "主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。；叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。；叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。",
+          "books_count": 4,
+          "value": "主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。；叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。；叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。；情绪爆发（崩溃、对峙、心动）时连续使用3-5个极短句或单句成段，制造停顿与冲击；日常铺陈时句子稍长且平稳",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2264,6 +2435,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "情绪爆发（崩溃、对峙、心动）时连续使用3-5个极短句或单句成段，制造停顿与冲击；日常铺陈时句子稍长且平稳"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "情绪爆发（崩溃、对峙、心动）时连续使用3-5个极短句或单句成段，制造停顿与冲击；日常铺陈时句子稍长且平稳",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2276,7 +2481,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "narration.chapter_opening_patterns",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": "{\"example_structure\": \"[环境状态]+[人物动作]\", \"frequency\": 3, \"pattern\": \"场景白描\"}；{\"example_structure\": \"[心理活动]+[场景引入]\", \"frequency\": 2, \"pattern\": \"内心独白\"}",
           "sources": [
             {
@@ -2323,6 +2528,51 @@ window.__NOVEL_LAB__ = {
                   "example_structure": "[心理活动]+[场景引入]"
                 }
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                {
+                  "pattern": "场景白描",
+                  "frequency": 3,
+                  "example_structure": "[环境状态]+[人物动作]"
+                },
+                {
+                  "pattern": "内心独白",
+                  "frequency": 2,
+                  "example_structure": "[心理活动]+[场景引入]"
+                }
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[{\"pattern\": \"场景白描\", \"frequency\": 3, \"example_structure\": \"[环境状态]+[人物动作]\"}, {\"pattern\": \"内心独白\", \"frequency\": 2, \"example_structure\": \"[心理活动]+[场景引入]\"}]",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[{\"pattern\": \"场景白描\", \"frequency\": 3, \"example_structure\": \"[环境状态]+[人物动作]\"}, {\"pattern\": \"内心独白\", \"frequency\": 2, \"example_structure\": \"[心理活动]+[场景引入]\"}]",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[{\"pattern\": \"场景白描\", \"frequency\": 3, \"example_structure\": \"[环境状态]+[人物动作]\"}, {\"pattern\": \"内心独白\", \"frequency\": 2, \"example_structure\": \"[心理活动]+[场景引入]\"}]",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[{\"pattern\": \"场景白描\", \"frequency\": 3, \"example_structure\": \"[环境状态]+[人物动作]\"}, {\"pattern\": \"内心独白\", \"frequency\": 2, \"example_structure\": \"[心理活动]+[场景引入]\"}]",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2335,8 +2585,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "dialogue.dialogue_ratio",
           "kind": "hard",
-          "books_count": 3,
-          "value": 0.1947,
+          "books_count": 4,
+          "value": 0.20155,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2349,6 +2599,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.1947
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.6903
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0.2978",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.1077",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.1947",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.6903",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2361,7 +2645,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "dialogue.subtext_level",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": "直白",
           "sources": [
             {
@@ -2375,6 +2659,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "直白"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "直白"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "直白",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "直白",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "直白",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "直白",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2387,8 +2705,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "dialogue.character_voices",
           "kind": "hard",
-          "books_count": 3,
-          "value": "{\"arc\": {}, \"name\": \"孟诗蕊\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"对不起，我错了。\", \"这件事是我做得不对。\", \"你比我优秀，我服气。\"], \"refusal_pattern\": \"用威胁性反问句拒绝（如‘你还跑！让你跑！’），并附加具体惩罚（如‘拍裸照’‘弄死你’）。\", \"verbal_tics\": [\"寻文哥哥\", \"蕊姐\", \"狐狸精\", \"贱民\", \"浪货\", \"臭婊子\"]}}；{\"arc\": {}, \"name\": \"边炀\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"请、谢谢、对不起（连贯使用，表示真诚歉意或请求）。\", \"这件事我需要你们帮忙，请大家支持我。\", \"我很担心你的安全，请你务必小心。\"], \"refusal_pattern\": \"用不耐烦的反问句或陈述句拒绝（如‘关你屁事’‘我为什么要帮你’），并伴随肢体动作（如‘舌尖抵了抵腮帮’‘嗤笑一声’）。\", \"verbal_tics\": [\"老子\", \"关你屁事\", \"唐小雨\", \"嗯？\", \"你丫的\", \"特么\", \"懂？\"]}}；{\"arc\": {}, \"name\": \"唐雨\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"你给我滚开，别碰我！\", \"这件事我绝对不会原谅你。\", \"我凭什么要听你的？\"], \"refusal_pattern\": \"极少直接拒绝，通常以沉默、低头、声音细弱或转移话题（如‘我…我没有’）来回应，拒绝意愿通过身体语言（如‘攥紧笔’‘缩脖子’）表达。\", \"verbal_tics\": [\"对不起\", \"谢谢\", \"没事\", \"我没事\", \"真的不太疼\", \"我不是…\"]}}；{\"arc\": {}, \"name\": \"周寻文\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"你给我闭嘴，听我说。\", \"这件事没得商量，必须按我说的做。\", \"我瞧不起你。\"], \"refusal_pattern\": \"样本中未出现直接拒绝场景。拒绝倾向可能表现为温和地转移话题或提出替代方案。\", \"verbal_tics\": [\"唐雨同学\", \"寻文哥哥\"]}}；{\"arc\": {}, \"name\": \"苏念\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"直接说‘我喜欢陆星辞’\", \"公开表达对陆星辞的醋意\", \"用命令或强硬的语气对陆星辞说话\"], \"refusal_pattern\": \"当被要求直接向陆星辞求助时，会找借口回避，例如。\", \"verbal_tics\": [\"谢谢啊\", \"哪有那么夸张\", \"不弔了\", \"麻烦彵了\", \"我先走了\", \"别胡说\", \"我就是不知道穿什么\", \"妈！\", \"嗯？\"]}}；{\"arc\": {}, \"name\": \"陆星辞\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"直接说出‘我喜欢苏念’\", \"对苏念说软话或明显安慰的话（如‘你很好，不要难过’）\", \"在外人面前主动表现出对苏念的特别关心\"], \"refusal_pattern\": \"面对他人的告白或不感兴趣的社交请求，使用礼貌但疏离的固定句式拒绝，如‘谢谢，不弔’或‘抱歉，影响学习’，然后直接转身离开，不给予任何进一步回应的空间。\", \"verbal_tics\": [\"嗯？\", \"谢谢，不弔\", \"抱歉，影响学习\", \"我家近\", \"别哭\", \"喝水\", \"别听她胡说\", \"自己能想明白\", \"懂了吗\", \"哪里不会\", \"早\", \"不弔，我都准备好了\"]}}；{\"arc\": {}, \"name\": \"夏栀\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"严肃地、长时间地谈论自己的烦恼或心事\", \"对苏念的暗恋心态进行理性、冷静的分析\", \"用低调、含蓄的方式说话\"], \"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"verbal_tics\": [\"念念\", \"哇哦\", \"陆大神\", \"走走走\", \"男友力，简直max\", \"别瞎说\", \"这待遇\", \"就跟你说个事儿\"]}}；{\"arc\": {}, \"name\": \"江辰\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"说任何正经、严肃、带有深刻情感的话\", \"安静地独处或长时间不说话\"], \"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"verbal_tics\": [\"陆哥\", \"可以啊陆星辞\", \"哇\", \"切，装什么装\"]}}；{\"arc\": {}, \"name\": \"教官\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"我理解你的感受\", \"要不我们商量一下\", \"可能我错了\"], \"refusal_pattern\": \"当队伍纪律涣散时\", \"verbal_tics\": [\"二十五中队\", \"操\"]}}；{\"arc\": {}, \"name\": \"周砚\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我也不知道该怎么办\", \"也许你是对的\", \"让我们再讨论一下吧\"], \"refusal_pattern\": \"用简短、陈述事实的方式拒绝，或直接中断对话。如拒绝帮拿杯子时说'不去，撒手'；被要求帮忙时，用'你有病？'表达不耐烦。\", \"verbal_tics\": [\"嗯？\", \"深更半夜不睡觉出去打篮球...你觉得只是发烧后脑子不行？\", \"帮你把杯子洗一下，顺便帮我去医务室拿根体温计，余姐让我每隔半小时测一次，温度过高就拖进医院，靠。\", \"想法不错。\", \"慢慢说，不急。\", \"以后别叫小学妹了。\"]}}；{\"arc\": {}, \"name\": \"桑幼\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我觉得你说得对\", \"对不起，都是我的错\", \"我放弃吧\"], \"refusal_pattern\": \"在感到被冒犯或不公时，会强硬地反问和质问，如对齐缘说'关你什么事？'。面对不想回答的问题（如成绩），选择沉默或模糊回应（'忘了'）。\", \"verbal_tics\": [\"学长\", \"报告教官\", \"我近视八百度\", \"谢谢学长\", \"学长拜拜\", \"关你什么事\"]}}；{\"arc\": {}, \"name\": \"桑落\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我服了你了\", \"行行行，都听你的\", \"我们好好谈谈\"], \"refusal_pattern\": \"用单字'滚'直接拒绝，或用冷嘲热讽的方式回应，如当被威胁时说'我怎么不知道我早恋？'。\", \"verbal_tics\": [\"滚\", \"妈——\", \"你去美黑了吗？\", \"你们军训练习下跪吗？\", \"你的飞行轨迹。\"]}}；{\"arc\": {}, \"name\": \"简栎城\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我错了，请原谅我\", \"让我们冷静一下\", \"也许你的想法更有道理\"], \"refusal_pattern\": \"用带脏字的玩笑话拒绝，或直接说'滚'。\", \"verbal_tics\": [\"困死老子了\", \"靠\", \"我本来就有病，我感冒了你不知道吗？\", \"滚，别逼我打你\", \"小学妹找你干啥？\"]}}；{\"arc\": {}, \"name\": \"校医\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"这不行，没得商量\", \"你必须听我的\", \"我很忙，别烦我\"], \"refusal_pattern\": \"用带有歉意的解释来暂缓请求，如'不好意思啊小同学，你先等等……'。\", \"verbal_tics\": [\"不好意思啊小同学\", \"你先等等，我先给你拿一瓶碘伏，你先自己消一下毒好吗？\"]}}；{\"arc\": {}, \"name\": \"宁冽\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我觉得不太合适\", \"我们再想想\", \"也许他不喜欢你\"], \"refusal_pattern\": \"样本中未出现明确拒绝场景。\", \"verbal_tics\": [\"我靠\", \"幼幼\", \"妈呀，好帅啊\", \"你快上啊！冲！\"]}}",
+          "books_count": 4,
+          "value": "{\"arc\": {}, \"name\": \"孟诗蕊\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"对不起，我错了。\", \"这件事是我做得不对。\", \"你比我优秀，我服气。\"], \"refusal_pattern\": \"用威胁性反问句拒绝（如‘你还跑！让你跑！’），并附加具体惩罚（如‘拍裸照’‘弄死你’）。\", \"verbal_tics\": [\"寻文哥哥\", \"蕊姐\", \"狐狸精\", \"贱民\", \"浪货\", \"臭婊子\"]}}；{\"arc\": {}, \"name\": \"边炀\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"请、谢谢、对不起（连贯使用，表示真诚歉意或请求）。\", \"这件事我需要你们帮忙，请大家支持我。\", \"我很担心你的安全，请你务必小心。\"], \"refusal_pattern\": \"用不耐烦的反问句或陈述句拒绝（如‘关你屁事’‘我为什么要帮你’），并伴随肢体动作（如‘舌尖抵了抵腮帮’‘嗤笑一声’）。\", \"verbal_tics\": [\"老子\", \"关你屁事\", \"唐小雨\", \"嗯？\", \"你丫的\", \"特么\", \"懂？\"]}}；{\"arc\": {}, \"name\": \"唐雨\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"你给我滚开，别碰我！\", \"这件事我绝对不会原谅你。\", \"我凭什么要听你的？\"], \"refusal_pattern\": \"极少直接拒绝，通常以沉默、低头、声音细弱或转移话题（如‘我…我没有’）来回应，拒绝意愿通过身体语言（如‘攥紧笔’‘缩脖子’）表达。\", \"verbal_tics\": [\"对不起\", \"谢谢\", \"没事\", \"我没事\", \"真的不太疼\", \"我不是…\"]}}；{\"arc\": {}, \"name\": \"周寻文\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"你给我闭嘴，听我说。\", \"这件事没得商量，必须按我说的做。\", \"我瞧不起你。\"], \"refusal_pattern\": \"样本中未出现直接拒绝场景。拒绝倾向可能表现为温和地转移话题或提出替代方案。\", \"verbal_tics\": [\"唐雨同学\", \"寻文哥哥\"]}}；{\"arc\": {}, \"name\": \"苏念\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"直接说‘我喜欢陆星辞’\", \"公开表达对陆星辞的醋意\", \"用命令或强硬的语气对陆星辞说话\"], \"refusal_pattern\": \"当被要求直接向陆星辞求助时，会找借口回避，例如。\", \"verbal_tics\": [\"谢谢啊\", \"哪有那么夸张\", \"不弔了\", \"麻烦彵了\", \"我先走了\", \"别胡说\", \"我就是不知道穿什么\", \"妈！\", \"嗯？\"]}}；{\"arc\": {}, \"name\": \"陆星辞\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"直接说出‘我喜欢苏念’\", \"对苏念说软话或明显安慰的话（如‘你很好，不要难过’）\", \"在外人面前主动表现出对苏念的特别关心\"], \"refusal_pattern\": \"面对他人的告白或不感兴趣的社交请求，使用礼貌但疏离的固定句式拒绝，如‘谢谢，不弔’或‘抱歉，影响学习’，然后直接转身离开，不给予任何进一步回应的空间。\", \"verbal_tics\": [\"嗯？\", \"谢谢，不弔\", \"抱歉，影响学习\", \"我家近\", \"别哭\", \"喝水\", \"别听她胡说\", \"自己能想明白\", \"懂了吗\", \"哪里不会\", \"早\", \"不弔，我都准备好了\"]}}；{\"arc\": {}, \"name\": \"夏栀\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"严肃地、长时间地谈论自己的烦恼或心事\", \"对苏念的暗恋心态进行理性、冷静的分析\", \"用低调、含蓄的方式说话\"], \"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"verbal_tics\": [\"念念\", \"哇哦\", \"陆大神\", \"走走走\", \"男友力，简直max\", \"别瞎说\", \"这待遇\", \"就跟你说个事儿\"]}}；{\"arc\": {}, \"name\": \"江辰\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"说任何正经、严肃、带有深刻情感的话\", \"安静地独处或长时间不说话\"], \"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"verbal_tics\": [\"陆哥\", \"可以啊陆星辞\", \"哇\", \"切，装什么装\"]}}；{\"arc\": {}, \"name\": \"教官\", \"role\": \"主角\", \"speech_signature\": {\"never_says\": [\"我理解你的感受\", \"要不我们商量一下\", \"可能我错了\"], \"refusal_pattern\": \"当队伍纪律涣散时\", \"verbal_tics\": [\"二十五中队\", \"操\"]}}；{\"arc\": {}, \"name\": \"周砚\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我也不知道该怎么办\", \"也许你是对的\", \"让我们再讨论一下吧\"], \"refusal_pattern\": \"用简短、陈述事实的方式拒绝，或直接中断对话。如拒绝帮拿杯子时说'不去，撒手'；被要求帮忙时，用'你有病？'表达不耐烦。\", \"verbal_tics\": [\"嗯？\", \"深更半夜不睡觉出去打篮球...你觉得只是发烧后脑子不行？\", \"帮你把杯子洗一下，顺便帮我去医务室拿根体温计，余姐让我每隔半小时测一次，温度过高就拖进医院，靠。\", \"想法不错。\", \"慢慢说，不急。\", \"以后别叫小学妹了。\"]}}；{\"arc\": {}, \"name\": \"桑幼\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我觉得你说得对\", \"对不起，都是我的错\", \"我放弃吧\"], \"refusal_pattern\": \"在感到被冒犯或不公时，会强硬地反问和质问，如对齐缘说'关你什么事？'。面对不想回答的问题（如成绩），选择沉默或模糊回应（'忘了'）。\", \"verbal_tics\": [\"学长\", \"报告教官\", \"我近视八百度\", \"谢谢学长\", \"学长拜拜\", \"关你什么事\"]}}；{\"arc\": {}, \"name\": \"桑落\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我服了你了\", \"行行行，都听你的\", \"我们好好谈谈\"], \"refusal_pattern\": \"用单字'滚'直接拒绝，或用冷嘲热讽的方式回应，如当被威胁时说'我怎么不知道我早恋？'。\", \"verbal_tics\": [\"滚\", \"妈——\", \"你去美黑了吗？\", \"你们军训练习下跪吗？\", \"你的飞行轨迹。\"]}}；{\"arc\": {}, \"name\": \"简栎城\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我错了，请原谅我\", \"让我们冷静一下\", \"也许你的想法更有道理\"], \"refusal_pattern\": \"用带脏字的玩笑话拒绝，或直接说'滚'。\", \"verbal_tics\": [\"困死老子了\", \"靠\", \"我本来就有病，我感冒了你不知道吗？\", \"滚，别逼我打你\", \"小学妹找你干啥？\"]}}；{\"arc\": {}, \"name\": \"校医\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"这不行，没得商量\", \"你必须听我的\", \"我很忙，别烦我\"], \"refusal_pattern\": \"用带有歉意的解释来暂缓请求，如'不好意思啊小同学，你先等等……'。\", \"verbal_tics\": [\"不好意思啊小同学\", \"你先等等，我先给你拿一瓶碘伏，你先自己消一下毒好吗？\"]}}；{\"arc\": {}, \"name\": \"宁冽\", \"role\": \"配角\", \"speech_signature\": {\"never_says\": [\"我觉得不太合适\", \"我们再想想\", \"也许他不喜欢你\"], \"refusal_pattern\": \"样本中未出现明确拒绝场景。\", \"verbal_tics\": [\"我靠\", \"幼幼\", \"妈呀，好帅啊\", \"你快上啊！冲！\"]}}；{\"arc\": {\"arc_type\": \"正向成长\", \"end_state\": \"出版著作、实现梦想的成熟作家\", \"start_state\": \"被至亲抛弃、无处容身的绝境少女\", \"turning_chapters\": [3, 7, 43, 87, 169]}, \"name\": \"蒲雨\", \"role\": \"主角\", \"speech_signature\": {\"anger_pattern\": \"不吼不闹，用清亮眼底的决绝眼神和冷静反问，把最狠的话说得很轻\", \"avg_utterance_length\": 15, \"never_says\": [\"老子\", \"关你屁事\", \"你算什么东西\", \"少管闲事\", \"滚\"], \"physical_habit\": [\"揪衣角\", \"攥紧手心\", \"低头看鞋尖\", \"咬下唇\", \"深吸一口气\"], \"refusal_pattern\": \"先低头或垂眼压下情绪，再用平静到近乎决绝的短句陈述底线，必要时以对方软肋反向施压\", \"verbal_tics\": [\"奶奶\", \"岁岁\", \"我……\", \"谢谢\", \"麻烦你\"]}}；{\"arc\": {\"arc_type\": \"先抑后扬\", \"end_state\": \"扛住债务、与蒲雨修成正果的成熟男人\", \"start_state\": \"家变后自我封闭、独来独往的失意少年\", \"turning_chapters\": [10, 43, 127, 168]}, \"name\": \"原溯\", \"role\": \"主角\", \"speech_signature\": {\"anger_pattern\": \"不辩驳不动手，用沙哑懒散的一句反讽或冷冰冰的单字，配合低气压的冷眼让对方自讨没趣\", \"avg_utterance_length\": 8, \"never_says\": [\"求求你\", \"我好难过\", \"你能不能陪陪我\", \"我喜欢你\", \"随便你吧（敷衍式）\"], \"physical_habit\": [\"转笔\", \"趴桌睡觉\", \"单手插裤袋\", \"微垂着头让阴影遮脸\", \"把笔扔回抽屉\"], \"refusal_pattern\": \"沉默一两秒后只回一个极短的单字或短语，语气平淡无起伏，用荒芜的平静把话题切断\", \"verbal_tics\": [\"干什么\", \"谁啊\", \"做完了\", \"嗯\"]}}；{\"arc\": {\"arc_type\": \"先扬后抑再扬（嘴硬→心软→疼爱）\", \"end_state\": \"被蒲雨温暖、含饴弄孙般安享晚年的慈祥奶奶\", \"start_state\": \"嘴硬心软、与养子决裂多年的孤寡老人\", \"turning_chapters\": [3, 7, 84]}, \"name\": \"李素华\", \"role\": \"配角\", \"speech_signature\": {\"anger_pattern\": \"把碗或筷子往桌上一拍，声音拔高连珠炮式骂人，夹杂方言俗语，骂完又暗自心疼\", \"avg_utterance_length\": 18, \"never_says\": [\"宝贝\", \"乖孙\", \"我爱你\", \"我心疼你\", \"别怕有我在（直接温柔式）\"], \"physical_habit\": [\"擦手\", \"颤巍巍转身\", \"别过脸去\", \"扔线团\", \"敲碗沿\"], \"refusal_pattern\": \"先劈头盖脸地数落或反问，用硬邦邦的语气把人噎住，最后却以一句带嫌弃的催促或安排收尾，实际是答应\", \"verbal_tics\": [\"作孽\", \"小丫头片子\", \"老婆子\", \"杀千刀的\", \"听见没\"]}}；{\"arc\": {\"arc_type\": \"平坦型\", \"end_state\": \"陪伴蒲雨走过青春、始终真诚的好友\", \"start_state\": \"乐观开朗、家境安稳的镇中女生\", \"turning_chapters\": [5, 9]}, \"name\": \"许岁然\", \"role\": \"配角\", \"speech_signature\": {\"anger_pattern\": \"极少真生气，被冒犯时先惊讶瞪眼，再用带着懊恼的活泼语气把事情揭过\", \"avg_utterance_length\": 20, \"never_says\": [\"你滚\", \"少来这套\", \"别装了\", \"我才不管你\", \"烦死了（真嫌弃式）\"], \"physical_habit\": [\"挽胳膊\", \"凑近压低声音\", \"挥手\", \"瞪圆眼睛\", \"吐舌头\"], \"refusal_pattern\": \"用爽朗的笑声和满不在乎的摆手把对方客气挡回去，再不由分说地拉着对方按自己的意思办\", \"verbal_tics\": [\"小雨\", \"走\", \"哎呀\", \"嗷\", \"我跟你说\", \"嘿嘿\"]}}；{\"arc\": {\"arc_type\": \"平坦型\", \"end_state\": \"与蒲雨划清界限、再无交集\", \"start_state\": \"表面温柔、实则算计的后妈\", \"turning_chapters\": [1]}, \"name\": \"何烁婉\", \"role\": \"反派\", \"speech_signature\": {\"anger_pattern\": \"被戳破时保养得宜的脸骤然变色，尖声喊出单字，随即用刻意催促转移话题\", \"avg_utterance_length\": 14, \"never_says\": [\"我就是要害你\", \"我恨你\", \"你走吧（直白驱逐）\", \"钱我偏不给\"], \"physical_habit\": [\"扯衣袖\", \"软声插话\", \"尖声\"], \"refusal_pattern\": \"用软绵绵的、看似体贴的语气把恶意的要求包装成为了你好，从不直接撕破脸\", \"verbal_tics\": [\"小雨\", \"体谅\", \"孩子\", \"赶紧\"]}}；{\"arc\": {\"arc_type\": \"平坦型\", \"end_state\": \"与蒲雨彻底断绝关系\", \"start_state\": \"冷漠自私、逼女辍学的父亲\", \"turning_chapters\": [1]}, \"name\": \"蒲志明\", \"role\": \"反派\", \"speech_signature\": {\"anger_pattern\": \"脸色铁青、胸口起伏，摔东西或砸杯子，用一连串反问和脏话宣泄\", \"avg_utterance_length\": 12, \"never_says\": [\"我对不起你\", \"爸爸错了\", \"你回来吧\", \"我支持你读书\"], \"physical_habit\": [\"摔杯子\", \"胸口起伏\", \"嗫嚅嘴唇\", \"背过身\"], \"refusal_pattern\": \"用暴躁的质问和身份压人，把理亏转化成嗓门大，最后用粗鲁的结论强行终结话题\", \"verbal_tics\": [\"我是你爸\", \"读个屁\", \"老子没钱\", \"为了你好\"]}}；{\"arc\": {\"arc_type\": \"平坦型\", \"end_state\": \"蒲雨成长路上的重要引路人\", \"start_state\": \"刚毕业、温柔负责的班主任\", \"turning_chapters\": [4, 8]}, \"name\": \"程司宜\", \"role\": \"导师\", \"speech_signature\": {\"anger_pattern\": \"极少动怒，面对不公时会用克制的愤怒和直接的陈述表达立场，再转为心疼\", \"avg_utterance_length\": 22, \"never_says\": [\"你不行\", \"太差了\", \"别来烦我\", \"自己想办法\"], \"physical_habit\": [\"微笑\", \"揉脑袋\", \"轻抱\", \"斟酌用词\"], \"refusal_pattern\": \"先温和地反问或停顿几秒表达关切，再用商量的语气给出折中方案，从不生硬拒绝\", \"verbal_tics\": [\"蒲雨\", \"同学\", \"没问题的\", \"别担心\"]}}",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2712,6 +3030,308 @@ window.__NOVEL_LAB__ = {
                   "arc": {}
                 }
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                {
+                  "name": "蒲雨",
+                  "role": "主角",
+                  "speech_signature": {
+                    "refusal_pattern": "先低头或垂眼压下情绪，再用平静到近乎决绝的短句陈述底线，必要时以对方软肋反向施压",
+                    "never_says": [
+                      "老子",
+                      "关你屁事",
+                      "你算什么东西",
+                      "少管闲事",
+                      "滚"
+                    ],
+                    "anger_pattern": "不吼不闹，用清亮眼底的决绝眼神和冷静反问，把最狠的话说得很轻",
+                    "verbal_tics": [
+                      "奶奶",
+                      "岁岁",
+                      "我……",
+                      "谢谢",
+                      "麻烦你"
+                    ],
+                    "physical_habit": [
+                      "揪衣角",
+                      "攥紧手心",
+                      "低头看鞋尖",
+                      "咬下唇",
+                      "深吸一口气"
+                    ],
+                    "avg_utterance_length": 15
+                  },
+                  "arc": {
+                    "start_state": "被至亲抛弃、无处容身的绝境少女",
+                    "end_state": "出版著作、实现梦想的成熟作家",
+                    "turning_chapters": [
+                      3,
+                      7,
+                      43,
+                      87,
+                      169
+                    ],
+                    "arc_type": "正向成长"
+                  }
+                },
+                {
+                  "name": "原溯",
+                  "role": "主角",
+                  "speech_signature": {
+                    "refusal_pattern": "沉默一两秒后只回一个极短的单字或短语，语气平淡无起伏，用荒芜的平静把话题切断",
+                    "never_says": [
+                      "求求你",
+                      "我好难过",
+                      "你能不能陪陪我",
+                      "我喜欢你",
+                      "随便你吧（敷衍式）"
+                    ],
+                    "anger_pattern": "不辩驳不动手，用沙哑懒散的一句反讽或冷冰冰的单字，配合低气压的冷眼让对方自讨没趣",
+                    "verbal_tics": [
+                      "干什么",
+                      "谁啊",
+                      "做完了",
+                      "嗯"
+                    ],
+                    "physical_habit": [
+                      "转笔",
+                      "趴桌睡觉",
+                      "单手插裤袋",
+                      "微垂着头让阴影遮脸",
+                      "把笔扔回抽屉"
+                    ],
+                    "avg_utterance_length": 8
+                  },
+                  "arc": {
+                    "start_state": "家变后自我封闭、独来独往的失意少年",
+                    "end_state": "扛住债务、与蒲雨修成正果的成熟男人",
+                    "turning_chapters": [
+                      10,
+                      43,
+                      127,
+                      168
+                    ],
+                    "arc_type": "先抑后扬"
+                  }
+                },
+                {
+                  "name": "李素华",
+                  "role": "配角",
+                  "speech_signature": {
+                    "refusal_pattern": "先劈头盖脸地数落或反问，用硬邦邦的语气把人噎住，最后却以一句带嫌弃的催促或安排收尾，实际是答应",
+                    "never_says": [
+                      "宝贝",
+                      "乖孙",
+                      "我爱你",
+                      "我心疼你",
+                      "别怕有我在（直接温柔式）"
+                    ],
+                    "anger_pattern": "把碗或筷子往桌上一拍，声音拔高连珠炮式骂人，夹杂方言俗语，骂完又暗自心疼",
+                    "verbal_tics": [
+                      "作孽",
+                      "小丫头片子",
+                      "老婆子",
+                      "杀千刀的",
+                      "听见没"
+                    ],
+                    "physical_habit": [
+                      "擦手",
+                      "颤巍巍转身",
+                      "别过脸去",
+                      "扔线团",
+                      "敲碗沿"
+                    ],
+                    "avg_utterance_length": 18
+                  },
+                  "arc": {
+                    "start_state": "嘴硬心软、与养子决裂多年的孤寡老人",
+                    "end_state": "被蒲雨温暖、含饴弄孙般安享晚年的慈祥奶奶",
+                    "turning_chapters": [
+                      3,
+                      7,
+                      84
+                    ],
+                    "arc_type": "先扬后抑再扬（嘴硬→心软→疼爱）"
+                  }
+                },
+                {
+                  "name": "许岁然",
+                  "role": "配角",
+                  "speech_signature": {
+                    "refusal_pattern": "用爽朗的笑声和满不在乎的摆手把对方客气挡回去，再不由分说地拉着对方按自己的意思办",
+                    "never_says": [
+                      "你滚",
+                      "少来这套",
+                      "别装了",
+                      "我才不管你",
+                      "烦死了（真嫌弃式）"
+                    ],
+                    "anger_pattern": "极少真生气，被冒犯时先惊讶瞪眼，再用带着懊恼的活泼语气把事情揭过",
+                    "verbal_tics": [
+                      "小雨",
+                      "走",
+                      "哎呀",
+                      "嗷",
+                      "我跟你说",
+                      "嘿嘿"
+                    ],
+                    "physical_habit": [
+                      "挽胳膊",
+                      "凑近压低声音",
+                      "挥手",
+                      "瞪圆眼睛",
+                      "吐舌头"
+                    ],
+                    "avg_utterance_length": 20
+                  },
+                  "arc": {
+                    "start_state": "乐观开朗、家境安稳的镇中女生",
+                    "end_state": "陪伴蒲雨走过青春、始终真诚的好友",
+                    "turning_chapters": [
+                      5,
+                      9
+                    ],
+                    "arc_type": "平坦型"
+                  }
+                },
+                {
+                  "name": "何烁婉",
+                  "role": "反派",
+                  "speech_signature": {
+                    "refusal_pattern": "用软绵绵的、看似体贴的语气把恶意的要求包装成为了你好，从不直接撕破脸",
+                    "never_says": [
+                      "我就是要害你",
+                      "我恨你",
+                      "你走吧（直白驱逐）",
+                      "钱我偏不给"
+                    ],
+                    "anger_pattern": "被戳破时保养得宜的脸骤然变色，尖声喊出单字，随即用刻意催促转移话题",
+                    "verbal_tics": [
+                      "小雨",
+                      "体谅",
+                      "孩子",
+                      "赶紧"
+                    ],
+                    "physical_habit": [
+                      "扯衣袖",
+                      "软声插话",
+                      "尖声"
+                    ],
+                    "avg_utterance_length": 14
+                  },
+                  "arc": {
+                    "start_state": "表面温柔、实则算计的后妈",
+                    "end_state": "与蒲雨划清界限、再无交集",
+                    "turning_chapters": [
+                      1
+                    ],
+                    "arc_type": "平坦型"
+                  }
+                },
+                {
+                  "name": "蒲志明",
+                  "role": "反派",
+                  "speech_signature": {
+                    "refusal_pattern": "用暴躁的质问和身份压人，把理亏转化成嗓门大，最后用粗鲁的结论强行终结话题",
+                    "never_says": [
+                      "我对不起你",
+                      "爸爸错了",
+                      "你回来吧",
+                      "我支持你读书"
+                    ],
+                    "anger_pattern": "脸色铁青、胸口起伏，摔东西或砸杯子，用一连串反问和脏话宣泄",
+                    "verbal_tics": [
+                      "我是你爸",
+                      "读个屁",
+                      "老子没钱",
+                      "为了你好"
+                    ],
+                    "physical_habit": [
+                      "摔杯子",
+                      "胸口起伏",
+                      "嗫嚅嘴唇",
+                      "背过身"
+                    ],
+                    "avg_utterance_length": 12
+                  },
+                  "arc": {
+                    "start_state": "冷漠自私、逼女辍学的父亲",
+                    "end_state": "与蒲雨彻底断绝关系",
+                    "turning_chapters": [
+                      1
+                    ],
+                    "arc_type": "平坦型"
+                  }
+                },
+                {
+                  "name": "程司宜",
+                  "role": "导师",
+                  "speech_signature": {
+                    "refusal_pattern": "先温和地反问或停顿几秒表达关切，再用商量的语气给出折中方案，从不生硬拒绝",
+                    "never_says": [
+                      "你不行",
+                      "太差了",
+                      "别来烦我",
+                      "自己想办法"
+                    ],
+                    "anger_pattern": "极少动怒，面对不公时会用克制的愤怒和直接的陈述表达立场，再转为心疼",
+                    "verbal_tics": [
+                      "蒲雨",
+                      "同学",
+                      "没问题的",
+                      "别担心"
+                    ],
+                    "physical_habit": [
+                      "微笑",
+                      "揉脑袋",
+                      "轻抱",
+                      "斟酌用词"
+                    ],
+                    "avg_utterance_length": 22
+                  },
+                  "arc": {
+                    "start_state": "刚毕业、温柔负责的班主任",
+                    "end_state": "蒲雨成长路上的重要引路人",
+                    "turning_chapters": [
+                      4,
+                      8
+                    ],
+                    "arc_type": "平坦型"
+                  }
+                }
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[{\"name\": \"孟诗蕊\", \"role\": \"主角\", \"speech_signature\": {\"refusal_pattern\": \"用威胁性反问句拒绝（如‘你还跑！让你跑！’），并附加具体惩罚（如‘拍裸照’‘弄死你’）。\", \"never_says\": [\"对不起，我错了。\", \"这件事是我做得不对。\", \"你比我优秀，我服气。\"], \"verbal_tics\": [\"寻文哥哥\", \"蕊姐\", \"狐狸精\", \"贱民\", \"浪货\", \"臭婊子\"]}, \"arc\": {}}, {\"name\": \"边炀\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"用不耐烦的反问句或陈述句拒绝（如‘关你屁事’‘我为什么要帮你’），并伴随肢体动作（如‘舌尖抵了抵腮帮’‘嗤笑一声’）。\", \"never_says\": [\"请、谢谢、对不起（连贯使用，表示真诚歉意或请求）。\", \"这件事我需要你们帮忙，请大家支持我。\", \"我很担心你的安全，请你务必小心。\"], \"verbal_tics\": [\"老子\", \"关你屁事\", \"唐小雨\", \"嗯？\", \"你丫的\", \"特么\", \"懂？\"]}, \"arc\": {}}, {\"name\": \"唐雨\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"极少直接拒绝，通常以沉默、低头、声音细弱或转移话题（如‘我…我没有’）来回应，拒绝意愿通过身体语言（如‘攥紧笔’‘缩脖子’）表达。\", \"never_says\": [\"你给我滚开，别碰我！\", \"这件事我绝对不会原谅你。\", \"我凭什么要听你的？\"], \"verbal_tics\": [\"对不起\", \"谢谢\", \"没事\", \"我没事\", \"真的不太疼\", \"我不是…\"]}, \"arc\": {}}, {\"name\": \"周寻文\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"样本中未出现直接拒绝场景。拒绝倾向可能表现为温和地转移话题或提出替代方案。\", \"never_says\": [\"你给我闭嘴，听我说。\", \"这件事没得商量，必须按我说的做。\", \"我瞧不起你。\"], \"verbal_tics\": [\"唐雨同学\", \"寻文哥哥\"]}, \"arc\": {}}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[{\"name\": \"苏念\", \"role\": \"主角\", \"speech_signature\": {\"refusal_pattern\": \"当被要求直接向陆星辞求助时，会找借口回避，例如。\", \"never_says\": [\"直接说‘我喜欢陆星辞’\", \"公开表达对陆星辞的醋意\", \"用命令或强硬的语气对陆星辞说话\"], \"verbal_tics\": [\"谢谢啊\", \"哪有那么夸张\", \"不弔了\", \"麻烦彵了\", \"我先走了\", \"别胡说\", \"我就是不知道穿什么\", \"妈！\", \"嗯？\"]}, \"arc\": {}}, {\"name\": \"陆星辞\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"面对他人的告白或不感兴趣的社交请求，使用礼貌但疏离的固定句式拒绝，如‘谢谢，不弔’或‘抱歉，影响学习’，然后直接转身离开，不给予任何进一步回应的空间。\", \"never_says\": [\"直接说出‘我喜欢苏念’\", \"对苏念说软话或明显安慰的话（如‘你很好，不要难过’）\", \"在外人面前主动表现出对苏念的特别关心\"], \"verbal_tics\": [\"嗯？\", \"谢谢，不弔\", \"抱歉，影响学习\", \"我家近\", \"别哭\", \"喝水\", \"别听她胡说\", \"自己能想明白\", \"懂了吗\", \"哪里不会\", \"早\", \"不弔，我都准备好了\"]}, \"arc\": {}}, {\"name\": \"夏栀\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"never_says\": [\"严肃地、长时间地谈论自己的烦恼或心事\", \"对苏念的暗恋心态进行理性、冷静的分析\", \"用低调、含蓄的方式说话\"], \"verbal_tics\": [\"念念\", \"哇哦\", \"陆大神\", \"走走走\", \"男友力，简直max\", \"别瞎说\", \"这待遇\", \"就跟你说个事儿\"]}, \"arc\": {}}, {\"name\": \"江辰\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"（样本中未出现明确拒绝情境，置信度较低）\", \"never_says\": [\"说任何正经、严肃、带有深刻情感的话\", \"安静地独处或长时间不说话\"], \"verbal_tics\": [\"陆哥\", \"可以啊陆星辞\", \"哇\", \"切，装什么装\"]}, \"arc\": {}}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[{\"name\": \"教官\", \"role\": \"主角\", \"speech_signature\": {\"refusal_pattern\": \"当队伍纪律涣散时\", \"never_says\": [\"我理解你的感受\", \"要不我们商量一下\", \"可能我错了\"], \"verbal_tics\": [\"二十五中队\", \"操\"]}, \"arc\": {}}, {\"name\": \"周砚\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"用简短、陈述事实的方式拒绝，或直接中断对话。如拒绝帮拿杯子时说'不去，撒手'；被要求帮忙时，用'你有病？'表达不耐烦。\", \"never_says\": [\"我也不知道该怎么办\", \"也许你是对的\", \"让我们再讨论一下吧\"], \"verbal_tics\": [\"嗯？\", \"深更半夜不睡觉出去打篮球...你觉得只是发烧后脑子不行？\", \"帮你把杯子洗一下，顺便帮我去医务室拿根体温计，余姐让我每隔半小时测一次，温度过高就拖进医院，靠。\", \"想法不错。\", \"慢慢说，不急。\", \"以后别叫小学妹了。\"]}, \"arc\": {}}, {\"name\": \"桑幼\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"在感到被冒犯或不公时，会强硬地反问和质问，如对齐缘说'关你什么事？'。面对不想回答的问题（如成绩），选择沉默或模糊回应（'忘了'）。\", \"never_says\": [\"我觉得你说得对\", \"对不起，都是我的错\", \"我放弃吧\"], \"verbal_tics\": [\"学长\", \"报告教官\", \"我近视八百度\", \"谢谢学长\", \"学长拜拜\", \"关你什么事\"]}, \"arc\": {}}, {\"name\": \"桑落\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"用单字'滚'直接拒绝，或用冷嘲热讽的方式回应，如当被威胁时说'我怎么不知道我早恋？'。\", \"never_says\": [\"我服了你了\", \"行行行，都听你的\", \"我们好好谈谈\"], \"verbal_tics\": [\"滚\", \"妈——\", \"你去美黑了吗？\", \"你们军训练习下跪吗？\", \"你的飞行轨迹。\"]}, \"arc\": {}}, {\"name\": \"简栎城\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"用带脏字的玩笑话拒绝，或直接说'滚'。\", \"never_says\": [\"我错了，请原谅我\", \"让我们冷静一下\", \"也许你的想法更有道理\"], \"verbal_tics\": [\"困死老子了\", \"靠\", \"我本来就有病，我感冒了你不知道吗？\", \"滚，别逼我打你\", \"小学妹找你干啥？\"]}, \"arc\": {}}, {\"name\": \"校医\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"用带有歉意的解释来暂缓请求，如'不好意思啊小同学，你先等等……'。\", \"never_says\": [\"这不行，没得商量\", \"你必须听我的\", \"我很忙，别烦我\"], \"verbal_tics\": [\"不好意思啊小同学\", \"你先等等，我先给你拿一瓶碘伏，你先自己消一下毒好吗？\"]}, \"arc\": {}}, {\"name\": \"宁冽\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"样本中未出现明确拒绝场景。\", \"never_says\": [\"我觉得不太合适\", \"我们再想想\", \"也许他不喜欢你\"], \"verbal_tics\": [\"我靠\", \"幼幼\", \"妈呀，好帅啊\", \"你快上啊！冲！\"]}, \"arc\": {}}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[{\"name\": \"蒲雨\", \"role\": \"主角\", \"speech_signature\": {\"refusal_pattern\": \"先低头或垂眼压下情绪，再用平静到近乎决绝的短句陈述底线，必要时以对方软肋反向施压\", \"never_says\": [\"老子\", \"关你屁事\", \"你算什么东西\", \"少管闲事\", \"滚\"], \"anger_pattern\": \"不吼不闹，用清亮眼底的决绝眼神和冷静反问，把最狠的话说得很轻\", \"verbal_tics\": [\"奶奶\", \"岁岁\", \"我……\", \"谢谢\", \"麻烦你\"], \"physical_habit\": [\"揪衣角\", \"攥紧手心\", \"低头看鞋尖\", \"咬下唇\", \"深吸一口气\"], \"avg_utterance_length\": 15}, \"arc\": {\"start_state\": \"被至亲抛弃、无处容身的绝境少女\", \"end_state\": \"出版著作、实现梦想的成熟作家\", \"turning_chapters\": [3, 7, 43, 87, 169], \"arc_type\": \"正向成长\"}}, {\"name\": \"原溯\", \"role\": \"主角\", \"speech_signature\": {\"refusal_pattern\": \"沉默一两秒后只回一个极短的单字或短语，语气平淡无起伏，用荒芜的平静把话题切断\", \"never_says\": [\"求求你\", \"我好难过\", \"你能不能陪陪我\", \"我喜欢你\", \"随便你吧（敷衍式）\"], \"anger_pattern\": \"不辩驳不动手，用沙哑懒散的一句反讽或冷冰冰的单字，配合低气压的冷眼让对方自讨没趣\", \"verbal_tics\": [\"干什么\", \"谁啊\", \"做完了\", \"嗯\"], \"physical_habit\": [\"转笔\", \"趴桌睡觉\", \"单手插裤袋\", \"微垂着头让阴影遮脸\", \"把笔扔回抽屉\"], \"avg_utterance_length\": 8}, \"arc\": {\"start_state\": \"家变后自我封闭、独来独往的失意少年\", \"end_state\": \"扛住债务、与蒲雨修成正果的成熟男人\", \"turning_chapters\": [10, 43, 127, 168], \"arc_type\": \"先抑后扬\"}}, {\"name\": \"李素华\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"先劈头盖脸地数落或反问，用硬邦邦的语气把人噎住，最后却以一句带嫌弃的催促或安排收尾，实际是答应\", \"never_says\": [\"宝贝\", \"乖孙\", \"我爱你\", \"我心疼你\", \"别怕有我在（直接温柔式）\"], \"anger_pattern\": \"把碗或筷子往桌上一拍，声音拔高连珠炮式骂人，夹杂方言俗语，骂完又暗自心疼\", \"verbal_tics\": [\"作孽\", \"小丫头片子\", \"老婆子\", \"杀千刀的\", \"听见没\"], \"physical_habit\": [\"擦手\", \"颤巍巍转身\", \"别过脸去\", \"扔线团\", \"敲碗沿\"], \"avg_utterance_length\": 18}, \"arc\": {\"start_state\": \"嘴硬心软、与养子决裂多年的孤寡老人\", \"end_state\": \"被蒲雨温暖、含饴弄孙般安享晚年的慈祥奶奶\", \"turning_chapters\": [3, 7, 84], \"arc_type\": \"先扬后抑再扬（嘴硬→心软→疼爱）\"}}, {\"name\": \"许岁然\", \"role\": \"配角\", \"speech_signature\": {\"refusal_pattern\": \"用爽朗的笑声和满不在乎的摆手把对方客气挡回去，再不由分说地拉着对方按自己的意思办\", \"never_says\": [\"你滚\", \"少来这套\", \"别装了\", \"我才不管你\", \"烦死了（真嫌弃式）\"], \"anger_pattern\": \"极少真生气，被冒犯时先惊讶瞪眼，再用带着懊恼的活泼语气把事情揭过\", \"verbal_tics\": [\"小雨\", \"走\", \"哎呀\", \"嗷\", \"我跟你说\", \"嘿嘿\"], \"physical_habit\": [\"挽胳膊\", \"凑近压低声音\", \"挥手\", \"瞪圆眼睛\", \"吐舌头\"], \"avg_utterance_length\": 20}, \"arc\": {\"start_state\": \"乐观开朗、家境安稳的镇中女生\", \"end_state\": \"陪伴蒲雨走过青春、始终真诚的好友\", \"turning_chapters\": [5, 9], \"arc_type\": \"平坦型\"}}, {\"name\": \"何烁婉\", \"role\": \"反派\", \"speech_signature\": {\"refusal_pattern\": \"用软绵绵的、看似体贴的语气把恶意的要求包装成为了你好，从不直接撕破脸\", \"never_says\": [\"我就是要害你\", \"我恨你\", \"你走吧（直白驱逐）\", \"钱我偏不给\"], \"anger_pattern\": \"被戳破时保养得宜的脸骤然变色，尖声喊出单字，随即用刻意催促转移话题\", \"verbal_tics\": [\"小雨\", \"体谅\", \"孩子\", \"赶紧\"], \"physical_habit\": [\"扯衣袖\", \"软声插话\", \"尖声\"], \"avg_utterance_length\": 14}, \"arc\": {\"start_state\": \"表面温柔、实则算计的后妈\", \"end_state\": \"与蒲雨划清界限、再无交集\", \"turning_chapters\": [1], \"arc_type\": \"平坦型\"}}, {\"name\": \"蒲志明\", \"role\": \"反派\", \"speech_signature\": {\"refusal_pattern\": \"用暴躁的质问和身份压人，把理亏转化成嗓门大，最后用粗鲁的结论强行终结话题\", \"never_says\": [\"我对不起你\", \"爸爸错了\", \"你回来吧\", \"我支持你读书\"], \"anger_pattern\": \"脸色铁青、胸口起伏，摔东西或砸杯子，用一连串反问和脏话宣泄\", \"verbal_tics\": [\"我是你爸\", \"读个屁\", \"老子没钱\", \"为了你好\"], \"physical_habit\": [\"摔杯子\", \"胸口起伏\", \"嗫嚅嘴唇\", \"背过身\"], \"avg_utterance_length\": 12}, \"arc\": {\"start_state\": \"冷漠自私、逼女辍学的父亲\", \"end_state\": \"与蒲雨彻底断绝关系\", \"turning_chapters\": [1], \"arc_type\": \"平坦型\"}}, {\"name\": \"程司宜\", \"role\": \"导师\", \"speech_signature\": {\"refusal_pattern\": \"先温和地反问或停顿几秒表达关切，再用商量的语气给出折中方案，从不生硬拒绝\", \"never_says\": [\"你不行\", \"太差了\", \"别来烦我\", \"自己想办法\"], \"anger_pattern\": \"极少动怒，面对不公时会用克制的愤怒和直接的陈述表达立场，再转为心疼\", \"verbal_tics\": [\"蒲雨\", \"同学\", \"没问题的\", \"别担心\"], \"physical_habit\": [\"微笑\", \"揉脑袋\", \"轻抱\", \"斟酌用词\"], \"avg_utterance_length\": 22}, \"arc\": {\"start_state\": \"刚毕业、温柔负责的班主任\", \"end_state\": \"蒲雨成长路上的重要引路人\", \"turning_chapters\": [4, 8], \"arc_type\": \"平坦型\"}}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2724,7 +3344,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "emotion_handling.mode",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": "混合式",
           "sources": [
             {
@@ -2738,6 +3358,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "混合式"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "混合式"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "混合式",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "直陈式",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "混合式",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "混合式",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2750,8 +3404,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "emotion_handling.body_reaction_vocabulary",
           "kind": "hard",
-          "books_count": 3,
-          "value": "体感式；动作外化式；直陈式；简直可爱死了；手指都捏白了；心跳如鼓；她的心猛地一跳；是的，她怀孕了；八月初；九月初；婚后第二年春天；巷口；高铁站；书房；她很紧张/开心；时光飞逝；不好意思；惊奇；没忍住；尖叫；截图；龙眼树；走！；总分；桑幼：【图片】；手机；保证书；换鞋；边换鞋边接电话；好好好，知道了。；狼嚎般的哭声",
+          "books_count": 4,
+          "value": "体感式；动作外化式；直陈式；简直可爱死了；手指都捏白了；心跳如鼓；她的心猛地一跳；是的，她怀孕了；八月初；九月初；婚后第二年春天；巷口；高铁站；书房；她很紧张/开心；时光飞逝；不好意思；惊奇；没忍住；尖叫；截图；龙眼树；走！；总分；桑幼：【图片】；手机；保证书；换鞋；边换鞋边接电话；好好好，知道了。；狼嚎般的哭声；他很愤怒；她伤心欲绝；她心动了",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2798,6 +3452,44 @@ window.__NOVEL_LAB__ = {
                 "好好好，知道了。",
                 "狼嚎般的哭声"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "他很愤怒",
+                "她伤心欲绝",
+                "她心动了"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"体感式\", \"动作外化式\", \"直陈式\", \"简直可爱死了\", \"手指都捏白了\", \"心跳如鼓\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"她的心猛地一跳\", \"是的，她怀孕了\", \"八月初\", \"九月初\", \"婚后第二年春天\", \"巷口\", \"高铁站\", \"书房\", \"她很紧张/开心\", \"时光飞逝\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"不好意思\", \"惊奇\", \"没忍住\", \"尖叫\", \"截图\", \"龙眼树\", \"走！\", \"总分\", \"桑幼：【图片】\", \"手机\", \"保证书\", \"换鞋\", \"边换鞋边接电话\", \"好好好，知道了。\", \"狼嚎般的哭声\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"他很愤怒\", \"她伤心欲绝\", \"她心动了\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2810,8 +3502,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "emotion_handling.examples",
           "kind": "hard",
-          "books_count": 3,
-          "value": "{\"anti_pattern\": \"避免使用：华丽辞藻堆砌、复杂心理学术语、冗长环境描写、抽象哲理思辨\", \"emotion\": \"通用\", \"pattern\": \"日常互动场景偏向「体感式」（如心跳如鼓、手指捏白）和「动作外化式」（如撸脑袋、小跑）；内心独白或情绪爆发时，偶尔使用「直陈式」（如‘简直可爱死了’）进行强调，但整体以具象化描写为主。\"}；{\"anti_pattern\": \"情绪直陈：避免泛泛的“她很紧张/开心”，必须用身体反应或环境细节呈现。；静态描写：避免孤立的景物描写，所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。；抽象概括：避免对情感或时间做抽象定义（如“时光飞逝”），改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\", \"emotion\": \"通用\", \"pattern\": \"混合式（按场景切换）。日常等待、焦虑场景多用【环境投射式】，借时间感（慢放键）、空间规划（地铁线路画了又画）外化内心；关键动作瞬间（如听到喊名）用【体感式+动作外化式】组合（心猛地一跳，书“啪”地掉下，冲出房间）；长期状态或背景铺陈则偏向【直陈式】（最漫长也最甜蜜的煎熬）。\"}；{\"anti_pattern\": \"避免泛泛的“她很紧张/开心”\", \"emotion\": \"情绪直陈\", \"pattern\": \"必须用身体反应或环境细节呈现。\"}；{\"anti_pattern\": \"避免孤立的景物描写\", \"emotion\": \"静态描写\", \"pattern\": \"所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。\"}；{\"anti_pattern\": \"避免对情感或时间做抽象定义（如“时光飞逝”）\", \"emotion\": \"抽象概括\", \"pattern\": \"改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"角色内心独白/情感流露\", \"pattern\": \"[直陈式] 直接使用'不好意思'、'惊奇'等情绪词描述主角状态。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"外部观察/他人反应\", \"pattern\": \"[动作外化式] 用'没忍住'、'尖叫'、'截图'等具体动作来替代对情绪的抽象描述。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"环境烘托/氛围铺垫\", \"pattern\": \"[环境投射式] 借助'龙眼树'等具体景物作为情绪触发的支点。\"}",
+          "books_count": 4,
+          "value": "{\"anti_pattern\": \"避免使用：华丽辞藻堆砌、复杂心理学术语、冗长环境描写、抽象哲理思辨\", \"emotion\": \"通用\", \"pattern\": \"日常互动场景偏向「体感式」（如心跳如鼓、手指捏白）和「动作外化式」（如撸脑袋、小跑）；内心独白或情绪爆发时，偶尔使用「直陈式」（如‘简直可爱死了’）进行强调，但整体以具象化描写为主。\"}；{\"anti_pattern\": \"情绪直陈：避免泛泛的“她很紧张/开心”，必须用身体反应或环境细节呈现。；静态描写：避免孤立的景物描写，所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。；抽象概括：避免对情感或时间做抽象定义（如“时光飞逝”），改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\", \"emotion\": \"通用\", \"pattern\": \"混合式（按场景切换）。日常等待、焦虑场景多用【环境投射式】，借时间感（慢放键）、空间规划（地铁线路画了又画）外化内心；关键动作瞬间（如听到喊名）用【体感式+动作外化式】组合（心猛地一跳，书“啪”地掉下，冲出房间）；长期状态或背景铺陈则偏向【直陈式】（最漫长也最甜蜜的煎熬）。\"}；{\"anti_pattern\": \"避免泛泛的“她很紧张/开心”\", \"emotion\": \"情绪直陈\", \"pattern\": \"必须用身体反应或环境细节呈现。\"}；{\"anti_pattern\": \"避免孤立的景物描写\", \"emotion\": \"静态描写\", \"pattern\": \"所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。\"}；{\"anti_pattern\": \"避免对情感或时间做抽象定义（如“时光飞逝”）\", \"emotion\": \"抽象概括\", \"pattern\": \"改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"角色内心独白/情感流露\", \"pattern\": \"[直陈式] 直接使用'不好意思'、'惊奇'等情绪词描述主角状态。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"外部观察/他人反应\", \"pattern\": \"[动作外化式] 用'没忍住'、'尖叫'、'截图'等具体动作来替代对情绪的抽象描述。\"}；{\"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\", \"emotion\": \"环境烘托/氛围铺垫\", \"pattern\": \"[环境投射式] 借助'龙眼树'等具体景物作为情绪触发的支点。\"}；{\"anti_pattern\": \"避免直接写「他很愤怒」、堆砌形容词、让角色长篇大论讲道理\", \"emotion\": \"愤怒\", \"pattern\": \"[动作外化式] 摔物件、拍桌子、攥拳、胸口起伏，配合拔高的声调和反问句\"}；{\"anti_pattern\": \"避免写「她伤心欲绝」、让主角对着空气嚎哭式自白\", \"emotion\": \"悲伤\", \"pattern\": \"[体感式] 眼泪大颗砸下、喉咙哽咽、指尖颤抖，情绪通过身体反应泄露而非直白倾诉\"}；{\"anti_pattern\": \"避免直写「她心动了」、用夸张的内心呐喊\", \"emotion\": \"心动\", \"pattern\": \"[环境投射式] 心跳漏拍、脸颊泛红，借雨声、汽水气泡、光影等外物烘托，情绪藏在细节里\"}",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2867,6 +3559,56 @@ window.__NOVEL_LAB__ = {
                   "anti_pattern": "rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。"
                 }
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                {
+                  "emotion": "愤怒",
+                  "pattern": "[动作外化式] 摔物件、拍桌子、攥拳、胸口起伏，配合拔高的声调和反问句",
+                  "anti_pattern": "避免直接写「他很愤怒」、堆砌形容词、让角色长篇大论讲道理"
+                },
+                {
+                  "emotion": "悲伤",
+                  "pattern": "[体感式] 眼泪大颗砸下、喉咙哽咽、指尖颤抖，情绪通过身体反应泄露而非直白倾诉",
+                  "anti_pattern": "避免写「她伤心欲绝」、让主角对着空气嚎哭式自白"
+                },
+                {
+                  "emotion": "心动",
+                  "pattern": "[环境投射式] 心跳漏拍、脸颊泛红，借雨声、汽水气泡、光影等外物烘托，情绪藏在细节里",
+                  "anti_pattern": "避免直写「她心动了」、用夸张的内心呐喊"
+                }
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[{\"emotion\": \"通用\", \"pattern\": \"日常互动场景偏向「体感式」（如心跳如鼓、手指捏白）和「动作外化式」（如撸脑袋、小跑）；内心独白或情绪爆发时，偶尔使用「直陈式」（如‘简直可爱死了’）进行强调，但整体以具象化描写为主。\", \"anti_pattern\": \"避免使用：华丽辞藻堆砌、复杂心理学术语、冗长环境描写、抽象哲理思辨\"}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[{\"emotion\": \"通用\", \"pattern\": \"混合式（按场景切换）。日常等待、焦虑场景多用【环境投射式】，借时间感（慢放键）、空间规划（地铁线路画了又画）外化内心；关键动作瞬间（如听到喊名）用【体感式+动作外化式】组合（心猛地一跳，书“啪”地掉下，冲出房间）；长期状态或背景铺陈则偏向【直陈式】（最漫长也最甜蜜的煎熬）。\", \"anti_pattern\": \"情绪直陈：避免泛泛的“她很紧张/开心”，必须用身体反应或环境细节呈现。；静态描写：避免孤立的景物描写，所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。；抽象概括：避免对情感或时间做抽象定义（如“时光飞逝”），改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\"}, {\"emotion\": \"情绪直陈\", \"pattern\": \"必须用身体反应或环境细节呈现。\", \"anti_pattern\": \"避免泛泛的“她很紧张/开心”\"}, {\"emotion\": \"静态描写\", \"pattern\": \"所有环境细节（如阳光、雨丝、花香）都必须与人物当下的动作或心理状态紧密绑定。\", \"anti_pattern\": \"避免孤立的景物描写\"}, {\"emotion\": \"抽象概括\", \"pattern\": \"改为具体化、可感知的描述（如“时间像被按下了慢放键”）。\", \"anti_pattern\": \"避免对情感或时间做抽象定义（如“时光飞逝”）\"}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[{\"emotion\": \"角色内心独白/情感流露\", \"pattern\": \"[直陈式] 直接使用'不好意思'、'惊奇'等情绪词描述主角状态。\", \"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\"}, {\"emotion\": \"外部观察/他人反应\", \"pattern\": \"[动作外化式] 用'没忍住'、'尖叫'、'截图'等具体动作来替代对情绪的抽象描述。\", \"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\"}, {\"emotion\": \"环境烘托/氛围铺垫\", \"pattern\": \"[环境投射式] 借助'龙眼树'等具体景物作为情绪触发的支点。\", \"anti_pattern\": \"rhythm：避免在描写细腻情感时使用急促的、短促的短句连排。应使用中等长度的句子，通过细节堆叠来展现。；imagery：避免使用'狼嚎般的哭声'这类非生活化的、夸张的动物或自然力比喻，应使用'龙眼树'这类身边具体事物。\"}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[{\"emotion\": \"愤怒\", \"pattern\": \"[动作外化式] 摔物件、拍桌子、攥拳、胸口起伏，配合拔高的声调和反问句\", \"anti_pattern\": \"避免直接写「他很愤怒」、堆砌形容词、让角色长篇大论讲道理\"}, {\"emotion\": \"悲伤\", \"pattern\": \"[体感式] 眼泪大颗砸下、喉咙哽咽、指尖颤抖，情绪通过身体反应泄露而非直白倾诉\", \"anti_pattern\": \"避免写「她伤心欲绝」、让主角对着空气嚎哭式自白\"}, {\"emotion\": \"心动\", \"pattern\": \"[环境投射式] 心跳漏拍、脸颊泛红，借雨声、汽水气泡、光影等外物烘托，情绪藏在细节里\", \"anti_pattern\": \"避免直写「她心动了」、用夸张的内心呐喊\"}]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2879,8 +3621,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.high_freq_metaphor_domains",
           "kind": "hard",
-          "books_count": 3,
-          "value": "宠物行为；日常身体反应；时间物理化；日常感官物件；日常物件；身体动作",
+          "books_count": 4,
+          "value": "宠物行为；日常身体反应；时间物理化；日常感官物件；日常物件；身体动作；自然现象；日常物件；食物",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2902,6 +3644,44 @@ window.__NOVEL_LAB__ = {
                 "日常物件",
                 "身体动作"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "自然现象",
+                "日常物件",
+                "食物"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"宠物行为\", \"日常身体反应\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"时间物理化\", \"日常感官物件\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"日常物件\", \"身体动作\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"自然现象\", \"日常物件\", \"食物\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -2914,8 +3694,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.sensory_preference.visual",
           "kind": "hard",
-          "books_count": 3,
-          "value": 0.535,
+          "books_count": 4,
+          "value": 0.496,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2928,6 +3708,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.54
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.435
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0.535",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.457",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.54",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.435",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2940,8 +3754,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.sensory_preference.auditory",
           "kind": "hard",
-          "books_count": 3,
-          "value": 0.289,
+          "books_count": 4,
+          "value": 0.311,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2954,6 +3768,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.336
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.333
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0.289",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.241",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.336",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.333",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2966,8 +3814,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.sensory_preference.tactile",
           "kind": "hard",
-          "books_count": 3,
-          "value": 0.132,
+          "books_count": 4,
+          "value": 0.14700000000000002,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -2980,6 +3828,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.097
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.162
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0.132",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.19",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.097",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.162",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -2992,8 +3874,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.sensory_preference.olfactory",
           "kind": "hard",
-          "books_count": 3,
-          "value": 0.026,
+          "books_count": 4,
+          "value": 0.03,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3006,6 +3888,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.009
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.034
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0.026",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.043",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.009",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.034",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -3018,8 +3934,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.sensory_preference.gustatory",
           "kind": "hard",
-          "books_count": 3,
-          "value": 0.018,
+          "books_count": 4,
+          "value": 0.026999999999999996,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3032,6 +3948,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.018
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.036
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "0.018",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.069",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.018",
+              "confidence": 0.2,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.036",
+              "confidence": 0.2,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.8,
@@ -3044,8 +3994,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "imagery.signature_devices",
           "kind": "hard",
-          "books_count": 3,
-          "value": "将人物行为动物化/幼态化（如、‘那脑袋都缩进脖子里去了’）；用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）；用具体、微小的感官细节（如斑驳光影、茉莉花香、汗味混杂油炸味）瞬间锚定场景情绪，替代直接抒情。；用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。；在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。",
+          "books_count": 4,
+          "value": "将人物行为动物化/幼态化（如、‘那脑袋都缩进脖子里去了’）；用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）；用具体、微小的感官细节（如斑驳光影、茉莉花香、汗味混杂油炸味）瞬间锚定场景情绪，替代直接抒情。；用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。；在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。；反复用单句成段定格情绪瞬间；用雨声、气泡、衣襟等具体物象承载情感记忆；用破折号引出内心旁白式补充",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3066,6 +4016,44 @@ window.__NOVEL_LAB__ = {
                 "用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。",
                 "在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "反复用单句成段定格情绪瞬间",
+                "用雨声、气泡、衣襟等具体物象承载情感记忆",
+                "用破折号引出内心旁白式补充"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"将人物行为动物化/幼态化（如、‘那脑袋都缩进脖子里去了’）\", \"用具象身体细节替代情绪直述（如‘手指都捏白了’、‘心跳如鼓’）\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"用具体、微小的感官细节（如斑驳光影、茉莉花香、汗味混杂油炸味）瞬间锚定场景情绪，替代直接抒情。\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"用具体、琐碎的动作序列（如'边换鞋边接电话'）来替代抽象的状态描写，构建生活实感。\", \"在叙述中插入即时的、非正式的对话片段（如'好好好，知道了。'），模仿真实生活中的交流节奏。\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"反复用单句成段定格情绪瞬间\", \"用雨声、气泡、衣襟等具体物象承载情感记忆\", \"用破折号引出内心旁白式补充\"]",
+              "confidence": 0.175,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.7,
@@ -3078,7 +4066,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "voice-card",
           "field": "banned.never_used_words",
           "kind": "soft",
-          "books_count": 3,
+          "books_count": 4,
           "value": [
             "华丽辞藻堆砌",
             "复杂心理学术语",
@@ -3094,7 +4082,14 @@ window.__NOVEL_LAB__ = {
             "眸",
             "幽幽",
             "仿佛",
-            "宛如"
+            "宛如",
+            "撕心裂肺",
+            "天崩地裂",
+            "肝肠寸断",
+            "宠溺",
+            "邪魅",
+            "冷若冰霜",
+            "梨花带雨"
           ],
           "sources": [
             {
@@ -3126,6 +4121,48 @@ window.__NOVEL_LAB__ = {
                 "仿佛",
                 "宛如"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "撕心裂肺",
+                "天崩地裂",
+                "肝肠寸断",
+                "宠溺",
+                "邪魅",
+                "冷若冰霜",
+                "梨花带雨"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"华丽辞藻堆砌\", \"复杂心理学术语\", \"冗长环境描写\", \"抽象哲理思辨\"]",
+              "confidence": 0.125,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"恍若\", \"顿时\", \"霎时\", \"心中一震\", \"不由得\", \"倏地\"]",
+              "confidence": 0.125,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"深邃\", \"眸\", \"幽幽\", \"仿佛\", \"宛如\"]",
+              "confidence": 0.125,
+              "dimension": "voice-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"撕心裂肺\", \"天崩地裂\", \"肝肠寸断\", \"宠溺\", \"邪魅\", \"冷若冰霜\", \"梨花带雨\"]",
+              "confidence": 0.125,
+              "dimension": "voice-card"
             }
           ],
           "confidence": 0.5,
@@ -3139,7 +4176,7 @@ window.__NOVEL_LAB__ = {
         "total_rules": 21,
         "hard_rules": 20,
         "soft_rules": 1,
-        "personal_styles": 0,
+        "personal_styles": 2,
         "conflicts": 9,
         "blindspots": 0
       }
@@ -3150,13 +4187,14 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "craft-card",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-07T16:27:01",
+        "distilled_at": "2026-09-11T04:59:49",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
-          "sangshi_chosen"
+          "sangshi_chosen",
+          "suyixinjian_chosen"
         ],
-        "books_count": 3
+        "books_count": 4
       },
       "rules": [
         {
@@ -3176,11 +4214,28 @@ window.__NOVEL_LAB__ = {
               "value": "象征性物件的传递"
             }
           ],
-          "confidence": 0.5,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "利用物品细节埋下关联伏笔",
+              "confidence": 0.2,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "象征性物件的传递",
+              "confidence": 0.2,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.4,
           "conflict": false,
-          "over_generalized": false,
+          "over_generalized": true,
           "blindspot_books": [
-            "sangshi_chosen"
+            "sangshi_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3200,11 +4255,28 @@ window.__NOVEL_LAB__ = {
               "value": "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。"
             }
           ],
-          "confidence": 0.5,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "内心戏与外部反应的错位",
+              "confidence": 0.2,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
+              "confidence": 0.2,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.4,
           "conflict": false,
-          "over_generalized": false,
+          "over_generalized": true,
           "blindspot_books": [
-            "chireng_chosen"
+            "chireng_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3228,11 +4300,35 @@ window.__NOVEL_LAB__ = {
               "value": "以日常行程自然过渡"
             }
           ],
-          "confidence": 0.5,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "以铃声为界硬切冲突",
+              "confidence": 0.1333,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "以事件通知驱动场景切换",
+              "confidence": 0.1333,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "以日常行程自然过渡",
+              "confidence": 0.1333,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.4,
           "conflict": false,
-          "over_generalized": false,
+          "over_generalized": true,
           "blindspot_books": [
-            "qingning_chosen"
+            "qingning_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3252,11 +4348,28 @@ window.__NOVEL_LAB__ = {
               "value": "活泼内心与拘谨台词的错位"
             }
           ],
-          "confidence": 0.4,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "内心独白与说出口的话错位",
+              "confidence": 0.15,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "活泼内心与拘谨台词的错位",
+              "confidence": 0.15,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.3,
           "conflict": true,
           "over_generalized": true,
           "blindspot_books": [
-            "chireng_chosen"
+            "chireng_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3276,11 +4389,28 @@ window.__NOVEL_LAB__ = {
               "value": "极简回应与行动补足的反差"
             }
           ],
-          "confidence": 0.4,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "以沉默与肢体替代言语回应",
+              "confidence": 0.15,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "极简回应与行动补足的反差",
+              "confidence": 0.15,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.3,
           "conflict": true,
           "over_generalized": true,
           "blindspot_books": [
-            "chireng_chosen"
+            "chireng_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3316,10 +4446,56 @@ window.__NOVEL_LAB__ = {
               "value": "内心独白插入调节节奏"
             }
           ],
-          "confidence": 0.8,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "暴力场景短句连击加速节奏",
+              "confidence": 0.1167,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "独处场景慢速细节铺陈制造温情",
+              "confidence": 0.1167,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "以“慢放”手法放大心动瞬间",
+              "confidence": 0.1167,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "以时间跳跃压缩过渡段落",
+              "confidence": 0.1167,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "对话驱动的高频节奏",
+              "confidence": 0.1167,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "内心独白插入调节节奏",
+              "confidence": 0.1167,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.7,
           "conflict": false,
           "over_generalized": false,
-          "blindspot_books": []
+          "blindspot_books": [
+            "suyixinjian_chosen"
+          ]
         },
         {
           "id": "craft-card-craft_analysis-sensory_craft-technique-0001",
@@ -3346,11 +4522,42 @@ window.__NOVEL_LAB__ = {
               "value": "触觉-体感优先的生理叙事"
             }
           ],
-          "confidence": 0.5,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "嗅觉作为情感记忆的触发器",
+              "confidence": 0.1,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "多重感官交织渲染场景",
+              "confidence": 0.1,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "触觉外化内心生理反应",
+              "confidence": 0.1,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "触觉-体感优先的生理叙事",
+              "confidence": 0.1,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.4,
           "conflict": false,
-          "over_generalized": false,
+          "over_generalized": true,
           "blindspot_books": [
-            "chireng_chosen"
+            "chireng_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3370,11 +4577,28 @@ window.__NOVEL_LAB__ = {
               "value": "暗恋对象的“错过与重逢”牵挂"
             }
           ],
-          "confidence": 0.5,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "暗恋的“未言明”悬念驱动",
+              "confidence": 0.2,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "暗恋对象的“错过与重逢”牵挂",
+              "confidence": 0.2,
+              "dimension": "craft-card"
+            }
+          ],
+          "confidence": 0.4,
           "conflict": false,
-          "over_generalized": false,
+          "over_generalized": true,
           "blindspot_books": [
-            "chireng_chosen"
+            "chireng_chosen",
+            "suyixinjian_chosen"
           ]
         },
         {
@@ -3382,7 +4606,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "craft-card",
           "field": "craft_summary.top_3_strengths",
           "kind": "soft",
-          "books_count": 3,
+          "books_count": 4,
           "value": [
             "感官细节外化心理",
             "沉默与爆发的对比",
@@ -3392,7 +4616,10 @@ window.__NOVEL_LAB__ = {
             "通过他人视角侧写主角",
             "在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。",
             "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
-            "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
+            "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。",
+            "物件伏笔承载情感：用遗信、缝纫机、汽水等具体物象贯穿全文，回收时形成强烈情感冲击",
+            "限知视角+男主内心留白：原溯内心全程不直写，靠动作神态留白，营造持续的神秘感与解读空间",
+            "情绪「伪装-转移-释放」算法：情绪不直给，经压抑、转移、释放三阶段，让爆发处极富感染力"
           ],
           "sources": [
             {
@@ -3418,6 +4645,44 @@ window.__NOVEL_LAB__ = {
                 "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
                 "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "物件伏笔承载情感：用遗信、缝纫机、汽水等具体物象贯穿全文，回收时形成强烈情感冲击",
+                "限知视角+男主内心留白：原溯内心全程不直写，靠动作神态留白，营造持续的神秘感与解读空间",
+                "情绪「伪装-转移-释放」算法：情绪不直给，经压抑、转移、释放三阶段，让爆发处极富感染力"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"感官细节外化心理\", \"沉默与爆发的对比\", \"通过反派言论揭示社会权力结构\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"环境氛围渲染\", \"迟到者的动态切入\", \"通过他人视角侧写主角\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。\", \"在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。\", \"在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"物件伏笔承载情感：用遗信、缝纫机、汽水等具体物象贯穿全文，回收时形成强烈情感冲击\", \"限知视角+男主内心留白：原溯内心全程不直写，靠动作神态留白，营造持续的神秘感与解读空间\", \"情绪「伪装-转移-释放」算法：情绪不直给，经压抑、转移、释放三阶段，让爆发处极富感染力\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
             }
           ],
           "confidence": 0.5,
@@ -3430,14 +4695,17 @@ window.__NOVEL_LAB__ = {
           "dimension": "craft-card",
           "field": "craft_summary.unique_techniques",
           "kind": "soft",
-          "books_count": 3,
+          "books_count": 4,
           "value": [
             "旁观者的漠视强化孤立感",
             "救援者的非典型登场与对话",
             "无声的关怀动作",
             "内心戏与外部反应的错位",
             "在需要表现角色长期、无果的暗恋心理时，使用“具体行为列表”的虚化处理。",
-            "在解释角色重大人生转折（如死讯）对主角的影响时，使用碎片化信息与强烈生理反应的组合。"
+            "在解释角色重大人生转折（如死讯）对主角的影响时，使用碎片化信息与强烈生理反应的组合。",
+            "男主内心完全留白：原溯作为男主全程不进入其内心，只用外部观察塑造，是少见的克制笔法",
+            "味觉/嗅觉极低频点睛：只在关键温情或转折场景调用味觉嗅觉，让情感记忆点格外鲜明",
+            "物件作为情感记忆载体系统化：伞、信纸、缝纫机、汽水、铜齿轮、围巾构成一套完整的情感物象系统"
           ],
           "sources": [
             {
@@ -3460,6 +4728,44 @@ window.__NOVEL_LAB__ = {
                 "在需要表现角色长期、无果的暗恋心理时，使用“具体行为列表”的虚化处理。",
                 "在解释角色重大人生转折（如死讯）对主角的影响时，使用碎片化信息与强烈生理反应的组合。"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "男主内心完全留白：原溯作为男主全程不进入其内心，只用外部观察塑造，是少见的克制笔法",
+                "味觉/嗅觉极低频点睛：只在关键温情或转折场景调用味觉嗅觉，让情感记忆点格外鲜明",
+                "物件作为情感记忆载体系统化：伞、信纸、缝纫机、汽水、铜齿轮、围巾构成一套完整的情感物象系统"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"旁观者的漠视强化孤立感\", \"救援者的非典型登场与对话\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"无声的关怀动作\", \"内心戏与外部反应的错位\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"在需要表现角色长期、无果的暗恋心理时，使用“具体行为列表”的虚化处理。\", \"在解释角色重大人生转折（如死讯）对主角的影响时，使用碎片化信息与强烈生理反应的组合。\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"男主内心完全留白：原溯作为男主全程不进入其内心，只用外部观察塑造，是少见的克制笔法\", \"味觉/嗅觉极低频点睛：只在关键温情或转折场景调用味觉嗅觉，让情感记忆点格外鲜明\", \"物件作为情感记忆载体系统化：伞、信纸、缝纫机、汽水、铜齿轮、围巾构成一套完整的情感物象系统\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
             }
           ],
           "confidence": 0.5,
@@ -3472,7 +4778,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "craft-card",
           "field": "craft_summary.reusable_patterns",
           "kind": "soft",
-          "books_count": 3,
+          "books_count": 4,
           "value": [
             "感官细节外化心理",
             "沉默与爆发的对比",
@@ -3482,7 +4788,10 @@ window.__NOVEL_LAB__ = {
             "通过他人视角侧写主角",
             "在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。",
             "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
-            "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
+            "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。",
+            "「物件埋设→离散→回收」的情感伏笔三段式，可迁移到任何情感向作品",
+            "「压力层层叠加→情绪临界→爆发章决堤」的苦难叙事节奏，适用于现实题材",
+            "「反差情感对冲」——绝境中插暖色、温情中埋阴影，让情绪始终有张力"
           ],
           "sources": [
             {
@@ -3508,6 +4817,44 @@ window.__NOVEL_LAB__ = {
                 "在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。",
                 "在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。"
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                "「物件埋设→离散→回收」的情感伏笔三段式，可迁移到任何情感向作品",
+                "「压力层层叠加→情绪临界→爆发章决堤」的苦难叙事节奏，适用于现实题材",
+                "「反差情感对冲」——绝境中插暖色、温情中埋阴影，让情绪始终有张力"
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[\"感官细节外化心理\", \"沉默与爆发的对比\", \"通过反派言论揭示社会权力结构\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"环境氛围渲染\", \"迟到者的动态切入\", \"通过他人视角侧写主角\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[\"在塑造一个对重复高中生活感到极度痛苦的角色时，使用了重复句式来构建情感递进。\", \"在开篇快速建立角色核心矛盾时，使用内心独白与外部环境的强烈反差。\", \"在引入关键人物并揭示核心情感时，使用“第一眼反应”与后续内心回溯相结合。\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[\"「物件埋设→离散→回收」的情感伏笔三段式，可迁移到任何情感向作品\", \"「压力层层叠加→情绪临界→爆发章决堤」的苦难叙事节奏，适用于现实题材\", \"「反差情感对冲」——绝境中插暖色、温情中埋阴影，让情绪始终有张力\"]",
+              "confidence": 0.125,
+              "dimension": "craft-card"
             }
           ],
           "confidence": 0.5,
@@ -3521,7 +4868,7 @@ window.__NOVEL_LAB__ = {
         "total_rules": 11,
         "hard_rules": 1,
         "soft_rules": 10,
-        "personal_styles": 39,
+        "personal_styles": 59,
         "conflicts": 5,
         "blindspots": 0
       }
@@ -3532,13 +4879,14 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "structure-obs",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-07T16:27:01",
+        "distilled_at": "2026-09-11T04:59:49",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
-          "sangshi_chosen"
+          "sangshi_chosen",
+          "suyixinjian_chosen"
         ],
-        "books_count": 3
+        "books_count": 4
       },
       "rules": [
         {
@@ -3546,8 +4894,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "structure-obs",
           "field": "aggregate.hook_type_freq",
           "kind": "hard",
-          "books_count": 3,
-          "value": "{\"[共同完成一件家务]+[离别时的细节关怀]\": 1, \"[受伤后的照料]+[展现隐藏技能/关怀]\": 1, \"[威胁性对话]+[突发第三方介入打破僵局]\": 1, \"[宣布正文完结]+[预告额外内容（番外）]\": 1, \"[提及未来分离可能]+[用甜蜜玩笑暂缓焦虑]\": 1, \"[新角色高调登场]+[与旧冲突产生关联]\": 1, \"[日常中角色突然消失/做出意外行为]\": 1, \"[旧识评价当前感情]+[揭示关系中的小矛盾与需求]\": 1, \"[极端承诺/牺牲]+[身体意外受伤引发态度转变]\": 1, \"[生活照顾中的亲密误会/互动]+[通过食物建立情感联结]\": 1, \"[突发暴力冲突]+[主角介入改变局面]\": 1, \"[精心准备生日]+[家人智慧退出制造二人空间]\": 1, \"[角色主动提出交易/请求]+[开启限时考验]\": 1, \"[角色公开表明立场]+[信息揭露驱动行动]\": 1, \"[角色因害羞回避]+[另一方霸道要求直面]\": 1, \"[角色在互动中意外睡着]+[暗示依赖感产生]\": 1, \"[角色展示异常行为]+[权力者发起规则内挑衅]\": 1, \"[角色生日引入更广阔社交圈]+[提及外部‘新闻’事件]\": 1, \"[解决前文遗留的生活问题]\": 1, \"[达成终极目标/进入理想状态]+[具体美好场景的罗列]\": 1, \"[近距离接触引发强烈生理反应]+[提出带有占有欲的小要求]\": 1, \"[高甜肢体互动]+[男方下意识的保护动作]\": 1}；{\"视觉细节暗示危险\": 20, \"静态动作\": 20}；{\"关键人物影响\": 2, \"尴尬/喜剧意外\": 2, \"悬念抛出或升级\": 2, \"情感冲击（回忆/揭示）\": 3, \"日常互动推进\": 3, \"目标/行动启动或推进\": 4, \"结局式总结\": 1, \"背景事件引入\": 2, \"能力/特质展现\": 2}",
+          "books_count": 4,
+          "value": "{\"[共同完成一件家务]+[离别时的细节关怀]\": 1, \"[受伤后的照料]+[展现隐藏技能/关怀]\": 1, \"[威胁性对话]+[突发第三方介入打破僵局]\": 1, \"[宣布正文完结]+[预告额外内容（番外）]\": 1, \"[提及未来分离可能]+[用甜蜜玩笑暂缓焦虑]\": 1, \"[新角色高调登场]+[与旧冲突产生关联]\": 1, \"[日常中角色突然消失/做出意外行为]\": 1, \"[旧识评价当前感情]+[揭示关系中的小矛盾与需求]\": 1, \"[极端承诺/牺牲]+[身体意外受伤引发态度转变]\": 1, \"[生活照顾中的亲密误会/互动]+[通过食物建立情感联结]\": 1, \"[突发暴力冲突]+[主角介入改变局面]\": 1, \"[精心准备生日]+[家人智慧退出制造二人空间]\": 1, \"[角色主动提出交易/请求]+[开启限时考验]\": 1, \"[角色公开表明立场]+[信息揭露驱动行动]\": 1, \"[角色因害羞回避]+[另一方霸道要求直面]\": 1, \"[角色在互动中意外睡着]+[暗示依赖感产生]\": 1, \"[角色展示异常行为]+[权力者发起规则内挑衅]\": 1, \"[角色生日引入更广阔社交圈]+[提及外部‘新闻’事件]\": 1, \"[解决前文遗留的生活问题]\": 1, \"[达成终极目标/进入理想状态]+[具体美好场景的罗列]\": 1, \"[近距离接触引发强烈生理反应]+[提出带有占有欲的小要求]\": 1, \"[高甜肢体互动]+[男方下意识的保护动作]\": 1}；{\"视觉细节暗示危险\": 20, \"静态动作\": 20}；{\"关键人物影响\": 2, \"尴尬/喜剧意外\": 2, \"悬念抛出或升级\": 2, \"情感冲击（回忆/揭示）\": 3, \"日常互动推进\": 3, \"目标/行动启动或推进\": 4, \"结局式总结\": 1, \"背景事件引入\": 2, \"能力/特质展现\": 2}；{\"信息断点\": 5, \"危机降临\": 6, \"实力展示\": 1, \"情感冲击\": 12, \"身份反转\": 1, \"转折\": 2}",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3596,6 +4944,47 @@ window.__NOVEL_LAB__ = {
                 "能力/特质展现": 2,
                 "结局式总结": 1
               }
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": {
+                "情感冲击": 12,
+                "危机降临": 6,
+                "信息断点": 5,
+                "转折": 2,
+                "实力展示": 1,
+                "身份反转": 1
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "{\"[威胁性对话]+[突发第三方介入打破僵局]\": 1, \"[新角色高调登场]+[与旧冲突产生关联]\": 1, \"[角色展示异常行为]+[权力者发起规则内挑衅]\": 1, \"[突发暴力冲突]+[主角介入改变局面]\": 1, \"[角色主动提出交易/请求]+[开启限时考验]\": 1, \"[极端承诺/牺牲]+[身体意外受伤引发态度转变]\": 1, \"[受伤后的照料]+[展现隐藏技能/关怀]\": 1, \"[生活照顾中的亲密误会/互动]+[通过食物建立情感联结]\": 1, \"[共同完成一件家务]+[离别时的细节关怀]\": 1, \"[角色公开表明立场]+[信息揭露驱动行动]\": 1, \"[角色在互动中意外睡着]+[暗示依赖感产生]\": 1, \"[角色因害羞回避]+[另一方霸道要求直面]\": 1, \"[近距离接触引发强烈生理反应]+[提出带有占有欲的小要求]\": 1, \"[解决前文遗留的生活问题]\": 1, \"[提及未来分离可能]+[用甜蜜玩笑暂缓焦虑]\": 1, \"[高甜肢体互动]+[男方下意识的保护动作]\": 1, \"[日常中角色突然消失/做出意外行为]\": 1, \"[角色生日引入更广阔社交圈]+[提及外部‘新闻’事件]\": 1, \"[精心准备生日]+[家人智慧退出制造二人空间]\": 1, \"[旧识评价当前感情]+[揭示关系中的小矛盾与需求]\": 1, \"[达成终极目标/进入理想状态]+[具体美好场景的罗列]\": 1, \"[宣布正文完结]+[预告额外内容（番外）]\": 1}",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "{\"静态动作\": 20, \"视觉细节暗示危险\": 20}",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "{\"情感冲击（回忆/揭示）\": 3, \"目标/行动启动或推进\": 4, \"尴尬/喜剧意外\": 2, \"悬念抛出或升级\": 2, \"关键人物影响\": 2, \"日常互动推进\": 3, \"背景事件引入\": 2, \"能力/特质展现\": 2, \"结局式总结\": 1}",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "{\"情感冲击\": 12, \"危机降临\": 6, \"信息断点\": 5, \"转折\": 2, \"实力展示\": 1, \"身份反转\": 1}",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
             }
           ],
           "confidence": 0.7,
@@ -3608,7 +4997,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "structure-obs",
           "field": "aggregate.hook_min_interval",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": 1,
           "sources": [
             {
@@ -3622,6 +5011,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 1
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 1
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "1",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "1",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "1",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "1",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
             }
           ],
           "confidence": 0.8,
@@ -3634,8 +5057,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "structure-obs",
           "field": "aggregate.climax_cycle",
           "kind": "hard",
-          "books_count": 3,
-          "value": "{\"climax_position\": [5, 10, 26], \"main_arc_intervals\": [{\"end\": 5, \"start\": 1, \"type\": \"冲突建立与求助转折\"}, {\"end\": 10, \"start\": 6, \"type\": \"关系突破与立场明确\"}, {\"end\": 23, \"start\": 21, \"type\": \"关系进入新阶段与外部挑战\"}, {\"end\": 27, \"start\": 26, \"type\": \"最终高潮与完结\"}]}；8；18；26；27；开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。",
+          "books_count": 4,
+          "value": "{\"climax_position\": [5, 10, 26], \"main_arc_intervals\": [{\"end\": 5, \"start\": 1, \"type\": \"冲突建立与求助转折\"}, {\"end\": 10, \"start\": 6, \"type\": \"关系突破与立场明确\"}, {\"end\": 23, \"start\": 21, \"type\": \"关系进入新阶段与外部挑战\"}, {\"end\": 27, \"start\": 26, \"type\": \"最终高潮与完结\"}]}；8；18；26；27；开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。；每5-7章一个小爆发章（如第7章崩溃决堤、第43章泪湿衣襟），每30章左右一个大转折章（第42-43章中段高潮、第127章画地为牢）",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3681,6 +5104,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "每5-7章一个小爆发章（如第7章崩溃决堤、第43章泪湿衣襟），每30章左右一个大转折章（第42-43章中段高潮、第127章画地为牢）"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "{\"main_arc_intervals\": [{\"start\": 1, \"end\": 5, \"type\": \"冲突建立与求助转折\"}, {\"start\": 6, \"end\": 10, \"type\": \"关系突破与立场明确\"}, {\"start\": 21, \"end\": 23, \"type\": \"关系进入新阶段与外部挑战\"}, {\"start\": 26, \"end\": 27, \"type\": \"最终高潮与完结\"}], \"climax_position\": [5, 10, 26]}",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[8, 18, 26, 27]",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "开篇铺设核心悬念（周砚的命运）与目标（跳级），中期通过考试、备考、疫情等事件持续施压与推进，中后段出现评定考试的高潮，后续章节缓和过渡至恋爱确立与日常生活。",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "每5-7章一个小爆发章（如第7章崩溃决堤、第43章泪湿衣襟），每30章左右一个大转折章（第42-43章中段高潮、第127章画地为牢）",
+              "confidence": 0.175,
+              "dimension": "structure-obs"
             }
           ],
           "confidence": 0.7,
@@ -3693,8 +5150,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "structure-obs",
           "field": "aggregate.foreshadow_avg_span",
           "kind": "hard",
-          "books_count": 3,
-          "value": 3.5,
+          "books_count": 4,
+          "value": 4,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3707,6 +5164,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 3.5
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 4.8
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "4.5",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "2.3",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "3.5",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "4.8",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
             }
           ],
           "confidence": 0.8,
@@ -3719,8 +5210,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "structure-obs",
           "field": "aggregate.foreshadow_max_span",
           "kind": "hard",
-          "books_count": 3,
-          "value": 8,
+          "books_count": 4,
+          "value": 9,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3733,6 +5224,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 10
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 40
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "8",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "5",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "10",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "40",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
             }
           ],
           "confidence": 0.8,
@@ -3745,8 +5270,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "structure-obs",
           "field": "aggregate.foreshadow_concurrent_open",
           "kind": "hard",
-          "books_count": 3,
-          "value": 5,
+          "books_count": 4,
+          "value": 4,
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3759,6 +5284,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 6
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 3
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "5",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "2",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "6",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "3",
+              "confidence": 0.2,
+              "dimension": "structure-obs"
             }
           ],
           "confidence": 0.8,
@@ -3783,13 +5342,14 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "commercial-obs",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-07T16:27:01",
+        "distilled_at": "2026-09-11T04:59:49",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
-          "sangshi_chosen"
+          "sangshi_chosen",
+          "suyixinjian_chosen"
         ],
-        "books_count": 3
+        "books_count": 4
       },
       "rules": [
         {
@@ -3797,7 +5357,7 @@ window.__NOVEL_LAB__ = {
           "dimension": "commercial-obs",
           "field": "payoff_density.per_thousand_words",
           "kind": "hard",
-          "books_count": 3,
+          "books_count": 4,
           "value": 0.8,
           "sources": [
             {
@@ -3811,6 +5371,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 0.8
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": 0.35
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "1.5",
+              "confidence": 0.2,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "0.8",
+              "confidence": 0.2,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "0.8",
+              "confidence": 0.2,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "0.35",
+              "confidence": 0.2,
+              "dimension": "commercial-obs"
             }
           ],
           "confidence": 0.8,
@@ -3837,19 +5431,55 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": 21000.0
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": null
             }
           ],
-          "confidence": 0.8,
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "3000.0",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "7200.0",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "21000.0",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            }
+          ],
+          "confidence": 0.7,
           "conflict": false,
           "over_generalized": false,
-          "blindspot_books": []
+          "blindspot_books": [
+            "suyixinjian_chosen"
+          ]
         },
         {
           "id": "commercial-obs-payoff_types-0001",
           "dimension": "commercial-obs",
           "field": "payoff_types",
           "kind": "soft",
-          "books_count": 3,
+          "books_count": 4,
           "value": [
             {
               "type": "打脸",
@@ -3868,10 +5498,6 @@ window.__NOVEL_LAB__ = {
               "ratio": 20
             },
             {
-              "type": "情感回应",
-              "ratio": 7.0
-            },
-            {
               "type": "他人认可",
               "ratio": 2.0
             },
@@ -3880,15 +5506,7 @@ window.__NOVEL_LAB__ = {
               "ratio": 1.0
             },
             {
-              "type": "情感回应",
-              "ratio": null
-            },
-            {
               "type": "身份揭露",
-              "ratio": null
-            },
-            {
-              "type": "他人认可",
               "ratio": null
             }
           ],
@@ -3947,6 +5565,61 @@ window.__NOVEL_LAB__ = {
                   "ratio": null
                 }
               ]
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": [
+                {
+                  "type": "情感回应",
+                  "ratio": 0.45,
+                  "buildup_length": 1800
+                },
+                {
+                  "type": "他人认可",
+                  "ratio": 0.25,
+                  "buildup_length": 1200
+                },
+                {
+                  "type": "反杀",
+                  "ratio": 0.15,
+                  "buildup_length": 1000
+                },
+                {
+                  "type": "身份揭露",
+                  "ratio": 0.15,
+                  "buildup_length": 1500
+                }
+              ]
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "[{\"type\": \"打脸\", \"ratio\": 40}, {\"type\": \"升级\", \"ratio\": 10}, {\"type\": \"收益兑现\", \"ratio\": 30}, {\"type\": \"情感回应\", \"ratio\": 20}]",
+              "confidence": 0.125,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[{\"type\": \"情感回应\", \"ratio\": 7.0}, {\"type\": \"他人认可\", \"ratio\": 2.0}, {\"type\": \"反杀\", \"ratio\": 1.0}]",
+              "confidence": 0.125,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "[{\"type\": \"情感回应\", \"ratio\": null}, {\"type\": \"身份揭露\", \"ratio\": null}, {\"type\": \"他人认可\", \"ratio\": null}]",
+              "confidence": 0.125,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "[{\"type\": \"情感回应\", \"ratio\": 0.45, \"buildup_length\": 1800}, {\"type\": \"他人认可\", \"ratio\": 0.25, \"buildup_length\": 1200}, {\"type\": \"反杀\", \"ratio\": 0.15, \"buildup_length\": 1000}, {\"type\": \"身份揭露\", \"ratio\": 0.15, \"buildup_length\": 1500}]",
+              "confidence": 0.125,
+              "dimension": "commercial-obs"
             }
           ],
           "confidence": 0.5,
@@ -3959,8 +5632,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "commercial-obs",
           "field": "skeleton",
           "kind": "hard",
-          "books_count": 3,
-          "value": "第一阶段（1-3章）：校园欺凌+男主英雄救美+转学生身份揭秘；第二阶段（4-10章）：女主求助被拒+用行动证明价值+男主胃痛关怀+同居契约；第三阶段（11-26章）：两人感情升温+女主逆袭+男主背景揭露+大结局。；{\"chapter_1\": \"开篇：建立日常场景（晨光教室），引入核心人物（苏念、陆星辞），通过细节互动（保温杯、目光追逐）埋下暗恋伏笔，以对视和双向内心波动（公式写错）作为微小钩子。\", \"chapter_2_3_task\": \"第2-3章任务：迅速给出第一个核心‘情感回应’型爽点（错题集秘密），验证暗恋的双向性（男主也在关注女主），并立即引入第二个爽点（雨夜让伞）强化男主‘行动派照顾’形象，通过女主送姜汤回应建立情感闭环，稳定读者预期。\"}；穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。",
+          "books_count": 4,
+          "value": "第一阶段（1-3章）：校园欺凌+男主英雄救美+转学生身份揭秘；第二阶段（4-10章）：女主求助被拒+用行动证明价值+男主胃痛关怀+同居契约；第三阶段（11-26章）：两人感情升温+女主逆袭+男主背景揭露+大结局。；{\"chapter_1\": \"开篇：建立日常场景（晨光教室），引入核心人物（苏念、陆星辞），通过细节互动（保温杯、目光追逐）埋下暗恋伏笔，以对视和双向内心波动（公式写错）作为微小钩子。\", \"chapter_2_3_task\": \"第2-3章任务：迅速给出第一个核心‘情感回应’型爽点（错题集秘密），验证暗恋的双向性（男主也在关注女主），并立即引入第二个爽点（雨夜让伞）强化男主‘行动派照顾’形象，通过女主送姜汤回应建立情感闭环，稳定读者预期。\"}；穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。；第一阶段（1-4章）：走投无路少女凭母亲遗信闯入陌生小镇，敲错门撞见催债完成与男主的强冲突初遇，奶奶嘴硬心软收留落下第一个情感回应；第二阶段（5-25章）：假钞揭露带来的连串危机，男主与暖色人物轮番托底，主角在绝境中建立羁绊并逐步逆袭；第三阶段（26章至终）：情感升温与真相揭露交织，异地分离靠物象牵挂维持悬念，命运困境（男主债务）与身份身世层层揭开，最终双向救赎收束。",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -3976,6 +5649,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "第一阶段（1-4章）：走投无路少女凭母亲遗信闯入陌生小镇，敲错门撞见催债完成与男主的强冲突初遇，奶奶嘴硬心软收留落下第一个情感回应；第二阶段（5-25章）：假钞揭露带来的连串危机，男主与暖色人物轮番托底，主角在绝境中建立羁绊并逐步逆袭；第三阶段（26章至终）：情感升温与真相揭露交织，异地分离靠物象牵挂维持悬念，命运困境（男主债务）与身份身世层层揭开，最终双向救赎收束。"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "第一阶段（1-3章）：校园欺凌+男主英雄救美+转学生身份揭秘；第二阶段（4-10章）：女主求助被拒+用行动证明价值+男主胃痛关怀+同居契约；第三阶段（11-26章）：两人感情升温+女主逆袭+男主背景揭露+大结局。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "{\"chapter_1\": \"开篇：建立日常场景（晨光教室），引入核心人物（苏念、陆星辞），通过细节互动（保温杯、目光追逐）埋下暗恋伏笔，以对视和双向内心波动（公式写错）作为微小钩子。\", \"chapter_2_3_task\": \"第2-3章任务：迅速给出第一个核心‘情感回应’型爽点（错题集秘密），验证暗恋的双向性（男主也在关注女主），并立即引入第二个爽点（雨夜让伞）强化男主‘行动派照顾’形象，通过女主送姜汤回应建立情感闭环，稳定读者预期。\"}",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "穿越重生+暗恋成真+校园成长。核心驱动力：主角桑幼利用重生信息差，解决上辈子遗憾（与暗恋对象周砚的错过），并实现个人成长（跳级、学业）。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "第一阶段（1-4章）：走投无路少女凭母亲遗信闯入陌生小镇，敲错门撞见催债完成与男主的强冲突初遇，奶奶嘴硬心软收留落下第一个情感回应；第二阶段（5-25章）：假钞揭露带来的连串危机，男主与暖色人物轮番托底，主角在绝境中建立羁绊并逐步逆袭；第三阶段（26章至终）：情感升温与真相揭露交织，异地分离靠物象牵挂维持悬念，命运困境（男主债务）与身份身世层层揭开，最终双向救赎收束。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
             }
           ],
           "confidence": 0.7,
@@ -3988,8 +5695,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "commercial-obs",
           "field": "dry_spell_tolerance",
           "kind": "hard",
-          "books_count": 3,
-          "value": "2章（约6000字）；{\"max_consecutive_chapters\": 2, \"note\": \"连续章节无明确爽点（如第5、6章）可能导致部分寻求强刺激的读者流失，但本书依赖细腻情感描写维持留存，对‘文青’读者容忍度更高。\"}；前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。",
+          "books_count": 4,
+          "value": "2章（约6000字）；{\"max_consecutive_chapters\": 2, \"note\": \"连续章节无明确爽点（如第5、6章）可能导致部分寻求强刺激的读者流失，但本书依赖细腻情感描写维持留存，对‘文青’读者容忍度更高。\"}；前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。；3章（约9000字）",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -4005,6 +5712,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "3章（约9000字）"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "2章（约6000字）",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "{\"max_consecutive_chapters\": 2, \"note\": \"连续章节无明确爽点（如第5、6章）可能导致部分寻求强刺激的读者流失，但本书依赖细腻情感描写维持留存，对‘文青’读者容忍度更高。\"}",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "前21000字（约10章）无明确打脸/升级/收益兑现类爽点，全靠情感张力（暗恋互动）和悬疑（重生秘密）维持读者。对读者耐性要求高，依赖文笔和情感共鸣。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "3章（约9000字）",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
             }
           ],
           "confidence": 0.7,
@@ -4017,8 +5758,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "commercial-obs",
           "field": "common_mistakes",
           "kind": "hard",
-          "books_count": 3,
-          "value": "1.开篇不直接进入冲突，而是铺垫背景；2.男主救美后立刻“天降”，缺乏身份铺垫；3.反派动机单一（仅为嫉妒），缺乏家族势力等深层原因。；开篇环境描写过于冗长，可能劝退追求快节奏的读者。；前期章节（1-3章）情感爆发点依赖内心戏和细节，外部情节冲突弱，对偏好强情节的读者吸引力不足。；中期（第5、6章）男女主因误会‘冷战’，铺垫稍长，若读者代入女主自卑情绪，可能产生焦虑感。；开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。",
+          "books_count": 4,
+          "value": "1.开篇不直接进入冲突，而是铺垫背景；2.男主救美后立刻“天降”，缺乏身份铺垫；3.反派动机单一（仅为嫉妒），缺乏家族势力等深层原因。；开篇环境描写过于冗长，可能劝退追求快节奏的读者。；前期章节（1-3章）情感爆发点依赖内心戏和细节，外部情节冲突弱，对偏好强情节的读者吸引力不足。；中期（第5、6章）男女主因误会‘冷战’，铺垫稍长，若读者代入女主自卑情绪，可能产生焦虑感。；开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。；1.开篇直接抛大量背景设定而非进入冲突；2.主角情绪全靠内心独白堆砌而缺乏外部冲突驱动；3.男女主初遇平淡无钩子、缺乏强记忆点；4.苦难铺陈过度让读者压抑弃书、缺暖色人物对冲。",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -4035,6 +5776,40 @@ window.__NOVEL_LAB__ = {
             {
               "book": "sangshi_chosen",
               "value": "开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。"
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": "1.开篇直接抛大量背景设定而非进入冲突；2.主角情绪全靠内心独白堆砌而缺乏外部冲突驱动；3.男女主初遇平淡无钩子、缺乏强记忆点；4.苦难铺陈过度让读者压抑弃书、缺暖色人物对冲。"
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "1.开篇不直接进入冲突，而是铺垫背景；2.男主救美后立刻“天降”，缺乏身份铺垫；3.反派动机单一（仅为嫉妒），缺乏家族势力等深层原因。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "[\"开篇环境描写过于冗长，可能劝退追求快节奏的读者。\", \"前期章节（1-3章）情感爆发点依赖内心戏和细节，外部情节冲突弱，对偏好强情节的读者吸引力不足。\", \"中期（第5、6章）男女主因误会‘冷战’，铺垫稍长，若读者代入女主自卑情绪，可能产生焦虑感。\"]",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "开篇大量内心独白和回忆，可能节奏稍慢。但对于暗恋文，情绪铺垫至关重要。作者用“军训晕倒”和“遇见周砚”两个事件快速推进，避免了纯流水账。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "1.开篇直接抛大量背景设定而非进入冲突；2.主角情绪全靠内心独白堆砌而缺乏外部冲突驱动；3.男女主初遇平淡无钩子、缺乏强记忆点；4.苦难铺陈过度让读者压抑弃书、缺暖色人物对冲。",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
             }
           ],
           "confidence": 0.7,
@@ -4047,8 +5822,8 @@ window.__NOVEL_LAB__ = {
           "dimension": "commercial-obs",
           "field": "paywall",
           "kind": "hard",
-          "books_count": 3,
-          "value": "{\"cliffhanger_technique\": \"第10章结尾，唐雨离开后，边炀独自吃着西红柿炒蛋，接到父亲电话却不接，暗示其家庭背景复杂，同时两人关系刚有进展即分离，制造悬念。\", \"position_chapter\": 10, \"pre_paywall_buildup\": \"前9章累计铺垫：1.唐雨的绝望处境（被欺凌、无家可归）；2.边炀从拒绝到逐渐软化的过程；3.两人从对立到试探的互动。铺垫总字数约25000字。\"}；{\"cliffhanger_technique\": \"第十章结尾强化‘无形的墙’的张力：双方在乎却不敢越界，关系处于临界点。读者渴望看到‘墙’如何被打破，制造强烈续读欲望。\", \"position_chapter\": 10, \"pre_paywall_buildup\": \"前9章密集铺设双向暗恋证据（错题集、让伞、醋意事件、澄清传闻），累积情感势能，让读者确信‘互相喜欢’，从而对‘何时表白/在一起’产生极高期待。\"}；{\"cliffhanger_technique\": \"后记章，无剧情悬念，属于完结感言。付费点不在强悬念处。\", \"position_chapter\": 27, \"pre_paywall_buildup\": \"前26章已完成“暗恋-相识-相知-热恋”主线，故事基本完结，情感需求已满足。付费内容可能为番外或作者感言，付费动力弱，依赖读者情感认同和对作者的赞赏。\"}",
+          "books_count": 4,
+          "value": "{\"cliffhanger_technique\": \"第10章结尾，唐雨离开后，边炀独自吃着西红柿炒蛋，接到父亲电话却不接，暗示其家庭背景复杂，同时两人关系刚有进展即分离，制造悬念。\", \"position_chapter\": 10, \"pre_paywall_buildup\": \"前9章累计铺垫：1.唐雨的绝望处境（被欺凌、无家可归）；2.边炀从拒绝到逐渐软化的过程；3.两人从对立到试探的互动。铺垫总字数约25000字。\"}；{\"cliffhanger_technique\": \"第十章结尾强化‘无形的墙’的张力：双方在乎却不敢越界，关系处于临界点。读者渴望看到‘墙’如何被打破，制造强烈续读欲望。\", \"position_chapter\": 10, \"pre_paywall_buildup\": \"前9章密集铺设双向暗恋证据（错题集、让伞、醋意事件、澄清传闻），累积情感势能，让读者确信‘互相喜欢’，从而对‘何时表白/在一起’产生极高期待。\"}；{\"cliffhanger_technique\": \"后记章，无剧情悬念，属于完结感言。付费点不在强悬念处。\", \"position_chapter\": 27, \"pre_paywall_buildup\": \"前26章已完成“暗恋-相识-相知-热恋”主线，故事基本完结，情感需求已满足。付费内容可能为番外或作者感言，付费动力弱，依赖读者情感认同和对作者的赞赏。\"}；{\"cliffhanger_technique\": \"在情感关系或命运抉择的关键节点戛然而止，让主角或关键人物停在「即将行动却未行动」的悬置状态\", \"position_chapter\": 25, \"pre_paywall_buildup\": \"付费卡点前3-5章连续蓄力，逐步拉近男女主距离或逐步逼近真相，让读者对后续关系发展或真相揭露产生强烈期待\"}",
           "sources": [
             {
               "book": "chireng_chosen",
@@ -4073,6 +5848,44 @@ window.__NOVEL_LAB__ = {
                 "cliffhanger_technique": "后记章，无剧情悬念，属于完结感言。付费点不在强悬念处。",
                 "pre_paywall_buildup": "前26章已完成“暗恋-相识-相知-热恋”主线，故事基本完结，情感需求已满足。付费内容可能为番外或作者感言，付费动力弱，依赖读者情感认同和对作者的赞赏。"
               }
+            },
+            {
+              "book": "suyixinjian_chosen",
+              "value": {
+                "position_chapter": 25,
+                "cliffhanger_technique": "在情感关系或命运抉择的关键节点戛然而止，让主角或关键人物停在「即将行动却未行动」的悬置状态",
+                "pre_paywall_buildup": "付费卡点前3-5章连续蓄力，逐步拉近男女主距离或逐步逼近真相，让读者对后续关系发展或真相揭露产生强烈期待"
+              }
+            }
+          ],
+          "evidence": [
+            {
+              "source_chapter": "",
+              "source_book": "chireng_chosen",
+              "quote": "{\"position_chapter\": 10, \"cliffhanger_technique\": \"第10章结尾，唐雨离开后，边炀独自吃着西红柿炒蛋，接到父亲电话却不接，暗示其家庭背景复杂，同时两人关系刚有进展即分离，制造悬念。\", \"pre_paywall_buildup\": \"前9章累计铺垫：1.唐雨的绝望处境（被欺凌、无家可归）；2.边炀从拒绝到逐渐软化的过程；3.两人从对立到试探的互动。铺垫总字数约25000字。\"}",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "qingning_chosen",
+              "quote": "{\"position_chapter\": 10, \"cliffhanger_technique\": \"第十章结尾强化‘无形的墙’的张力：双方在乎却不敢越界，关系处于临界点。读者渴望看到‘墙’如何被打破，制造强烈续读欲望。\", \"pre_paywall_buildup\": \"前9章密集铺设双向暗恋证据（错题集、让伞、醋意事件、澄清传闻），累积情感势能，让读者确信‘互相喜欢’，从而对‘何时表白/在一起’产生极高期待。\"}",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "sangshi_chosen",
+              "quote": "{\"position_chapter\": 27, \"cliffhanger_technique\": \"后记章，无剧情悬念，属于完结感言。付费点不在强悬念处。\", \"pre_paywall_buildup\": \"前26章已完成“暗恋-相识-相知-热恋”主线，故事基本完结，情感需求已满足。付费内容可能为番外或作者感言，付费动力弱，依赖读者情感认同和对作者的赞赏。\"}",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
+            },
+            {
+              "source_chapter": "",
+              "source_book": "suyixinjian_chosen",
+              "quote": "{\"position_chapter\": 25, \"cliffhanger_technique\": \"在情感关系或命运抉择的关键节点戛然而止，让主角或关键人物停在「即将行动却未行动」的悬置状态\", \"pre_paywall_buildup\": \"付费卡点前3-5章连续蓄力，逐步拉近男女主距离或逐步逼近真相，让读者对后续关系发展或真相揭露产生强烈期待\"}",
+              "confidence": 0.175,
+              "dimension": "commercial-obs"
             }
           ],
           "confidence": 0.7,
@@ -4093,6 +5906,18 @@ window.__NOVEL_LAB__ = {
           "dimension": "commercial-obs",
           "field": "payoff_density.per_chapter",
           "note": "字段 payoff_density.per_chapter 缺失"
+        },
+        {
+          "book": "suyixinjian_chosen",
+          "dimension": "commercial-obs",
+          "field": "payoff_density.per_chapter",
+          "note": "字段 payoff_density.per_chapter 缺失"
+        },
+        {
+          "book": "suyixinjian_chosen",
+          "dimension": "commercial-obs",
+          "field": "buildup_length",
+          "note": "字段 buildup_length 缺失或无法归一化"
         }
       ],
       "stats": {
@@ -4101,7 +5926,7 @@ window.__NOVEL_LAB__ = {
         "soft_rules": 1,
         "personal_styles": 1,
         "conflicts": 5,
-        "blindspots": 2
+        "blindspots": 4
       }
     }
   },
