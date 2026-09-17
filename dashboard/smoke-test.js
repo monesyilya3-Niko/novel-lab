@@ -2,10 +2,24 @@
 // 验证无 JS 运行时错误 + 核心渲染区块数据非空 + 书籍切换交互
 const fs = require('fs');
 const path = require('path');
-const { JSDOM, VirtualConsole } = require(
-  'C:/Users/monesy/.workbuddy/binaries/node/workspace/node_modules/jsdom');
+// jsdom 加载：优先运行时解析，失败回退仓库内 gui/web 的 devDependency；
+// 两者都不可用时给出明确提示并退出（不依赖任何外部绝对路径）。
+let JSDOM, VirtualConsole;
+try {
+  ({ JSDOM, VirtualConsole } = require('jsdom'));
+} catch (e) {
+  try {
+    ({ JSDOM, VirtualConsole } = require(
+      path.join(__dirname, '..', 'gui', 'web', 'node_modules', 'jsdom')));
+  } catch (e2) {
+    console.error('❌ 无法加载 jsdom：运行时未解析到，仓库内 gui/web/node_modules/jsdom 也不存在。');
+    console.error('   请先安装前端依赖：npm --prefix gui/web install');
+    process.exit(2);
+  }
+}
 
-const BASE = 'C:/Users/monesy/WorkBuddy/2026-08-06-16-49-41/novel-lab/dashboard';
+// 只读取脚本自身所在目录（dashboard/），不依赖任何外部绝对路径。
+const BASE = __dirname;
 const html = fs.readFileSync(path.join(BASE, 'index.html'), 'utf8');
 const dataJs = fs.readFileSync(path.join(BASE, 'dashboard-data.js'), 'utf8');
 
