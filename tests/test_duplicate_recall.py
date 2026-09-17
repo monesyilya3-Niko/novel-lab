@@ -325,7 +325,12 @@ class TestBookQualityIntegration(unittest.TestCase):
                 2: _chapter(SENT_C, FILL_2),
             })
             result = book_quality.book_quality_check(str(root))
-            self.assertEqual(set(result.keys()), self.RESULT_KEYS)
+            # 第二轮 Task B 起返回值**追加** "coverage" 键（加性契约）：既有 6 键
+            # 一个都不能少，但不再要求键集合完全相等。
+            self.assertTrue(
+                self.RESULT_KEYS <= set(result.keys()),
+                f"既有键不得缺失，实得: {sorted(result.keys())}",
+            )
             self.assertEqual(result["total_chapters"], 2)
             self.assertEqual(result["total_issues"], len(result["issues"]))
             self.assertEqual(

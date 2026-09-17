@@ -222,6 +222,89 @@ def _check_alias_consistency(texts: dict, characters: list) -> list:
 
 
 # ---------------------------------------------------------------------------
+# 检测覆盖率报告（2026-09-17 第二轮 Task B / 报告 P2-1）
+# ---------------------------------------------------------------------------
+# 缺 entities.json（或其中某字段）时对应检测静默跳过，输出仍是「0 问题」——
+# 与「查过且没问题」无法区分。setting_coverage() 显式报告哪些项可评估。
+# 纯加性：不参与任何评分、不改变 check_setting 的返回与判定。
+
+# checks 的固定顺序（evaluable / skipped 均按此顺序输出）
+SETTING_CHECK_ORDER = ("world_rules", "attributes", "alias")
+
+# 各检测项缺失时的中文原因（多项缺失用「；」拼接）
+_SETTING_SKIP_REASONS = {
+    "world_rules": "缺少 entities.json 的 world_rules，世界观约束未检测",
+    "attributes": "缺少 entities.json 的 characters[].attributes，角色属性一致性未检测",
+    "alias": "缺少 entities.json 的 characters[].aliases，别名一致性未检测",
+}
+
+_NO_CHAPTERS_REASON = "无章节文本"
+
+
+def setting_coverage(texts: dict, entities: dict = None) -> dict:
+    """返回设定一致性各检测项的「是否可评估」信息。
+
+    判定规则（与 check_setting 的实际执行分支一致）：
+      - world_rules：需要 ``entities["world_rules"]`` 为非空列表；
+      - attributes：需要至少一个 ``characters[].attributes`` 为非空 dict；
+      - alias：需要至少一个 ``characters[].aliases`` 为非空列表；
+      - texts 为空：chapters=0，三项全 False，skipped_reason="无章节文本"。
+
+    Args:
+        texts: {章号:int -> 文本:str}（空值条目与 check_setting 同口径忽略）。
+        entities: entities.json 解析结果（可选）。
+
+    Returns:
+        dict: 与 ``logic_check.logic_coverage`` 同构
+            {"entities_loaded": bool, "chapters": int,
+             "checks": {"world_rules": bool, "attributes": bool, "alias": bool},
+             "evaluable": [...], "skipped": [...], "skipped_reason": str}
+            entities_loaded 口径：``characters`` 为非空列表即 True。
+    """
+    texts = {int(k): v for k, v in (texts or {}).items() if v}
+    has_chapters = bool(texts)
+    entities = entities if isinstance(entities, dict) else {}
+    characters = entities.get("characters")
+    characters = characters if isinstance(characters, list) else []
+    entities_loaded = bool(characters)
+
+    world_rules = entities.get("world_rules")
+    checks = {
+        "world_rules": has_chapters and isinstance(world_rules, list) and bool(world_rules),
+        "attributes": has_chapters and any(
+            isinstance(c, dict) and isinstance(c.get("attributes"), dict) and bool(c.get("attributes"))
+            for c in characters),
+        "alias": has_chapters and any(
+            isinstance(c, dict) and isinstance(c.get("aliases"), list) and bool(c.get("aliases"))
+            for c in characters),
+    }
+    evaluable = [k for k in SETTING_CHECK_ORDER if checks[k]]
+    skipped = [k for k in SETTING_CHECK_ORDER if not checks[k]]
+    if not has_chapters:
+        skipped_reason = _NO_CHAPTERS_REASON
+    else:
+        skipped_reason = "；".join(_SETTING_SKIP_REASONS[k] for k in skipped)
+
+    return {
+        "entities_loaded": entities_loaded,
+        "chapters": len(texts),
+        "checks": checks,
+        "evaluable": evaluable,
+        "skipped": skipped,
+        "skipped_reason": skipped_reason,
+    }
+
+
+def _format_coverage_warning(coverage: dict) -> str:
+    """把覆盖率信息格式化为一行「⚠ 未评估: …（原因：…）」（skipped 为空返回 ""）。"""
+    skipped = coverage.get("skipped") or []
+    if not skipped:
+        return ""
+    return (f"⚠ 未评估: {'、'.join(skipped)}"
+            f"（原因：{coverage.get('skipped_reason', '')}）")
+
+
+# ---------------------------------------------------------------------------
 # 主入口
 # ---------------------------------------------------------------------------
 
@@ -270,16 +353,21 @@ def main():
         sys.exit(1)
     entities = load_entities(source)
     issues = check_setting(texts, entities)
+    coverage = setting_coverage(texts, entities)
 
     if args.json:
         print(json.dumps({"total_chapters": len(texts), "total_issues": len(issues),
-                          "issues": issues}, ensure_ascii=False, indent=2))
+                          "issues": issues, "coverage": coverage},
+                         ensure_ascii=False, indent=2))
     else:
         print(f"设定一致性检测: {len(texts)} 章 / {len(issues)} 问题")
         print("=" * 50)
         for it in issues:
             icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(it["severity"], "⚪")
             print(f"  {icon} [{it['severity']}] Ch{it['chapter']}: {it['detail']}")
+        warning = _format_coverage_warning(coverage)
+        if warning:
+            print(warning)
     sys.exit(0 if not issues else 1)
 
 

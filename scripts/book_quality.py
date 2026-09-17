@@ -397,6 +397,71 @@ def check_ai_flavor(texts: dict) -> list:
 
 
 # --------------------------------------------------------------------------
+# 检测覆盖率（2026-09-17 第二轮 Task B / 报告 P2-1）
+# --------------------------------------------------------------------------
+# 「0 问题」与「没检查」在输出里必须可区分：缺 settings/entities.json 时人名
+# 乱编检测静默跳过；单章输入时跨章重复检测与风格一致性根本不会执行。
+# coverage 把这些前置条件显式报告给调用方。纯加性：不参与 severity 统计，
+# 不影响 verdict 判定与任何既有返回键。
+
+# checks 的固定顺序（skipped 按此顺序输出，便于消费方稳定解析）
+BQ_CHECK_ORDER = (
+    "duplicate_chapters",
+    "duplicate_paragraphs",
+    "duplicate_sentences",
+    "intra_chapter_repeats",
+    "plot_continuity",
+    "word_padding",
+    "fabrication_name",
+    "ai_flavor",
+    "style_consistency",
+)
+
+# 仅在 len(texts) >= 2 时才真正执行的检测项
+BQ_CROSS_CHAPTER_CHECKS = (
+    "duplicate_chapters",
+    "duplicate_paragraphs",
+    "duplicate_sentences",
+    "style_consistency",
+)
+
+
+def _book_quality_coverage(texts: dict, entities: dict = None) -> dict:
+    """返回 book_quality_check 各检测项「是否真正执行」的覆盖率信息。
+
+    Args:
+        texts: {章号:int -> 文本:str}。
+        entities: 自动探测到的 entities.json 内容（可为 None）。
+
+    Returns:
+        dict: {"entities_loaded": bool, "chapters": int,
+               "checks": {9 项固定顺序}, "skipped": [...], "skipped_reason": str}
+    """
+    has_multi_chapters = len(texts) >= 2
+    entities_loaded = bool(isinstance(entities, dict) and entities.get("characters"))
+
+    checks = {key: True for key in BQ_CHECK_ORDER}
+    for key in BQ_CROSS_CHAPTER_CHECKS:
+        checks[key] = has_multi_chapters
+    checks["fabrication_name"] = entities_loaded
+
+    skipped = [k for k in BQ_CHECK_ORDER if not checks[k]]
+    reasons = []
+    if not has_multi_chapters:
+        reasons.append("仅 1 章，跨章检测未执行")
+    if not entities_loaded:
+        reasons.append("缺少 entities.json，人名乱编检测未执行")
+
+    return {
+        "entities_loaded": entities_loaded,
+        "chapters": len(texts),
+        "checks": checks,
+        "skipped": skipped,
+        "skipped_reason": "；".join(reasons),
+    }
+
+
+# --------------------------------------------------------------------------
 # 主函数
 # --------------------------------------------------------------------------
 
@@ -489,6 +554,9 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
         "types": dict(type_count),
         "verdict": verdict,
         "issues": all_issues[:50],  # 最多输出 50 条
+        # 2026-09-17（第二轮 Task B / 报告 P2-1）：追加覆盖率，区分「0 问题」与
+        # 「没检查」。纯新增键，既有键与判定规则不变。
+        "coverage": _book_quality_coverage(texts, entities),
     }
 
 

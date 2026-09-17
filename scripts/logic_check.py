@@ -418,6 +418,89 @@ def _check_state_contradictions(texts: dict, entities: dict) -> list:
 
 
 # ---------------------------------------------------------------------------
+# 检测覆盖率报告（2026-09-17 第二轮 Task B / 报告 P2-1）
+# ---------------------------------------------------------------------------
+# 「0 问题」既可能是「查过且没问题」，也可能是「根本没查」——缺
+# settings/entities.json 时称呼/状态矛盾直接跳过，两者在输出里完全一致，
+# 最容易误导使用者。logic_coverage() 把「哪些检测项可评估」显式报告出来。
+# 纯加性：不参与任何评分、不改变 check_logic 的返回与判定。
+
+# checks 的固定顺序（evaluable / skipped 均按此顺序输出，便于消费方稳定解析）
+LOGIC_CHECK_ORDER = ("number", "timeline", "appellation", "state")
+
+_ENTITIES_MISSING_REASON = "缺少 entities.json，称呼/状态矛盾无法检测"
+_NO_CHAPTERS_REASON = "无章节文本"
+
+
+def _entities_have_characters(entities) -> bool:
+    """entities 是否为含非空 characters 列表的 dict（称呼/状态检测的前置条件）。"""
+    if not isinstance(entities, dict):
+        return False
+    characters = entities.get("characters")
+    return isinstance(characters, list) and bool(characters)
+
+
+def logic_coverage(texts: dict, entities: dict = None) -> dict:
+    """返回各检测项的「是否可评估」信息，用于区分「0 问题」与「没检查」。
+
+    判定规则（与 check_logic 的实际执行分支一致）：
+      - number / timeline：只要 texts 非空即可评估 → True；
+      - appellation / state：需要 entities 为 dict 且 ``entities["characters"]``
+        为非空列表 → 否则 False；
+      - texts 为空：chapters=0，四项全 False，skipped_reason="无章节文本"。
+
+    Args:
+        texts: {章号:int -> 文本:str}（空值条目与 check_logic 同口径忽略）。
+        entities: entities.json 解析结果（可选）。
+
+    Returns:
+        dict: 固定结构
+            {"entities_loaded": bool, "chapters": int,
+             "checks": {"number": bool, "timeline": bool,
+                        "appellation": bool, "state": bool},
+             "evaluable": [...], "skipped": [...], "skipped_reason": str}
+            evaluable / skipped 按 ``LOGIC_CHECK_ORDER`` 固定顺序给出；
+            skipped 为空时 skipped_reason 为 ""。
+    """
+    texts = {int(k): v for k, v in (texts or {}).items() if v}
+    has_chapters = bool(texts)
+    entities_loaded = _entities_have_characters(entities)
+
+    checks = {
+        "number": has_chapters,
+        "timeline": has_chapters,
+        "appellation": has_chapters and entities_loaded,
+        "state": has_chapters and entities_loaded,
+    }
+    evaluable = [k for k in LOGIC_CHECK_ORDER if checks[k]]
+    skipped = [k for k in LOGIC_CHECK_ORDER if not checks[k]]
+    if not has_chapters:
+        skipped_reason = _NO_CHAPTERS_REASON
+    elif skipped:
+        skipped_reason = _ENTITIES_MISSING_REASON
+    else:
+        skipped_reason = ""
+
+    return {
+        "entities_loaded": entities_loaded,
+        "chapters": len(texts),
+        "checks": checks,
+        "evaluable": evaluable,
+        "skipped": skipped,
+        "skipped_reason": skipped_reason,
+    }
+
+
+def _format_coverage_warning(coverage: dict) -> str:
+    """把覆盖率信息格式化为一行「⚠ 未评估: …（原因：…）」（skipped 为空返回 ""）。"""
+    skipped = coverage.get("skipped") or []
+    if not skipped:
+        return ""
+    return (f"⚠ 未评估: {'、'.join(skipped)}"
+            f"（原因：{coverage.get('skipped_reason', '')}）")
+
+
+# ---------------------------------------------------------------------------
 # 主入口
 # ---------------------------------------------------------------------------
 
@@ -475,16 +558,21 @@ def main():
         sys.exit(1)
     entities = load_entities(source)
     issues = check_logic(texts, entities)
+    coverage = logic_coverage(texts, entities)
 
     if args.json:
         print(json.dumps({"total_chapters": len(texts), "total_issues": len(issues),
-                          "issues": issues}, ensure_ascii=False, indent=2))
+                          "issues": issues, "coverage": coverage},
+                         ensure_ascii=False, indent=2))
     else:
         print(f"逻辑合理性检测: {len(texts)} 章 / {len(issues)} 问题")
         print("=" * 50)
         for it in issues:
             icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}.get(it["severity"], "⚪")
             print(f"  {icon} [{it['severity']}] Ch{it['chapter']}: {it['detail']}")
+        warning = _format_coverage_warning(coverage)
+        if warning:
+            print(warning)
     sys.exit(0 if not issues else 1)
 
 

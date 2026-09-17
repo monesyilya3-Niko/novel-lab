@@ -511,6 +511,13 @@ def run_qc(chapter_dir: str, *, voice_card_path: str = None, genre_pack_path: st
         "llm_hook": llm_hook.llm_hook_meta if (
             llm_hook is not None and hasattr(llm_hook, "llm_hook_meta")
         ) else {"enabled": llm_hook is not None},
+        # 2026-09-17（第二轮 Task B / 报告 P2-1）：汇总 D2（逻辑合理）与
+        # D5（设定一致）的检测覆盖率——「0 问题」与「没检查」必须可区分。
+        # 纯新增键，不参与任何维度打分与 verdict 判定。
+        "coverage": {
+            "logic": logic_check.logic_coverage(texts, entities),
+            "setting": setting_check.setting_coverage(texts, entities),
+        },
     }
 
     return QCReport(
