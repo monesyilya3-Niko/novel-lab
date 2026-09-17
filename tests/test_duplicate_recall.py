@@ -327,6 +327,9 @@ class TestBookQualityIntegration(unittest.TestCase):
             result = book_quality.book_quality_check(str(root))
             # 第二轮 Task B 起返回值**追加** "coverage" 键（加性契约）：既有 6 键
             # 一个都不能少，但不再要求键集合完全相等。
+            # 注意：精确键集合断言（set(result.keys()) == 既有 6 键 | {"coverage"}）
+            # 由 tests/test_coverage_fields.py 承担——本文件只保留子集断言，避免
+            # 反复触碰 Task A 文件。
             self.assertTrue(
                 self.RESULT_KEYS <= set(result.keys()),
                 f"既有键不得缺失，实得: {sorted(result.keys())}",

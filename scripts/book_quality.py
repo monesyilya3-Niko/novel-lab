@@ -417,38 +417,63 @@ BQ_CHECK_ORDER = (
     "style_consistency",
 )
 
-# 仅在 len(texts) >= 2 时才真正执行的检测项
+# 仅在 len(texts) >= 2 时才真正执行的检测项（跨章重复检测）
 BQ_CROSS_CHAPTER_CHECKS = (
     "duplicate_chapters",
     "duplicate_paragraphs",
     "duplicate_sentences",
-    "style_consistency",
 )
 
 
-def _book_quality_coverage(texts: dict, entities: dict = None) -> dict:
+def _voice_card_mode(voice_card) -> str:
+    """取 voice-card 的 ``emotion_handling.mode``（非 str / 缺失时返回 ""）。"""
+    if not isinstance(voice_card, dict):
+        return ""
+    emotion = voice_card.get("emotion_handling")
+    if not isinstance(emotion, dict):
+        return ""
+    mode = emotion.get("mode")
+    return mode if isinstance(mode, str) else ""
+
+
+def _book_quality_coverage(texts: dict, entities: dict = None,
+                           voice_card: dict = None) -> dict:
     """返回 book_quality_check 各检测项「是否真正执行」的覆盖率信息。
+
+    2026-09-17（第二轮 Task B fix round 1 / 审查 I1）：``style_consistency``
+    **不能**与跨章重复检测同门控——``check_style_consistency`` 是无条件调用的，
+    其情绪分支（``emotion_mode_drift``）逐章执行、单章即可产出问题。此前的门控
+    导致「issues 里有 emotion_mode_drift，coverage.skipped 里却有
+    style_consistency」的自相矛盾（与本任务目标方向相反）。修正后：
+    ``style_consistency`` 可评估 ⇔ ``len(texts) >= 2`` 或 voice_card 提供了非空
+    ``emotion_handling.mode``。
 
     Args:
         texts: {章号:int -> 文本:str}。
         entities: 自动探测到的 entities.json 内容（可为 None）。
+        voice_card: 加载到的 voice-card 内容（可为 None）。
 
     Returns:
         dict: {"entities_loaded": bool, "chapters": int,
-               "checks": {9 项固定顺序}, "skipped": [...], "skipped_reason": str}
+               "checks": {9 项固定顺序}, "skipped": [...],
+               "skipped_reason": str, "voice_card_loaded": bool}
     """
     has_multi_chapters = len(texts) >= 2
     entities_loaded = bool(isinstance(entities, dict) and entities.get("characters"))
+    voice_card_loaded = bool(_voice_card_mode(voice_card))
 
     checks = {key: True for key in BQ_CHECK_ORDER}
     for key in BQ_CROSS_CHAPTER_CHECKS:
         checks[key] = has_multi_chapters
     checks["fabrication_name"] = entities_loaded
+    checks["style_consistency"] = has_multi_chapters or voice_card_loaded
 
     skipped = [k for k in BQ_CHECK_ORDER if not checks[k]]
     reasons = []
     if not has_multi_chapters:
         reasons.append("仅 1 章，跨章检测未执行")
+    if not checks["style_consistency"]:
+        reasons.append("仅 1 章且无 voice_card，风格一致性未检测")
     if not entities_loaded:
         reasons.append("缺少 entities.json，人名乱编检测未执行")
 
@@ -458,6 +483,7 @@ def _book_quality_coverage(texts: dict, entities: dict = None) -> dict:
         "checks": checks,
         "skipped": skipped,
         "skipped_reason": "；".join(reasons),
+        "voice_card_loaded": voice_card_loaded,
     }
 
 
@@ -556,7 +582,9 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
         "issues": all_issues[:50],  # 最多输出 50 条
         # 2026-09-17（第二轮 Task B / 报告 P2-1）：追加覆盖率，区分「0 问题」与
         # 「没检查」。纯新增键，既有键与判定规则不变。
-        "coverage": _book_quality_coverage(texts, entities),
+        # fix round 1（审查 I1）：需传入 voice_card——style_consistency 的情绪分支
+        # 单章即可产出问题，门控不能只看章数。
+        "coverage": _book_quality_coverage(texts, entities, voice_card),
     }
 
 

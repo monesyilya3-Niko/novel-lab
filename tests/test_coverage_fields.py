@@ -14,6 +14,16 @@
   4. ``logic_check.main()`` / ``setting_check.main()``：``--json`` 追加 ``coverage``；
      非 JSON 输出时若 ``skipped`` 非空，追加打印一行 ``⚠ 未评估: …``。
 
+fix round 1（审查裁决）：
+  - **I1**：``style_consistency`` 曾与跨章三项一起按「仅 len(texts) >= 2 才执行」门控，但
+    ``check_style_consistency`` 是**无条件调用**的，其情绪分支（``emotion_mode_drift``）
+    逐章执行、单章即可产出问题 → 曾出现「issues 里有 emotion_mode_drift，coverage.skipped
+    里却有 style_consistency」的自相矛盾（与本任务目标方向相反）。
+    修正后的门控：``len(texts) >= 2`` **或** voice_card 提供非空
+    ``emotion_handling.mode``；并新增 ``voice_card_loaded`` 字段。
+  - **I2**：键集合断言由「子集」收紧为**精确集合**
+    ``set(result.keys()) == BQ_RESULT_KEYS | {"coverage"}``（防意外新增键/调试键泄漏）。
+
 测试全部使用内存 dict 或临时目录，不触碰真实 ``assets/``、``gui_state/``。
 
 用法：
@@ -60,8 +70,36 @@ PARTIAL_ENTITIES = {"characters": [{"name": "唐雨", "aliases": ["小雨"]}]}
 # book_quality_check 既有返回键（Task B 不得删除其中任何一个）
 BQ_RESULT_KEYS = {"total_chapters", "total_issues", "severity", "types", "verdict", "issues"}
 
+# Task B 追加键后的**精确**返回键集合（fix round 1 / I2：收紧自「子集」断言）
+BQ_RESULT_KEYS_WITH_COVERAGE = BQ_RESULT_KEYS | {"coverage"}
+
+# coverage dict 的固定结构（fix round 1 / I1 新增 voice_card_loaded）
+BQ_COVERAGE_KEYS = {"entities_loaded", "chapters", "checks", "skipped",
+                    "skipped_reason", "voice_card_loaded"}
+
+# logic_coverage / setting_coverage 的固定结构（各 6 键，brief 写明「结构固定」）
+LOGIC_COVERAGE_KEYS = {"entities_loaded", "chapters", "checks",
+                       "evaluable", "skipped", "skipped_reason"}
+SETTING_COVERAGE_KEYS = {"entities_loaded", "chapters", "checks",
+                         "evaluable", "skipped", "skipped_reason"}
+
 SENT_A = "他缓缓推开了那扇沉重的木门。"
 SENT_B = "她把那封信折好放进了口袋。"
+
+# 单章即可触发 emotion_mode_drift 的正文（3 处直陈式情绪词，见 check_style_consistency）
+DIRECT_EMOTION_TEXT = "她很愤怒。他很生气。她感到难过。"
+
+# 声线卡：提供非空 emotion_handling.mode（非「直陈式」）
+VOICE_CARD_WITH_MODE = {
+    "emotion_handling": {"mode": "间接式"},
+    "dialogue": {"character_voices": []},
+}
+
+# 声线卡存在但没有 mode（不得据此认为风格一致性可评估）
+VOICE_CARD_WITHOUT_MODE = {
+    "emotion_handling": {},
+    "dialogue": {"character_voices": []},
+}
 
 
 def _write_chapters(root: Path, mapping: dict):
@@ -74,6 +112,13 @@ def _write_entities(root: Path, entities: dict):
     settings.mkdir(parents=True, exist_ok=True)
     (settings / "entities.json").write_text(
         json.dumps(entities, ensure_ascii=False), encoding="utf-8")
+
+
+def _write_voice_card(root: Path, voice_card: dict) -> str:
+    """把声线卡写到临时目录，返回其路径（不触碰真实 assets/）。"""
+    path = root / "voice-card.json"
+    path.write_text(json.dumps(voice_card, ensure_ascii=False), encoding="utf-8")
+    return str(path)
 
 
 def _run_cli(script: str, args: list) -> subprocess.CompletedProcess:
@@ -122,6 +167,11 @@ class TestLogicCoverageNoEntities(unittest.TestCase):
     def test_empty_characters_list_is_not_loaded(self):
         cov = logic_check.logic_coverage(TEXTS_2, {"characters": []})
         self.assertFalse(cov["entities_loaded"])
+
+    def test_coverage_key_set_exact(self):
+        """结构固定为 6 键（防意外新增键/调试键泄漏）。"""
+        self.assertEqual(set(self.cov.keys()), LOGIC_COVERAGE_KEYS,
+                         f"实得: {sorted(self.cov.keys())}")
 
 
 class TestLogicCoverageFullEntities(unittest.TestCase):
@@ -211,6 +261,12 @@ class TestSettingCoverage(unittest.TestCase):
         self.assertEqual(cov["skipped"], ["world_rules", "attributes", "alias"])
         self.assertEqual(cov["skipped_reason"], "无章节文本")
 
+    def test_coverage_key_set_exact(self):
+        """结构固定为 6 键（防意外新增键/调试键泄漏）。"""
+        cov = setting_check.setting_coverage(TEXTS_2, FULL_ENTITIES)
+        self.assertEqual(set(cov.keys()), SETTING_COVERAGE_KEYS,
+                         f"实得: {sorted(cov.keys())}")
+
 
 # ---------------------------------------------------------------------------
 # 3. book_quality_check 的 coverage 键
@@ -227,8 +283,10 @@ class TestBookQualityCoverage(unittest.TestCase):
 
             self.assertNotIn("error", result)
             self.assertIn("coverage", result, "必须追加 coverage 键")
-            self.assertTrue(BQ_RESULT_KEYS <= set(result.keys()),
-                            f"既有键不得缺失，实得: {sorted(result.keys())}")
+            # fix round 1 / I2：精确集合断言（防意外新增键/调试键泄漏），
+            # 不再用「子集」——子集断言漏掉任何多余键。
+            self.assertEqual(set(result.keys()), BQ_RESULT_KEYS_WITH_COVERAGE,
+                             f"返回键必须精确为既有 6 键 + coverage，实得: {sorted(result.keys())}")
 
             cov = result["coverage"]
             self.assertFalse(cov["entities_loaded"])
@@ -289,11 +347,105 @@ class TestBookQualityCoverage(unittest.TestCase):
             self.assertEqual(cov["skipped"],
                              [k for k, v in cov["checks"].items() if not v])
 
+    def test_coverage_dict_key_set_exact(self):
+        """coverage 自身结构固定为 6 键（fix round 1 / I1 新增 voice_card_loaded）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: SENT_A})
+            cov = book_quality.book_quality_check(str(root))["coverage"]
+            self.assertEqual(set(cov.keys()), BQ_COVERAGE_KEYS,
+                             f"coverage 结构必须精确，实得: {sorted(cov.keys())}")
+
     def test_error_dict_unchanged(self):
         """未找到章节时仍返回既有 error dict，不附加 coverage（既有契约不变）。"""
         with tempfile.TemporaryDirectory() as tmp:
             result = book_quality.book_quality_check(str(Path(tmp)))
             self.assertEqual(result, {"error": "未找到章节文件"})
+
+
+# ---------------------------------------------------------------------------
+# 3b. style_consistency 的 voice_card 门控（fix round 1 / I1）
+# ---------------------------------------------------------------------------
+
+class TestStyleConsistencyVoiceCardGating(unittest.TestCase):
+    """``style_consistency`` 可评估 ⇔ ``len(texts) >= 2`` 或 voice_card 提供非空
+    ``emotion_handling.mode``（``check_style_consistency`` 的情绪分支单章即可产出问题）。"""
+
+    def test_single_chapter_with_voice_card_mode_is_evaluable(self):
+        """① 单章 + voice_card.mode：检测真的执行了，coverage 必须说 True。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+            voice = _write_voice_card(root, VOICE_CARD_WITH_MODE)
+            result = book_quality.book_quality_check(str(root), voice)
+
+            # 先证明检测确实执行（否则 coverage 的 True 毫无意义）
+            self.assertIn("emotion_mode_drift", result["types"],
+                          f"情绪分支应在单章执行，实得: {result['types']}")
+
+            cov = result["coverage"]
+            self.assertTrue(cov["voice_card_loaded"])
+            self.assertTrue(cov["checks"]["style_consistency"],
+                            "有 voice_card.mode 时单章也必须标记为可评估")
+            self.assertNotIn("style_consistency", cov["skipped"])
+
+    def test_single_chapter_without_voice_card_skips_style_consistency(self):
+        """② 单章 + 无 voice_card：False、进 skipped、原因非空。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+            result = book_quality.book_quality_check(str(root))
+
+            self.assertNotIn("emotion_mode_drift", result["types"])
+            cov = result["coverage"]
+            self.assertFalse(cov["voice_card_loaded"])
+            self.assertFalse(cov["checks"]["style_consistency"])
+            self.assertIn("style_consistency", cov["skipped"])
+            self.assertNotEqual(cov["skipped_reason"], "")
+            self.assertIn("voice_card", cov["skipped_reason"])
+
+    def test_two_chapters_without_voice_card_is_evaluable(self):
+        """③ 多章：无需 voice_card 也可评估（比喻密度分支跨章执行）。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: SENT_A, 2: SENT_B})
+            cov = book_quality.book_quality_check(str(root))["coverage"]
+            self.assertTrue(cov["checks"]["style_consistency"])
+            self.assertNotIn("style_consistency", cov["skipped"])
+            self.assertFalse(cov["voice_card_loaded"])
+
+    def test_voice_card_without_mode_is_not_loaded(self):
+        """声线卡存在但无 emotion_handling.mode：不得据此认为可评估。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+            voice = _write_voice_card(root, VOICE_CARD_WITHOUT_MODE)
+            result = book_quality.book_quality_check(str(root), voice)
+
+            self.assertNotIn("emotion_mode_drift", result["types"])
+            cov = result["coverage"]
+            self.assertFalse(cov["voice_card_loaded"])
+            self.assertFalse(cov["checks"]["style_consistency"])
+            self.assertIn("style_consistency", cov["skipped"])
+
+    def test_two_chapters_with_voice_card_without_mode_still_evaluable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: SENT_A, 2: SENT_B})
+            voice = _write_voice_card(root, VOICE_CARD_WITHOUT_MODE)
+            cov = book_quality.book_quality_check(str(root), voice)["coverage"]
+            self.assertTrue(cov["checks"]["style_consistency"])
+            self.assertFalse(cov["voice_card_loaded"])
+
+    def test_no_contradiction_between_issues_and_skipped(self):
+        """回归护栏：报告了 emotion_mode_drift 就不得同时说 style_consistency 未检测。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+            voice = _write_voice_card(root, VOICE_CARD_WITH_MODE)
+            result = book_quality.book_quality_check(str(root), voice)
+            if "emotion_mode_drift" in result["types"]:
+                self.assertNotIn("style_consistency", result["coverage"]["skipped"])
 
 
 # ---------------------------------------------------------------------------
