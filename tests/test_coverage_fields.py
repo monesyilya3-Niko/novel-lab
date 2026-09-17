@@ -23,6 +23,8 @@ fix round 1（审查裁决）：
     ``emotion_handling.mode``；并新增 ``voice_card_loaded`` 字段。
   - **I2**：键集合断言由「子集」收紧为**精确集合**
     ``set(result.keys()) == BQ_RESULT_KEYS | {"coverage"}``（防意外新增键/调试键泄漏）。
+    2026-09-17 终审 M-5 追加 ``issues_truncated`` / ``issues_limit`` 后，该精确集合
+    同步扩为 9 键（加性契约仍受精确断言保护）。
 
 终审修复波（2026-09-17）：
   - **M-1**：``check_style_consistency`` 原按真值直取 ``emotion_handling.mode``，而
@@ -77,7 +79,10 @@ PARTIAL_ENTITIES = {"characters": [{"name": "唐雨", "aliases": ["小雨"]}]}
 BQ_RESULT_KEYS = {"total_chapters", "total_issues", "severity", "types", "verdict", "issues"}
 
 # Task B 追加键后的**精确**返回键集合（fix round 1 / I2：收紧自「子集」断言）
-BQ_RESULT_KEYS_WITH_COVERAGE = BQ_RESULT_KEYS | {"coverage"}
+# 2026-09-17 终审 M-5：再追加 issues_truncated / issues_limit（截断上报），
+# 精确集合断言同步纳入——精确断言的本意是防「意外」新增键，非拒绝加性契约。
+BQ_RESULT_KEYS_WITH_COVERAGE = BQ_RESULT_KEYS | {"coverage",
+                                                 "issues_truncated", "issues_limit"}
 
 # coverage dict 的固定结构（fix round 1 / I1 新增 voice_card_loaded）
 BQ_COVERAGE_KEYS = {"entities_loaded", "chapters", "checks", "skipped",
@@ -313,7 +318,7 @@ class TestBookQualityCoverage(unittest.TestCase):
             # fix round 1 / I2：精确集合断言（防意外新增键/调试键泄漏），
             # 不再用「子集」——子集断言漏掉任何多余键。
             self.assertEqual(set(result.keys()), BQ_RESULT_KEYS_WITH_COVERAGE,
-                             f"返回键必须精确为既有 6 键 + coverage，实得: {sorted(result.keys())}")
+                             f"返回键必须精确为既有 6 键 + coverage + 截断上报 2 键，实得: {sorted(result.keys())}")
 
             cov = result["coverage"]
             self.assertFalse(cov["entities_loaded"])

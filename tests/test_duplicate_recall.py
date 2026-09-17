@@ -335,7 +335,9 @@ class TestBookQualityIntegration(unittest.TestCase):
                 f"既有键不得缺失，实得: {sorted(result.keys())}",
             )
             self.assertEqual(result["total_chapters"], 2)
-            self.assertEqual(result["total_issues"], len(result["issues"]))
+            # 终审 M-5：>50 时 issues 被截断，精确相等只在 ≤50 时成立，故用 >=
+            # （本用例仅 2 章，实际仍相等；截断契约由 tests/test_issue_truncation.py 锁定）。
+            self.assertGreaterEqual(result["total_issues"], len(result["issues"]))
             self.assertEqual(
                 sum(result["severity"].values()),
                 result["total_issues"],

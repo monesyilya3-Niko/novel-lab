@@ -34,6 +34,11 @@ import chapter_loader
 # 一律按 low 报告并置 low_sample=True（见 check_intra_chapter_repeats）。
 MIN_SAMPLE_SENTS_FOR_RATIO = 8
 
+# 报告输出的问题条数上限（2026-09-17 终审 M-5）：超过时 `issues` 只给前
+# MAX_REPORTED_ISSUES 条，返回值同时给出 `total_issues`（真实总数）、
+# `issues_truncated`（是否被截断）与 `issues_limit`（本上限），消费方据此提示读者。
+MAX_REPORTED_ISSUES = 50
+
 
 def check_duplicate_chapters(texts: dict) -> list:
     """检测整章内容重复（相似度 > 0.7）"""
@@ -588,7 +593,12 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
         "severity": dict(severity_count),
         "types": dict(type_count),
         "verdict": verdict,
-        "issues": all_issues[:50],  # 最多输出 50 条
+        "issues": all_issues[:MAX_REPORTED_ISSUES],  # 最多输出 MAX_REPORTED_ISSUES 条
+        # 2026-09-17（终审 M-5）：问题数超过上限时 `issues` 被截断，但 `total_issues`
+        # 是真实总数——只给总数不给标记会让读者以为列表就是全部。纯新增键，
+        # 既有键与判定规则不变。
+        "issues_truncated": len(all_issues) > MAX_REPORTED_ISSUES,
+        "issues_limit": MAX_REPORTED_ISSUES,
         # 2026-09-17（第二轮 Task B / 报告 P2-1）：追加覆盖率，区分「0 问题」与
         # 「没检查」。纯新增键，既有键与判定规则不变。
         # fix round 1（审查 I1）：需传入 voice_card——style_consistency 的情绪分支
@@ -629,6 +639,11 @@ def main():
         for issue in result['issues'][:15]:
             sev_icon = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '⚪'}.get(issue['severity'], '⚪')
             print(f"  {sev_icon} {issue['detail']}")
+        # 2026-09-17（终审 M-5）：本命令只列 15 条，JSON 里也最多 issues_limit 条，
+        # 必须显式告知读者「上面不是全部」，否则「61 个问题只列 15 条」会被误读。
+        if result.get("issues_truncated"):
+            print(f"  ⚠ 共 {result['total_issues']} 条，仅显示前 15 条"
+                  f"（--json 输出最多 {result['issues_limit']} 条）")
     
     sys.exit(0 if result['verdict'] == "PASS" else 1)
 

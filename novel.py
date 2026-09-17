@@ -363,6 +363,11 @@ def main():
             for issue in result['issues'][:20]:
                 sev_icon = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '⚪'}.get(issue['severity'], '⚪')
                 print(f"  {sev_icon} {issue['detail']}")
+            # 2026-09-17（终审 M-5）：本命令只列 20 条，JSON 里也最多 issues_limit 条，
+            # 必须显式告知读者「上面不是全部」，否则「61 个问题只列 20 条」会被误读。
+            if result.get("issues_truncated"):
+                print(f"  ⚠ 共 {result['total_issues']} 条，仅显示前 20 条"
+                      f"（--json 输出最多 {result['issues_limit']} 条）")
         return 0
 
     if args.cmd == "聚合":
