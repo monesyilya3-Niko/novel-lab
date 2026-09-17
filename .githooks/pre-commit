@@ -3,6 +3,8 @@
 # ---------------------------------------------------------------------------
 # 作用：提交前运行全量回归测试（python run_tests.py）。红测试一律阻止提交，
 #       避免把失败状态固化进版本库。
+#       测试通过后，再对本次**暂存**的 assets/*.json 逐个跑 schema 校验
+#       （python scripts/validate.py）。REJECT（返回码 1）阻止提交，WARN（2）仅提示。
 #
 # 启用（新克隆的人只需执行一次）：
 #   git config core.hooksPath .githooks
@@ -78,6 +80,71 @@ echo "[pre-commit] ------------------------------------------------------------"
 STATUS=$?
 
 if [ "$STATUS" -eq 0 ]; then
+    echo "[pre-commit] ------------------------------------------------------------"
+    echo "[pre-commit] 测试通过，进入资产 schema 校验（仅暂存的 assets/*.json）。"
+
+    # --- 资产 schema 校验：只查本次暂存的资产，无暂存资产则跳过 -----------------
+    # 返回码约定（scripts/validate.py）：0=PASS，1=REJECT（阻止提交），2=WARN（仅提示）。
+    STAGED_ASSETS=$(git diff --cached --name-only --diff-filter=ACM -- 'assets/*.json' 2>/dev/null || true)
+
+    if [ -z "$STAGED_ASSETS" ]; then
+        echo "[pre-commit] 无变更资产，跳过 schema 校验。"
+    else
+        ASSET_TOTAL=0
+        ASSET_FAILED=""
+        ASSET_FAIL_COUNT=0
+
+        OLD_IFS=$IFS
+        IFS='
+'
+        for asset in $STAGED_ASSETS; do
+            [ -n "$asset" ] || continue
+            if [ ! -f "$asset" ]; then
+                echo "[pre-commit] 跳过（工作区不存在）：$asset"
+                continue
+            fi
+
+            ASSET_TOTAL=$((ASSET_TOTAL + 1))
+            echo "[pre-commit] --- 校验 $asset"
+            "$PYTHON" scripts/validate.py "$asset"
+            ASSET_STATUS=$?
+
+            case "$ASSET_STATUS" in
+                0)
+                    ;;
+                2)
+                    echo "[pre-commit] 警告：$asset 校验为 WARN（不阻止提交），建议人工复核。" >&2
+                    ;;
+                1)
+                    echo "[pre-commit] 拒绝：$asset 不符合 schema。" >&2
+                    ASSET_FAILED="$ASSET_FAILED
+  - $asset"
+                    ASSET_FAIL_COUNT=$((ASSET_FAIL_COUNT + 1))
+                    ;;
+                *)
+                    echo "[pre-commit] 异常：$asset 校验脚本返回码 $ASSET_STATUS（视为失败）。" >&2
+                    ASSET_FAILED="$ASSET_FAILED
+  - $asset（校验脚本异常，返回码 $ASSET_STATUS）"
+                    ASSET_FAIL_COUNT=$((ASSET_FAIL_COUNT + 1))
+                    ;;
+            esac
+        done
+        IFS=$OLD_IFS
+
+        if [ "$ASSET_FAIL_COUNT" -gt 0 ]; then
+            echo "" >&2
+            echo "============================================================" >&2
+            echo "  [pre-commit] 资产 schema 校验未通过，提交已阻止。" >&2
+            echo "  不合规资产（$ASSET_FAIL_COUNT 个）：$ASSET_FAILED" >&2
+            echo "  查看详情：python scripts/validate.py <资产路径>" >&2
+            echo "  确需临时绕过：git commit --no-verify" >&2
+            echo "============================================================" >&2
+            exit 1
+        fi
+
+        echo "[pre-commit] 资产 schema 校验通过（$ASSET_TOTAL 个）。"
+    fi
+
     echo "[pre-commit] ------------------------------------------------------------"
     echo "[pre-commit] 测试通过，允许提交。"
     exit 0
