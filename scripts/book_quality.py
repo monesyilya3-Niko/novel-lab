@@ -30,6 +30,11 @@ import chapter_loader
 # 1. 跨章重复检测
 # --------------------------------------------------------------------------
 
+# 章内重复句占比判定的最小样本量：句子总数低于此值时小分母比例不可靠，
+# 一律按 low 报告并置 low_sample=True（见 check_intra_chapter_repeats）。
+MIN_SAMPLE_SENTS_FOR_RATIO = 8
+
+
 def check_duplicate_chapters(texts: dict) -> list:
     """检测整章内容重复（相似度 > 0.7）"""
     from difflib import SequenceMatcher
@@ -121,6 +126,12 @@ def check_intra_chapter_repeats(texts: dict) -> list:
       - `ratio >= 0.25`          → `high`
       - `0.10 <= ratio < 0.25`   → `medium`
       - `ratio < 0.10`           → `low`
+
+    **最小样本保护**：句子总数 < `MIN_SAMPLE_SENTS_FOR_RATIO` 时小分母占比不可靠
+    （如「2 句里重复 1 句」= 50% 会被判 `high`，进而因 `high > 0` 使 `novel 质检`
+    由 PASS 变 WARN，属新引入的误报），此时一律报 `low`，并在 issue 中以
+    `low_sample=True` 标记；样本充足时为 `False`（该字段**始终给出**，便于消费方判断）。
+
     每章最多报 1 条（聚合）；无重复句或句子总数为 0 时跳过该章。
     """
     issues = []
@@ -134,7 +145,11 @@ def check_intra_chapter_repeats(texts: dict) -> list:
         if dups == 0:
             continue
         ratio = dups / len(sents)
-        if ratio >= 0.25:
+        low_sample = len(sents) < MIN_SAMPLE_SENTS_FOR_RATIO
+        if low_sample:
+            # 小分母下比例不可靠，不按比例升级（避免新误报）
+            severity = "low"
+        elif ratio >= 0.25:
             severity = "high"
         elif ratio >= 0.10:
             severity = "medium"
@@ -145,6 +160,7 @@ def check_intra_chapter_repeats(texts: dict) -> list:
             "type": "intra_chapter_repeat",
             "severity": severity,
             "chapter": ch,
+            "low_sample": low_sample,
             "detail": (f"Ch{ch} 章内重复句 {dups}/{len(sents)}（占比 {ratio:.0%}），"
                        f"最长重复句「{longest[:30]}…」"),
         })

@@ -11,7 +11,9 @@
   1. 跨章句子重复门槛 ≥3 章 → **≥2 章**；2 章 → ``severity=low`` + ``adjacent`` 标记；
      ≥3 章 → ``severity=medium``（与调整前一致，不回退）。
   2. 新增 ``check_intra_chapter_repeats``：按**章内重复句占比**定严重度
-     （``>=0.25`` high / ``0.10~0.25`` medium / ``<0.10`` low），每章最多 1 条。
+     （``>=0.25`` high / ``0.10~0.25`` medium / ``<0.10`` low），每章最多 1 条；
+     句子总数 < 8 时小分母占比不可靠（2 句重复 1 句 = 50%），一律降为 ``low``
+     并以 ``low_sample=True`` 标记（样本充足时该字段为 ``False``）。
   3. ``check_duplicate_paragraphs`` 口径不变（仍为「>30 字整段」），避免召回口径漂移。
   4. ``book_quality_check`` 在逐章循环内接入章内重复检测，且返回 dict 既有键不变。
 
@@ -167,10 +169,55 @@ class TestIntraChapterRepeats(unittest.TestCase):
         self.assertEqual(issue["type"], "intra_chapter_repeat")
         self.assertEqual(issue["severity"], "high")
         self.assertEqual(issue["chapter"], 1)
+        self.assertFalse(issue["low_sample"], "13 句样本充足，不得标记 low_sample")
         # detail 含重复句数 / 总句数 / 占比 / 最长重复句前 30 字
         self.assertIn("6/13", issue["detail"])
         self.assertIn("46%", issue["detail"])
         self.assertIn(SENT_A[:30], issue["detail"])
+
+    def test_small_sample_repeat_downgraded_to_low(self):
+        """最小样本保护：2 句里重复 1 句（ratio 50%）→ 仍报但降为 low + low_sample=True。
+
+        小分母下占比不可靠——50% 若按比例判为 high，会使 `novel 质检` 因 `high > 0`
+        从 PASS 变 WARN，属新引入的误报。
+        """
+        issues = book_quality.check_intra_chapter_repeats({1: "".join([SENT_A, SENT_A])})
+        self.assertEqual(len(issues), 1, f"实得: {issues}")
+        issue = issues[0]
+        self.assertEqual(issue["severity"], "low", "小样本不得升级为 high/medium")
+        self.assertTrue(issue["low_sample"])
+        self.assertIn("1/2", issue["detail"])
+        self.assertIn("50%", issue["detail"])
+
+    def test_boundary_sample_size_8_is_sufficient(self):
+        """边界：恰好 8 句（样本充足下限）→ 按比例判 high，low_sample=False。"""
+        repeats = _unique_sentences("重复句", 2)
+        text = "".join(repeats * 2 + _unique_sentences("独有句", 4))
+        issues = book_quality.check_intra_chapter_repeats({1: text})
+        self.assertEqual(len(issues), 1, f"实得: {issues}")
+        self.assertIn("2/8", issues[0]["detail"])
+        self.assertEqual(issues[0]["severity"], "high")
+        self.assertFalse(issues[0]["low_sample"])
+
+    def test_boundary_sample_size_7_is_low_sample(self):
+        """边界：7 句（低于下限）即便占比 57% 也降为 low + low_sample=True。"""
+        repeats = _unique_sentences("重复句", 2)
+        text = "".join(repeats * 3 + _unique_sentences("独有句", 1))
+        issues = book_quality.check_intra_chapter_repeats({1: text})
+        self.assertEqual(len(issues), 1, f"实得: {issues}")
+        self.assertIn("4/7", issues[0]["detail"])
+        self.assertEqual(issues[0]["severity"], "low")
+        self.assertTrue(issues[0]["low_sample"])
+
+    def test_sufficient_sample_20_percent_is_medium(self):
+        """样本充足（20 句）时 20% → medium，且 low_sample=False。"""
+        repeats = _unique_sentences("重复句", 4)
+        text = "".join(repeats * 2 + _unique_sentences("独有句", 12))
+        issues = book_quality.check_intra_chapter_repeats({1: text})
+        self.assertEqual(len(issues), 1, f"实得: {issues}")
+        self.assertIn("4/20", issues[0]["detail"])
+        self.assertEqual(issues[0]["severity"], "medium")
+        self.assertFalse(issues[0]["low_sample"])
 
     def test_low_ratio_5_percent(self):
         """章内 5% 句子重复 → severity=low。"""
@@ -178,6 +225,7 @@ class TestIntraChapterRepeats(unittest.TestCase):
         issues = book_quality.check_intra_chapter_repeats({1: text})
         self.assertEqual(len(issues), 1, f"实得: {issues}")
         self.assertEqual(issues[0]["severity"], "low")
+        self.assertFalse(issues[0]["low_sample"])
         self.assertIn("1/20", issues[0]["detail"])
         self.assertIn("5%", issues[0]["detail"])
 
