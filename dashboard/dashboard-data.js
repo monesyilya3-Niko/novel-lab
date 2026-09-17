@@ -18,7 +18,7 @@ window.__NOVEL_LAB__ = {
         "tense": "贴身跟随主角，几乎无叙述者介入",
         "rhythm": "{\"avg_length\": 0, \"short_ratio\": 0, \"long_ratio\": 0, \"burst_pattern\": \"主要用于人物对话中的情绪强调和互动反应，如边炀的命令语气（‘把脑袋给我露出来！’）、唐雨的结结巴巴回应。\"}",
         "pov_switch": "",
-        "dialogue_ratio": 0.2978,
+        "dialogue_ratio": 0.2562,
         "tag_style": "",
         "subtext_level": "直白",
         "characters": [
@@ -454,7 +454,7 @@ window.__NOVEL_LAB__ = {
         "tense": "贴身跟随主角感官，叙述者几乎不介入",
         "rhythm": "{\"avg_length\": 0, \"short_ratio\": 0, \"long_ratio\": 0, \"burst_pattern\": \"叙述性段落句长稳定（平均29字），用于背景与内心铺陈。情绪或动作爆发点依赖【短句/单句成段】（如“她的心猛地一跳”、“是的，她怀孕了”），形成节奏顿挫。\"}",
         "pov_switch": "",
-        "dialogue_ratio": 0.1077,
+        "dialogue_ratio": 0.0737,
         "tag_style": "",
         "subtext_level": "直白",
         "characters": [
@@ -838,7 +838,7 @@ window.__NOVEL_LAB__ = {
         "tense": "贴身跟随主角感官，叙述者几乎不介入",
         "rhythm": "{\"avg_length\": 0, \"short_ratio\": 0, \"long_ratio\": 0, \"burst_pattern\": \"叙述段落中句长波动较大，平均句长18.91字。对话和内心活动多用短句（如“走！”、“总分”），用于制造节奏的突然变化和口语感。\"}",
         "pov_switch": "",
-        "dialogue_ratio": 0.1947,
+        "dialogue_ratio": 0.1469,
         "tag_style": "",
         "subtext_level": "直白",
         "characters": [
@@ -1235,7 +1235,7 @@ window.__NOVEL_LAB__ = {
         "tense": "近距离、慢镜头式的凝视感，叙述贴着主角的感官走，像一部长镜头",
         "rhythm": "{\"avg_length\": 0, \"short_ratio\": 0, \"long_ratio\": 0, \"burst_pattern\": \"情绪爆发（崩溃、对峙、心动）时连续使用3-5个极短句或单句成段，制造停顿与冲击；日常铺陈时句子稍长且平稳\"}",
         "pov_switch": "",
-        "dialogue_ratio": 0.6903,
+        "dialogue_ratio": 0.3016,
         "tag_style": "",
         "subtext_level": "直白",
         "characters": [

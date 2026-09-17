@@ -484,7 +484,7 @@
       "field": "dialogue.dialogue_ratio",
       "kind": "hard",
       "books_count": 4,
-      "value": 0.24625000000000002,
+      "value": 0.20155,
       "sources": [
         {
           "book": "chireng_chosen",
