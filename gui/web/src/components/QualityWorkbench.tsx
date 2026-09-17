@@ -25,8 +25,9 @@ const VERDICT_LABELS: Record<string, string> = {
 const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
 
 // 全书质检面板最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是同一个
-// 数：截断提示必须同时说清「屏幕可见条数」与「响应上限」，否则会出现
-// 「共 61 条，仅显示前 50 条」却只有 20 行明细的错误指引。
+// 数：响应体可能在 50 条处截断，而面板只渲染 20 行。只要「屏幕条数 < 声称的总数」就必须
+// 说明，且文案里的条数要按实际渲染条数给出，否则会出现「共 61 条，仅显示前 50 条」
+// 却只有 20 行明细的错误指引。
 const ISSUE_ROWS = 20
 
 export default function QualityWorkbench() {
@@ -163,9 +164,19 @@ function BookQualityPanel() {
   const verdict = result?.verdict as string | undefined
   // 2026-09-17（终审 M-5）：book_quality_check 的 issues 最多 issues_limit 条，而
   // total_issues 是真实总数。截断时若不说明，界面会像「共 61 个问题」却只列出 50 条。
+  // fix round 2：面板自己还有 ISSUE_ROWS 行上限，「响应未截断但超过行上限」同样要说明。
   const issuesTruncated = result?.issues_truncated === true
-  const totalIssues = result?.total_issues as number | undefined
+  // total_issues 缺失时（旧后端）退回响应实收条数，避免渲染出「共 undefined 条」。
+  const totalIssues = (result?.total_issues as number | undefined) ?? issues.length
   const issuesLimit = result?.issues_limit as number | undefined
+  // 屏幕实际渲染条数：面板上限与响应实收条数的较小者。
+  const visibleIssues = Math.min(ISSUE_ROWS, issues.length)
+  // 两种「列表被砍短」都要说明：响应体被截断（issues_truncated），或仅前端渲染受限
+  // （未截断但 issues.length 超过面板行数）。未超行数且未截断时保持静默。
+  const issuesCutShort = issuesTruncated || issues.length > ISSUE_ROWS
+  const cutShortHint = issuesTruncated
+    ? `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条（响应上限 ${issuesLimit} 条）`
+    : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条`
 
   return (
     <Box>
@@ -183,9 +194,9 @@ function BookQualityPanel() {
             判定：<Chip label={verdictLabel(verdict)} size="small" color={verdict === 'PASS' ? 'success' : verdict === 'WARN' ? 'warning' : 'error'} />
           </Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>共 {issues.length} 个问题</Typography>
-          {issuesTruncated && (
+          {issuesCutShort && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              共 {totalIssues} 条，仅显示前 {ISSUE_ROWS} 条（响应上限 {issuesLimit} 条）
+              {cutShortHint}
             </Typography>
           )}
           {issues.slice(0, ISSUE_ROWS).map((iss, i) => (
