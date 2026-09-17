@@ -24,10 +24,12 @@ const VERDICT_LABELS: Record<string, string> = {
 }
 const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
 
-// 全书质检面板最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是同一个
-// 数：响应体可能在 50 条处截断，而面板只渲染 20 行。只要「屏幕条数 < 声称的总数」就必须
-// 说明，且文案里的条数要按实际渲染条数给出，否则会出现「共 61 条，仅显示前 50 条」
-// 却只有 20 行明细的错误指引。
+// 全书质检面板「收起」时最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是
+// 同一个数：响应体可能在 50 条处截断，而面板收起时只渲染 20 行。只要「屏幕条数 < 声称的
+// 总数」就必须说明，且文案里的条数要按实际渲染条数给出，否则会出现「共 61 条，仅显示前
+// 50 条」却只有 20 行明细的错误指引。
+// 展开入口（2026-09-17）：issues.length 超过本行数时，面板提供「展开全部 / 收起」按钮，
+// 展开后渲染响应体内的全部条目（最多 issues_limit 条），提示行同步改写，不再谎报「仅显示前」。
 const ISSUE_ROWS = 20
 
 export default function QualityWorkbench() {
@@ -146,10 +148,14 @@ function BookQualityPanel() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // 展开态是纯本地 UI 状态：切换只改渲染条数，不重新请求后端。
+  const [expanded, setExpanded] = useState(false)
 
   const doBook = async () => {
     setLoading(true)
     setError('')
+    // 新结果回到收起态，避免沿用上一份结果的展开态。
+    setExpanded(false)
     try {
       const r = await qualityApi.book({ target })
       setResult(r)
@@ -173,14 +179,23 @@ function BookQualityPanel() {
   // fix round 3（M-5）：截断为真但 issues_limit 缺失时，用响应实收条数兜底——截断响应里
   // issues.length 恰好等于上限，不会渲染出「响应上限 undefined 条」。
   const issuesLimit = (result?.issues_limit as number | undefined) ?? issues.length
-  // 屏幕实际渲染条数：面板上限与响应实收条数的较小者。
-  const visibleIssues = Math.min(ISSUE_ROWS, issues.length)
+  // 屏幕实际渲染条数：收起时取面板上限与响应实收条数的较小者，展开时取响应实收条数。
+  const canExpand = issues.length > ISSUE_ROWS
+  const isExpanded = canExpand && expanded
+  const renderedIssues = isExpanded ? issues : issues.slice(0, ISSUE_ROWS)
+  const visibleIssues = renderedIssues.length
   // 两种「列表被砍短」都要说明：响应体被截断（issues_truncated），或仅前端渲染受限
   // （未截断但 issues.length 超过面板行数）。未超行数且未截断时保持静默。
-  const issuesCutShort = issuesTruncated || issues.length > ISSUE_ROWS
+  const issuesCutShort = issuesTruncated || canExpand
+  // 提示行必须与屏幕一致：展开且未截断时说明「已显示全部」，不得再说「仅显示前」；
+  // 响应体被截断时，即使展开也要保留「响应上限 M 条」并指出去处。
   const cutShortHint = issuesTruncated
-    ? `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条（响应上限 ${issuesLimit} 条）`
-    : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条`
+    ? isExpanded
+      ? `共 ${totalIssues} 条，已显示响应内全部 ${visibleIssues} 条（响应上限 ${issuesLimit} 条），超出部分请用 CLI 或 JSON 输出查看`
+      : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条（响应上限 ${issuesLimit} 条）`
+    : isExpanded
+      ? `共 ${totalIssues} 条，已显示全部 ${visibleIssues} 条`
+      : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条`
 
   return (
     <Box>
@@ -203,11 +218,16 @@ function BookQualityPanel() {
               {cutShortHint}
             </Typography>
           )}
-          {issues.slice(0, ISSUE_ROWS).map((iss, i) => (
+          {renderedIssues.map((iss, i) => (
             <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>
               [{iss.severity}] {iss.type} {iss.chapter ? `Ch${iss.chapter}` : ''} — {iss.detail}
             </Typography>
           ))}
+          {canExpand && (
+            <Button size="small" variant="text" onClick={() => setExpanded((v) => !v)} sx={{ mt: 0.5 }}>
+              {isExpanded ? '收起' : `展开全部（共 ${issues.length} 条）`}
+            </Button>
+          )}
         </Paper>
       )}
     </Box>

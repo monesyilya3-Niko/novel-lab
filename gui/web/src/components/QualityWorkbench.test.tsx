@@ -6,6 +6,9 @@
 // 未超行数且未截断时必须保持静默；不得出现「仅显示前 20 条」而屏幕不足 20 行。
 // fix round 3：表头「共 N 个问题」与提示行「共 N 条」必须是同一个 N（真实总数），
 // 且缺 issues_limit 时不得渲染「响应上限 undefined 条」。
+// 展开入口：issues.length > 20 时列表下方出现「展开全部 / 收起」，切换为纯本地 UI 状态
+// （不重新请求后端）。展开后必须渲染响应体内的全部条目，且提示行不得再说「仅显示前」；
+// 响应体本身被截断时，展开后仍要保留「响应上限 M 条」的指引。
 import { render, screen, fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QualityWorkbench from './QualityWorkbench'
@@ -121,6 +124,66 @@ describe('BookQualityPanel 截断提示', () => {
     expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
   })
 
+  it('30 条时提供「展开全部」入口，展开后渲染全部 30 行且提示不再说「仅显示前」', async () => {
+    bookMock.mockResolvedValue({
+      total_chapters: 30,
+      total_issues: 30,
+      severity: { critical: 0, high: 2, medium: 28 },
+      types: {},
+      verdict: 'WARN',
+      issues: makeIssues(30),
+      issues_truncated: false,
+      issues_limit: 50,
+    })
+    await runBookQuality('共 30 个问题')
+
+    // 收起态：20 行 + 入口按钮 + 「仅显示前 20 条」。
+    expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
+    const expandBtn = screen.getByRole('button', { name: '展开全部（共 30 条）' })
+    expect(expandBtn).toBeInTheDocument()
+    expect(screen.getByText('共 30 条，仅显示前 20 条')).toBeInTheDocument()
+
+    fireEvent.click(expandBtn)
+
+    // 展开态：响应体内的 30 条全部上屏，提示改为「已显示全部」，不得再声称「仅显示前」。
+    expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(30)
+    expect(screen.queryByText(/仅显示前/)).toBeNull()
+    const expandedHint = screen.getByText('共 30 条，已显示全部 30 条')
+    expect(expandedHint).toBeInTheDocument()
+
+    // 展开入口切换为「收起」，点击可回到 20 行（纯本地状态，不重新请求）。
+    const collapseBtn = screen.getByRole('button', { name: '收起' })
+    expect(bookMock).toHaveBeenCalledTimes(1)
+    fireEvent.click(collapseBtn)
+    expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
+    expect(screen.getByText('共 30 条，仅显示前 20 条')).toBeInTheDocument()
+    expect(bookMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('50 条且响应被截断时，展开渲染 50 行，提示仍保留响应上限指引', async () => {
+    bookMock.mockResolvedValue({
+      total_chapters: 60,
+      total_issues: 61,
+      severity: { critical: 0, high: 3, medium: 58 },
+      types: {},
+      verdict: 'WARN',
+      issues: makeIssues(50),
+      issues_truncated: true,
+      issues_limit: 50,
+    })
+    await runBookQuality('共 61 个问题')
+
+    expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
+    fireEvent.click(screen.getByRole('button', { name: '展开全部（共 50 条）' }))
+
+    // 屏幕已列满响应体，但响应体本身只到 50 条 ⇒ 必须继续说明上限与去处。
+    expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(50)
+    expect(screen.queryByText(/仅显示前/)).toBeNull()
+    const hint = screen.getByText(/响应上限 50 条/)
+    expect(hint).toBeInTheDocument()
+    expect(hint).toHaveTextContent('超出部分请用 CLI 或 JSON 输出查看')
+  })
+
   it('未截断且不超过面板行数（12 条）时，不显示任何提示且 12 行全渲染', async () => {
     bookMock.mockResolvedValue({
       total_chapters: 12,
@@ -136,6 +199,8 @@ describe('BookQualityPanel 截断提示', () => {
 
     expect(screen.queryByText(/仅显示前/)).toBeNull()
     expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(12)
+    // 未超行数 ⇒ 不提供展开入口（既有的静默行为不能被新控件破坏）。
+    expect(screen.queryByRole('button', { name: /展开全部|收起/ })).toBeNull()
   })
 
   it('旧后端未返回截断字段且条数未超行数时，同样不显示提示', async () => {
