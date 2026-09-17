@@ -239,7 +239,11 @@ def check_style_consistency(texts: dict, voice_card: dict = None) -> list:
     
     # 检测情绪写法模式漂移（如果提供了 voice-card）
     if voice_card:
-        expected_mode = voice_card.get('emotion_handling', {}).get('mode', '')
+        # 与 coverage 共用同一取值入口：_voice_card_mode 对非 str 的 mode 归一为 ""。
+        # 若此处按真值直取（旧写法 .get('mode', '')），畸形卡片（如 mode=5）会一边被
+        # coverage 判为「未评估」、一边产出 emotion_mode_drift —— 正是 Task B 要消除的
+        # coverage/issue 自相矛盾（终审 M-1）。
+        expected_mode = _voice_card_mode(voice_card)
         if expected_mode:
             direct_emotion = ["很愤怒", "很生气", "感到难过", "非常开心", "很伤心", "感到害怕"]
             for ch in chapters:
@@ -447,6 +451,11 @@ def _book_quality_coverage(texts: dict, entities: dict = None,
     style_consistency」的自相矛盾（与本任务目标方向相反）。修正后：
     ``style_consistency`` 可评估 ⇔ ``len(texts) >= 2`` 或 voice_card 提供了非空
     ``emotion_handling.mode``。
+
+    2026-09-17（终审 M-1）：上面这条门控之所以成立，前提是**消费侧用同一口径取 mode**。
+    ``check_style_consistency`` 已改为调用 ``_voice_card_mode()``，故 ``mode`` 为非 str
+    时两侧一致地判为「无 mode」——不会出现「coverage 判未评估、issues 却产出
+    emotion_mode_drift」的窄化矛盾。
 
     Args:
         texts: {章号:int -> 文本:str}。

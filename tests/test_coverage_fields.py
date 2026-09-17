@@ -24,6 +24,12 @@ fix round 1（审查裁决）：
   - **I2**：键集合断言由「子集」收紧为**精确集合**
     ``set(result.keys()) == BQ_RESULT_KEYS | {"coverage"}``（防意外新增键/调试键泄漏）。
 
+终审修复波（2026-09-17）：
+  - **M-1**：``check_style_consistency`` 原按真值直取 ``emotion_handling.mode``，而
+    coverage 走 ``_voice_card_mode()``（非 str 归一为 ``""``）→ 畸形卡片（如 ``mode=5``）
+    仍产生「coverage 判未评估、issues 却产出 emotion_mode_drift」的窄化矛盾。
+    修复后两侧同口径，见 ``TestVoiceCardModeConsistency``。
+
 测试全部使用内存 dict 或临时目录，不触碰真实 ``assets/``、``gui_state/``。
 
 用法：
@@ -100,6 +106,27 @@ VOICE_CARD_WITHOUT_MODE = {
     "emotion_handling": {},
     "dialogue": {"character_voices": []},
 }
+
+# 畸形声线卡：mode 为**非字符串**（终审 M-1）——两侧口径必须一致地判为「无 mode」
+VOICE_CARD_WITH_MALFORMED_MODE = {
+    "emotion_handling": {"mode": 5},
+    "dialogue": {"character_voices": []},
+}
+
+# mode 的全部取值形态：畸形（非 str）+ 既有合法字符串 + 空/缺失
+MODE_VALUES = [
+    ("int", 5),
+    ("float", 3.14),
+    ("bool_true", True),
+    ("bool_false", False),
+    ("list", []),
+    ("dict", {}),
+    ("null", None),
+    ("empty_str", ""),
+    ("normal_str", "间接式"),
+    ("other_str", "体感"),
+    ("direct_str", "直陈式"),
+]
 
 
 def _write_chapters(root: Path, mapping: dict):
@@ -446,6 +473,106 @@ class TestStyleConsistencyVoiceCardGating(unittest.TestCase):
             result = book_quality.book_quality_check(str(root), voice)
             if "emotion_mode_drift" in result["types"]:
                 self.assertNotIn("style_consistency", result["coverage"]["skipped"])
+
+
+# ---------------------------------------------------------------------------
+# 3c. 畸形 mode 下 coverage 与 issues 的口径一致性（终审 M-1）
+# ---------------------------------------------------------------------------
+
+class TestVoiceCardModeConsistency(unittest.TestCase):
+    """``mode`` 为非字符串时，coverage 与 issues 必须同口径。
+
+    终审 M-1（修复前实证）：``_voice_card_mode()`` 对非 str 的 mode 归一为 ``""``，
+    但 ``check_style_consistency`` 按真值直取 ``.get('mode', '')`` → ``mode=5`` 时
+    一侧判「未评估」（skipped 含 style_consistency），另一侧却产出
+    ``emotion_mode_drift`` —— 正是 Task B 要消除的自相矛盾，被这条窄路径绕过。
+    修复：消费侧改用同一入口 ``_voice_card_mode()``。
+    """
+
+    # 不变式：产出了 drift 问题 ⇒ 必须同时声明该检测「已评估」。
+    # 反向不成立（多章时无 drift 也属已评估），故只断言单向蕴含。
+    def _assert_no_contradiction(self, result, ctx):
+        drift = "emotion_mode_drift" in result["types"]
+        cov = result["coverage"]
+        if drift:
+            self.assertTrue(cov["checks"]["style_consistency"],
+                            f"{ctx}: 产出了 emotion_mode_drift，coverage 却判未评估")
+            self.assertNotIn("style_consistency", cov["skipped"],
+                             f"{ctx}: 产出了 emotion_mode_drift，却仍在 skipped 中")
+
+    def test_malformed_mode_single_chapter_has_no_contradiction(self):
+        """单章 + mode=5：不得再出现「判未评估却产出问题」。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+            voice = _write_voice_card(root, VOICE_CARD_WITH_MALFORMED_MODE)
+            result = book_quality.book_quality_check(str(root), voice)
+
+            self.assertNotIn("emotion_mode_drift", result["types"],
+                             "非 str 的 mode 不得被当作有效期望模式（与 coverage 同口径）")
+            cov = result["coverage"]
+            self.assertFalse(cov["voice_card_loaded"])
+            self.assertFalse(cov["checks"]["style_consistency"])
+            self.assertIn("style_consistency", cov["skipped"])
+            self.assertNotEqual(cov["skipped_reason"], "")
+            self._assert_no_contradiction(result, "单章 + mode=5")
+
+    def test_consistency_invariant_across_all_mode_values(self):
+        """遍历 mode 全部形态：单章下「判未评估」与「产出问题」永不共存。"""
+        for label, mode in MODE_VALUES:
+            for card in ({"emotion_handling": {"mode": mode}}, {}):
+                with self.subTest(mode=label, card=card):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        root = Path(tmp)
+                        _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+                        voice = _write_voice_card(root, card)
+                        result = book_quality.book_quality_check(str(root), voice)
+                        self._assert_no_contradiction(result, f"{label}/{card}")
+
+    def test_helper_and_consumer_agree_on_mode(self):
+        """_voice_card_mode 是唯一口径：消费侧结果必须与它一致。"""
+        for label, mode in MODE_VALUES:
+            with self.subTest(mode=label):
+                card = {"emotion_handling": {"mode": mode}}
+                expected = book_quality._voice_card_mode(card)
+                # 非 str 一律归一为 ""；str 原样返回
+                if isinstance(mode, str):
+                    self.assertEqual(expected, mode)
+                else:
+                    self.assertEqual(expected, "", f"{label} 应归一为空串")
+
+    def test_helper_handles_non_dict_inputs(self):
+        """畸形/空卡片不得让 helper 抛异常。"""
+        for bad in (None, [], [1, 2], "x", 5, {"emotion_handling": None},
+                    {"emotion_handling": []}, {"emotion_handling": {"mode": 5}}):
+            with self.subTest(bad=bad):
+                self.assertEqual(book_quality._voice_card_mode(bad), "")
+
+    def test_existing_string_mode_behavior_unchanged(self):
+        """回归：既有字符串 mode 的行为逐项不变（约束要求）。"""
+        cases = [
+            # (mode, 是否产出 drift, 是否可评估)
+            ("间接式", True, True),
+            ("体感", True, True),
+            ("直陈式", False, True),   # 期望模式即直陈式 → 不算漂移，但仍属已评估
+            ("", False, False),        # 空 mode → 无期望模式 → 未评估
+        ]
+        for mode, drift, evaluable in cases:
+            with self.subTest(mode=mode):
+                with tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    _write_chapters(root, {1: DIRECT_EMOTION_TEXT})
+                    voice = _write_voice_card(root, {"emotion_handling": {"mode": mode}})
+                    result = book_quality.book_quality_check(str(root), voice)
+
+                    self.assertEqual("emotion_mode_drift" in result["types"], drift,
+                                     f"mode={mode!r} 的 drift 判定变了")
+                    cov = result["coverage"]
+                    self.assertEqual(cov["checks"]["style_consistency"], evaluable,
+                                     f"mode={mode!r} 的可评估性变了")
+                    self.assertEqual("style_consistency" in cov["skipped"], not evaluable)
+                    self.assertEqual(cov["voice_card_loaded"], evaluable)
+                    self._assert_no_contradiction(result, f"mode={mode!r}")
 
 
 # ---------------------------------------------------------------------------

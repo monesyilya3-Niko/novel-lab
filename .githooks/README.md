@@ -13,6 +13,16 @@ Git 会把钩子查找路径从默认的 `.git/hooks/` 改为仓库内的 `.gith
 
 > 说明：`core.hooksPath` 属于本地仓库配置，不会被提交，所以需要每人手动启用一次。
 
+**兜底：钩子未生效时**——git 只执行具备可执行位的钩子文件，权限位缺失时会**静默跳过**（不报错、不提示）。
+仓库索引中 `.githooks/pre-commit` 已标记为 `100755`（`git ls-files -s .githooks/pre-commit` 可核对），
+但某些克隆/打包方式（如 zip 解压、跨文件系统复制）会丢失该权限位。此时执行：
+
+```sh
+chmod +x .githooks/pre-commit
+```
+
+> Windows 无需此步（NTFS 上无 POSIX 可执行位，git 不会因此跳过钩子）。
+
 ## 行为
 
 1. 运行 `python run_tests.py`（全量约 3 秒）。
