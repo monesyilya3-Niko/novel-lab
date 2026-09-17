@@ -330,6 +330,7 @@ def main():
     # 2026-09-05 修复（A3 + E4）：全书 QA 移到入库之后执行——此刻新章节已在磁盘，
     # 扫描必然覆盖它；并传入 voice-card 使风格一致性检查真正生效。
     try:
+        import book_quality  # 局部导入：与上方自检块同惯例，scripts 路径在此处才注入
         novel_chapters = Path(args.novel_dir) / "chapters"
         if novel_chapters.exists():
             qa = book_quality.book_quality_check(
@@ -338,14 +339,18 @@ def main():
             n_issues = qa.get("total_issues", 0)
             print(f"  全书 QA: {qa.get('total_chapters', '?')} 章 / {n_issues} 问题 / {verdict}")
             if verdict != "PASS":
+                # 本处实际渲染的问题行数：切片与下方提示共用，避免两处各写一份字面量。
+                qa_issue_rows = 8
                 qa_issues = qa.get("issues", [])
-                for qi in qa_issues[:8]:
+                shown_issues = qa_issues[:qa_issue_rows]
+                for qi in shown_issues:
                     print(f"    ⚠ {qi.get('severity', '?')}: {qi.get('detail', '')[:70]}")
-                # 2026-09-17（fix round 1）：本处只列 8 条（且 book_quality_check 的 issues
-                # 本身还有 issues_limit 上限），少于总数时必须说明，否则读者会以为问题只有
-                # 列出来的这几条。未截断时不新增任何输出。
-                if n_issues > 8:
-                    print(f"    ⚠ 共 {n_issues} 条，仅显示前 8 条")
+                # 2026-09-17（第二轮收口）：只要实际渲染条数少于总数就必须说明（不只是
+                # 超过 8 条时），否则读者会以为问题只有列出来的这几条。提示中的条数取
+                # 实际渲染行数，不写字面量；未砍短时不新增任何输出。
+                hint = book_quality.format_truncation_hint(n_issues, len(shown_issues))
+                if hint:
+                    print(f"    {hint}")
                 print("  （章节已入库；QA 未过，建议人工复核或携上述问题改写本章节）")
     except Exception as e:
         print(f"  [跳过] 全书 QA 异常: {e}")

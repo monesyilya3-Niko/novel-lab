@@ -607,6 +607,19 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
     }
 
 
+def format_truncation_hint(total: int, rendered: int) -> str:
+    """实际渲染条数少于总数时返回一行提示，否则返回空串。
+
+    各处 CLI 渲染的问题行数不同（15 / 20 / 5 / 8），但「被砍短了就得说明」这条
+    规则一致，因此统一到这里：只有当 ``rendered < total`` 时才提示，且提示里的
+    条数取调用方传入的 ``rendered``——它与实际打印的行数同源，不会漂移；未砍短
+    时返回空串，调用方据此做到「不提示就零新增输出」。
+    """
+    if rendered >= total:
+        return ""
+    return f"⚠ 共 {total} 条，仅显示前 {rendered} 条"
+
+
 def main():
     ap = argparse.ArgumentParser(description="全书内容质检")
     ap.add_argument("chapter_dir", help="章节目录或单章txt文件路径")
@@ -636,14 +649,22 @@ def main():
             if count:
                 print(f"  {sev}: {count}")
         print()
-        for issue in result['issues'][:15]:
+        # 本命令实际渲染的问题行数：切片与下方提示共用，避免两处各写一份字面量。
+        cli_issue_rows = 15
+        shown_issues = result['issues'][:cli_issue_rows]
+        for issue in shown_issues:
             sev_icon = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '⚪'}.get(issue['severity'], '⚪')
             print(f"  {sev_icon} {issue['detail']}")
-        # 2026-09-17（终审 M-5）：本命令只列 15 条，JSON 里也最多 issues_limit 条，
-        # 必须显式告知读者「上面不是全部」，否则「61 个问题只列 15 条」会被误读。
-        if result.get("issues_truncated"):
-            print(f"  ⚠ 共 {result['total_issues']} 条，仅显示前 15 条"
-                  f"（--json 输出最多 {result['issues_limit']} 条）")
+        # 2026-09-17（第二轮收口）：本命令只列 cli_issue_rows 条，JSON 里也最多
+        # issues_limit 条——只要实际渲染条数少于总数就必须说明（不只是超过 50 条时），
+        # 否则「31 个问题只列 15 条」会被误读。提示中的条数取实际渲染行数，不写字面量；
+        # 未砍短时不新增任何输出。
+        hint = format_truncation_hint(result['total_issues'], len(shown_issues))
+        if hint:
+            # 响应体也被截断时（issues_limit），额外说明 --json 的上限。
+            limit_note = (f"（--json 输出最多 {result['issues_limit']} 条）"
+                          if result.get("issues_truncated") else "")
+            print(f"  {hint}{limit_note}")
     
     sys.exit(0 if result['verdict'] == "PASS" else 1)
 

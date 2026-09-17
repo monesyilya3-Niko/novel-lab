@@ -277,13 +277,17 @@ def main():
                 print(f"  ✅ 质检通过（{qa['total_chapters']}章 0问题）")
             else:
                 print(f"  ⚠ 质检 {qa['total_issues']} 个问题（{sev.get('critical',0)}严重/{sev.get('high',0)}高/{sev.get('medium',0)}中）")
-                for issue in qa["issues"][:5]:
+                # 本 Hook 实际渲染的问题行数：切片与下方提示共用，避免两处各写一份字面量。
+                hook_issue_rows = 5
+                shown_issues = qa["issues"][:hook_issue_rows]
+                for issue in shown_issues:
                     print(f"    · {issue['detail'][:60]}")
-                # 2026-09-17（fix round 1）：本 Hook 只列 5 条（且 book_quality_check 的
-                # issues 本身还有 issues_limit 上限），少于总数时必须说明，否则读者会以为
-                # 问题只有列出来的这几条。未截断时不新增任何输出。
-                if qa["total_issues"] > 5:
-                    print(f"    ⚠ 共 {qa['total_issues']} 条，仅显示前 5 条")
+                # 2026-09-17（第二轮收口）：只要实际渲染条数少于总数就必须说明（不只是
+                # 超过 5 条时），否则读者会以为问题只有列出来的这几条。提示中的条数取
+                # 实际渲染行数，不写字面量；未砍短时不新增任何输出。
+                hint = book_quality.format_truncation_hint(qa["total_issues"], len(shown_issues))
+                if hint:
+                    print(f"    {hint}")
 
         print("\n分析完成。资产目录: assets/ | 报告目录: reports/")
         return 0
@@ -365,14 +369,22 @@ def main():
                 if count:
                     print(f"  {sev}: {count}")
             print()
-            for issue in result['issues'][:20]:
+            # 本命令实际渲染的问题行数：切片与下方提示共用，避免两处各写一份字面量。
+            qc_issue_rows = 20
+            shown_issues = result['issues'][:qc_issue_rows]
+            for issue in shown_issues:
                 sev_icon = {'critical': '🔴', 'high': '🟠', 'medium': '🟡', 'low': '⚪'}.get(issue['severity'], '⚪')
                 print(f"  {sev_icon} {issue['detail']}")
-            # 2026-09-17（终审 M-5）：本命令只列 20 条，JSON 里也最多 issues_limit 条，
-            # 必须显式告知读者「上面不是全部」，否则「61 个问题只列 20 条」会被误读。
-            if result.get("issues_truncated"):
-                print(f"  ⚠ 共 {result['total_issues']} 条，仅显示前 20 条"
-                      f"（--json 输出最多 {result['issues_limit']} 条）")
+            # 2026-09-17（第二轮收口）：本命令只列 qc_issue_rows 条，JSON 里也最多
+            # issues_limit 条——只要实际渲染条数少于总数就必须说明（不只是超过 50 条时），
+            # 否则「31 个问题只列 20 条」会被误读。提示中的条数取实际渲染行数，不写字面量；
+            # 未砍短时不新增任何输出。
+            hint = book_quality.format_truncation_hint(result['total_issues'], len(shown_issues))
+            if hint:
+                # 响应体也被截断时（issues_limit），额外说明 --json 的上限。
+                limit_note = (f"（--json 输出最多 {result['issues_limit']} 条）"
+                              if result.get("issues_truncated") else "")
+                print(f"  {hint}{limit_note}")
         return 0
 
     if args.cmd == "聚合":

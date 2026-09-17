@@ -12,6 +12,10 @@
      ``issues_limit: int``（= 50）；既有键语义不变。
   2. 截断上限提为模块级常量 ``book_quality.MAX_REPORTED_ISSUES``，两处共用。
   3. ``book_quality.py`` 与 ``novel.py 质检`` 的非 JSON 输出在截断时追加一行提示。
+  4. （第二轮收口）提示条件统一为「**实际渲染条数 < total_issues**」，且提示里的
+     条数按实际渲染条数计算——只要 CLI 砍短了列表就必须说明，不能只在
+     ``total_issues > 50``（响应体截断）时才提示；未砍短时零新增输出。
+     公共实现是纯函数 ``book_quality.format_truncation_hint(total, rendered)``。
 
 测试全部使用临时目录 + 内存构造的章节文本，不触碰真实 ``assets/``、``gui_state/``。
 
@@ -41,6 +45,16 @@ EXPECTED_LIMIT = 50
 
 # 制造 > 50 条问题所需的章数（每章至少 1 条 intra_chapter_repeat）
 OVERFLOW_CHAPTERS = 60
+
+# 第二轮收口用夹具（``_overflow_texts(n)`` 产出 n + 1 条问题）：
+#   CLI_CUT_CHAPTERS → 31 条：超过两处 CLI 的渲染条数（15 / 20），但未达 issues_limit，
+#                            旧实现（只在 issues_truncated 时提示）在此完全静默。
+#   CLI_FIT_CHAPTERS → 13 条：低于两处 CLI 的渲染条数，必须全部列出且不得有任何提示。
+CLI_CUT_CHAPTERS = 30
+CLI_FIT_CHAPTERS = 12
+
+# 问题行的严重度图标前缀（book_quality.py 与 novel.py 质检 共用同一套）
+SEVERITY_ICONS = ("🔴", "🟠", "🟡", "⚪")
 
 
 def _write_chapters(root: Path, texts: dict) -> None:
@@ -172,6 +186,39 @@ class TestIssueTruncationContract(unittest.TestCase):
             self.assertEqual(len(result["issues"]), book_quality.MAX_REPORTED_ISSUES)
 
 
+class TestFormatTruncationHint(unittest.TestCase):
+    """纯函数 ``format_truncation_hint`` 的直接单测（第二轮收口）。
+
+    四处 CLI 共用它，因此这里把「何时提示」与「提示里写哪两个数」钉死在函数上，
+    各调用点只负责把**实际渲染条数**传进来。
+    """
+
+    def test_returns_hint_with_both_numbers_when_cut_short(self):
+        """total > rendered：必须给提示，且两个数字各就各位。"""
+        hint = book_quality.format_truncation_hint(30, 15)
+
+        self.assertNotEqual(hint, "", "渲染条数少于总数时必须给提示")
+        self.assertRegex(hint, r"共\s*30\s*条，仅显示前\s*15\s*条",
+                         "提示必须给出真实总数与实际渲染条数，且顺序不能颠倒")
+
+    def test_empty_when_total_equals_rendered(self):
+        """total == rendered：列表完整，必须保持静默。"""
+        self.assertEqual(book_quality.format_truncation_hint(12, 12), "",
+                         "总数等于渲染条数时不得新增输出")
+
+    def test_empty_when_rendered_exceeds_total(self):
+        """total < rendered：渲染比总数还多（不可能砍短），必须保持静默。"""
+        self.assertEqual(book_quality.format_truncation_hint(3, 8), "",
+                         "渲染条数不少于总数时不得新增输出")
+
+    def test_hint_never_contains_the_response_limit(self):
+        """提示只讲「总数 / 实际渲染条数」，不掺入 issues_limit（那是调用点的事）。"""
+        hint = book_quality.format_truncation_hint(60, 15)
+
+        self.assertNotIn(str(EXPECTED_LIMIT), hint,
+                         "提示里的数字只能是传入的两个数，不得混入写死的上限")
+
+
 class TestTruncationHintInCli(unittest.TestCase):
     """非 JSON 输出必须让读者看见「被截断」这件事（M-5）。"""
 
@@ -186,6 +233,28 @@ class TestTruncationHintInCli(unittest.TestCase):
         finally:
             sys.argv = old_argv
         return buf.getvalue()
+
+    def _count_issue_lines(self, out: str) -> int:
+        """数出真正打印出来的问题行数（按严重度图标前缀识别）。"""
+        return sum(1 for line in out.splitlines()
+                   if line.strip().startswith(SEVERITY_ICONS))
+
+    def _run_novel_qc(self, target) -> tuple:
+        import novel  # 延迟导入：仅在需要时加载 CLI 入口
+        buf = io.StringIO()
+        old_argv = sys.argv
+        sys.argv = ["novel.py", "质检", str(target)]
+        try:
+            with contextlib.redirect_stdout(buf):
+                rc = novel.main()
+        finally:
+            sys.argv = old_argv
+        return rc, buf.getvalue()
+
+    def _total_issues(self, root: Path) -> int:
+        result = book_quality.book_quality_check(str(root))
+        self.assertNotIn("error", result)
+        return result["total_issues"]
 
     def test_book_quality_cli_prints_hint_when_truncated(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -240,6 +309,68 @@ class TestTruncationHintInCli(unittest.TestCase):
 
         self.assertEqual(rc, 0)
         self.assertNotIn("仅显示前", buf.getvalue())
+
+    # ---- 第二轮收口：渲染条数 < total_issues 就必须提示，且条数 == 实际渲染行数 ----
+
+    def test_book_quality_cli_hint_count_equals_rendered_lines(self):
+        """31 条问题（未达 50 上限但超过渲染条数）：必须提示，且条数等于实际列出的行数。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, _overflow_texts(CLI_CUT_CHAPTERS))
+            total = self._total_issues(root)
+            out = self._run_main(["book_quality.py", str(root)], book_quality)
+
+        self.assertGreater(total, 20,
+                           "夹具必须超过两处 CLI 的渲染条数（15 / 20），否则测不到「砍短但不截断」")
+        self.assertLessEqual(total, EXPECTED_LIMIT,
+                             "夹具不得触发响应体截断，否则测的是旧分支")
+        rendered = self._count_issue_lines(out)
+        self.assertGreater(rendered, 0, "至少要列出一条问题")
+        self.assertLess(rendered, total, "夹具必须真的被砍短")
+        self.assertRegex(out, rf"共\s*{total}\s*条，仅显示前\s*{rendered}\s*条",
+                         "提示条数必须等于实际渲染行数，不得写死")
+
+    def test_book_quality_cli_silent_when_all_issues_rendered(self):
+        """13 条问题全部列出：零新增输出。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, _overflow_texts(CLI_FIT_CHAPTERS))
+            total = self._total_issues(root)
+            out = self._run_main(["book_quality.py", str(root)], book_quality)
+
+        self.assertEqual(self._count_issue_lines(out), total,
+                         "13 条问题必须全部列出（否则应给出提示）")
+        self.assertNotIn("仅显示前", out, "未砍短时不得出现截断提示")
+
+    def test_novel_qc_hint_count_equals_rendered_lines(self):
+        """novel.py 质检 同样按「实际渲染条数 < total_issues」提示。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, _overflow_texts(CLI_CUT_CHAPTERS))
+            total = self._total_issues(root)
+            rc, out = self._run_novel_qc(root)
+
+        self.assertEqual(rc, 0)
+        self.assertGreater(total, 20, "夹具必须超过本命令的渲染条数（20）")
+        self.assertLessEqual(total, EXPECTED_LIMIT, "夹具不得触发响应体截断")
+        rendered = self._count_issue_lines(out)
+        self.assertGreater(rendered, 0, "至少要列出一条问题")
+        self.assertLess(rendered, total, "夹具必须真的被砍短")
+        self.assertRegex(out, rf"共\s*{total}\s*条，仅显示前\s*{rendered}\s*条",
+                         "提示条数必须等于实际渲染行数，不得写死")
+
+    def test_novel_qc_silent_when_all_issues_rendered(self):
+        """novel.py 质检 在问题全部列出时零新增输出。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_chapters(root, _overflow_texts(CLI_FIT_CHAPTERS))
+            total = self._total_issues(root)
+            rc, out = self._run_novel_qc(root)
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(self._count_issue_lines(out), total,
+                         "13 条问题必须全部列出（否则应给出提示）")
+        self.assertNotIn("仅显示前", out, "未砍短时不得出现截断提示")
 
 
 if __name__ == "__main__":
