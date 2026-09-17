@@ -593,6 +593,10 @@
     const update = parseMaybe(cm.update_rhythm) || {};
     const payoffTypes = cm.payoff_types || [];
     const risks = cm.retention_risks || [];
+    // 源资产 ratio 单位不统一，故按量纲自适应：列表内存在 >1 的值即视为「已是百分数」（如 40），
+    // 否则视为占比（如 0.45）；ratio 为 null 时不显示数字。
+    const ratioIsPercent = payoffTypes.some(p => p && typeof p.ratio === 'number' && p.ratio > 1);
+    const fmtRatio = r => r == null ? '' : (ratioIsPercent ? r.toFixed(0) : (r * 100).toFixed(0)) + '%';
     $('commercial-obs').innerHTML = `
       <div class="card" style="margin-bottom:18px">
         <h3><span class="ico">💰</span> 商业概要</h3>
@@ -603,7 +607,7 @@
           <span class="k">付费点章</span><span class="v">${paywall.position_chapter != null ? '第'+paywall.position_chapter+'章' : '—'}</span>
         </div>
         <h4>爽点类型构成</h4>
-        <div class="tags">${payoffTypes.map(p => `<span class="tag gold">${esc(p.type||'')} ${p.ratio!=null?(p.ratio*100).toFixed(0)+'%':''}</span>`).join('')||'<span class="dim">无</span>'}</div>
+        <div class="tags">${payoffTypes.map(p => `<span class="tag gold">${esc(p.type||'')} ${fmtRatio(p.ratio)}</span>`).join('')||'<span class="dim">无</span>'}</div>
       </div>
       <div class="card" style="margin-bottom:18px">
         <h3><span class="ico">🪜</span> 叙事骨架</h3>
