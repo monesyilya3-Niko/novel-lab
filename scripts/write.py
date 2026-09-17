@@ -338,8 +338,14 @@ def main():
             n_issues = qa.get("total_issues", 0)
             print(f"  全书 QA: {qa.get('total_chapters', '?')} 章 / {n_issues} 问题 / {verdict}")
             if verdict != "PASS":
-                for qi in qa.get("issues", [])[:8]:
+                qa_issues = qa.get("issues", [])
+                for qi in qa_issues[:8]:
                     print(f"    ⚠ {qi.get('severity', '?')}: {qi.get('detail', '')[:70]}")
+                # 2026-09-17（fix round 1）：本处只列 8 条（且 book_quality_check 的 issues
+                # 本身还有 issues_limit 上限），少于总数时必须说明，否则读者会以为问题只有
+                # 列出来的这几条。未截断时不新增任何输出。
+                if n_issues > 8:
+                    print(f"    ⚠ 共 {n_issues} 条，仅显示前 8 条")
                 print("  （章节已入库；QA 未过，建议人工复核或携上述问题改写本章节）")
     except Exception as e:
         print(f"  [跳过] 全书 QA 异常: {e}")

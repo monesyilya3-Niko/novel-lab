@@ -24,6 +24,11 @@ const VERDICT_LABELS: Record<string, string> = {
 }
 const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
 
+// 全书质检面板最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是同一个
+// 数：截断提示必须同时说清「屏幕可见条数」与「响应上限」，否则会出现
+// 「共 61 条，仅显示前 50 条」却只有 20 行明细的错误指引。
+const ISSUE_ROWS = 20
+
 export default function QualityWorkbench() {
   const [tab, setTab] = useState(0)
   return (
@@ -180,10 +185,10 @@ function BookQualityPanel() {
           <Typography variant="body2" sx={{ mt: 1 }}>共 {issues.length} 个问题</Typography>
           {issuesTruncated && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              共 {totalIssues} 条，仅显示前 {issuesLimit} 条
+              共 {totalIssues} 条，仅显示前 {ISSUE_ROWS} 条（响应上限 {issuesLimit} 条）
             </Typography>
           )}
-          {issues.slice(0, 20).map((iss, i) => (
+          {issues.slice(0, ISSUE_ROWS).map((iss, i) => (
             <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>
               [{iss.severity}] {iss.type} {iss.chapter ? `Ch${iss.chapter}` : ''} — {iss.detail}
             </Typography>

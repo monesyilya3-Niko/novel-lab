@@ -279,6 +279,11 @@ def main():
                 print(f"  ⚠ 质检 {qa['total_issues']} 个问题（{sev.get('critical',0)}严重/{sev.get('high',0)}高/{sev.get('medium',0)}中）")
                 for issue in qa["issues"][:5]:
                     print(f"    · {issue['detail'][:60]}")
+                # 2026-09-17（fix round 1）：本 Hook 只列 5 条（且 book_quality_check 的
+                # issues 本身还有 issues_limit 上限），少于总数时必须说明，否则读者会以为
+                # 问题只有列出来的这几条。未截断时不新增任何输出。
+                if qa["total_issues"] > 5:
+                    print(f"    ⚠ 共 {qa['total_issues']} 条，仅显示前 5 条")
 
         print("\n分析完成。资产目录: assets/ | 报告目录: reports/")
         return 0

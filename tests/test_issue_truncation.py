@@ -113,6 +113,54 @@ class TestIssueTruncationContract(unittest.TestCase):
                 self.assertEqual(result["issues_truncated"],
                                  result["total_issues"] > result["issues_limit"])
 
+    def test_truncated_flag_at_fixture_scale_boundary(self):
+        """真实上限下的夹具规模边界：恰好 50 条不截断，51 条才截断。
+
+        这里把 50/51 与预期标记写死为字面量，不再引用实现里的表达式，因此能独立
+        发现「判定写成 >=」或「上限被写死成别的数」这类回归。
+        """
+        for chapters, expected_total, expected_truncated in ((49, 50, False), (50, 51, True)):
+            with self.subTest(chapters=chapters), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                _write_chapters(root, _overflow_texts(chapters))
+                result = book_quality.book_quality_check(str(root))
+
+                self.assertEqual(result["total_issues"], expected_total,
+                                 f"{chapters} 章应恰好产出 {expected_total} 条问题")
+                self.assertEqual(result["issues_limit"], EXPECTED_LIMIT)
+                self.assertEqual(result["issues_truncated"], expected_truncated,
+                                 f"total={expected_total} / limit={EXPECTED_LIMIT} 时的截断标记不对")
+                self.assertEqual(len(result["issues"]), min(expected_total, EXPECTED_LIMIT))
+
+    def test_truncated_flag_follows_patched_limit(self):
+        """用非 50 的假上限验证判定只依赖 total > limit，且截断也随常量走。
+
+        把上限改成 3 / 7 后边界必须整体平移（total == limit 不截断、limit + 1 才截断）。
+        实现里任何写死的 50 或错误的比较符都会被这条抓住。
+        """
+        original = book_quality.MAX_REPORTED_ISSUES
+        try:
+            for limit, chapters, expected_total, expected_truncated in (
+                (3, 2, 3, False),   # total == limit → 不截断
+                (3, 3, 4, True),    # total == limit + 1 → 截断
+                (7, 6, 7, False),
+                (7, 7, 8, True),
+            ):
+                book_quality.MAX_REPORTED_ISSUES = limit
+                with self.subTest(limit=limit, chapters=chapters), tempfile.TemporaryDirectory() as tmp:
+                    root = Path(tmp)
+                    _write_chapters(root, _overflow_texts(chapters))
+                    result = book_quality.book_quality_check(str(root))
+
+                    self.assertEqual(result["total_issues"], expected_total)
+                    self.assertEqual(result["issues_limit"], limit,
+                                     "issues_limit 必须跟随模块级常量，而不是写死 50")
+                    self.assertEqual(result["issues_truncated"], expected_truncated)
+                    self.assertEqual(len(result["issues"]), limit,
+                                     "issues 的截断长度必须等于当前上限")
+        finally:
+            book_quality.MAX_REPORTED_ISSUES = original
+
     def test_limit_constant_used_for_cap(self):
         """截断上限必须来自模块级常量，便于消费方引用。"""
         self.assertEqual(book_quality.MAX_REPORTED_ISSUES, EXPECTED_LIMIT)
