@@ -54,6 +54,20 @@ HOOK_KEYWORDS = [
 DEFAULT_PASS = 75
 DEFAULT_WARN = 60
 
+# 「了」字密度标定线（2026-09-17 按语料分位数重标定，取代旧绝对值 >5 / >8）
+#
+# 标定依据：
+#   - 语料：corpus/*_chosen.txt，共 6 本
+#     （autumn / chireng / duwo / qingning / sangshi / suyixinjian）
+#   - 样本量：54 章（章粒度；密度口径 = 「了」字数 / 汉字数 × 1000）
+#   - 分位数：p75 = 27.0、p90 = 31.2（参考：p05 = 13.3、p50 = 23.9）
+#   - 标定日期：2026-09-17
+#   - 动机：旧口径 >5 / >8 使语料 100% 的章扣满 3 分、0% 不扣分，该维度零区分度；
+#     改分位数后 75% 的章不再扣分，仅 top 25% 略扣、top 10% 重扣。
+#   - 阈值随语料扩充应重算：语料变更后需重新统计章粒度分位数并更新下面两个常量。
+LE_DENSITY_PENALTY_LINE = 27.0  # <= 不扣分；> 且 <= HEAVY_LINE 扣 1 分（语料 p75）
+LE_DENSITY_HEAVY_LINE = 31.2    # > 扣 3 分（语料 p90）
+
 # AI 味模板句式
 AI_TICS = [
     (r"她不知道，[^。]{5,30}(会|将|要)[^。]{3,20}", "作者预告旁白"),
@@ -258,7 +272,12 @@ def check_ai_tics(text: str) -> tuple:
 
 
 def check_fatigue_words(text: str) -> tuple:
-    """10. 疲劳词检测（8 分）— 借鉴 novel-deconstruct 的 6 类疲劳词"""
+    """10. 疲劳词检测（8 分）— 借鉴 novel-deconstruct 的 6 类疲劳词
+
+    「了」字密度档位 2026-09-17 由绝对值（>5 / >8）改为语料分位数标定
+    （LE_DENSITY_PENALTY_LINE / LE_DENSITY_HEAVY_LINE）；情绪标签词与
+    连接词两个子项的口径未变。
+    """
     cn = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if cn == 0:
         return 0, "无文本"
@@ -282,10 +301,10 @@ def check_fatigue_words(text: str) -> tuple:
     score = 8
     notes = []
 
-    if le_density > 8:
+    if le_density > LE_DENSITY_HEAVY_LINE:
         score -= 3
         notes.append(f"了字密度 {le_density:.1f}/千字（过高）")
-    elif le_density > 5:
+    elif le_density > LE_DENSITY_PENALTY_LINE:
         score -= 1
         notes.append(f"了字密度 {le_density:.1f}/千字（略高）")
 
