@@ -4,6 +4,8 @@
 //      total_issues 是真实总数；
 //   2) 仅前端渲染受限：响应没截断，但 issues.length 超过面板行数上限 ISSUE_ROWS（20）。
 // 未超行数且未截断时必须保持静默；不得出现「仅显示前 20 条」而屏幕不足 20 行。
+// fix round 3：表头「共 N 个问题」与提示行「共 N 条」必须是同一个 N（真实总数），
+// 且缺 issues_limit 时不得渲染「响应上限 undefined 条」。
 import { render, screen, fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QualityWorkbench from './QualityWorkbench'
@@ -67,13 +69,35 @@ describe('BookQualityPanel 截断提示', () => {
       issues_truncated: true,
       issues_limit: 50,
     })
-    await runBookQuality('共 50 个问题')
+    await runBookQuality('共 61 个问题')
+
+    // M-1：表头必须报真实总数，不得报响应实收的 50 条，否则与提示行的「共 61 条」口径打架。
+    expect(screen.getByText('共 61 个问题')).toBeInTheDocument()
+    expect(screen.queryByText('共 50 个问题')).toBeNull()
 
     const hint = screen.getByText('共 61 条，仅显示前 20 条（响应上限 50 条）')
     expect(hint).toBeInTheDocument()
     // 不得退化成只报响应上限——那正是 fix round 1 要修的错误指引。
     expect(hint).not.toHaveTextContent('仅显示前 50 条')
     // 提示行说的 20 条必须与列表实际渲染行数一致。
+    expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
+  })
+
+  it('截断但缺 issues_limit 时，响应上限兜底为实收条数而非 undefined', async () => {
+    bookMock.mockResolvedValue({
+      total_chapters: 60,
+      total_issues: 61,
+      severity: { critical: 0, high: 3, medium: 58 },
+      types: {},
+      verdict: 'WARN',
+      issues: makeIssues(50),
+      issues_truncated: true,
+      // 故意不返回 issues_limit（M-5：此处曾渲染「响应上限 undefined 条」）
+    })
+    await runBookQuality('共 61 个问题')
+
+    expect(screen.getByText('共 61 条，仅显示前 20 条（响应上限 50 条）')).toBeInTheDocument()
+    expect(screen.queryByText(/undefined/)).toBeNull()
     expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
   })
 
@@ -140,7 +164,7 @@ describe('BookQualityPanel 截断提示', () => {
       issues_truncated: true,
       issues_limit: 50,
     })
-    await runBookQuality('共 5 个问题')
+    await runBookQuality('共 61 个问题')
 
     const hint = screen.getByText('共 61 条，仅显示前 5 条（响应上限 50 条）')
     expect(hint).toBeInTheDocument()
