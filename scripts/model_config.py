@@ -12,6 +12,8 @@
   role <role> <model_id>  绑定角色（cheap / strong / default）
   route <task> <role>     调整任务路由
   routes                  查看当前路由表
+  fallback <model_id> [<fb1> <fb2> ...]
+                          设置/清空主模型失败时的备用模型（不带 fb 参数即清空）
   remove <model_id>       删除模型
 """
 import argparse
@@ -350,6 +352,31 @@ def cmd_route(args):
     return 0
 
 
+def cmd_fallback(args):
+    """设置 / 清空某模型的备用模型链（主模型失败时按顺序回退）。"""
+    cfg = load_models()
+    mid = args.model_id
+    if mid not in cfg["models"]:
+        print(f"[X] 模型 '{mid}' 不存在")
+        return 1
+
+    targets = list(args.fallback_models or [])
+    missing = [t for t in targets if t not in cfg["models"]]
+    if missing:
+        print(f"[X] 备用模型不存在: {', '.join(missing)}（未写入）")
+        return 1
+
+    if targets:
+        cfg["models"][mid]["fallback"] = targets
+        save_models(cfg)
+        print(f"[OK] {mid} 的备用模型 → {', '.join(targets)}")
+    else:
+        cfg["models"][mid].pop("fallback", None)
+        save_models(cfg)
+        print(f"[OK] 已清空 {mid} 的备用模型")
+    return 0
+
+
 def cmd_remove(args):
     cfg = load_models()
     if args.model_id not in cfg["models"]:
@@ -402,6 +429,10 @@ def main():
     rm = sub.add_parser("remove", help="删除模型")
     rm.add_argument("model_id")
 
+    fb = sub.add_parser("fallback", help="设置/清空备用模型")
+    fb.add_argument("model_id")
+    fb.add_argument("fallback_models", nargs="*", help="备用模型 id（留空=清空）")
+
     args = ap.parse_args()
     if not args.cmd:
         ap.print_help()
@@ -410,6 +441,7 @@ def main():
         "list": cmd_list, "presets": cmd_presets, "routes": cmd_routes,
         "add": cmd_add, "key": cmd_key, "test": cmd_test,
         "role": cmd_role, "route": cmd_route, "remove": cmd_remove,
+        "fallback": cmd_fallback,
     }[args.cmd](args) or 0
 
 
