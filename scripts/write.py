@@ -93,7 +93,7 @@ def run_consistency(voice_path: Path, ch_file: Path) -> None:
 def run_conflict_check(novel_dir: Path, content: str) -> None:
     """实体冲突检测（M2.4）。
 
-    2026-09-05 修复：原先依赖已删除的 ~/.workbuddy/skills/novel-writing skill
+    2026-09-05 修复：原先依赖一个已移除的外部 skill（novel-writing）
     （路径失效被 except 静默跳过）。现改为读取 novel_dir/settings/entities.json
     做轻量实体校验：
       约定格式: {"characters": [{"name": "唐雨", "aliases": ["小雨", "唐小雨"]}, ...]}

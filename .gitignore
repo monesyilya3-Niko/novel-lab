@@ -35,6 +35,9 @@ novel_test/
 # QC 质检临时产物（QA 测试输出，不入库）
 qa_qc_real.json
 
+# QC 报告运行时产物（gui/quality_service.py 写入 reports/qc/，属运行时输出而非源码，不入库）
+reports/qc/
+
 # 写作项目工作区（不入库）
 novel/
 
