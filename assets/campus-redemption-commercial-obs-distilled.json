@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "commercial-obs",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-11T04:59:49",
+    "distilled_at": "2026-09-18T00:47:01",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -145,31 +145,31 @@
       "value": [
         {
           "type": "打脸",
-          "ratio": 40
+          "ratio": 0.4
         },
         {
           "type": "升级",
-          "ratio": 10
+          "ratio": 0.1
         },
         {
           "type": "收益兑现",
-          "ratio": 30
+          "ratio": 0.3
         },
         {
           "type": "情感回应",
-          "ratio": 20
+          "ratio": 0.45
         },
         {
           "type": "他人认可",
-          "ratio": 2.0
+          "ratio": 0.225
         },
         {
           "type": "反杀",
-          "ratio": 1.0
+          "ratio": 0.125
         },
         {
           "type": "身份揭露",
-          "ratio": null
+          "ratio": 0.15
         }
       ],
       "sources": [

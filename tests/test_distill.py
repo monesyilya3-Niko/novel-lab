@@ -338,6 +338,166 @@ class TestBug1PayoffTypes(unittest.TestCase):
         self.assertEqual(len(rule.sources), 3)
 
 
+class TestPayoffRatioNormalization(unittest.TestCase):
+    """Task 3.3：payoff_types[].ratio 书内归一为占比 + 跨书按 type 取中位数。
+
+    真实四本书的 ratio 单位互不相同（chireng 次数 40/10/30/20、qingning 次数
+    7/2/1、suyixinjian 已是占比 0.45/…、sangshi 不可解析的比例式），直接跨书
+    聚合会得到「既非次数也非占比」的混合数（40+10+30+20+2.0+1.0=103）。
+    """
+
+    def test_normalize_counts_into_shares(self):
+        # chireng 形态：次数 40/10/30/20 → 0.4 / 0.1 / 0.3 / 0.2。
+        items = [
+            {"type": "打脸", "ratio": 40},
+            {"type": "升级", "ratio": 10},
+            {"type": "收益兑现", "ratio": 30},
+            {"type": "情感回应", "ratio": 20},
+        ]
+        out = CORE._normalize_payoff_ratios(items)
+        ratios = [x["ratio"] for x in out]
+        self.assertAlmostEqual(sum(ratios), 1.0, delta=1e-6)
+        self.assertAlmostEqual(ratios[0], 0.4, delta=1e-6)
+        self.assertAlmostEqual(ratios[1], 0.1, delta=1e-6)
+        self.assertAlmostEqual(ratios[2], 0.3, delta=1e-6)
+        self.assertAlmostEqual(ratios[3], 0.2, delta=1e-6)
+        # type 名与顺序保持原样。
+        self.assertEqual([x["type"] for x in out], ["打脸", "升级", "收益兑现", "情感回应"])
+        # 不就地改写入参（纯函数）。
+        self.assertEqual(items[0]["ratio"], 40)
+
+    def test_normalize_existing_shares_unchanged(self):
+        # suyixinjian 形态：已是占比且和为 1.0 → 逐项不变。
+        items = [
+            {"type": "情感回应", "ratio": 0.45},
+            {"type": "他人认可", "ratio": 0.25},
+            {"type": "反杀", "ratio": 0.15},
+            {"type": "身份揭露", "ratio": 0.15},
+        ]
+        out = CORE._normalize_payoff_ratios(items)
+        for before, after in zip(items, out):
+            self.assertAlmostEqual(after["ratio"], before["ratio"], delta=1e-9)
+
+    def test_normalize_all_zero_or_empty_is_none(self):
+        # 全 0：不除零，全部 None。
+        out = CORE._normalize_payoff_ratios(
+            [{"type": "a", "ratio": 0}, {"type": "b", "ratio": 0}]
+        )
+        self.assertTrue(all(x["ratio"] is None for x in out))
+        # 空列表 / None / 非 list 输入不抛异常（非 list 原样返回）。
+        self.assertEqual(CORE._normalize_payoff_ratios([]), [])
+        self.assertIsNone(CORE._normalize_payoff_ratios(None))
+        self.assertEqual(CORE._normalize_payoff_ratios("x"), "x")
+        # 全部不可解析（None 值）：全部 None。
+        out2 = CORE._normalize_payoff_ratios(
+            [{"type": "a", "ratio": None}, {"type": "b", "ratio": None}]
+        )
+        self.assertTrue(all(x["ratio"] is None for x in out2))
+
+    def test_normalize_negative_and_non_numeric_are_none(self):
+        # 负值/非数值 → 该项 None，其余按剩余可解析值（5+15=20）归一。
+        out = CORE._normalize_payoff_ratios(
+            [
+                {"type": "a", "ratio": 5},
+                {"type": "b", "ratio": -3},
+                {"type": "c", "ratio": "2"},
+                {"type": "d", "ratio": 15},
+            ]
+        )
+        self.assertAlmostEqual(out[0]["ratio"], 0.25, delta=1e-9)
+        self.assertIsNone(out[1]["ratio"])
+        self.assertIsNone(out[2]["ratio"])
+        self.assertAlmostEqual(out[3]["ratio"], 0.75, delta=1e-9)
+
+    def test_normalize_keeps_other_keys(self):
+        # 其它键（如 suyixinjian 的 buildup_length）原样保留。
+        out = CORE._normalize_payoff_ratios(
+            [{"type": "情感回应", "ratio": 3, "buildup_length": 1800}]
+        )
+        self.assertEqual(out[0]["buildup_length"], 1800)
+        self.assertAlmostEqual(out[0]["ratio"], 1.0, delta=1e-9)
+
+    def test_aggregate_payoff_types_median_per_type(self):
+        # 用四本真实书的形态：跨书按 type 取中位数；某书贡献 None 则不参与。
+        aligned = {
+            "chireng": {
+                "payoff_types": [
+                    {"type": "打脸", "ratio": 40},
+                    {"type": "升级", "ratio": 10},
+                    {"type": "收益兑现", "ratio": 30},
+                    {"type": "情感回应", "ratio": 20},
+                ]
+            },
+            "qingning": {
+                "payoff_types": [
+                    {"type": "情感回应", "ratio": 7},
+                    {"type": "他人认可", "ratio": 2},
+                    {"type": "反杀", "ratio": 1},
+                ]
+            },
+            "suyixinjian": {
+                "payoff_types": [
+                    {"type": "情感回应", "ratio": 0.45},
+                    {"type": "他人认可", "ratio": 0.25},
+                    {"type": "反杀", "ratio": 0.15},
+                    {"type": "身份揭露", "ratio": 0.15},
+                ]
+            },
+            "sangshi": {
+                "payoff_types": [
+                    {"type": "情感回应", "ratio": None},
+                    {"type": "身份揭露", "ratio": None},
+                    {"type": "他人认可", "ratio": None},
+                ]
+            },
+        }
+        rule = CORE._aggregate_payoff_types(
+            aligned, ["chireng", "qingning", "sangshi", "suyixinjian"]
+        )
+        got = {x["type"]: x["ratio"] for x in rule.value}
+        # 仅 chireng 贡献的 type：其书内份额原样。
+        self.assertAlmostEqual(got["打脸"], 0.4, delta=1e-9)
+        self.assertAlmostEqual(got["升级"], 0.1, delta=1e-9)
+        self.assertAlmostEqual(got["收益兑现"], 0.3, delta=1e-9)
+        # 情感回应：0.2 / 0.7 / 0.45（sangshi 为 None 不参与）→ 中位数 0.45。
+        self.assertAlmostEqual(got["情感回应"], 0.45, delta=1e-9)
+        # 他人认可：0.2 / 0.25 → 中位数 0.225。
+        self.assertAlmostEqual(got["他人认可"], 0.225, delta=1e-9)
+        # 反杀：0.1 / 0.15 → 中位数 0.125。
+        self.assertAlmostEqual(got["反杀"], 0.125, delta=1e-9)
+        # 身份揭露：仅 suyixinjian 贡献 0.15。
+        self.assertAlmostEqual(got["身份揭露"], 0.15, delta=1e-9)
+        # 全部 ratio ∈ [0,1] 或 None。
+        for item in rule.value:
+            self.assertTrue(
+                item["ratio"] is None or 0.0 <= item["ratio"] <= 1.0,
+                f"{item['type']} ratio={item['ratio']} 超出占比口径",
+            )
+        # sources 保留各书原始值（chireng 形态的 40 未被归一）。
+        by_book = {s.book: s.value for s in rule.sources}
+        self.assertEqual(by_book["chireng"][0]["ratio"], 40)
+
+    def test_distill_genre_payoff_ratios_are_shares(self):
+        # 聚合级：真实 assets 跑 distill_genre（内存，不写盘）。
+        assets_dir = ROOT / "assets"
+        if not any(assets_dir.glob("*-commercial-obs.json")):
+            self.skipTest("无资产目录")
+        result = CORE.distill_genre("campus-redemption")
+        rule = next(
+            r for r in result["commercial-obs"]["rules"] if r["field"] == "payoff_types"
+        )
+        for item in rule["value"]:
+            ratio = item["ratio"]
+            self.assertTrue(
+                ratio is None or 0.0 <= ratio <= 1.0,
+                f"{item['type']} ratio={ratio} 不是占比",
+            )
+            self.assertNotIn(ratio, (40, 30, 20, 10, 103))
+        # sources 仍含各书原始值。
+        chireng = next(s for s in rule["sources"] if s["book"] == "chireng_chosen")
+        self.assertEqual(chireng["value"][0]["ratio"], 40)
+
+
 class TestBug2FreqDivergence(unittest.TestCase):
     """Bug2 回归：string-freq 众数占比 <100% 时应标记分歧。"""
 

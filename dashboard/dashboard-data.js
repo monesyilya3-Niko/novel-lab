@@ -1,5 +1,5 @@
 window.__NOVEL_LAB__ = {
-  "generated_at": "2026-09-17 12:33:17",
+  "generated_at": "2026-09-18 00:47:34",
   "books": [
     {
       "id": "chireng_chosen",
@@ -2106,7 +2106,7 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "voice-card",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-11T04:59:49",
+        "distilled_at": "2026-09-18T00:47:01",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
@@ -2590,47 +2590,47 @@ window.__NOVEL_LAB__ = {
           "sources": [
             {
               "book": "chireng_chosen",
-              "value": 0.2978
+              "value": 0.2562
             },
             {
               "book": "qingning_chosen",
-              "value": 0.1077
+              "value": 0.0737
             },
             {
               "book": "sangshi_chosen",
-              "value": 0.1947
+              "value": 0.1469
             },
             {
               "book": "suyixinjian_chosen",
-              "value": 0.6903
+              "value": 0.3016
             }
           ],
           "evidence": [
             {
               "source_chapter": "",
               "source_book": "chireng_chosen",
-              "quote": "0.2978",
+              "quote": "0.2562",
               "confidence": 0.2,
               "dimension": "voice-card"
             },
             {
               "source_chapter": "",
               "source_book": "qingning_chosen",
-              "quote": "0.1077",
+              "quote": "0.0737",
               "confidence": 0.2,
               "dimension": "voice-card"
             },
             {
               "source_chapter": "",
               "source_book": "sangshi_chosen",
-              "quote": "0.1947",
+              "quote": "0.1469",
               "confidence": 0.2,
               "dimension": "voice-card"
             },
             {
               "source_chapter": "",
               "source_book": "suyixinjian_chosen",
-              "quote": "0.6903",
+              "quote": "0.3016",
               "confidence": 0.2,
               "dimension": "voice-card"
             }
@@ -4187,7 +4187,7 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "craft-card",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-11T04:59:49",
+        "distilled_at": "2026-09-18T00:47:01",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
@@ -4879,7 +4879,7 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "structure-obs",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-11T04:59:49",
+        "distilled_at": "2026-09-18T00:47:01",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
@@ -5342,7 +5342,7 @@ window.__NOVEL_LAB__ = {
         "schema_version": "1.0",
         "dimension": "commercial-obs",
         "genre": "campus-redemption",
-        "distilled_at": "2026-09-11T04:59:49",
+        "distilled_at": "2026-09-18T00:47:01",
         "source_books": [
           "chireng_chosen",
           "qingning_chosen",
@@ -5483,31 +5483,31 @@ window.__NOVEL_LAB__ = {
           "value": [
             {
               "type": "打脸",
-              "ratio": 40
+              "ratio": 0.4
             },
             {
               "type": "升级",
-              "ratio": 10
+              "ratio": 0.1
             },
             {
               "type": "收益兑现",
-              "ratio": 30
+              "ratio": 0.3
             },
             {
               "type": "情感回应",
-              "ratio": 20
+              "ratio": 0.45
             },
             {
               "type": "他人认可",
-              "ratio": 2.0
+              "ratio": 0.225
             },
             {
               "type": "反杀",
-              "ratio": 1.0
+              "ratio": 0.125
             },
             {
               "type": "身份揭露",
-              "ratio": null
+              "ratio": 0.15
             }
           ],
           "sources": [

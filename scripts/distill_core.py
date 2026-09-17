@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import re
 import statistics
 from collections import defaultdict
@@ -310,6 +311,60 @@ def _dedup_payoff_types(items: Any) -> Any:
             # 其它非标量条目保留原样，不参与去重判断。
             result.append(item)
     return result
+
+
+def _parse_payoff_ratio(value: Any) -> Optional[float]:
+    """把单个 payoff ratio 解析为非负有限数值；不可解析返回 None。
+
+    仅接受非 bool 的 int/float 且 ``>= 0`` 且有限（排除 NaN/Inf）。字符串、
+    None、负数一律视为不可解析——真实资产里 sangshi 的 ratio 是「铺垫:爆发
+    = 10:1」这类**另一种指标**，不是次数也不是占比，不能参与归一。
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    number = float(value)
+    if not math.isfinite(number) or number < 0:
+        return None
+    return number
+
+
+def _normalize_payoff_ratios(items: Any) -> Any:
+    """在**单本书内部**把 payoff_types 的 ratio 归一为「占全书比」。
+
+    真实四本书的 ratio 单位互不相同（次数 / 次数散落字符串 / 占比 0–1 /
+    不可解析的比例式），直接跨书并集会得到「既非次数也非占比」的混合数
+    （40+10+30+20+2.0+1.0=103）。本函数先逐书归一：
+
+        share_i = ratio_i / sum(该书所有可解析的 ratio)
+
+    规则：
+        * 可解析 = 非 bool 的有限非负数值（见 :func:`_parse_payoff_ratio`）；
+        * 不可解析项（None / 字符串 / 负数 / NaN / Inf）→ 该项 ratio 置
+          ``None``，且**不参与**分母；
+        * 分母为 0（全 0 / 空列表 / 全部不可解析）→ 全部置 ``None``，
+          不做除法（不抛除零异常）；
+        * 非 list 输入原样返回（与 :func:`_dedup_payoff_types` 一致）；
+        * 其它键（如 suyixinjian 的 ``buildup_length``）原样保留；
+        * 纯函数：不就地修改入参，返回新 list。
+    """
+    if not isinstance(items, list):
+        return items
+
+    parsed = [
+        _parse_payoff_ratio(item.get("ratio")) if isinstance(item, dict) else None
+        for item in items
+    ]
+    total = math.fsum(v for v in parsed if v is not None)
+
+    normalized: List[Any] = []
+    for item, value in zip(items, parsed):
+        if not isinstance(item, dict):
+            normalized.append(copy.deepcopy(item))
+            continue
+        entry = copy.deepcopy(item)
+        entry["ratio"] = value / total if (value is not None and total > 0) else None
+        normalized.append(entry)
+    return normalized
 
 
 def _parse_payoff_types(value: Any) -> Any:
@@ -1156,6 +1211,63 @@ def _aggregate_structure(
     return rules
 
 
+def _merge_payoff_type_shares(
+    share_vals: Dict[str, Any], books: List[str]
+) -> List[dict]:
+    """跨书按 type 归并 payoff 份额：同一 type 取各书贡献份额的中位数。
+
+    类型顺序按书籍顺序（``books``）保序去重；某本书对某 type 的份额为 None
+    （不可解析）时不参与该 type 的中位数；无任何书贡献数值则该 type 记 None。
+    """
+    ratios: Dict[str, List[float]] = {}
+    order: List[str] = []
+    for book in books:
+        items = share_vals.get(book)
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict) or item.get("type") is None:
+                continue
+            name = str(item.get("type"))
+            if name not in ratios:
+                ratios[name] = []
+                order.append(name)
+            value = item.get("ratio")
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                ratios[name].append(float(value))
+    return [{"type": name, "ratio": _median(ratios[name])} for name in order]
+
+
+def _aggregate_payoff_types(
+    aligned: Dict[str, dict], books: List[str]
+) -> AggregatedRule:
+    """payoff_types 专项聚合：书内归一为占比 → 跨书按 type 取中位数。
+
+    真实资产中 ratio 口径混杂（chireng/qingning 为次数、suyixinjian 为占比、
+    sangshi 为不可解析的比例式），直接跨书并集会出现 40 / 103 这类「既非次数
+    也非占比」的值，与 schema 声明的「在全书中的占比」语义不符。此处先逐书
+    经 :func:`_normalize_payoff_ratios` 归一为份额，再按 type 取中位数。
+
+    分层/冲突判定仍复用 ``list-union`` 分支（口径与既有行为一致）；``sources``
+    保留各书**原始**（未归一）取值，保证溯源不丢信息。
+    """
+    raw_vals = {b: aligned.get(b, {}).get("payoff_types") for b in books}
+    share_vals = {b: _normalize_payoff_ratios(v) for b, v in raw_vals.items()}
+
+    rule = _aggregate_field(
+        dimension="commercial-obs",
+        field="payoff_types",
+        book_vals=share_vals,
+        books=books,
+        aggregator="list-union",
+    )
+    rule.value = _merge_payoff_type_shares(share_vals, books)
+    rule.sources = [
+        SourceValue(book=b, value=raw_vals.get(b), raw=raw_vals.get(b)) for b in books
+    ]
+    return rule
+
+
 def _aggregate_commercial(
     aligned: Dict[str, dict], books: List[str]
 ) -> List[AggregatedRule]:
@@ -1163,7 +1275,7 @@ def _aggregate_commercial(
 
     * payoff_density：归一化为 {per_chapter, per_thousand_words}，子字段取数值中位数；
     * buildup_length：数值中位数；
-    * payoff_types：列表并集；
+    * payoff_types：书内归一为占比后跨书按 type 取中位数（Task 3.3）；
     * skeleton / dry_spell_tolerance / common_mistakes / paywall：字符串频次聚合。
     """
     rules: List[AggregatedRule] = []
@@ -1193,6 +1305,10 @@ def _aggregate_commercial(
         ("common_mistakes", "string-freq-auto"),
         ("paywall", "string-freq-auto"),
     ):
+        if field_name == "payoff_types":
+            # Task 3.3：ratio 改为「书内占比 → 跨书按 type 中位数」，其余不变。
+            rules.append(_aggregate_payoff_types(aligned, books))
+            continue
         vals: Dict[str, Any] = {}
         for book in books:
             vals[book] = aligned.get(book, {}).get(field_name)

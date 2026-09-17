@@ -4,7 +4,7 @@
     "schema_version": "1.0",
     "dimension": "voice-card",
     "genre": "campus-redemption",
-    "distilled_at": "2026-09-11T04:59:49",
+    "distilled_at": "2026-09-18T00:47:01",
     "source_books": [
       "chireng_chosen",
       "qingning_chosen",
@@ -488,47 +488,47 @@
       "sources": [
         {
           "book": "chireng_chosen",
-          "value": 0.2978
+          "value": 0.2562
         },
         {
           "book": "qingning_chosen",
-          "value": 0.1077
+          "value": 0.0737
         },
         {
           "book": "sangshi_chosen",
-          "value": 0.1947
+          "value": 0.1469
         },
         {
           "book": "suyixinjian_chosen",
-          "value": 0.6903
+          "value": 0.3016
         }
       ],
       "evidence": [
         {
           "source_chapter": "",
           "source_book": "chireng_chosen",
-          "quote": "0.2978",
+          "quote": "0.2562",
           "confidence": 0.2,
           "dimension": "voice-card"
         },
         {
           "source_chapter": "",
           "source_book": "qingning_chosen",
-          "quote": "0.1077",
+          "quote": "0.0737",
           "confidence": 0.2,
           "dimension": "voice-card"
         },
         {
           "source_chapter": "",
           "source_book": "sangshi_chosen",
-          "quote": "0.1947",
+          "quote": "0.1469",
           "confidence": 0.2,
           "dimension": "voice-card"
         },
         {
           "source_chapter": "",
           "source_book": "suyixinjian_chosen",
-          "quote": "0.6903",
+          "quote": "0.3016",
           "confidence": 0.2,
           "dimension": "voice-card"
         }
