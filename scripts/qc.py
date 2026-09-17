@@ -18,7 +18,8 @@ QC 统一质检入口 — 四层十二维整合（纯标准库，零第三方依
       D7 节奏       → chapter_check.check_paragraph_rhythm
       D8 爽点       → chapter_check.check_hook
   L4 语言层（表达质量）
-      D9  句子重复  → book_quality.check_duplicate_sentences
+      D9  句子重复  → book_quality.check_duplicate_sentences（跨章句）
+                      + book_quality.check_intra_chapter_repeats（章内碎片）
       D10 章节重复  → book_quality.check_duplicate_chapters + check_duplicate_paragraphs
       D11 AI味      → book_quality.check_ai_flavor + chapter_check.check_ai_tics
       D12 禁用词    → compliance.scan_asset + build_ngram_index
@@ -323,12 +324,31 @@ def _dim_hook(texts: dict) -> DimensionScore:
 
 
 def _dim_sentence_dup(texts: dict) -> DimensionScore:
-    """D9 句子重复 → book_quality.check_duplicate_sentences。"""
-    issues = _wrap_issues(book_quality.check_duplicate_sentences(texts))
+    """D9 句子重复 → book_quality.check_duplicate_sentences（跨章句）
+                       + book_quality.check_intra_chapter_repeats（章内碎片）。
+
+    2026-09-18（第三轮 Task 3.2）：本维度此前只消费跨章句检测，导致
+    `check_intra_chapter_repeats`（第二轮新增，按章内重复句占比定档）无人消费——
+    同一份稿子 `novel 质检` 会因「章内 46% 重复」报 WARN，而 `novel qc` 的 D9
+    与总分完全不受影响，两个命令结论相反。现把两个**句子级**检测器并列消费：
+    章内碎片是「句子重复」最严重的形态，语义同族。
+
+    严重度沿用检测器给出的值（章内占比 ≥25% → high、0.10–0.25 → medium、
+    <0.10 → low，含检测器自身的最小样本保护），扣分仍走 `_severity_to_deduct`
+    权重表（本任务未改）。`raw` 分别给出两个来源的 issue 计数，便于追溯是
+    跨章还是章内重复拉低了分数；D10「章节重复」保持整章/整段粒度不变。
+    """
+    cross = _wrap_issues(book_quality.check_duplicate_sentences(texts))
+    intra = _wrap_issues(book_quality.check_intra_chapter_repeats(texts))
+    issues = cross + intra
     return DimensionScore(
         key="sentence_dup", label="句子重复", layer="L4",
         score=_score_from_issues(issues), weight=1.0,
-        issues=issues, raw={"source": "book_quality.check_duplicate_sentences"})
+        issues=issues,
+        raw={"source": ("book_quality.check_duplicate_sentences"
+                        " + book_quality.check_intra_chapter_repeats"),
+             "cross_chapter": len(cross),
+             "intra_chapter": len(intra)})
 
 
 def _dim_chapter_dup(texts: dict) -> DimensionScore:
