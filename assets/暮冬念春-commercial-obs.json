@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "source_title": "暮冬念春",
+    "genre": "realistic-romance",
+    "scope": "single-book-observation",
+    "awaiting_aggregation": true,
+    "min_books_required": 3
+  },
+  "payoff_density": {
+    "per_thousand_words": 0.28,
+    "payoff_types": [
+      {
+        "type": "情感回应",
+        "ratio": 0.45,
+        "buildup_length": 2000
+      },
+      {
+        "type": "他人认可",
+        "ratio": 0.2,
+        "buildup_length": 2500
+      },
+      {
+        "type": "身份揭露",
+        "ratio": 0.15,
+        "buildup_length": 8000
+      },
+      {
+        "type": "收益兑现",
+        "ratio": 0.12,
+        "buildup_length": 15000
+      },
+      {
+        "type": "反杀",
+        "ratio": 0.08,
+        "buildup_length": 20000
+      }
+    ]
+  },
+  "skeleton": "第一阶段（1-42章）：校园同桌慢热，细节照顾与家庭阴影并进，挡伤事件完成情感绑定；第二阶段（43-115章）：分离、打工、寻找与失踪悬疑，旧址与线索驱动追读；第三阶段（116-157章）：创伤揭露与疗愈、法律维权、职场成长，婚礼与书信完成双向救赎收束。",
+  "dry_spell_tolerance": "约10-15章纯情感/日常铺垫（前中期校园段）；悬疑段用线索刷新维持",
+  "opening_analysis": {
+    "chapter_1": {
+      "first_300_words_task": "用转学与同桌安排建立新环境，细节暗示男主不冷，家庭压力一句带过",
+      "hook_position": 400,
+      "protagonist_intro_method": "环境+动作切入，内心戏克制",
+      "conflict_intro_position": 1200,
+      "golden_finger_reveal": "无金手指；驱动力是原生家庭压力与双向暗恋",
+      "chapter_2_3_task": "第2章用同学议论制造男主身世悬念；第3章用冷淡与细节反差打脸「他不好接近」"
+    },
+    "common_mistakes": "1.开篇大段回忆与内心戏、外部冲突启动慢；2.校园日常章爽点稀疏，靠情感张力硬扛；3.男主长期缺席段（分离期）易流失爽文读者；4.无传统金手指/打脸，商业点偏后置。"
+  },
+  "paywall": {
+    "position_chapter": null,
+    "cliffhanger_technique": "完整故事向；若平台切付费，适合放在「失踪调查启动」或「创伤揭露」前夜",
+    "pre_paywall_buildup": "前中期用同桌甜与家庭阴影交织蓄势；调查线提供信息差钩子"
+  },
+  "update_rhythm": {
+    "chapters_per_day": "完结稿，无连载节奏约束",
+    "burst_timing": "不适用"
+  },
+  "retention_risk_points": [
+    {
+      "position": "第1-3章",
+      "reason": "冲突启动慢、回忆偏多",
+      "mitigation": "第3-5章用冷热反差与细节糖稳住"
+    },
+    {
+      "position": "第4-10章",
+      "reason": "校园铺垫长",
+      "mitigation": "第7/9章旧伤与怒火抛强冲突"
+    },
+    {
+      "position": "分离/寻找段",
+      "reason": "男主长期不在线",
+      "mitigation": "邮局/工业园区线索驱动信息差追读"
+    },
+    {
+      "position": "疗愈段",
+      "reason": "节奏放缓",
+      "mitigation": "崩溃夜与法律线提供情绪峰"
+    }
+  ],
+  "book_title": "暮冬念春",
+  "genre": "realistic-romance",
+  "generated_at": "2026-09-18T11:41:01Z",
+  "common_mistakes": "1.开篇大段回忆与内心戏、外部冲突启动慢；2.校园日常章爽点稀疏，靠情感张力硬扛；3.男主长期缺席段（分离期）易流失爽文读者；4.无传统金手指/打脸，商业点偏后置。"
+}

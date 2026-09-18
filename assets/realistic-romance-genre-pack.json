@@ -1,0 +1,335 @@
+{
+  "meta": {
+    "id": "genre-realistic-romance",
+    "name": "现实言情",
+    "sub_tags": [
+      "现实向",
+      "慢热",
+      "言情",
+      "成长",
+      "原生家庭"
+    ],
+    "source_books": [
+      {
+        "title": "暮冬念春",
+        "platform": "番茄",
+        "performance": "完结稿",
+        "voice_card_ref": "暮冬念春"
+      }
+    ],
+    "target_platform": "番茄",
+    "confidence": 0.7,
+    "scope": "single-book-seed",
+    "note": "种子题材包：当前仅1本样本，聚合需≥3本；质量阈值与对话带按种子书实测标定，语料扩充后应重标。"
+  },
+  "structure": {
+    "chapter_word_range": {
+      "min": 1800,
+      "typical": 2200,
+      "max": 2800
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.35,
+        "typical_position": "卷首与日常段",
+        "beats": [
+          "建立处境",
+          "物件/习惯积累",
+          "家庭或环境暗线"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.3,
+        "typical_position": "章中至卷中",
+        "beats": [
+          "关系微进展",
+          "线索刷新",
+          "配角信息"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.12,
+        "typical_position": "卷末或关键转折",
+        "beats": [
+          "危机/创伤事件",
+          "情绪峰值",
+          "关系确认或断裂"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.15,
+        "typical_position": "爆点之后",
+        "beats": [
+          "安静消化",
+          "修复动作",
+          "下一目标形成"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.08,
+        "typical_position": "调查线/命运线节点",
+        "beats": [
+          "信息刷新",
+          "认知修正",
+          "行动转向"
+        ]
+      }
+    ],
+    "hook_system": {
+      "hook_types": [
+        {
+          "type": "情感冲击",
+          "frequency": 0.4,
+          "strength": 0.75,
+          "skeleton": "用细节反差或温柔动作打破人物既有认知。"
+        },
+        {
+          "type": "信息断点",
+          "frequency": 0.22,
+          "strength": 0.8,
+          "skeleton": "章末抛出半截真相或新线索，不解释来源。"
+        },
+        {
+          "type": "悬念揭示",
+          "frequency": 0.18,
+          "strength": 0.85,
+          "skeleton": "揭示男主处境的一角，保留更大秘密。"
+        },
+        {
+          "type": "危机降临",
+          "frequency": 0.15,
+          "strength": 0.9,
+          "skeleton": "家庭冲突、失踪、伤病等外部压力突至。"
+        },
+        {
+          "type": "对手登场",
+          "frequency": 0.05,
+          "strength": 0.7,
+          "skeleton": "控制型家庭成员或调查阻力方进入叙事。"
+        }
+      ],
+      "hook_density_curve": [
+        "低开",
+        "中段靠信息差维持",
+        "爆点章拉满后回落"
+      ],
+      "anti_repetition_rule": "连续两章避免同一钩子类型；危机类钩子后必须接情感冲击或缓冲。"
+    },
+    "foreshadow_pattern": {
+      "avg_span": 25,
+      "max_span": 80,
+      "concurrent_open": 3,
+      "plant_technique": [
+        "日常物件的首次无解释出现",
+        "配角半截话",
+        "人物习惯动作",
+        "空间/天气细节"
+      ]
+    },
+    "arc_rhythm": {
+      "chapters_per_arc": 40,
+      "arc_template": [
+        "处境建立",
+        "慢热关系与物件积累",
+        "信息差/危机上升",
+        "爆点与情绪释放",
+        "安静消化与再出发"
+      ],
+      "climax_position": 0.8
+    }
+  },
+  "commercial": {
+    "payoff_density": {
+      "per_thousand_words": 0.28,
+      "payoff_types": [
+        {
+          "type": "情感回应",
+          "ratio": 0.45,
+          "buildup_length": 1,
+          "skeleton": "长期克制后的照顾、保护或默认关系升级，由细节而非告白完成。"
+        },
+        {
+          "type": "他人认可",
+          "ratio": 0.2,
+          "buildup_length": 1,
+          "skeleton": "长辈、好友或同事用极短句肯定主角价值。"
+        },
+        {
+          "type": "身份揭露",
+          "ratio": 0.15,
+          "buildup_length": 4,
+          "skeleton": "男主家事或失踪真相在调查线后段揭开。"
+        },
+        {
+          "type": "收益兑现",
+          "ratio": 0.12,
+          "buildup_length": 7,
+          "skeleton": "学业/职场成长与关系落地在结局阶段兑现。"
+        },
+        {
+          "type": "反杀",
+          "ratio": 0.08,
+          "buildup_length": 9,
+          "skeleton": "法律维权或公开对质击败控制型家庭叙事。"
+        }
+      ],
+      "dry_spell_tolerance": 8
+    },
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "用转学与同桌安排建立新环境，细节暗示男主并不冷漠，家庭压力一句带过",
+        "hook_position": 400,
+        "protagonist_intro_method": "环境+动作切入，内心戏克制",
+        "conflict_intro_position": 1200,
+        "golden_finger_reveal": "无金手指；驱动力是原生家庭压力与双向暗恋"
+      },
+      "chapter_2_3_task": "第2章用同学议论制造男主身世悬念；第3章用冷淡与细节反差打脸「他不好接近」",
+      "common_mistakes": [
+        "开篇大段回忆与内心戏",
+        "外部冲突启动过慢",
+        "校园日常段爽点稀疏",
+        "男主缺席段缺少线索驱动"
+      ]
+    },
+    "paywall": {
+      "position_chapter": null,
+      "cliffhanger_techique": "完整故事向；若切付费，宜放在失踪调查启动或创伤揭露前夜",
+      "cliffhanger_technique": "完整故事向；若切付费，宜放在失踪调查启动或创伤揭露前夜",
+      "pre_paywall_buildup": "前中期用同桌日常与家庭阴影交织蓄势；调查线提供信息差钩子"
+    },
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "完结稿可不限；若连载，爆点章可加更但消化章必须保留"
+    },
+    "retention_risk_points": [
+      {
+        "position": "第1-3章",
+        "reason": "冲突启动慢、回忆偏多",
+        "mitigation": "第3-5章用冷热反差与细节糖稳住"
+      },
+      {
+        "position": "第4-10章",
+        "reason": "校园铺垫长",
+        "mitigation": "第7/9章旧伤与怒火抛强冲突"
+      },
+      {
+        "position": "分离/寻找段",
+        "reason": "男主长期不在线",
+        "mitigation": "邮局/工业园区等线索驱动信息差追读"
+      },
+      {
+        "position": "疗愈段",
+        "reason": "节奏放缓",
+        "mitigation": "崩溃夜与法律线提供情绪峰"
+      }
+    ],
+    "quality_thresholds": {
+      "pass": 75,
+      "warn": 60,
+      "dialogue_optimal": {
+        "min": 0.08,
+        "max": 0.3
+      }
+    }
+  },
+  "quality_thresholds": {
+    "pass": 75,
+    "warn": 60,
+    "dialogue_optimal": {
+      "min": 0.08,
+      "max": 0.3
+    }
+  },
+  "language_rules": {
+    "iron_rules": [
+      {
+        "rule": "必须采用第三人称限知视角，男主内心后置。",
+        "bad_example": "他想起童年被父亲锁在门外的那个雨夜，心里一阵绞痛。",
+        "good_example": "他抬腕看表，又把手插回口袋。很久才说：没事。",
+        "rationale": "样本全书以女主感知为限；男主创伤通过动作与转述显形，信息差是核心追读力。"
+      },
+      {
+        "rule": "情绪峰值用短句或单句成段，禁止长句直陈情绪。",
+        "bad_example": "一种难以名状的巨大悲伤与愤怒同时击中了她，让她几乎无法呼吸。",
+        "good_example": "她愣住了。\n\n然后，笑了。",
+        "rationale": "峰值章句长显著短于平叙；单句成段是该题材定格情绪的硬手法。"
+      },
+      {
+        "rule": "情绪以体感与动作外化为主，禁止直陈情绪词堆砌。",
+        "bad_example": "她很心动，非常伤心，极其愤怒。",
+        "good_example": "喉咙发紧。手指发抖。她把药膏拧开，又拧回去。",
+        "rationale": "样本情绪模式为混合式（体感+动作+环境投射）；直陈词是AI味重灾区。"
+      },
+      {
+        "rule": "比喻与意象取材日常物件、天气物候与食物，禁止宏大比喻与古风口癖。",
+        "bad_example": "她的灵魂像一只折翼的蝴蝶，在无尽的黑夜里坠落。",
+        "good_example": "豆浆的热气扑在手背上，像有人轻轻握了一下。",
+        "rationale": "样本意象域集中于校园物件、初霜/雪/梧桐、食物热气；宏大比喻破坏现实感。"
+      }
+    ],
+    "banned_phrases": [
+      "恍若",
+      "霎时",
+      "眸光",
+      "幽幽",
+      "宛如",
+      "薄唇",
+      "杀伐果断",
+      "系统面板",
+      "金手指",
+      "小鹿乱撞",
+      "伤心欲绝"
+    ],
+    "fatigue_words": [
+      {
+        "word": "深吸一口气",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "心跳漏了一拍",
+        "max_per_chapter": 1
+      },
+      {
+        "word": "她不知道",
+        "max_per_chapter": 3
+      },
+      {
+        "word": "像是",
+        "max_per_chapter": 4
+      },
+      {
+        "word": "她忽然",
+        "max_per_chapter": 3
+      }
+    ],
+    "required_elements": [
+      "第三人称限知视角下的感官细节",
+      "至少一个承载情感的日常物件",
+      "体感式或动作外化的情绪呈现",
+      "章末信息差或情感钩子"
+    ],
+    "forbidden_elements": [
+      "金手指与系统面板",
+      "大段心理学术语分析",
+      "脸谱化咆哮式冲突",
+      "古风辞藻与宏大抒情"
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "直白",
+      "note": "样本对白极简、潜台词靠动作补足；对白占比实测约0.15。"
+    }
+  },
+  "world_conventions": {
+    "power_system_type": "无超自然力量；权力来自原生家庭控制、经济依附、校园与职场结构。",
+    "progression_granularity": "通过具体事件解决、关系确认、法律/职业身份获得来体现成长。",
+    "naming_conventions": [
+      "真实感较强的中文人名",
+      "称呼随关系变化（全名/名/亲属称谓）"
+    ]
+  }
+}

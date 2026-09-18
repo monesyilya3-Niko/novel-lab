@@ -1,0 +1,320 @@
+{
+  "meta": {
+    "source_title": "暮冬念春",
+    "genre": "realistic-romance",
+    "extracted_at": "2026-09-18",
+    "sample_chapters": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      38,
+      39,
+      40,
+      41,
+      42,
+      77,
+      78,
+      79,
+      80,
+      81,
+      116,
+      117,
+      118,
+      119,
+      120,
+      155,
+      156
+    ],
+    "total_sample_words": 352543,
+    "confidence": 0.9,
+    "human_reviewed": false
+  },
+  "narration": {
+    "pov": "第三人称限知",
+    "pov_switch_rule": "",
+    "tense_feel": "近距离慢镜凝视，叙述贴着感官与物件",
+    "sentence_rhythm": {
+      "avg_length": 0,
+      "short_ratio": 0,
+      "long_ratio": 0,
+      "burst_pattern": "情绪节点用单句成段或连续短句；日常用中等句长平稳推进"
+    },
+    "paragraph": {},
+    "chapter_opening_patterns": [
+      {
+        "pattern": "场景白描",
+        "frequency": 3,
+        "example_structure": "[环境状态]+[人物动作]"
+      },
+      {
+        "pattern": "内心独白",
+        "frequency": 2,
+        "example_structure": "[心理活动]+[场景引入]"
+      }
+    ]
+  },
+  "dialogue": {
+    "dialogue_ratio": 0.1477,
+    "tag_style": "",
+    "subtext_level": "直白",
+    "character_voices": [
+      {
+        "name": "温霜禾",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "先说「不用」或「我自己来」，语气平静；被坚持后沉默让步，不吵不闹",
+          "never_says": [
+            "你滚",
+            "我恨你（当面）",
+            "关我屁事",
+            "随便你死活"
+          ],
+          "anger_pattern": "很少发火；受委屈时压低声音说事实，或用沉默与疏离表达底线",
+          "verbal_tics": [
+            "嗯",
+            "好",
+            "没事",
+            "我知道",
+            "你不用每次都来"
+          ],
+          "physical_habit": [
+            "捏衣角/袖口",
+            "低头看手机导航",
+            "手心出汗",
+            "嘴角先笑再说话",
+            "指尖碰对方手背"
+          ],
+          "avg_utterance_length": 12
+        },
+        "arc": {
+          "start_state": "转学插班、家庭压抑的隐忍少女",
+          "end_state": "职场主管、敢写告白信、能护住自己的成年女性",
+          "turning_chapters": [
+            7,
+            39,
+            80,
+            119,
+            146,
+            155
+          ],
+          "arc_type": "正向成长"
+        }
+      },
+      {
+        "name": "江春屿",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "用极短否定或沉默拒绝解释；被追问时转移话题或给出可执行的替代方案",
+          "never_says": [
+            "求你陪我",
+            "我好惨",
+            "你喜欢我吗（早期）",
+            "我需要你可怜"
+          ],
+          "anger_pattern": "压抑到爆发；爆发时声音发抖、指责家人控制，不对女主吼",
+          "verbal_tics": [
+            "顺手",
+            "嗯",
+            "习惯了",
+            "没事",
+            "二十分钟"
+          ],
+          "physical_habit": [
+            "抬腕看表",
+            "手插口袋",
+            "低头/看窗外",
+            "手指发抖",
+            "把东西默默放到对方桌上"
+          ],
+          "avg_utterance_length": 8
+        },
+        "arc": {
+          "start_state": "被家庭控制、沉默寡言的优等生",
+          "end_state": "走出创伤、能并肩生活的伴侣",
+          "turning_chapters": [
+            9,
+            38,
+            107,
+            118,
+            120,
+            122
+          ],
+          "arc_type": "先抑后扬"
+        }
+      },
+      {
+        "name": "林悦",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "先问清楚利害，再陪跑；劝不住就跟着去",
+          "never_says": [
+            "你自作自受",
+            "我不管你了"
+          ],
+          "anger_pattern": "替朋友着急时语速加快，很少真生气",
+          "verbal_tics": [
+            "怎么了",
+            "那现在去？",
+            "你确定",
+            "请客"
+          ],
+          "physical_habit": [
+            "从对面抬头看她",
+            "跟上半步",
+            "压低声音"
+          ],
+          "avg_utterance_length": 14
+        },
+        "arc": {
+          "start_state": "校园好友",
+          "end_state": "贯穿至婚礼的终身挚友",
+          "turning_chapters": [
+            78,
+            105,
+            152
+          ],
+          "arc_type": "稳定陪伴"
+        }
+      },
+      {
+        "name": "大姨",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用长辈式嗔怪挡回去，手却把东西接过来",
+          "never_says": [
+            "你别回来"
+          ],
+          "anger_pattern": "瞪一眼、搓手，很少真骂",
+          "verbal_tics": [
+            "跟大姨说",
+            "多大也是孩子",
+            "那就好"
+          ],
+          "physical_habit": [
+            "拍肩",
+            "拉围巾",
+            "从口袋摸糖",
+            "搓手"
+          ],
+          "avg_utterance_length": 16
+        },
+        "arc": {
+          "start_state": "送女主入学的监护长辈",
+          "end_state": "婚礼前排的家人",
+          "turning_chapters": [
+            97,
+            149
+          ],
+          "arc_type": "稳定支撑"
+        }
+      },
+      {
+        "name": "周敏",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "八卦式推进，被制止就摆手说「行行行」",
+          "never_says": [
+            "我是为你好（说教）"
+          ],
+          "anger_pattern": "几乎不怒，用吐槽代替",
+          "verbal_tics": [
+            "我跟你说",
+            "你可别跟人说",
+            "运气够背的"
+          ],
+          "physical_habit": [
+            "转过身凑近",
+            "压低声音",
+            "摆摆手"
+          ],
+          "avg_utterance_length": 18
+        },
+        "arc": {
+          "start_state": "前排短发同学",
+          "end_state": "点破暧昧的旁观者",
+          "turning_chapters": [
+            3,
+            42
+          ],
+          "arc_type": "功能性配角"
+        }
+      }
+    ]
+  },
+  "emotion_handling": {
+    "mode": "混合式",
+    "body_reaction_vocabulary": [
+      "她心动了",
+      "小鹿乱撞",
+      "伤心欲绝"
+    ],
+    "examples": [
+      {
+        "emotion": "心动",
+        "pattern": "[体感式] 心跳/指尖/呼吸/耳根等身体反应 + 环境细节（梧桐/雪/豆浆温度）",
+        "anti_pattern": "避免「她心动了」「小鹿乱撞」类直陈与夸张比喻"
+      },
+      {
+        "emotion": "悲伤",
+        "pattern": "[体感式+动作外化] 鼻酸、喉咙发紧、手指发抖，配合克制动作（不哭、攥紧、转身）",
+        "anti_pattern": "避免嚎哭式独白与「伤心欲绝」套话"
+      },
+      {
+        "emotion": "愤怒",
+        "pattern": "[动作外化] 手指发抖、攥拳、声音发抖、摔东西或沉默离开",
+        "anti_pattern": "避免长篇控诉与脸谱化发火"
+      },
+      {
+        "emotion": "日常温情",
+        "pattern": "[环境投射] 冬阳/春风/灯光/食物热气烘托，情绪不直说",
+        "anti_pattern": "心动：避免「她心动了」「小鹿乱撞」类直陈与夸张比喻；悲伤：避免嚎哭式独白与「伤心欲绝」套话；愤怒：避免长篇控诉与脸谱化发火；日常：避免堆砌华丽辞藻与宏大比喻"
+      }
+    ]
+  },
+  "imagery": {
+    "high_freq_metaphor_domains": [
+      "校园日常物件",
+      "天气物候",
+      "食物",
+      "植物"
+    ],
+    "sensory_preference": {
+      "visual": 0.35,
+      "tactile": 0.3,
+      "auditory": 0.2,
+      "olfactory": 0.1,
+      "gustatory": 0.05
+    },
+    "signature_devices": [
+      "物件承载情感（试卷/笔记/笔/橘子/围巾）",
+      "短句成段定格情绪",
+      "对话极简、留白给动作"
+    ]
+  },
+  "banned": {
+    "never_used_words": [
+      "恍若",
+      "霎时",
+      "眸光",
+      "幽幽",
+      "宛如",
+      "薄唇",
+      "杀伐果断",
+      "系统面板",
+      "金手指"
+    ],
+    "avoided_structures": [],
+    "genre_taboos": []
+  },
+  "provenance": {
+    "contains_verbatim": false,
+    "abstraction_note": "四遍扫描产物，经 compliance.py 扫描，连续12字匹配原文已拒收"
+  }
+}

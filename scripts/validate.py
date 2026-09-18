@@ -31,7 +31,7 @@ LANG_SUBTYPE_ENUM = {"直白", "偶有潜台词", "大量潜台词"}
 
 # 题材白名单：craft-card / voice-card 的 meta.genre 必须 ∈ 此集合。
 # 后续扩展题材包时在此追加（铁律一）。
-KNOWN_GENRES = {"campus-redemption"}
+KNOWN_GENRES = {"campus-redemption", "realistic-romance"}
 
 # 蒸馏维度枚举：distilled 资产的 meta.dimension 与 rules[].dimension 都必须 ∈ 此集合。
 DISTILLED_DIMENSIONS = ("voice-card", "craft-card", "structure-obs", "commercial-obs")
