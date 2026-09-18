@@ -2,6 +2,20 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [1.1.0] - 2026-09-18
+
+### Added
+- 对话占比满分区题材可配（`dialogue_optimal`）；campus-redemption = 0.07–0.35
+- LLM 备用模型路由与显式降级提示
+- 章内无标点碎片重复检测（20 字 n-gram）
+- `docs/detection-authority.md` 检测口径权威说明
+- 安装器/便携包版本 **v1.1.0**
+
+### Changed
+- 章节评分：悬崖档位 → 连续打分；「了」字密度按语料 p75/p90 标定
+- QC D9 接入章内重复；payoff_types 蒸馏口径归一为占比
+- 全量测试基线 **780 OK**；55 资产 **0 WARN / 0 REJECT**
+
 ## [Unreleased]
 
 ### Added
