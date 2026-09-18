@@ -6,6 +6,10 @@
 
 ### Added
 
+- **对话占比满分区题材可配（P1-4）**：题材包 `quality_thresholds.dialogue_optimal`（或 `commercial.quality_thresholds.dialogue_optimal`）可覆盖默认 (0.15, 0.40)；campus-redemption 按语料 voice-card 实测（0.0737–0.3016）标定为 **0.07–0.35**，慢热抒情不再被 15% 硬线征税
+- `docs/detection-authority.md`：同类检测「以谁为准」权威口径（重复 / 矛盾 / 章节分 / 资产校验）
+- `llm_client.describe_llm_degradation`：LLM 额度/网络失败时显式列出「不可用能力 / 仍然可用能力」；pipeline 与 write 在 chat 失败时输出该提示（评估报告 item 10）
+- `tests/test_dialogue_band_and_setting.py`：对话带解析/题材包实装/setting_check 检测行为（世界观禁词、属性矛盾、别名）/LLM 降级文案
 - `tests/test_logic_check.py`：24 个用例，为下列三处修复建立回归护栏
 - `tests/test_model_config.py`：4 个用例，守住 `model_config` 可导入底线
 - 前端新增 `assetKindLabels.test.ts` 与 `HomeDashboard.test.tsx`（共 7 个用例），锁定「同一张标签表同时服务 snake_case 与 camelCase 键、首页饼图不出现原始英文 kind / undefined」
@@ -48,7 +52,8 @@
 - 根目录 QA 调试产物归档至 `docs/archive/qa-artifacts/`
 - 根目录 Agent 协作文档（HANDOFF / RULES / PROJECT_LAW / PROJECT_SUMMARY）归档至 `docs/internal/`；无许可第三方参考内容与本地拆书实验产物移出版本库（仅本地留存，已加入 `.gitignore`）
 - README 新增 CI / License 徽章；截图区移除「暗色首页」（首页暂不响应暗色模式，修复后补回）
-- 全量测试基线：**751 tests OK**（2026-09-18）；55 资产 0 REJECT
+- 全量测试基线：**751+ tests OK**（2026-09-18）；55 资产 0 REJECT
+- 检测口径权威说明见 `docs/detection-authority.md`
 
 ## [1.0.0-baseline] - 2026-09-13
 

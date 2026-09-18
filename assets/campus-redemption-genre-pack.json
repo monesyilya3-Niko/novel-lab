@@ -200,7 +200,23 @@
         "reason": "情绪释放后的平淡期容易造成读者流失。",
         "mitigation": "在缓冲章节中立即埋下下一个悬念的种子。"
       }
-    ]
+    ],
+    "quality_thresholds": {
+      "pass": 75,
+      "warn": 60,
+      "dialogue_optimal": {
+        "min": 0.07,
+        "max": 0.35
+      }
+    }
+  },
+  "quality_thresholds": {
+    "pass": 75,
+    "warn": 60,
+    "dialogue_optimal": {
+      "min": 0.07,
+      "max": 0.35
+    }
   },
   "language_rules": {
     "iron_rules": [

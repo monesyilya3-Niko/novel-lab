@@ -58,6 +58,11 @@ HOOK_KEYWORDS = [
 DEFAULT_PASS = 75
 DEFAULT_WARN = 60
 
+# 对话占比满分区默认值（评估报告 P1-4：慢热抒情文体与 15%–40% 硬带冲突）
+# 题材包 commercial.quality_thresholds.dialogue_optimal = {"min": x, "max": y} 可覆盖。
+# campus-redemption 语料实测 voice-card dialogue_ratio：0.0737 / 0.1469 / 0.2562 / 0.3016
+DEFAULT_DIALOGUE_BAND = (0.15, 0.40)
+
 # 「了」字密度标定线（2026-09-17 按语料分位数重标定，取代旧绝对值 >5 / >8）
 #
 # 标定依据：
@@ -138,12 +143,49 @@ def check_word_count(text: str) -> tuple:
     return score, f"字数 {cn}（{label}）"
 
 
-def check_dialogue_ratio(text: str) -> tuple:
-    """2. 对话占比（12 分）— 满分区 15%–40% 不变，区间外连续衰减。
+def resolve_dialogue_band(genre_pack) -> tuple:
+    """解析对话占比满分区，返回 (min, max)。
+
+    读取顺序：
+      1. ``commercial.quality_thresholds.dialogue_optimal``（与 resolve_thresholds 同路径）
+      2. 顶层 ``quality_thresholds.dialogue_optimal``（题材包未写满 commercial 时的轻量挂载）
+    回退：缺省 / 非法 → DEFAULT_DIALOGUE_BAND。静默回退，不抛异常。
+    """
+    if not isinstance(genre_pack, dict):
+        return DEFAULT_DIALOGUE_BAND
+    candidates = []
+    commercial = genre_pack.get("commercial")
+    if isinstance(commercial, dict):
+        qt = commercial.get("quality_thresholds")
+        if isinstance(qt, dict):
+            candidates.append(qt)
+    top_qt = genre_pack.get("quality_thresholds")
+    if isinstance(top_qt, dict):
+        candidates.append(top_qt)
+
+    def _unit(v):
+        return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+    for qt in candidates:
+        opt = qt.get("dialogue_optimal")
+        if not isinstance(opt, dict):
+            continue
+        mn, mx = opt.get("min"), opt.get("max")
+        if not (_unit(mn) and _unit(mx)):
+            continue
+        if not (0.0 <= float(mn) < float(mx) <= 1.0):
+            continue
+        return (float(mn), float(mx))
+    return DEFAULT_DIALOGUE_BAND
+
+
+def check_dialogue_ratio(text: str, band=None) -> tuple:
+    """2. 对话占比（12 分）— 满分区可按题材包配置，区间外连续衰减。
 
     分子统一走 metrics.dialogue_char_count（四类引号同一口径，2026-09-16 Task 3）；
     分母保持既有口径：汉字数。
-    2026-09-18：取代旧档位（15% 边界一跳 4 分），锚点与旧端点一致。
+    2026-09-18：连续打分 + 题材包可配满分区（P1-4）。默认带 (0.15, 0.40)。
+    外侧锚点按带宽相对推导，默认带时与旧档位端点一致。
     """
     dialogue_chars = dialogue_char_count(text)
     total = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
@@ -151,27 +193,36 @@ def check_dialogue_ratio(text: str) -> tuple:
         return 0, "无文本"
     ratio = dialogue_chars / total
 
-    if 0.15 <= ratio <= 0.40:
+    lo, hi = band if band is not None else DEFAULT_DIALOGUE_BAND
+    lo, hi = float(lo), float(hi)
+    width = max(hi - lo, 1e-6)
+    lo_mid = lo * (2.0 / 3.0)          # 默认 0.10
+    lo_low = lo * (1.0 / 3.0)          # 默认 0.05
+    hi_a = hi + width * 0.6            # 默认 0.55
+    hi_b = hi + width * 0.8            # 默认 0.60
+    hi_c = hi + width * 2.4            # 默认衰减终点附近
+
+    if lo <= ratio <= hi:
         score, label = 12.0, "✓"
-    elif 0.10 <= ratio < 0.15:
-        score = _ramp(ratio, 0.10, 0.15, 8.0, 12.0)
+    elif lo_mid <= ratio < lo:
+        score = _ramp(ratio, lo_mid, lo, 8.0, 12.0)
         label = "略低"
-    elif 0.40 < ratio <= 0.55:
-        score = _ramp(ratio, 0.40, 0.55, 12.0, 8.0)
+    elif hi < ratio <= hi_a:
+        score = _ramp(ratio, hi, hi_a, 12.0, 8.0)
         label = "略高"
-    elif 0.05 <= ratio < 0.10:
-        score = _ramp(ratio, 0.05, 0.10, 2.0, 8.0)
+    elif lo_low <= ratio < lo_mid:
+        score = _ramp(ratio, lo_low, lo_mid, 2.0, 8.0)
         label = "偏低"
-    elif 0.55 < ratio <= 0.60:
-        score = _ramp(ratio, 0.55, 0.60, 8.0, 4.0)
+    elif hi_a < ratio <= hi_b:
+        score = _ramp(ratio, hi_a, hi_b, 8.0, 4.0)
         label = "偏高"
-    elif ratio < 0.05:
-        score = _ramp(ratio, 0.0, 0.05, 0.0, 2.0)
+    elif ratio < lo_low:
+        score = _ramp(ratio, 0.0, lo_low, 0.0, 2.0)
         label = "几乎无对话"
     else:
         # 对话过多：连续下降；子项不低于 2，避免短文本因「引号内标点 / 汉字分母」
         # 使 ratio>1 时被打成 0 分（旧档位该档固定 4 分，也从不为 0）
-        score = _ramp(ratio, 0.60, 1.0, 4.0, 2.0)
+        score = _ramp(ratio, hi_b, max(hi_c, hi_b + 1e-6), 4.0, 2.0)
         label = "对话过多"
     score = _score1(score)
     if label == "✓":
@@ -480,7 +531,7 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
     """
     checks = [
         check_word_count(text),       # 8分
-        check_dialogue_ratio(text),   # 12分
+        check_dialogue_ratio(text, resolve_dialogue_band(genre_pack)),  # 12分
         check_hook(text),             # 12分
         check_opening(text),          # 8分
         check_emotion_density(text),  # 12分

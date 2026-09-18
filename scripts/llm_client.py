@@ -40,6 +40,49 @@ class LLMError(Exception):
     pass
 
 
+# LLM 不可用时仍可本地完成的能力（评估报告 item 10：显式降级提示）
+LLM_DEGRADED_FEATURES = (
+    "拆书分析 pass1-5（LLM 扫描）",
+    "写作台 generate / novel 写作（LLM 正文生成）",
+    "qc --llm-hook 因果二次判定",
+    "模型连通性测试与额度相关操作",
+)
+LLM_STILL_AVAILABLE = (
+    "纯算法质检（novel 检查 / 质检 / qc 默认路径）",
+    "资产校验、注入 prompt 组装、组装 CLI（无模型可用）",
+    "章节加载 / 重复检测 / 设定与逻辑一致性纯算法检测",
+)
+
+
+def describe_llm_degradation(error) -> str:
+    """把 LLM 失败原因翻译成「哪些能力不可用 / 哪些仍可用」的可读提示。"""
+    err = str(error or "")
+    low = err.lower()
+    if "尚未配置" in err:
+        reason = "尚未配置外部模型"
+        hint = "运行: python scripts/model_config.py add"
+    elif ("insufficient" in low or "余额" in err
+          or "HTTP 403" in err or "HTTP 401" in err):
+        reason = "模型额度/权限不足"
+        hint = ("充值或更换可用模型；可配置备用链: "
+                "python scripts/model_config.py fallback <主模型> <备用...>")
+    elif "连接失败" in err or "timed out" in low or "timeout" in low:
+        reason = "网络连接失败"
+        hint = "检查网络/代理后重试；配置备用模型可提高可用性"
+    else:
+        reason = "模型调用失败"
+        hint = "查看原始错误；必要时 python novel.py 模型 --test <id>"
+
+    degraded = "\n".join(f"  - {x}" for x in LLM_DEGRADED_FEATURES)
+    still = "\n".join(f"  - {x}" for x in LLM_STILL_AVAILABLE)
+    return (
+        f"[LLM 降级] {reason}：{err}\n"
+        f"  处理建议: {hint}\n"
+        f"  当前不可用（依赖外部模型）:\n{degraded}\n"
+        f"  仍然可用（纯本地）:\n{still}"
+    )
+
+
 # --------------------------------------------------------------------------
 # 配置读写
 # --------------------------------------------------------------------------

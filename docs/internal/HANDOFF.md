@@ -1,4 +1,4 @@
-﻿# novel-lab 交接文档
+# novel-lab 交接文档
 
 > **用途**：新会话/新协作者的完整上下文。先读本文件 + `PROJECT_SUMMARY.md` + `AGENTS.md` 即可接手。
 > **最后更新**：2026-09-18（总工收尾第三轮优化 + 连续打分后实测）
@@ -42,6 +42,7 @@
 - 满分区与权重不变；分数可带 1 位小数；**历史章节分会与旧口径不同**
 - 「了」字密度：语料 p75=27.0 / p90=31.2，其间线性扣分 0→3
 - QC D9 同时消费跨章重复与章内碎片重复
+- **对话占比满分区可按题材配置**：默认 (0.15, 0.40)；campus-redemption = (0.07, 0.35)（`docs/detection-authority.md`）
 
 ### GUI 功能
 
@@ -144,7 +145,9 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 | P2 | 服务常驻 autostart 为可选项，未默认安装 |
 | P3 | `sangshi` commercial-obs 可选字段 `common_mistakes` 待人工补写 |
 | P3 | lint 债：`docs/lint-debt.md` |
+| P3 | 无标点重复碎片仍可能漏报（章内检测按句切分） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
+| — | 检测口径权威说明：`docs/detection-authority.md` |
 
 ---
 

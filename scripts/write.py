@@ -228,8 +228,14 @@ def main():
     content = ""
     for attempt in range(1, 4):  # 最多 3 轮（1 初稿 + 2 改写）
         print(f"[2/4] 生成 (第{attempt}稿): task='{args.task[:40]}...'")
-        r = llm_client.chat(user=user, system=system, task="writing",
-                            max_tokens=args.words * 3, temperature=0.8, json_mode=False)
+        try:
+            r = llm_client.chat(user=user, system=system, task="writing",
+                                max_tokens=args.words * 3, temperature=0.8, json_mode=False)
+        except llm_client.LLMError as exc:
+            print(llm_client.describe_llm_degradation(exc), file=sys.stderr)
+            print("[X] 写作生成中断；可改用无模型接管清单模式（先卸载/清空模型配置触发）"
+                  "或修复模型后续跑", file=sys.stderr)
+            return 1
         content = r["text"].strip()
         print(f"      → {len(content)} 字, {r['elapsed']}s, tokens {r['prompt_tokens']}+{r['completion_tokens']}")
 

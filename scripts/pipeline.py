@@ -322,7 +322,13 @@ def main():
     raw_dir = ROOT / "corpus" / "raw" / name  # 按书名隔离，避免多本书互相覆盖
     raw_dir.mkdir(parents=True, exist_ok=True)
     for kind in ("pass1_structure", "pass2_character", "pass3_style", "pass4_commercial"):
-        results[kind] = run_pass(kind, slices, m, args.dry_run, args.model_id)
+        try:
+            results[kind] = run_pass(kind, slices, m, args.dry_run, args.model_id)
+        except llm_client.LLMError as exc:
+            # 评估报告 item 10：额度/网络失败时显式降级提示，不静默半截交付
+            print(llm_client.describe_llm_degradation(exc), file=sys.stderr)
+            print(f"[X] 五遍扫描在 {kind} 中断；已完成的 pass 若已落盘可续跑", file=sys.stderr)
+            return 1
         if not args.dry_run:
             (raw_dir / f"{kind}.json").write_text(
                 json.dumps(results[kind], ensure_ascii=False, indent=2), encoding="utf-8")
