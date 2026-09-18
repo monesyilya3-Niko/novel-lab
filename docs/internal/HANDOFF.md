@@ -31,9 +31,9 @@
 
 ### 产出统计（以磁盘为准）
 
-- **资产 55 个**：0 REJECT（1 条可选字段 WARN：sangshi commercial-obs 缺 `common_mistakes`）
+- **资产 55 个**：0 WARN / 0 REJECT（sangshi `common_mistakes` 已由本卡观察汇总补齐）
 - **报告 8 份**：4 书 × (拆书报告 + 笔法分析)
-- **测试 751 用例 OK**（`python -B run_tests.py`，2026-09-18）
+- **测试 780 用例 OK**（`python -B run_tests.py`，2026-09-18）
 - **git**：本地 `master`；远程 `monesyilya3-Niko/novel-lab`
 
 ### 评分语义（2026-09-18 变更，必读）
@@ -143,11 +143,10 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 |---|---|
 | P2 | GitHub Releases 上传与 `v*` tag 发布流程实测（CI 已配 release.yml） |
 | P2 | 服务常驻 autostart 为可选项，未默认安装 |
-| P3 | `sangshi` commercial-obs 可选字段 `common_mistakes` 待人工补写 |
 | P3 | lint 债：`docs/lint-debt.md` |
-| P3 | 无标点重复碎片仍可能漏报（章内检测按句切分） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
 | — | 检测口径权威说明：`docs/detection-authority.md` |
+| — | 章内碎片重复已接入 n-gram 检测（2026-09-18） |
 
 ---
 

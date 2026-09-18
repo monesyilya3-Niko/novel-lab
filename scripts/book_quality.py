@@ -120,39 +120,120 @@ def check_duplicate_sentences(texts: dict) -> list:
     return issues
 
 
+def _fragment_repeat_ratio(text: str, ngram: int = 20) -> tuple:
+    """无标点碎片重复：n 字滑窗重复区域的**并集覆盖占比**与最长示例。
+
+    评估报告 P3 / deferred minor：句子切分依赖句读，纯长句/无标点段落会整段
+    并成「一句」而漏报碎片化复制。此处按字符 n-gram 补召回。
+
+    计数口径：对每个重复窗口取非重叠出现，将「第 2 次及以后」的区间并入
+    区间并集，`ratio = 并集长度 / compact 长度`（≤1，避免重叠窗口把占比加爆）。
+
+    控制误报：
+      - 窗口内汉字数 < 12 跳过
+      - 窗口字符种类 < 4 跳过（如「甲甲甲…」均匀填充）
+    返回 (ratio, sample)；无有效重复时 (0.0, "")。
+    """
+    compact = re.sub(r'\s+', '', text or "")
+    if len(compact) < ngram * 2:
+        return 0.0, ""
+    pos = defaultdict(list)
+    for i in range(len(compact) - ngram + 1):
+        frag = compact[i:i + ngram]
+        han = 0
+        for c in frag:
+            if '一' <= c <= '鿿':
+                han += 1
+        if han < 12:
+            continue
+        if len(set(frag)) < 4:
+            continue
+        pos[frag].append(i)
+    intervals = []
+    best = ""
+    for frag, starts in pos.items():
+        if len(starts) < 2:
+            continue
+        last = -10 ** 9
+        kept = []
+        for p in starts:
+            if p >= last + ngram:
+                kept.append(p)
+                last = p
+        if len(kept) < 2:
+            continue
+        for p in kept[1:]:
+            intervals.append((p, p + ngram))
+        if len(frag) > len(best):
+            best = frag
+    if not intervals:
+        return 0.0, ""
+    intervals.sort()
+    union = 0
+    cur_s, cur_e = intervals[0]
+    for s, e in intervals[1:]:
+        if s < cur_e:
+            if e > cur_e:
+                cur_e = e
+        else:
+            union += cur_e - cur_s
+            cur_s, cur_e = s, e
+    union += cur_e - cur_s
+    if union <= 0:
+        return 0.0, ""
+    return min(1.0, union / len(compact)), best[:30]
+
+
 def check_intra_chapter_repeats(texts: dict) -> list:
-    """检测章内重复句子（≥10 字的句子在同一章内出现 ≥2 次）
+    """检测章内重复：标点句重复 + 无标点碎片（n-gram）重复。
 
     2026-09-17（第二轮 Task A，报告 P0-2）：段落检测只认「>30 字整段完全相同」，
     识别不了「同一句碎片散布在多个段落中」的形态（项目曾发生 2000 字里 937 字重复的
-    automerge 事故却被判 PASS）。本检查按**章内重复句占比**补上这一召回缺口。
+    automerge 事故却被判 PASS）。本检查按**章内重复占比**补上这一召回缺口。
 
-    占比 `ratio = dups / 句子总数`（dups = 各重复句多出的出现次数之和）：
+    2026-09-18：在句读切分之外并入 `_fragment_repeat_ratio`（无标点碎片）。
+    `ratio = max(句读重复占比, 碎片覆盖占比)`，issue 仍为 `intra_chapter_repeat`
+    （QC D9 消费方签名不变）；`source` 标明主因是「句」还是「碎片」。
+
+    占比分档：
       - `ratio >= 0.25`          → `high`
       - `0.10 <= ratio < 0.25`   → `medium`
-      - `ratio < 0.10`           → `low`
+      - `ratio < 0.10`            → `low`
 
-    **最小样本保护**：句子总数 < `MIN_SAMPLE_SENTS_FOR_RATIO` 时小分母占比不可靠
-    （如「2 句里重复 1 句」= 50% 会被判 `high`，进而因 `high > 0` 使 `novel 质检`
-    由 PASS 变 WARN，属新引入的误报），此时一律报 `low`，并在 issue 中以
-    `low_sample=True` 标记；样本充足时为 `False`（该字段**始终给出**，便于消费方判断）。
+    **最小样本保护**：句读句子数 < MIN_SAMPLE_SENTS_FOR_RATIO 且句读侧有重复时，
+    或碎片侧 compact 长度 < 200 且句读侧无重复时，一律 `low` + `low_sample=True`。
 
-    每章最多报 1 条（聚合）；无重复句或句子总数为 0 时跳过该章。
+    每章最多报 1 条（聚合）。
     """
     issues = []
     for ch in sorted(texts.keys()):
-        sents = [s.strip() for s in re.split(r'(?<=[。！？…])', texts[ch])]
+        raw = texts[ch] or ""
+        sents = [s.strip() for s in re.split(r'(?<=[。！？…])', raw)]
         sents = [s for s in sents if len(s) >= 10]
-        if not sents:
-            continue
-        counter = Counter(sents)
+        counter = Counter(sents) if sents else Counter()
         dups = sum(n - 1 for n in counter.values() if n > 1)
-        if dups == 0:
+        sent_ratio = (dups / len(sents)) if sents else 0.0
+        frag_ratio, frag_sample = _fragment_repeat_ratio(raw)
+        # 句读侧有发现时以句读占比定严重度（更精确，避免 n-gram 对同一批
+        # 已计句重复二次抬档）；句读漏报时才启用碎片占比。
+        if dups > 0:
+            ratio = sent_ratio
+            source = "句"
+        else:
+            ratio = frag_ratio
+            source = "碎片"
+        if ratio <= 0:
             continue
-        ratio = dups / len(sents)
-        low_sample = len(sents) < MIN_SAMPLE_SENTS_FOR_RATIO
+
+        compact_len = len(re.sub(r'\s+', '', raw))
+        if dups > 0 and len(sents) < MIN_SAMPLE_SENTS_FOR_RATIO:
+            low_sample = True
+        elif dups == 0 and compact_len < 200:
+            low_sample = True
+        else:
+            low_sample = False
+
         if low_sample:
-            # 小分母下比例不可靠，不按比例升级（避免新误报）
             severity = "low"
         elif ratio >= 0.25:
             severity = "high"
@@ -160,14 +241,24 @@ def check_intra_chapter_repeats(texts: dict) -> list:
             severity = "medium"
         else:
             severity = "low"
-        longest = max((s for s, n in counter.items() if n > 1), key=len)
+
+        if dups == 0:
+            sample = frag_sample
+            detail = (f"Ch{ch} 章内无标点碎片重复（覆盖 {ratio:.0%}），"
+                      f"示例「{sample}…」")
+        else:
+            longest = max((s for s, n in counter.items() if n > 1), key=len)
+            detail = (f"Ch{ch} 章内重复 {dups}/{len(sents)} 句"
+                      f"（占比 {ratio:.0%}），最长「{longest[:30]}…」")
+            if frag_ratio > 0 and frag_sample:
+                detail += f"；亦检出碎片「{frag_sample}…」"
         issues.append({
             "type": "intra_chapter_repeat",
             "severity": severity,
             "chapter": ch,
             "low_sample": low_sample,
-            "detail": (f"Ch{ch} 章内重复句 {dups}/{len(sents)}（占比 {ratio:.0%}），"
-                       f"最长重复句「{longest[:30]}…」"),
+            "source": source,
+            "detail": detail,
         })
     return issues
 

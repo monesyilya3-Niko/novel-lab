@@ -7,7 +7,7 @@
 
 | 场景 | 权威入口 | 口径 |
 |---|---|---|
-| 全书质检 / `novel 质检` | `scripts/book_quality.py` | 跨章句：同一句 ≥2 章报 `low`（相邻标 `adjacent`），≥3 章 `medium`；整段 >30 字相同报段落重复；章内碎片：≥10 字句同章 ≥2 次，按占比 low/medium/high（<8 句降为 low + `low_sample`） |
+| 全书质检 / `novel 质检` | `scripts/book_quality.py` | 跨章句：同一句 ≥2 章报 `low`（相邻标 `adjacent`），≥3 章 `medium`；整段 >30 字相同报段落重复；章内：句读重复 + **无标点 20 字 n-gram 碎片**（区间并集覆盖），按占比 low/medium/high；句读侧有发现时以句读占比定档 |
 | QC 十二维 D9「句子重复」 | `scripts/qc.py` | **同上两个检测器并行**：`check_duplicate_sentences` + `check_intra_chapter_repeats`；`raw` 分列 `cross_chapter` / `intra_chapter` |
 | QC 十二维 D10「章节重复」 | `scripts/qc.py` | 仅 `check_duplicate_chapters` + `check_duplicate_paragraphs`（整章/整段），**不含**章内碎片 |
 

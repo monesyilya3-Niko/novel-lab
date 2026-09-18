@@ -9,6 +9,9 @@
 - **对话占比满分区题材可配（P1-4）**：题材包 `quality_thresholds.dialogue_optimal`（或 `commercial.quality_thresholds.dialogue_optimal`）可覆盖默认 (0.15, 0.40)；campus-redemption 按语料 voice-card 实测（0.0737–0.3016）标定为 **0.07–0.35**，慢热抒情不再被 15% 硬线征税
 - `docs/detection-authority.md`：同类检测「以谁为准」权威口径（重复 / 矛盾 / 章节分 / 资产校验）
 - `llm_client.describe_llm_degradation`：LLM 额度/网络失败时显式列出「不可用能力 / 仍然可用能力」；pipeline 与 write 在 chat 失败时输出该提示（评估报告 item 10）
+- **章内无标点碎片重复漏报**：`check_intra_chapter_repeats` 在句读切分外并入 20 字 n-gram 区间并集覆盖检测；句读侧有发现时仍以句读占比定档（避免二次抬档），句读漏报时才启用碎片占比；`source` 标明主因
+- **sangshi commercial-obs 缺顶层 `common_mistakes`**：由本卡 opening_analysis / retention_risk_points 汇总补齐（非新造观察）；55 资产现 **0 WARN / 0 REJECT**
+- P2-2 模块冒烟：sampler / clean_verbatim / state_tracker / convert_genre_card / import_genre_prose_cards / pipeline 补导入与纯函数回归
 - `tests/test_dialogue_band_and_setting.py`：对话带解析/题材包实装/setting_check 检测行为（世界观禁词、属性矛盾、别名）/LLM 降级文案
 - `tests/test_logic_check.py`：24 个用例，为下列三处修复建立回归护栏
 - `tests/test_model_config.py`：4 个用例，守住 `model_config` 可导入底线
@@ -52,7 +55,7 @@
 - 根目录 QA 调试产物归档至 `docs/archive/qa-artifacts/`
 - 根目录 Agent 协作文档（HANDOFF / RULES / PROJECT_LAW / PROJECT_SUMMARY）归档至 `docs/internal/`；无许可第三方参考内容与本地拆书实验产物移出版本库（仅本地留存，已加入 `.gitignore`）
 - README 新增 CI / License 徽章；截图区移除「暗色首页」（首页暂不响应暗色模式，修复后补回）
-- 全量测试基线：**751+ tests OK**（2026-09-18）；55 资产 0 REJECT
+- 全量测试基线：**780 tests OK**（2026-09-18）；55 资产 **0 WARN / 0 REJECT**
 - 检测口径权威说明见 `docs/detection-authority.md`
 
 ## [1.0.0-baseline] - 2026-09-13
