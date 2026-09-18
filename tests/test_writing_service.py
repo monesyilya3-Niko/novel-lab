@@ -248,6 +248,23 @@ class TestListProjects(unittest.TestCase):
         default = next(p for p in projects if p["id"] == "default")
         self.assertTrue(default["read_only"])
 
+    def test_default_present_even_when_novel_dir_missing(self):
+        """全新环境：NOVEL_DIR 不存在时 default 仍必须出现在列表中（D1）。"""
+        import tempfile
+        from pathlib import Path
+        from tests import _isolation  # noqa: F401  — ensure package importable
+        import gui.config as gconfig
+        missing = Path(tempfile.mkdtemp()) / "novel-missing"
+        assert not missing.exists()
+        old = gconfig.NOVEL_DIR
+        try:
+            gconfig.NOVEL_DIR = missing
+            projects = writing_service.list_projects()
+            ids = [p["id"] for p in projects]
+            self.assertIn("default", ids)
+        finally:
+            gconfig.NOVEL_DIR = old
+
     def test_project_dir_detected(self):
         proj = config.NOVEL_DIR / "myproj_ls"
         proj.mkdir(parents=True, exist_ok=True)

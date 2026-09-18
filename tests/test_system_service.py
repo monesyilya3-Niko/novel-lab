@@ -92,6 +92,18 @@ class TestModelInfo(unittest.TestCase):
         self.assertIn("models", r)
         self.assertIn("note", r)
 
+    def test_model_id_uses_adapter_id_key(self):
+        """engine_adapter.list_models 返回 id/model_name，不得误读 model_id 致 id 为空。"""
+        r = system_service.model_info()
+        if not r.get("models"):
+            self.skipTest("本机未配置模型，跳过 id 键契约")
+        for m in r["models"]:
+            self.assertIn("id", m)
+            self.assertIn("name", m)
+            if m.get("name"):
+                self.assertTrue(str(m.get("id", "")).strip(),
+                                f"模型 {m.get('name')} 的 id 不得为空（键名错配）")
+
 
 class TestSettings(unittest.TestCase):
     def test_get_settings(self):

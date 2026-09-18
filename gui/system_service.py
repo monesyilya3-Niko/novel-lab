@@ -77,7 +77,7 @@ def system_status() -> Dict[str, Any]:
         },
         "model": {
             "configured": model_configured,
-            "models": [{"id": m.get("model_id", ""), "name": m.get("model_name", "")} for m in models] if models else [],
+            "models": [{"id": m.get("id", ""), "name": m.get("model_name", "")} for m in models] if models else [],
         },
         "paths": {
             "root": str(config.ROOT_DIR),
@@ -188,7 +188,8 @@ def model_info() -> Dict[str, Any]:
         "configured": configured,
         "models": [
             {
-                "id": m.get("model_id", ""),
+                # engine_adapter.list_models 返回键为 id / model_name / protocol
+                "id": m.get("id", "") or m.get("model_id", ""),
                 "name": m.get("model_name", ""),
                 "protocol": m.get("protocol", ""),
                 "roles": m.get("roles", []),

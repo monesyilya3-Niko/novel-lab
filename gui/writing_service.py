@@ -96,9 +96,17 @@ def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def list_projects() -> List[Dict[str, Any]]:
-    """枚举 NOVEL_DIR 下项目；裸 NOVEL_DIR 作为只读项目 default 追加（D1）。"""
+    """枚举 NOVEL_DIR 下项目；始终追加只读项目 default（D1）。
+
+    2026-09-18 修复：此前仅当 ``novel/`` 目录已存在时才返回 default，
+    全新环境 GUI 写作台项目列表为空。契约要求 default **恒在**（只读）。
+    """
     projects: List[Dict[str, Any]] = []
     nd = config.NOVEL_DIR
+    try:
+        nd.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
     if nd.is_dir():
         for child in sorted(nd.iterdir()):
             if child.is_dir() and not child.name.startswith("."):
@@ -110,9 +118,8 @@ def list_projects() -> List[Dict[str, Any]]:
                     except (json.JSONDecodeError, OSError):
                         pass
                 projects.append({"id": child.name, "name": name, "read_only": False})
-    # 裸 novel/ 作为只读 default 项目
-    if nd.is_dir():
-        projects.append({"id": "default", "name": "default（CLI 只读）", "read_only": True})
+    # CLI 只读 default 项目：无论 novel/ 是否为空都必须出现
+    projects.append({"id": "default", "name": "default（CLI 只读）", "read_only": True})
     return projects
 
 
