@@ -1,9 +1,9 @@
 # novel-lab 项目总结文档
 
-> **版本**：2026-09-11（v2.0，基于迁移后实测数据重写）
+> **版本**：2026-09-18（v1.1.1，总工收尾后实测刷新）
 > **项目路径**：`C:\Users\monesy\niko\novel-lab`
 > **用途**：新会话直接参考本文件即可了解全部结构与用法；历史沿革见 HANDOFF.md
-> **诚实声明**：本文件所有数字均基于 2026-09-11 实测（git `fb6a3f6`），未实测的部分明确标注
+> **诚实声明**：本文件数字基于 2026-09-18 实测（测试 782 OK / 资产 55）；未实测部分明确标注
 
 ---
 
@@ -16,11 +16,14 @@
 | 拆书引擎 | TXT 全本 → 分层采样 → 量化 → 五遍扫描 → 归一化 → 结构化资产 |
 | 资产体系 | voice-card / craft-card / structure-obs / commercial-obs / genre-pack / distilled / prose-card / trope-library |
 | 资产驱动写作 | 资产注入 → system prompt → 生成 → 三维度改写循环 |
-| 质量体系 | 章节检查（12 维 100 分制）+ 全书质检（6 类）+ QC 四层十二维 + 版权合规 |
-| GUI 工作台 | 浏览器访问 `http://127.0.0.1:8000/`：首页/分析/资产库/写作/质检 |
+| 质量体系 | 章节检查（12 维 **连续打分**）+ 全书质检 + QC 四层十二维 + 版权合规 |
+| GUI 工作台 | `http://127.0.0.1:8000/`：首页/分析/资产库/写作/质检/高级/系统 |
 | CLI 引擎 | `novel.py`（20+ 子命令） |
+| 发布 | GitHub Release **v1.1.1**（setup.exe + portable zip） |
 
-**LLM 层模式**：无外部模型、无 API 依赖。拆书五遍扫描与写作改写由 AI 在会话内完成；采样/量化/校验/合规/打分全部本地 Python 计算。
+**LLM 层模式**：可配置外部模型（当前 1 个 openai 协议模型）；失败时显式降级并列出不可用能力。无模型时拆书/写作走会话内接管清单；采样/量化/校验/合规/打分全部本地 Python 计算。支持 **fallback 备用模型链**。
+
+**评分语义（2026-09-18）**：章节维度连续打分（消除悬崖档位）；「了」字密度按语料 p75/p90；对话占比满分区可按题材包 `dialogue_optimal` 配置（campus-redemption = 0.07–0.35）。
 
 ---
 
@@ -59,16 +62,12 @@
 
 | 指标 | 数值 |
 |---|---|
-| 资产文件 | **55**（voice 4 / craft 4 / structure 4 / commercial 4 / genre-pack 1 / distilled 4 / prose-card 33 / trope 1） |
+| 资产文件 | **55**（0 WARN / 0 REJECT；含 distilled 4 + prose-card-index 1） |
 | 可交付报告 | **8** 份 |
-| 已拆书目 | **4** 本（炽炀 / 青柠 / 桑式 / 溯雨信笺，campus-redemption 题材） |
-| scripts/ | **32** 个 Python 脚本 |
-| gui/ 后端模块 | **18** 个（不含 `__init__.py`） |
-| gui/web/src | **35** 个源文件（tsx/ts/css） |
-| 前端组件 | **22** 个（components/*.tsx） |
-| API 端点 | **65** 个（router.py 路由表实测） |
-| 测试 | **353** 用例全绿 |
-| git 提交 | **84** 个（截至 `fb6a3f6`） |
+| 已拆书目 | **4** 本（炽炀 / 青柠 / 桑式 / 溯雨信笺，campus-redemption） |
+| API 端点 | **65** 个（router.py 路由表） |
+| 测试 | **782** 用例全绿（2026-09-18） |
+| 版本 | **1.1.1**（GitHub Releases 附安装包） |
 
 ---
 
@@ -113,7 +112,7 @@ $PY -m gui.launch                          # 启动 GUI（http://127.0.0.1:8000/
 ### 4.4 测试
 
 ```bash
-$PY run_tests.py    # 全量 353 用例
+$PY run_tests.py    # 全量 782 用例（2026-09-18）
 ```
 
 ---
@@ -166,11 +165,11 @@ PROMPTS_DIR    = novel-lab/prompts/generated/
 
 ## 九、已知限制
 
-1. **无外部模型**：写作改写循环需 AI 会话内接管，GUI 提供降级指引+手动入库
-2. **前端 echarts chunk 1MB**：已隔离为独立按需加载 chunk，主入口仅 16KB（2026-09-11 代码分割后）
-3. **番茄抓书**：依赖 venv 的 fontTools/numpy/Pillow，未实测
-4. **服务常驻**：`gui/autostart/install_task.bat` 存在但未实测
+1. **无外部模型**：写作改写循环需 AI 会话内接管，GUI 提供降级指引+手动入库；有模型时支持 fallback 链
+2. **前端 echarts**：独立按需加载 chunk
+3. **番茄抓书**：依赖 venv 的 fontTools/numpy/Pillow，探针曾通过，非日常路径
+4. **服务常驻**：`gui/autostart/install_task.bat` 存在但未默认启用
 
 ---
 
-*文档更新时间：2026-09-11 ｜ 数据基准：git `fb6a3f6`，测试 353/OK*
+*文档更新时间：2026-09-18 ｜ 数据基准：测试 782 OK / 资产 55 / Release v1.1.1*

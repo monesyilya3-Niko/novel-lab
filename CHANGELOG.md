@@ -2,6 +2,16 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [1.1.1] - 2026-09-18
+
+### Fixed
+- GUI 写作台项目列表：`novel/` 不存在时不再返回空，**恒含只读 `default`**
+- GUI 系统页模型列表：正确显示模型 `id`（此前误读 `model_id` 导致空白）
+- 文档口径刷新：README / AGENTS / PROJECT_SUMMARY 测试基线对齐 **782 OK**
+
+### Note
+- 相对 v1.1.0：连续打分、题材对话带、碎片检测、LLM 备用/降级等能力已在 1.1.0；本版为 GUI 热修 + 文档对齐
+
 ## [1.1.0] - 2026-09-18
 
 ### Added

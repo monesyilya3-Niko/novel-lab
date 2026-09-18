@@ -116,8 +116,8 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 
 | 产物 | 路径 |
 |---|---|
-| 便携包 | `build/dist/novel-lab-portable-v1.1.0/` + `.zip` |
-| 安装器 | `build/dist/novel-lab-setup-v1.1.0.exe`（Inno Setup，per-user） |
+| 便携包 | `build/dist/novel-lab-portable-v1.1.1/` + `.zip` |
+| 安装器 | `build/dist/novel-lab-setup-v1.1.1.exe`（Inno Setup，per-user） |
 | 构建脚本 | `build/build_portable.py` → 再 `ISCC.exe build/installer.iss` |
 
 打包基于 `git archive HEAD`，**必须先提交再打包**。
@@ -141,9 +141,9 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 
 | 优先级 | 事项 |
 |---|---|
-| — | GitHub Release：`v1.1.0` 由 tag + 本机 `gh release upload` 附加安装包 |
+| — | GitHub Release：当前 **v1.1.1**（tag + 本机 `gh release upload` 附加安装包） |
 | P2 | 服务常驻 autostart 为可选项，未默认安装 |
-| P3 | lint 债：`docs/lint-debt.md` |
+| P3 | lint 债：`docs/lint-debt.md`（ruff ignore 基线，重构时顺手清） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
 | — | 检测口径权威说明：`docs/detection-authority.md` |
 | — | 章内碎片重复已接入 n-gram 检测（2026-09-18） |
@@ -157,7 +157,8 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 | 2026-09-16 高优修复 | `docs/superpowers/plans/2026-09-16-*.md` | 完成 |
 | 2026-09-17 第二轮 | `docs/superpowers/plans/2026-09-17-*.md` | 完成 |
 | 2026-09-18 第三轮 + 连续打分 + 发布 | `docs/superpowers/plans/2026-09-18-*.md` | 完成 |
+| 2026-09-18 GUI 实机 + v1.1.1 | 本会话 | 完成 |
 
 ---
 
-*本交接文档基于 2026-09-18 实测数据更新（780 tests OK / 55 资产 0 WARN 0 REJECT / v1.1.0）。*
+*本交接文档基于 2026-09-18 实测数据更新（782 tests OK / 55 资产 0 WARN 0 REJECT / v1.1.1）。*

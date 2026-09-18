@@ -87,7 +87,7 @@ python -m gui.launch
 ## 开发
 
 ```bash
-python run_tests.py        # 全量测试（373 用例基线）
+python run_tests.py        # 全量测试（782 用例基线，2026-09-18）
 git config core.hooksPath .githooks   # 启用提交前自动测试
 ```
 
