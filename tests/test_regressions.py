@@ -139,13 +139,13 @@ class TestChapterCheckWeightsSum100(unittest.TestCase):
 
     def test_max_score_is_100(self):
         cc = _load("chapter_check")
-        # 用一段明显满分的长文本跑一次，验证 max_score 元数据 = 100 且 total 不超 100
+        # 用一段明显满分的长文本跑一次，验证 max_score 元数据 = 100 且 score 不超 100
         text = (
             "她走进教室，脚步很轻。" + "他看了她一眼，说：'你来了。'" +
             "她的心跳漏了一拍，指尖微微发凉。" + "这是一段足够长的测试正文。" * 80
         )
         result = cc.chapter_check(text)
-        self.assertLessEqual(result.get("total", 0), 100, "章节总分不得超过 100")
+        self.assertLessEqual(float(result.get("score", 0)), 100, "章节总分不得超过 100")
         self.assertEqual(result.get("max_score", 100), 100, "max_score 应为 100")
 
 

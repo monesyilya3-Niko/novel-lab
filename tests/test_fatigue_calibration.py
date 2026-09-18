@@ -74,50 +74,53 @@ class TestLeDensityCalibration(unittest.TestCase):
         self.assertEqual(score, 8, f"密度 10 应不扣分，实际 {score}：{detail}")
         self.assertNotIn("了字密度", detail)
 
-    def test_density_29_penalty_1(self):
-        """le_density ≈ 29（p75-p90 区间）→ 扣 1 分 → 7/8。"""
+    def test_density_29_penalty_continuous(self):
+        """le_density ≈ 29（p75-p90 区间）→ 连续扣分，约 1.4 分（不再整档 -1）。"""
         score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(1000, 29))
-        self.assertEqual(score, 7, f"密度 29 应扣 1 分，实际 {score}：{detail}")
-        self.assertIn("了字密度 29.0/千字（略高）", detail)
+        self.assertGreater(float(score), 5.5, f"密度 29 连续分应 >5.5：{detail}")
+        self.assertLess(float(score), 7.5, f"密度 29 连续分应 <7.5：{detail}")
+        self.assertIn("了字密度 29.0/千字", detail)
 
-    def test_density_35_penalty_3(self):
-        """le_density ≈ 35（> p90）→ 扣 3 分 → 5/8。"""
+    def test_density_35_penalty_capped(self):
+        """le_density ≈ 35（> p90）→ 子项扣满 3 → 5/8。"""
         score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(1000, 35))
         self.assertEqual(score, 5, f"密度 35 应扣 3 分，实际 {score}：{detail}")
         self.assertIn("了字密度 35.0/千字（过高）", detail)
 
     def test_old_thresholds_would_have_failed_these(self):
         """对照：旧的 >5/>8 口径下这三档都会扣 3 分（记录口径变更动机）。"""
-        # 新口径下 10 / 29 / 35 三档互不相同，说明维度恢复区分度
         scores = [
             CHAPTER_CHECK.check_fatigue_words(_make_text(1000, n))[0]
             for n in (10, 29, 35)
         ]
-        self.assertEqual(scores, [8, 7, 5], "三档应给出 8/7/5 三档区分")
+        self.assertEqual(scores[0], 8)
+        self.assertEqual(scores[2], 5)
+        self.assertGreater(float(scores[1]), 5.5)
+        self.assertLess(float(scores[1]), 7.5)
         self.assertEqual(len(set(scores)), 3, "维度必须有区分度（旧口径恒为 5）")
 
 
 class TestLeDensityBoundaries(unittest.TestCase):
-    """边界语义：`<= 27.0` 不扣分、`> 27.0` 起扣 1 分、`> 31.2` 起扣 3 分。"""
+    """边界语义：`<= 27.0` 不扣分；p75→p90 连续 0→3；`> p90` 扣满 3。"""
 
     def test_exactly_27_0_no_penalty(self):
         """恰好 27.0 → 不扣分（用 `<=`）。"""
         score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(1000, 27))
         self.assertEqual(score, 8, f"恰好 27.0 应不扣分，实际 {score}：{detail}")
 
-    def test_just_above_27_0_penalty_1(self):
-        """27.1 → 扣 1 分。"""
+    def test_just_above_27_0_small_penalty(self):
+        """27.1 → 连续扣分极小（≪1），不得整档跳到 -1。"""
         score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(10000, 271))
-        self.assertEqual(score, 7, f"27.1 应扣 1 分，实际 {score}：{detail}")
+        self.assertGreater(float(score), 7.5, f"27.1 不应整档掉到 7：{detail}")
+        self.assertLess(float(score), 8.0, f"27.1 应已开始扣分：{detail}")
 
-    def test_exactly_31_2_penalty_1(self):
-        """恰好 31.2 → 扣 1 分（用 `<=` 收在中间档）。"""
+    def test_exactly_31_2_full_heavy(self):
+        """恰好 31.2（p90）→ 连续分扣满 3 → 5/8。"""
         score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(5000, 156))
-        self.assertEqual(score, 7, f"恰好 31.2 应扣 1 分，实际 {score}：{detail}")
-        self.assertIn("31.2/千字（略高）", detail)
+        self.assertEqual(score, 5, f"恰好 31.2 应扣满 3，实际 {score}：{detail}")
 
-    def test_just_above_31_2_penalty_3(self):
-        """31.3 → 扣 3 分。"""
+    def test_just_above_31_2_still_capped(self):
+        """31.3 → 仍扣 3（子项封顶）。"""
         score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(10000, 313))
         self.assertEqual(score, 5, f"31.3 应扣 3 分，实际 {score}：{detail}")
         self.assertIn("（过高）", detail)
@@ -159,19 +162,25 @@ class TestThresholdConstants(unittest.TestCase):
         text = _make_text(1000, 10)  # 新口径下不扣分
         self.assertEqual(CHAPTER_CHECK.check_fatigue_words(text)[0], 8)
 
-        saved = CHAPTER_CHECK.LE_DENSITY_PENALTY_LINE
+        saved_penalty = CHAPTER_CHECK.LE_DENSITY_PENALTY_LINE
+        saved_heavy = CHAPTER_CHECK.LE_DENSITY_HEAVY_LINE
         try:
+            # 仅调低 PENALTY：密度 10 落入 p75→p90 连续区，应开始扣分但未满 3
             CHAPTER_CHECK.LE_DENSITY_PENALTY_LINE = 5.0
-            self.assertEqual(
-                CHAPTER_CHECK.check_fatigue_words(text)[0], 7,
-                "调低 PENALTY_LINE 到 5.0 后密度 10 应扣 1 分")
+            mid = CHAPTER_CHECK.check_fatigue_words(text)[0]
+            self.assertGreater(float(mid), 5.0,
+                               "调低 PENALTY_LINE 后密度 10 不应仍满分")
+            self.assertLess(float(mid), 8.0,
+                            "调低 PENALTY_LINE 后密度 10 应已扣分")
+
+            # 两条线都压到密度之下 → 扣满 3
             CHAPTER_CHECK.LE_DENSITY_HEAVY_LINE = 8.0
             self.assertEqual(
                 CHAPTER_CHECK.check_fatigue_words(text)[0], 5,
                 "调低 HEAVY_LINE 到 8.0 后密度 10 应扣 3 分")
         finally:
-            CHAPTER_CHECK.LE_DENSITY_PENALTY_LINE = saved
-            CHAPTER_CHECK.LE_DENSITY_HEAVY_LINE = HEAVY_LINE
+            CHAPTER_CHECK.LE_DENSITY_PENALTY_LINE = saved_penalty
+            CHAPTER_CHECK.LE_DENSITY_HEAVY_LINE = saved_heavy
 
 
 class TestSubItemsUnchanged(unittest.TestCase):
@@ -228,18 +237,20 @@ class TestReturnShapeUnchanged(unittest.TestCase):
         self.assertTrue(detail.startswith("疲劳词 8/8: "), detail)
         self.assertIn("无异常", detail)
 
-    def test_returns_tuple_of_int_and_str(self):
+    def test_returns_tuple_of_number_and_str(self):
         result = CHAPTER_CHECK.check_fatigue_words(_make_text(1000, 35))
         self.assertIsInstance(result, tuple)
         self.assertEqual(len(result), 2)
-        self.assertIsInstance(result[0], int)
+        self.assertIsInstance(result[0], (int, float))
         self.assertIsInstance(result[1], str)
 
     def test_detail_prefix_matches_score(self):
         for n in (0, 10, 29, 35):
             score, detail = CHAPTER_CHECK.check_fatigue_words(_make_text(1000, n))
+            # 连续分可能带 1 位小数；前缀用与实现相同的格式
+            from chapter_check import _fmt_score  # noqa: PLC0415
             self.assertTrue(
-                detail.startswith(f"疲劳词 {score}/8: "),
+                detail.startswith(f"疲劳词 {_fmt_score(score)}/8: "),
                 f"detail 前缀应与得分一致：{detail}")
 
     def test_score_never_negative(self):

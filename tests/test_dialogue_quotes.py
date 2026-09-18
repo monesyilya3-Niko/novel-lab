@@ -47,14 +47,13 @@ def _load(name: str):
 METRICS = _load("metrics")
 CHAPTER_CHECK = _load("chapter_check")
 
-# 改动前基线（2026-09-16 改动前实测，见 task-3-report.md）：
-#   metrics.dialogue_ratio('他说：“你好。”然后走了。') == 0.2308
-#   chapter_check.check_dialogue_ratio('“甲乙”他说。') == (8, '对话占比 50.0%（略高）')
-#   chapter_check.check_dialogue_ratio('"甲乙"他说。') == (8, '对话占比 50.0%（略高）')
-#   chapter_check.check_dialogue_ratio('他说：“你好。”然后走了。') == (12, '对话占比 37.5% ✓')
+# 基线（2026-09-18 连续打分后）：
+#   metrics.dialogue_ratio('他说：“你好。”然后走了。') == 0.2308（分子分母口径未改）
+#   ratio 50%（略高带）→ 连续分 _ramp(0.50, 0.40, 0.55, 12, 8) = 9.3
+#   ratio 37.5%（满分区）→ 12
 _BASELINE_CJK_MIXED_RATIO = 0.2308
-_BASELINE_CJK_PAIR_CHAPTER_CHECK = (8, "对话占比 50.0%（略高）")
-_BASELINE_ASCII_PAIR_CHAPTER_CHECK = (8, "对话占比 50.0%（略高）")
+_BASELINE_CJK_PAIR_CHAPTER_CHECK = (9.3, "对话占比 50.0%（略高）")
+_BASELINE_ASCII_PAIR_CHAPTER_CHECK = (9.3, "对话占比 50.0%（略高）")
 _BASELINE_SENTENCE_CHAPTER_CHECK = (12, "对话占比 37.5% ✓")
 
 
@@ -141,8 +140,9 @@ class TestChapterCheckDialogueRatio(unittest.TestCase):
 
     def test_han_denominator_retained(self):
         # 分母是汉字数 4（甲乙丙丁），不是去空白总字符 6
+        # ratio=50% → 连续分 9.3（略高带中点附近），不得打成 0
         score, detail = CHAPTER_CHECK.check_dialogue_ratio('「甲乙」丙丁')
-        self.assertEqual(score, 8, detail)
+        self.assertEqual(score, 9.3, detail)
         self.assertIn("50.0%", detail)
 
     def test_existing_ascii_and_cjk_pairs_unchanged(self):
@@ -175,7 +175,7 @@ class TestChapterCheckDialogueRatio(unittest.TestCase):
             self.assertNotIn("几乎无对话", detail)
 
     def test_score_weights_and_thresholds_untouched(self):
-        """不得改动评分权重：对话占比在 15%-40% 区间仍给满分 12。"""
+        """满分区权重不变：对话占比在 15%-40% 区间仍给满分 12。"""
         for text in ('“甲乙”丙丁戊己庚辛', '「甲乙」丙丁戊己庚辛', '『甲乙』丙丁戊己庚辛'):
             score, detail = CHAPTER_CHECK.check_dialogue_ratio(text)
             self.assertEqual(score, 12, f"{text!r} 应给满分 12：{detail}")

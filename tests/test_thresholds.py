@@ -171,31 +171,29 @@ class TestChapterCheckThresholds(unittest.TestCase):
         self.assertEqual(self.default_result["details"], self.none_result["details"])
 
     def test_threshold_effect_raises_pass_line(self):
-        """得分落在 60~74 时，默认应 WARN；抬高 pass 到 80 后应变为 FAIL。
+        """阈值机制生效：抬高 pass 线到当前得分之上 → FAIL；score 本身不变。
 
-        前置断言：固定文本在默认阈值(75/60)下为 WARN（得分在 [60,75) 区间）。
+        注：固定文本得分随评分器连续化（2026-09-18）而变化，不再钉死在
+        60~74 区间；本测试改为「用高于实测分的阈值」验证机制，语义等价。
         """
         score = self.default_result["score"]
-        self.assertGreaterEqual(score, 60, f"固定文本得分 {score} 应 ≥60（否则非 WARN 场景）")
-        self.assertLess(score, 75, f"固定文本得分 {score} 应 <75（否则默认已 PASS）")
-        self.assertEqual(self.default_result["verdict"], "WARN",
-                         "默认阈值(75/60)下该文本应为 WARN")
+        self.assertIsInstance(score, (int, float))
+        self.assertGreater(float(score), 0, "固定文本不应得 0 分")
 
-        # 抬高 pass 到 80、warn 到 75：固定文本得分（71）不再满足 WARN，应 FAIL
-        # （2026-09-16 Task 3：对白抽取统一四类引号后，本 fixture 的「」对白被正确
-        #   计入，对话维度由 2 分升到 8 分、总分 62→68。
-        #   2026-09-17 Task 3.1：疲劳词「了」字密度阈值按语料分位数重标定
-        #   （>5/>8 → p75/p90 = 27.0/31.2），本 fixture 密度 26.9 由扣 3 分转为不扣分，
-        #   总分 68→71；故抬高线由 70 提到 75，以保持「抬高判定线使 WARN 变 FAIL」的
-        #   断言意图。权重与档位未改。）
-        raised = CHAPTER_CHECK.chapter_check(
-            _TEXT_60_74, _pack(80, 75))
+        high_pass = min(100, int(score) + 10)
+        high_warn = min(high_pass, int(score) + 5)
+        self.assertGreater(high_pass, score, "构造的 pass 线必须高于实测分")
+
+        raised = CHAPTER_CHECK.chapter_check(_TEXT_60_74, _pack(high_pass, high_warn))
         self.assertEqual(
             raised["verdict"], "FAIL",
-            f"pass=80 时得分 {score} 应判 FAIL（阈值抬高后不再 WARN）",
+            f"pass={high_pass} > score={score} 时应判 FAIL",
         )
-        # score 不因阈值而变，只有 verdict 变
         self.assertEqual(raised["score"], score)
+
+        # 反向：默认阈值下的 verdict 应与显式 (75,60) 一致
+        baseline = CHAPTER_CHECK.chapter_check(_TEXT_60_74, _pack(75, 60))
+        self.assertEqual(baseline["verdict"], self.default_result["verdict"])
 
     def test_threshold_effect_lowers_pass_line(self):
         """反向：把 pass/warn 调低到得分以下，应判 PASS（阈值真正生效、可降）。"""

@@ -3,18 +3,22 @@
 章节质量自检 — 独立于 voice-card 的章节本身质量评分
 
 检查维度（共 100 分）：
-  1. 字数（8）— ≥1500 满分，<1000 零分
-  2. 对话占比（12）— 15-40% 满分，<5% 或 >60% 扣分
+  1. 字数（8）— ≥1500 满分，向下线性衰减
+  2. 对话占比（12）— 15-40% 满分，区间外连续衰减
   3. 章末钩子（12）— 有悬念/断句/情感冲击/反转
   4. 开头吸引力（8）— 前 200 字是否有冲突/悬念/场景
-  5. 情绪密度（12）— 每 400 字≥1 处体感词
-  6. 直陈式情绪词（8）— 零出现满分
-  7. 段落节奏（8）— 短段(≤15字)占比 10-40% 满分
+  5. 情绪密度（12）— 每 400 字≥1 处体感词（命中率连续计分）
+  6. 直陈式情绪词（8）— 零出现满分，随次数连续扣减
+  7. 段落节奏（8）— 短段(≤15字)占比 10-40% 满分，区间外连续
   8. 结构完整性（8）— 有开头/发展/收束
   9. AI 味检测（4）— 高频模板句式扣分
-  10. 疲劳词检测（8）— "了"字密度/情绪标签词/连接词滥用（借鉴 novel-deconstruct）
-  11. 让字专项（5）— "让"字过多 = AI味重灾区
+  10. 疲劳词检测（8）— "了"字密度/情绪标签词/连接词滥用（密度连续扣分）
+  11. 让字专项（5）— "让"字过多 = AI味重灾区（密度连续计分）
   12. 情绪标签词（7）— 区分对话/旁白中的情绪标签词滥用
+
+评分语义（2026-09-18）：硬边界档位改为分段线性连续打分（_ramp），
+满分区与各维权重不变；消除「改 1 字跳 2–4 分」的悬崖效应（评估报告 P1-2）。
+分数可带 1 位小数；判定线 PASS≥75 / WARN≥60 语义不变。
 
 用法:
   python chapter_check.py <章节.txt> [--genre-pack genre-pack.json]
@@ -65,8 +69,38 @@ DEFAULT_WARN = 60
 #   - 动机：旧口径 >5 / >8 使语料 100% 的章扣满 3 分、0% 不扣分，该维度零区分度；
 #     改分位数后 75% 的章不再扣分，仅 top 25% 略扣、top 10% 重扣。
 #   - 阈值随语料扩充应重算：语料变更后需重新统计章粒度分位数并更新下面两个常量。
-LE_DENSITY_PENALTY_LINE = 27.0  # <= 不扣分；> 且 <= HEAVY_LINE 扣 1 分（语料 p75）
-LE_DENSITY_HEAVY_LINE = 31.2    # > 扣 3 分（语料 p90）
+#   - 2026-09-18：p75→p90 之间改为连续扣分（0→3），消除「跨线跳档」刷分空间。
+LE_DENSITY_PENALTY_LINE = 27.0  # <= 不扣分（语料 p75）；之上向 p90 线性过渡到扣 3
+LE_DENSITY_HEAVY_LINE = 31.2    # >= 扣满 3 分（语料 p90）
+
+
+def _ramp(x: float, x0: float, x1: float, y0: float, y1: float) -> float:
+    """分段线性插值：把 x∈[x0,x1] 映射到 y∈[y0,y1]，区间外夹紧到端点。
+
+    用于把「悬崖式档位」改为连续打分：跨过旧阈值时分数平滑过渡，
+    消除「改 1 个字跳 2–4 分」的边界效应（评估报告 P1-2）。
+    """
+    if x1 <= x0:
+        return float(y1) if x >= x1 else float(y0)
+    if x <= x0:
+        return float(y0)
+    if x >= x1:
+        return float(y1)
+    t = (x - x0) / (x1 - x0)
+    return y0 + (y1 - y0) * t
+
+
+def _score1(v: float) -> float:
+    """分数统一保留 1 位小数，消除浮点噪声。"""
+    return round(float(v) + 1e-12, 1)
+
+
+def _fmt_score(v: float) -> str:
+    """整数分显示为 int，否则 1 位小数（detail 文案用）。"""
+    v = _score1(v)
+    if abs(v - round(v)) < 1e-9:
+        return str(int(round(v)))
+    return f"{v:.1f}"
 
 # AI 味模板句式
 AI_TICS = [
@@ -81,25 +115,36 @@ AI_TICS = [
 
 
 def check_word_count(text: str) -> tuple:
-    """1. 字数检查（8 分）— 2026-09-05 由 10 分降回 docstring 权重"""
+    """1. 字数检查（8 分）— 连续打分：≥1500 满分，向下线性衰减。
+
+    2026-09-18：取代旧档位（1500→8 / 1200→6 / 1000→3 / <1000→0），
+    消除「1499→1500 = +2 分」悬崖。锚点与旧档位端点一致。
+    """
     cn = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if cn >= 1500:
-        return 8, f"字数 {cn} ✓"
+        score, label = 8.0, "✓"
     elif cn >= 1200:
-        return 6, f"字数 {cn}（略短）"
+        score = _ramp(cn, 1200, 1500, 6.0, 8.0)
+        label = "略短"
     elif cn >= 1000:
-        return 3, f"字数 {cn}（偏短）"
+        score = _ramp(cn, 1000, 1200, 3.0, 6.0)
+        label = "偏短"
     else:
-        return 0, f"字数 {cn}（严重不足）"
+        score = _ramp(cn, 0, 1000, 0.0, 3.0)
+        label = "严重不足"
+    score = _score1(score)
+    if label == "✓":
+        return score, f"字数 {cn} ✓"
+    return score, f"字数 {cn}（{label}）"
 
 
 def check_dialogue_ratio(text: str) -> tuple:
-    """2. 对话占比（12 分）— 2026-09-05 由 15 分降回 docstring 权重
+    """2. 对话占比（12 分）— 满分区 15%–40% 不变，区间外连续衰减。
 
     分子统一走 metrics.dialogue_char_count（四类引号同一口径，2026-09-16 Task 3）；
-    分母保持既有口径：汉字数。评分档位不变。
+    分母保持既有口径：汉字数。
+    2026-09-18：取代旧档位（15% 边界一跳 4 分），锚点与旧端点一致。
     """
-    # 统计引号内文本（ASCII " / 中文双引号 “” / 直角引号 「」 / 双直角引号 『』）
     dialogue_chars = dialogue_char_count(text)
     total = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if total == 0:
@@ -107,17 +152,31 @@ def check_dialogue_ratio(text: str) -> tuple:
     ratio = dialogue_chars / total
 
     if 0.15 <= ratio <= 0.40:
-        return 12, f"对话占比 {ratio:.1%} ✓"
+        score, label = 12.0, "✓"
     elif 0.10 <= ratio < 0.15:
-        return 8, f"对话占比 {ratio:.1%}（略低）"
+        score = _ramp(ratio, 0.10, 0.15, 8.0, 12.0)
+        label = "略低"
     elif 0.40 < ratio <= 0.55:
-        return 8, f"对话占比 {ratio:.1%}（略高）"
+        score = _ramp(ratio, 0.40, 0.55, 12.0, 8.0)
+        label = "略高"
+    elif 0.05 <= ratio < 0.10:
+        score = _ramp(ratio, 0.05, 0.10, 2.0, 8.0)
+        label = "偏低"
+    elif 0.55 < ratio <= 0.60:
+        score = _ramp(ratio, 0.55, 0.60, 8.0, 4.0)
+        label = "偏高"
     elif ratio < 0.05:
-        return 2, f"对话占比 {ratio:.1%}（几乎无对话）"
-    elif ratio > 0.60:
-        return 4, f"对话占比 {ratio:.1%}（对话过多）"
+        score = _ramp(ratio, 0.0, 0.05, 0.0, 2.0)
+        label = "几乎无对话"
     else:
-        return 6, f"对话占比 {ratio:.1%}"
+        # 对话过多：连续下降；子项不低于 2，避免短文本因「引号内标点 / 汉字分母」
+        # 使 ratio>1 时被打成 0 分（旧档位该档固定 4 分，也从不为 0）
+        score = _ramp(ratio, 0.60, 1.0, 4.0, 2.0)
+        label = "对话过多"
+    score = _score1(score)
+    if label == "✓":
+        return score, f"对话占比 {ratio:.1%} ✓"
+    return score, f"对话占比 {ratio:.1%}（{label}）"
 
 
 def check_hook(text: str) -> tuple:
@@ -175,7 +234,10 @@ def check_opening(text: str) -> tuple:
 
 
 def check_emotion_density(text: str) -> tuple:
-    """5. 情绪密度（12 分）— 每 400 字≥1 处体感词；2026-09-05 由 15 分降回 docstring 权重"""
+    """5. 情绪密度（12 分）— 每 400 字≥1 处体感词；命中率连续计分。
+
+    2026-09-18：ratio≥1 满分；0.7–1.0 / 0.4–0.7 / <0.4 线性插值，消除跳档。
+    """
     cn = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     if cn == 0:
         return 0, "无文本"
@@ -188,24 +250,32 @@ def check_emotion_density(text: str) -> tuple:
     ratio = hits / expected if expected > 0 else 0
 
     if ratio >= 1.0:
-        return 12, f"体感词 {hits} 处（期望≥{expected}）✓"
+        score, label = 12.0, "✓"
     elif ratio >= 0.7:
-        return 8, f"体感词 {hits} 处（期望≥{expected}，略少）"
+        score = _ramp(ratio, 0.7, 1.0, 8.0, 12.0)
+        label = "略少"
     elif ratio >= 0.4:
-        return 4, f"体感词 {hits} 处（期望≥{expected}，偏少）"
+        score = _ramp(ratio, 0.4, 0.7, 4.0, 8.0)
+        label = "偏少"
     else:
-        return 0, f"体感词 {hits} 处（期望≥{expected}，严重不足）"
+        score = _ramp(ratio, 0.0, 0.4, 0.0, 4.0)
+        label = "严重不足"
+    score = _score1(score)
+    if label == "✓":
+        return score, f"体感词 {hits} 处（期望≥{expected}）✓"
+    return score, f"体感词 {hits} 处（期望≥{expected}，{label}）"
 
 
 def check_direct_emotion(text: str) -> tuple:
-    """6. 直陈式情绪词（8 分）— 零出现满分；2026-09-05 由 10 分降回 docstring 权重"""
+    """6. 直陈式情绪词（8 分）— 零出现满分，随出现次数连续扣减。"""
     hits = sum(1 for w in DIRECT_EMOTION if w in text)
     if hits == 0:
         return 8, "直陈式情绪词 0 ✓"
-    elif hits <= 2:
-        return 4, f"直陈式情绪词 {hits} 个（扣 4 分）"
-    else:
-        return 0, f"直陈式情绪词 {hits} 个（严重扣分）"
+    if hits <= 2:
+        score = _score1(_ramp(hits, 0, 2, 8.0, 4.0))
+        return score, f"直陈式情绪词 {hits} 个（扣 {_fmt_score(8 - score)} 分）"
+    score = _score1(_ramp(hits, 2, 5, 4.0, 0.0))
+    return score, f"直陈式情绪词 {hits} 个（严重扣分）"
 
 
 def check_paragraph_rhythm(text: str) -> tuple:
@@ -217,15 +287,23 @@ def check_paragraph_rhythm(text: str) -> tuple:
     ratio = short / len(paras)
 
     if 0.10 <= ratio <= 0.40:
-        return 8, f"短段占比 {ratio:.1%} ✓"
+        score, label = 8.0, "✓"
     elif 0.05 <= ratio < 0.10:
-        return 6, f"短段占比 {ratio:.1%}（略少）"
+        score = _ramp(ratio, 0.05, 0.10, 6.0, 8.0)
+        label = "略少"
     elif 0.40 < ratio <= 0.55:
-        return 6, f"短段占比 {ratio:.1%}（略多）"
+        score = _ramp(ratio, 0.40, 0.55, 8.0, 6.0)
+        label = "略多"
     elif ratio > 0.55:
-        return 2, f"短段占比 {ratio:.1%}（过度精炼）"
+        score = _ramp(ratio, 0.55, 0.80, 6.0, 2.0)
+        label = "过度精炼"
     else:
-        return 4, f"短段占比 {ratio:.1%}（段落过长）"
+        score = _ramp(ratio, 0.0, 0.05, 4.0, 6.0)
+        label = "段落过长"
+    score = _score1(score)
+    if label == "✓":
+        return score, f"短段占比 {ratio:.1%} ✓"
+    return score, f"短段占比 {ratio:.1%}（{label}）"
 
 
 def check_structure(text: str) -> tuple:
@@ -298,15 +376,21 @@ def check_fatigue_words(text: str) -> tuple:
     exclamations = ['啊', '呀', '哇', '唉', '哎']
     excl_count = sum(text.count(w) for w in exclamations)
 
-    score = 8
+    score = 8.0
     notes = []
 
+    # 「了」字密度：p75 之下不扣；p75→p90 线性 0→3；≥p90 扣满 3（连续，无跳档）
     if le_density > LE_DENSITY_HEAVY_LINE:
-        score -= 3
+        le_deduct = 3.0
         notes.append(f"了字密度 {le_density:.1f}/千字（过高）")
     elif le_density > LE_DENSITY_PENALTY_LINE:
-        score -= 1
-        notes.append(f"了字密度 {le_density:.1f}/千字（略高）")
+        le_deduct = _ramp(
+            le_density, LE_DENSITY_PENALTY_LINE, LE_DENSITY_HEAVY_LINE, 0.0, 3.0)
+        notes.append(
+            f"了字密度 {le_density:.1f}/千字（略高，扣 {_fmt_score(le_deduct)} 分）")
+    else:
+        le_deduct = 0.0
+    score -= le_deduct
 
     if tag_count > cn / 200:
         score -= 2
@@ -316,37 +400,38 @@ def check_fatigue_words(text: str) -> tuple:
         score -= 1
         notes.append(f"连接词 {conn_count} 处（过多）")
 
-    score = max(score, 0)
-    return score, f"疲劳词 {score}/8: {', '.join(notes) if notes else '无异常 ✓'}"
+    score = _score1(max(score, 0.0))
+    return score, f"疲劳词 {_fmt_score(score)}/8: {', '.join(notes) if notes else '无异常 ✓'}"
 
 
 def check_rang_character(text: str) -> tuple:
-    """11. "让"字专项（5 分）— "让"字过多 = AI味重灾区"""
+    """11. "让"字专项（5 分）— 密度连续计分；过多 = AI味重灾区"""
     rang_count = text.count('让')
     cn = sum(1 for ch in text if '\u4e00' <= ch <= '\u9fff')
     density = rang_count / (cn / 1000) if cn > 0 else 0
 
     if density <= 1:
         return 5, f"让字 {rang_count} 处 ✓"
-    elif density <= 2:
-        return 3, f"让字 {rang_count} 处（略多）"
-    else:
-        return 0, f"让字 {rang_count} 处（过多，AI味重灾区）"
+    if density <= 2:
+        score = _score1(_ramp(density, 1, 2, 5.0, 3.0))
+        return score, f"让字 {rang_count} 处（略多）"
+    score = _score1(_ramp(density, 2, 4, 3.0, 0.0))
+    return score, f"让字 {rang_count} 处（过多，AI味重灾区）"
 
 
 def check_emotion_tags(text: str) -> tuple:
-    """12. 情绪标签词滥用（7 分）— 区分对话/旁白"""
-    # 旁白中的情绪标签词（AI味重灾区）
+    """12. 情绪标签词滥用（7 分）— 区分对话/旁白；次数连续计分"""
     narrator_tags = ['她感到', '他感到', '她觉得', '他觉得', '她意识到', '他意识到',
                      '她忽然感到', '他忽然感到', '她不禁感到', '她内心']
     tag_count = sum(text.count(w) for w in narrator_tags)
 
     if tag_count == 0:
         return 7, "旁白情绪标签 0 ✓"
-    elif tag_count <= 2:
-        return 4, f"旁白情绪标签 {tag_count} 处（略多）"
-    else:
-        return 0, f"旁白情绪标签 {tag_count} 处（AI味重灾区）"
+    if tag_count <= 2:
+        score = _score1(_ramp(tag_count, 0, 2, 7.0, 4.0))
+        return score, f"旁白情绪标签 {tag_count} 处（略多）"
+    score = _score1(_ramp(tag_count, 2, 5, 4.0, 0.0))
+    return score, f"旁白情绪标签 {tag_count} 处（AI味重灾区）"
 
 
 def resolve_thresholds(genre_pack):
@@ -408,7 +493,7 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
         check_emotion_tags(text),     # 7分
     ]
 
-    total = min(sum(s for s, _ in checks), 100)  # 上限 100（各维满分合计恰为 100）
+    total = _score1(min(sum(float(s) for s, _ in checks), 100.0))
     details = [d for _, d in checks]
     issues = []
     for s, d in checks:
@@ -458,7 +543,7 @@ def main():
     else:
         print(f"章节质量检查: {ch_path.name}")
         print(f"{'='*50}")
-        print(f"总分: {result['score']}/100 ({result['verdict']})")
+        print(f"总分: {_fmt_score(result['score'])}/100 ({result['verdict']})")
         print()
         for d in result['details']:
             print(f"  {d}")
