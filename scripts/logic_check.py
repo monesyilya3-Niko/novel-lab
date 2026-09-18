@@ -359,16 +359,61 @@ def _check_appellation_contradictions(texts: dict, entities: dict) -> list:
 DEATH_WORDS = ["死了", "去世", "牺牲", "遇难", "身亡", "丧生", "死亡", "咽气", "断气"]
 ALIVE_WORDS = ["出场", "出现", "走来", "说话", "开口", "站起", "坐下", "抬头"]
 _DEATH_PROXIMITY = 50  # 死亡词须出现在角色名附近 N 字内才判定该角色死亡
+# 「X死了」夸张口语（饿死/累死/忙死…）不是角色死亡——2026-09-18 误报修复
+_HYPERBOLE_BEFORE_SI = (
+    "饿", "累", "忙", "急", "吓", "笑", "气", "开心", "高兴", "激动",
+    "难受", "尴尬", "困", "冷", "热", "晕", "烦", "惨", "笨", "蠢", "傻",
+    "想", "爱", "恨", "美", "帅", "甜", "咸", "撑", "疼", "痒",
+)
+# 死亡主体为亲属/他人时的紧邻前缀（「外婆去世」≠ 名字角色死亡）
+_KIN_BEFORE_DEATH_RE = re.compile(
+    r'(外婆|外公|爷爷|奶奶|祖父|祖母|父亲|母亲|爸爸|妈妈|爹娘|舅舅|叔叔|姑姑|'
+    r'阿姨|姨妈|哥哥|姐姐|弟弟|妹妹|丈夫|妻子|儿子|女儿|老师|同学|朋友|同事)'
+    r'(?:的)?\s*(?:去世|死了|死亡|身亡|病逝|牺牲|遇难|丧生|咽气|断气)'
+)
+
+
+def _is_hyperbolic_death(name: str, text: str, death_idx: int, death_word: str) -> bool:
+    """判断 death_word 是否为夸张用法（如「我饿死了」），而非角色死亡。"""
+    if death_word != "死了" and not death_word.endswith("死了"):
+        # 仍检查亲属归属（去世/死亡等）
+        pass
+    else:
+        # 「X死了」：看「死」字前一字是否为夸张程度词
+        if death_idx >= 1:
+            prev = text[death_idx - 1]
+            if prev in _HYPERBOLE_BEFORE_SI:
+                return True
+        window = text[max(0, death_idx - 8):death_idx]
+        if any(h in window for h in _HYPERBOLE_BEFORE_SI):
+            return True
+    # 死亡事件归属他人（外婆去世…）
+    start = max(0, death_idx - 12)
+    seg = text[start:death_idx + len(death_word) + 2]
+    m = _KIN_BEFORE_DEATH_RE.search(seg)
+    if m and name not in m.group(0):
+        # 前缀是亲属称谓且不含当前角色名 → 不是该角色死亡
+        if not name.startswith(m.group(1)) and m.group(1) not in name:
+            return True
+    return False
 
 
 def _name_near_death(name: str, text: str) -> bool:
-    """检查角色名附近（±_DEATH_PROXIMITY 字）是否有死亡词。"""
-    for m_start in range(len(text)):
+    """检查角色名附近（±_DEATH_PROXIMITY 字）是否有**真实**死亡词。"""
+    m_start = 0
+    while True:
         idx = text.find(name, m_start)
         if idx == -1:
             break
         window = text[max(0, idx - _DEATH_PROXIMITY): idx + len(name) + _DEATH_PROXIMITY]
-        if any(d in window for d in DEATH_WORDS):
+        for d in DEATH_WORDS:
+            pos = window.find(d)
+            if pos == -1:
+                continue
+            # 映射回全文下标做夸张检测
+            global_pos = max(0, idx - _DEATH_PROXIMITY) + pos
+            if _is_hyperbolic_death(name, text, global_pos, d):
+                continue
             return True
         m_start = idx + 1
     return False
