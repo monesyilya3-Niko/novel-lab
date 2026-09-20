@@ -116,8 +116,8 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 
 | 产物 | 路径 |
 |---|---|
-| 便携包 | `build/dist/novel-lab-portable-v1.1.1/` + `.zip` |
-| 安装器 | `build/dist/novel-lab-setup-v1.1.1.exe`（Inno Setup，per-user） |
+| 便携包 | `build/dist/novel-lab-portable-v1.1.2/` + `.zip` |
+| 安装器 | `build/dist/novel-lab-setup-v1.1.2.exe`（Inno Setup，per-user） |
 | 构建脚本 | `build/build_portable.py` → 再 `ISCC.exe build/installer.iss` |
 
 打包基于 `git archive HEAD`，**必须先提交再打包**。
@@ -141,7 +141,7 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 
 | 优先级 | 事项 |
 |---|---|
-| — | GitHub Release：当前 **v1.1.1**（tag + 本机 `gh release upload` 附加安装包） |
+| — | GitHub Release：当前 **v1.1.2**（tag + 本机 `gh release upload` 附加安装包） |
 | P2 | 服务常驻 autostart 为可选项，未默认安装 |
 | P3 | lint 债：`docs/lint-debt.md`（ruff ignore 基线，重构时顺手清） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
@@ -161,4 +161,4 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 
 ---
 
-*本交接文档基于 2026-09-18 实测数据更新（782 tests OK / 55 资产 0 WARN 0 REJECT / v1.1.1）。*
+*本交接文档基于 2026-09-21 实测数据更新（801 tests OK / 60 资产 / 报告 10 / Release v1.1.2）。*

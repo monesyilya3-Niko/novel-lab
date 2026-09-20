@@ -2,6 +2,22 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [1.1.2] - 2026-09-21
+
+### Added
+- 题材 **realistic-romance**：`KNOWN_GENRES` 白名单 + 种子题材包 +《暮冬念春》四卡/报告入库
+- `docs/detection-authority.md` 补全：钩子/开头/对话带/entities 别名与属性写入红线
+
+### Fixed
+- **章末钩子计分悬崖**：旧「每命中 +3、收束 +2」使「3 类钩子 + 有效收束」永远 11 分；改为 hits 主导（≥3+收束=12），补充转折/设问词表
+- **开头检测词表/窗口**：现实场景（会议室/巷口/车厢等）与动作词补齐；开头窗口先 `lstrip`
+- realistic-romance **对话带** 0.08–0.30 → **0.06–0.45**（157 章分位数实测，避免对峙/自白章误伤）
+
+### Changed
+- 测试基线 **801 OK**（新增 hook/opening 回归 12 项）
+- 资产 **60** · 报告 **10** · 已拆书 **5**（campus-redemption×4 + realistic-romance×1）
+- 口径变更后分数与历史分不可横比；详见 `docs/detection-authority.md`
+
 ## [1.1.1] - 2026-09-18
 
 ### Fixed

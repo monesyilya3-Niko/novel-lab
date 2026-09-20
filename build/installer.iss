@@ -6,7 +6,7 @@
 ; - 卸载只删除安装时文件；运行时产生的用户数据（gui_state/ 等）默认保留
 
 #define AppName "novel-lab"
-#define AppVersion "1.1.1"
+#define AppVersion "1.1.2"
 #define AppPublisher "monesyilya3-Niko"
 #define AppURL "https://github.com/monesyilya3-Niko/novel-lab"
 #define StageDir "dist\novel-lab-portable-v" + AppVersion
