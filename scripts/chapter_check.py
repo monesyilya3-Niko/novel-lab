@@ -43,7 +43,7 @@ BODY_WORDS = ["心跳", "指尖", "耳根", "脊背", "手心", "喉结", "呼�
               "额头", "鼻尖", "嘴唇", "膝盖", "脚踝", "肩膀", "后背", "胸口", "小腹",
               "掌心", "指节", "手腕", "脚趾", "脖子", "下巴", "眉心", "太阳穴"]
 
-# 钩子关键词（章末 200 字内出现 = 有钩子）
+# 钩子关键词（章末 300 字内出现 = 有钩子）
 HOOK_KEYWORDS = [
     r"[。！？]\s*$",  # 以句末标点结束（弱钩子）
     r"[…]{1,3}",  # 省略号（悬念）
@@ -52,6 +52,8 @@ HOOK_KEYWORDS = [
     r"她不知道|他不知道|谁也没想到",  # 悬念
     r"转身|回头|推门|拉开|站起",  # 动作钩子
     r"明天|以后|从此|那天起",  # 时间钩子
+    r"可是|可那|但是|却只|却还|却在",  # 转折留白
+    r"如果|难道|究竟能|是否还",  # 设问/不确定
 ]
 
 # 评分阈值默认值（题材包未配置 quality_thresholds 时的回退线）
@@ -231,67 +233,102 @@ def check_dialogue_ratio(text: str, band=None) -> tuple:
 
 
 def check_hook(text: str) -> tuple:
-    """3. 章末钩子（12 分）— 2026-09-05 由 15 分降回 docstring 权重"""
-    tail = text[-300:] if len(text) > 300 else text
-    score = 0
-    notes = []
+    """3. 章末钩子（12 分）
 
-    # 检查钩子关键词
+    2026-09-21 重标定：旧口径「每命中 +3、收束 +2、封顶 12」会使
+    「3 类钩子 + 有效收束」永远停在 11 分——现实题材大量合格收束章
+    被系统性压分（《暮冬念春》94/157 章卡在 11）。改为命中数主导：
+      hits>=3 + 有效收束 → 12
+      hits>=3 无收束 / hits==2 + 有效收束 → 9
+      hits==2 + 极短收束（末行≤15字）→ 10
+      hits==2 无收束 / hits==1 + 有效收束 → 6
+      hits==1 无收束 → 3；无命中：收束 2 / 截断 0
+    截断风险一律再扣 3。词表补充转折/设问类文学钩子。
+    """
+    tail = text[-300:] if len(text) > 300 else text
+    hits = 0
+    notes = []
     for pat in HOOK_KEYWORDS:
         if re.search(pat, tail):
-            score += 3
-            notes.append(pat[:15])
-            if score >= 12:
-                break
+            hits += 1
+            notes.append(pat[:12])
 
-    # 检查章末是否有有效收束（非截断）
     last_line = [l.strip() for l in text.split('\n') if l.strip()][-1] if text.strip() else ""
-    if last_line and re.search(r'[。！？…"\u201d]$', last_line):
-        score = min(score + 2, 12)
-        notes.append("有效收束")
-    elif last_line and len(last_line) > 4:
-        score = max(score - 3, 0)
+    closed = bool(last_line and re.search(r'[。！？…"\u201d]$', last_line))
+    short_close = bool(closed and len(last_line) <= 15)
+    truncated = bool(last_line and len(last_line) > 4 and not closed)
+    if closed:
+        notes.append("有效收束" + ("（短收）" if short_close else ""))
+    if truncated:
         notes.append("截断风险")
 
-    score = min(score, 12)
-    return score, f"钩子 {score}/12: {', '.join(notes[:3])}"
+    if hits >= 3 and closed:
+        score = 12.0
+    elif hits >= 3:
+        score = 9.0
+    elif hits == 2 and short_close:
+        score = 10.0
+    elif hits == 2 and closed:
+        score = 9.0
+    elif hits == 2:
+        score = 6.0
+    elif hits == 1 and closed:
+        score = 6.0
+    elif hits == 1:
+        score = 3.0
+    elif closed:
+        score = 2.0
+    else:
+        score = 0.0
+
+    if truncated:
+        score = max(score - 3.0, 0.0)
+
+    score = min(_score1(score), 12.0)
+    state = f"closed={int(closed)} short={int(short_close)} trunc={int(truncated)}"
+    return score, f"钩子 {score}/12: hits={hits}, {state}"
 
 
 def check_opening(text: str) -> tuple:
     """4. 开头吸引力（8 分）
 
-    2026-09-18：场景/冲突词表按现代校园·都市现实题材扩充
-    （旅馆/咖啡馆/办公室/河堤/法院/出租屋等），避免场景已在文中却认不出。
+    2026-09-18：场景/冲突词表按现代校园·都市现实题材扩充。
+    2026-09-21：开头窗口先 lstrip（去掉标题后空行），场景/动作词表
+    再按现实题材实测缺口补齐（会议室/巷口/车厢/拆/递/签等）。
     """
-    opening = text[:400] if len(text) > 400 else text
+    opening = text.lstrip()[:400] if len(text) > 400 else text.lstrip()
+    act_window = opening[:120]
+    dial_window = opening[:200]
     score = 0
     notes = []
 
-    # 场景建立（具体地点）
     if re.search(
         r'(教室|走廊|操场|宿舍|食堂|图书馆|医院|车站|家里|旅馆|酒店|'
         r'咖啡馆|咖啡厅|办公室|会议室|公司|工厂|园区|邮局|法院|派出所|'
         r'河堤|河边|湖边|草坪|单元门|楼道|楼下|天台|出租屋|'
-        r'杂货铺|奶茶店|早餐店|小区|校门|公交车|车厢)',
+        r'杂货铺|奶茶店|早餐店|小区|校门|公交车|车厢|'
+        r'巷|巷口|后街|教学楼|课桌|客厅|厨房|卧室|阳台|'
+        r'火车|高铁|机场|商场|广场|马路|电梯|前台|柜台|实验室|工地)',
         opening,
     ):
         score += 2
         notes.append("场景建立")
-    # 冲突/悬念/情绪张力引入
     if re.search(
         r'(吵架|争执|矛盾|意外|突然|忽然|紧张|害怕|担心|不安|忐忑|'
         r'纠结|慌|震惊|愣住|失望|警惕|心虚|发抖|发白|窒息|压迫|'
-        r'拒绝|被拘留|方案被|出事|失踪|跟踪|危险)',
+        r'拒绝|被拘留|方案被|出事|失踪|跟踪|危险|关机|退回|失败|落空|不敢|绷紧|僵住)',
         opening,
     ):
         score += 2
         notes.append("冲突引入")
-    # 对话开场（前 200 字）
-    if re.search(r'["\u201c\u2018\u2019].{2,20}["\u201c\u201d\u2018\u2019]', opening[:200]):
+    if re.search(r'["\u201c\u2018\u2019].{2,20}["\u201c\u201d\u2018\u2019]', dial_window):
         score += 2
         notes.append("对话开场")
-    # 动作开场（前 120 字）
-    if re.search(r'(走|跑|坐|站|推|拉|抓|拿|看|听|爬|靠|掏|翻|望|盯|赶|握|喘|醒)', opening[:120]):
+    if re.search(
+        r'(走|跑|坐|站|推|拉|抓|拿|看|听|爬|靠|掏|翻|望|盯|赶|握|喘|醒|'
+        r'拆|递|签|写|答|放|收|等|找|查|拨|吃|喝|笑|哭|擦|洗|叠|收起)',
+        act_window,
+    ):
         score += 2
         notes.append("动作开场")
 
