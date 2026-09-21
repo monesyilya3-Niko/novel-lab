@@ -40,6 +40,7 @@ QC 统一质检入口 — 四层十二维整合（纯标准库，零第三方依
 """
 import argparse
 import json
+import re
 import sys
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
@@ -212,6 +213,24 @@ def _dim_structure(texts: dict) -> DimensionScore:
         raw={"source": "chapter_check.check_structure", "per_chapter": raw_chapters})
 
 
+def _detail_is_meaningful_issue(detail: str) -> bool:
+    """判断 check_voices / score_text 明细是否应记入 issues。
+
+    满分成功日志（如「命中 5/5 → 7.0/7」「体感词 → 20.0/20」）**不**入 issues，
+    否则满分维度会堆出假 low。仅当 → 分数低于满分时记为问题。
+    无 → 的明细不记（与既有口径一致）。
+    """
+    d = detail.strip()
+    if "→" not in d:
+        return False
+    m = re.search(r"→\s*([0-9]+(?:\.[0-9]+)?)\s*/\s*([0-9]+(?:\.[0-9]+)?)", d)
+    if m:
+        got, full = float(m.group(1)), float(m.group(2))
+        return got + 1e-9 < full
+    # 无明确 n/m 分数形态：保守视为问题（保留召回）
+    return True
+
+
 def _dim_character_arc(texts: dict, voice_card: dict) -> DimensionScore:
     """D4 人物弧线 → consistency.check_voices（声线执行度）。
 
@@ -236,7 +255,7 @@ def _dim_character_arc(texts: dict, voice_card: dict) -> DimensionScore:
     # check_voices 满分 35，归一为百分制
     score100 = round(score / 35 * 100, 1)
     issues = [{"type": "character_arc", "severity": "low", "chapter": 0,
-               "detail": d.strip()} for d in details if "→" in d]
+               "detail": d.strip()} for d in details if _detail_is_meaningful_issue(d)]
     return DimensionScore(
         key="character_arc", label="人物弧线", layer="L2",
         score=score100, weight=1.0, issues=issues,
@@ -274,7 +293,7 @@ def _dim_craft(texts: dict, voice_card: dict) -> DimensionScore:
         total = round(evaluable / evaluable_max * 100, 1)
         raw = dict(raw, renormalized="声线卡无角色，按可评估子项 65 分制重归一")
     issues = [{"type": "craft", "severity": "low", "chapter": 0,
-               "detail": d.strip()} for d in details if "→" in d]
+               "detail": d.strip()} for d in details if _detail_is_meaningful_issue(d)]
     return DimensionScore(
         key="craft", label="手法运用", layer="L3",
         score=round(total, 1), weight=1.0, issues=issues,
