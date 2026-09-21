@@ -167,9 +167,83 @@ def run_pass(kind: str, slices: dict, metrics: dict, dry_run: bool,
     raise RuntimeError(f"{kind} 多次调用未产出合格输出")
 
 
+def _pass_field_contract(raw_dir: Path) -> str:
+    """从旧 pass JSON 提取顶层键，作为接管时的字段契约提示。
+
+    2026-09-21 新增：接管最易翻车处是「键名与旧版不一致」（下游 assemble.py 依赖
+    字段契约）。旧产出就在 raw_dir 里，直接把键名摆出来，省得接管方自己摸索。
+    """
+    lines = []
+    for f in sorted(raw_dir.glob("pass*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(d, dict) and d:
+            keys = ", ".join(str(k) for k in d.keys())
+            lines.append(f"  - {f.name}: {keys}")
+    return "\n".join(lines) if lines else "  （本目录暂无旧产出，按 prompt 定义输出）"
+
+
+def write_ai_takeover_guide(name: str, genre: str, sel_n: int, total_n: int,
+                            ai_dir: Path, reason: str) -> Path:
+    """生成「会话内 AI 接管」任务清单。
+
+    2026-09-21 新增，两条触发路径共用：
+      1) 未配置任何外部模型（原有行为）；
+      2) 外部模型存在但调用失败（额度不足 / 网络不可达）——
+         此前只打印降级提示就 return 1，用户拿不到可执行的下一步。
+    清单落在 corpus/raw/<name>/AI接管任务.md。
+    """
+    ai_dir.mkdir(parents=True, exist_ok=True)
+    guide = ai_dir / "AI接管任务.md"
+    guide.write_text(
+        "# 会话内智能接管任务（无可用外部模型）\n\n"
+        f"书名: {name} | 题材: {genre}\n"
+        f"触发原因: {reason}\n"
+        f"采样: {sel_n}/{total_n} 章 | 量化指标: corpus/metrics/{name}.json\n\n"
+        "## 接管步骤\n"
+        "1. 依次读 prompts/pass1_structure.md ~ pass5_craft.md 的要求\n"
+        f"2. 读 corpus/sampled/{name}/slices.json 的对应切片（数据量大，分批读）\n"
+        f"3. 按 prompt 要求在会话内产出分析 JSON，存为 corpus/raw/{name}/passN_*.json\n"
+        "   ⚠ 顶层键与嵌套键名必须与旧版完全一致 —— 下游 assemble.py 依赖字段契约\n"
+        f"4. 产出齐 pass1-5 后：python novel.py 组装 {name} --genre {genre}\n"
+        "5. 校验与合规：python novel.py 校验 assets/<资产>.json\n"
+        "               python novel.py 合规 assets/<资产>.json corpus/<语料>.txt\n"
+        "6. 重新生成报告：python novel.py 报告 … / python novel.py 笔法报告 …\n\n"
+        "## 字段契约（必须逐字沿用，下游 assemble.py 依赖）\n"
+        f"{_pass_field_contract(ai_dir)}\n\n"
+        "## 采样切片在哪\n"
+        f"  - corpus/sampled/{name}/slices.json\n"
+        "    pass1_structure.chapters / pass2_character.dialogues /\n"
+        "    pass3_style.chapters / pass4_commercial.chapters\n"
+        "  - pass5_craft 不在 slices 里：按 prompt 从语料全文取\n"
+        "    「开篇 3 章 + 中段 2 章 + 高潮 1 章」\n\n"
+        "## 硬要求\n"
+        "  - 禁止摘抄原文连续 12 字以上（compliance.py 会拒）\n"
+        "  - generated_at 用当前时间；指标数字用 corpus/metrics/<name>.json 的新值\n"
+        "  - 大切片分批读取，避免单上下文超限\n\n"
+        "建议用 subagent 并行执行 5 个 pass（各自独立上下文）。\n\n"
+        "本文件由 pipeline.py 自动生成。\n",
+        encoding="utf-8")
+    return guide
+
+
 # --------------------------------------------------------------------------
 # 资产组装
 # --------------------------------------------------------------------------
+
+def _sample_words(manifest: dict, metrics: dict) -> int:
+    """采样字数：优先取 manifest.sample_words（pipeline 生成 manifest 时已算好）。
+
+    2026-09-21 新增。老 manifest 无该字段时退回 `metrics.total_chars` —— 那是**全书**
+    字数，语义上不对，但保持向后兼容，不因缺字段而报错。
+    """
+    v = manifest.get("sample_words")
+    if isinstance(v, int) and v > 0:
+        return v
+    return metrics.get("total_chars", 0)
+
 
 def assemble_voice_card(name: str, genre: str, manifest: dict, pass2: dict,
                         pass3: dict, metrics: dict) -> dict:
@@ -181,7 +255,7 @@ def assemble_voice_card(name: str, genre: str, manifest: dict, pass2: dict,
             "genre": genre,
             "extracted_at": __import__("datetime").date.today().isoformat(),
             "sample_chapters": manifest["selected_indices"],
-            "total_sample_words": metrics.get("total_chars", 0),
+            "total_sample_words": _sample_words(manifest, metrics),
             # 样本 ≥10 章才允许高置信；<10 章强制 ≤0.6
             "confidence": 0.6 if n_chapters < 10 else min(0.9, 0.65 + n_chapters / 80),
             "human_reviewed": False,
@@ -233,7 +307,7 @@ def assemble_voice_card_v2(name: str, genre: str, manifest: dict,
             "genre": genre,
             "extracted_at": __import__("datetime").date.today().isoformat(),
             "sample_chapters": manifest["selected_indices"],
-            "total_sample_words": metrics.get("total_chars", 0),
+            "total_sample_words": _sample_words(manifest, metrics),
             "confidence": 0.6 if n_chapters < 10 else min(0.9, 0.65 + n_chapters / 80),
             "human_reviewed": False,
         },
@@ -270,13 +344,38 @@ def main():
     chapters = sampler.split_chapters(text)
     if len(chapters) < 5:
         sys.exit(f"章节过少（{len(chapters)}），无法有效拆解")
+
+    # 2026-09-21 新增：章号连续性校验。
+    # split_chapters 只按标题行切分，语料缺章它看不出来——
+    # 《暮冬念春》的语料曾静默缺掉第 154 章（156/157），直到人工逐章比对才发现。
+    nums = []
+    for title, _body in chapters:
+        m = re.match(r"第\s*0*(\d+)\s*章", str(title))
+        if m:
+            nums.append(int(m.group(1)))
+    if nums:
+        missing = sorted(set(range(min(nums), max(nums) + 1)) - set(nums))
+        if missing:
+            print(f"[0/7] ⚠ 章号不连续：共 {len(chapters)} 章，缺 {missing}"
+                  f"（{len(missing)} 章）")
+            print(f"      语料不完整会让拆书结论失真，建议先用完整合并稿替换：{src}")
+        else:
+            print(f"[0/7] 章号校验: {len(nums)} 章连续（{min(nums)}-{max(nums)}）")
     sel = sampler.select(chapters)
     slices = sampler.build_slices(chapters, sel)
+    # 2026-09-21 修复：total_sample_words 此前一律填 metrics.total_chars（**全书**字数），
+    # 但字段名与两个消费方（report.py 写「采样范围…共 N 字」、report_craft.py 取 words）
+    # 都要求它是**采样**字数。此处把采样实际字数算好存进 manifest，供组装端取用。
+    sample_words = sum(
+        len(str(c.get("text", "")).replace("\n", "").replace(" ", ""))
+        for c in slices.get("pass1_structure", {}).get("chapters", [])
+    )
     manifest = {
         "book": name,
         "total_chapters": len(chapters),
         "selected_count": len(sel),
         "selected_indices": [i + 1 for i in sorted(sel)],
+        "sample_words": sample_words,
     }
     sampled_dir = ROOT / "corpus" / "sampled" / name
     sampled_dir.mkdir(parents=True, exist_ok=True)
@@ -297,23 +396,12 @@ def main():
     # 切片与 prompt 留给 WorkBuddy 内置智能在会话内手动完成 pass1-5。
     if not llm_client.any_model_configured():
         ai_dir = ROOT / "corpus" / "raw" / name
-        ai_dir.mkdir(parents=True, exist_ok=True)
-        guide = ai_dir / "AI接管任务.md"
-        guide.write_text(
-            "# WorkBuddy 内置智能接管任务（无外部模型模式）\n\n"
-            f"书名: {name} | 题材: {args.genre}\n"
-            f"采样: {len(sel)}/{len(chapters)} 章 | 量化指标: corpus/metrics/{name}.json\n\n"
-            "## 接管步骤\n"
-            "1. 依次读 prompts/pass1_structure.md ~ pass5_craft.md 的要求\n"
-            "2. 读 corpus/sampled/{book}/ 下对应切片文本\n"
-            "3. 按 prompt 要求在会话内产出分析 JSON，存为 corpus/raw/{book}/passN_*.json\n"
-            "4. 产出齐 4 个 pass 后，运行资产组装与校验（normalize → validate → compliance）\n"
-            "5. 参考既有资产格式: assets/*-voice-card.json\n\n"
-            "本文件由 pipeline.py 自动生成。\n",
-            encoding="utf-8")
+        guide = write_ai_takeover_guide(
+            name, args.genre, len(sel), len(chapters), ai_dir,
+            "未配置任何外部模型")
         print("[3/7] 五遍扫描: 未配置外部模型 —— 已生成 AI 接管任务清单")
         print(f"      → {guide}")
-        print("      采样切片与量化指标已就绪，pass1-5 由 WorkBuddy 会话内完成")
+        print("      采样切片与量化指标已就绪，pass1-5 由会话内智能完成")
         print("      （恢复外部模型可运行: python scripts/model_config.py add）")
         return 0
 
@@ -328,6 +416,17 @@ def main():
             # 评估报告 item 10：额度/网络失败时显式降级提示，不静默半截交付
             print(llm_client.describe_llm_degradation(exc), file=sys.stderr)
             print(f"[X] 五遍扫描在 {kind} 中断；已完成的 pass 若已落盘可续跑", file=sys.stderr)
+            # 2026-09-21 新增：模型不可用时不能只报错就退出——直接生成会话内接管清单，
+            # 让「模型不可用 → 会话内智能接管」这条路径可执行（原实现只打印提示）。
+            # 异常消息会嵌套重复（"调用失败（重试 2 次）: 调用失败（重试 2 次）: HTTP 403 …"），
+            # 剥掉重复前缀，让清单里的原因可读。
+            core = re.sub(r"模型 '[^']*' 调用失败（重试 \d+ 次）: ", "",
+                          str(exc)).strip()
+            guide = write_ai_takeover_guide(
+                name, args.genre, len(sel), len(chapters), raw_dir,
+                f"外部模型调用失败（{kind}）：{core[:140]}")
+            print(f"[→] 已生成会话内接管清单：{guide}", file=sys.stderr)
+            print("    采样/量化已就绪，可按清单在会话内完成 pass1-5", file=sys.stderr)
             return 1
         if not args.dry_run:
             (raw_dir / f"{kind}.json").write_text(
@@ -487,7 +586,7 @@ def main():
                     "genre": args.genre,
                     "extracted_at": __import__("datetime").date.today().isoformat(),
                     "sample_chapters": manifest["selected_indices"],
-                    "total_sample_words": m.get("total_chars", 0),
+                    "total_sample_words": _sample_words(manifest, m),
                     "confidence": 0.6 if n_chapters < 10 else min(0.9, 0.65 + n_chapters / 80),
                     "pass5_version": "1.0",
                 },
@@ -630,4 +729,4 @@ def run_compliance(asset_path: Path, book_path: Path) -> int:
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

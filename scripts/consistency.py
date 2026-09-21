@@ -4,6 +4,7 @@ M2.3 风格一致性自检 — 生成章 vs voice-card 逐维打分
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 
 # 直陈式情绪词（出现即扣分）
@@ -278,12 +279,32 @@ def consistency_check(voice_card_path: str, chapter_path: str):
         "imagery": imagery_score
     }
 
-if __name__ == "__main__":
+def main(argv=None) -> int:
+    """CLI 入口：风格一致性自检。
+
+    2026-09-21 新增退出码语义 —— 此前只打印诊断、进程恒返回 0，无法用于
+    CI 或上层脚本判断。现按阈值给判定：达标返回 0，未达标返回 1。
+
+    阈值默认 75，与 novel-lab 其余维度保持一致（chapter_check / qc 的 PASS 线），
+    可用 --threshold 覆盖。
+    """
     parser = argparse.ArgumentParser(description="风格一致性自检")
     parser.add_argument("voice", help="voice-card JSON 文件路径")
     parser.add_argument("chapter", help="生成章文件路径")
-    args = parser.parse_args()
-    consistency_check(args.voice, args.chapter)
+    parser.add_argument("--threshold", type=float, default=75.0,
+                        help="PASS 阈值（默认 75，与 chapter_check / qc 一致）")
+    args = parser.parse_args(argv)
+    result = consistency_check(args.voice, args.chapter)  # 返回 dict：score/voice/emotion/…
+    total = float(result["score"])
+    ok = total >= args.threshold
+    print()
+    print(f"CLI 判定: {'PASS' if ok else 'FAIL'}"
+          f"（阈值 {args.threshold:g}，总分 {total:.1f}）")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
 
 
 def score_text(voice_card: dict, text: str, label: str = ""):

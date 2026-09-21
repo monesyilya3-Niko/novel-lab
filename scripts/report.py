@@ -11,6 +11,7 @@ M3 拆书报告渲染器 — 资产 JSON → 可交付的 Markdown 拆书报告
 import argparse
 import json
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
@@ -136,7 +137,19 @@ def section_style(vc: dict) -> str:
     if eh.get("mode"):
         lines.append(f"- **情绪写法模式**：{eh['mode']}")
     if eh.get("body_reaction_vocabulary"):
-        lines.append(f"- **惯用身体反应**：{_join(eh['body_reaction_vocabulary'])}")
+        # 2026-09-21 修复：该字段是 LLM 产出的「情绪相关用词」清单，可能**混入需回避的
+        # 强度词**。《暮冬念春》实测含「小鹿乱撞」「撕心裂肺」，与下方 anti_pattern
+        # 直接冲突——报告里同一批词既被标成「惯用身体反应」又被标成「反例」。
+        # 现按 anti_pattern 文本做重叠检测，重叠项单独归类，不再混进「惯用」。
+        anti_text = " ".join(str(x.get("anti_pattern") or "")
+                             for x in (eh.get("examples") or []))
+        vocab = [str(v) for v in eh["body_reaction_vocabulary"] if str(v).strip()]
+        keep = [v for v in vocab if v not in anti_text]
+        avoid = [v for v in vocab if v in anti_text]
+        if keep:
+            lines.append(f"- **惯用身体反应**：{_join(keep)}")
+        if avoid:
+            lines.append(f"- **需回避的强度词**：{_join(avoid)}（见下方反例）")
     for ex in eh.get("examples") or []:
         if ex.get("pattern"):
             lines.append(f"- **情绪呈现规律**：{ex['pattern']}")
@@ -332,4 +345,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

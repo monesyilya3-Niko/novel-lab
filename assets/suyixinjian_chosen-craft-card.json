@@ -34,7 +34,10 @@
     ],
     "total_sample_words": 46876,
     "confidence": 0.9,
-    "pass5_version": "1.0"
+    "pass5_version": "1.0",
+    "source_fingerprint": {
+      "pass5_craft.json": "7c706edb8bebdcd2"
+    }
   },
   "craft_analysis": {
     "foreshadowing": {

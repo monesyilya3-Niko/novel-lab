@@ -29,7 +29,11 @@
     ],
     "total_sample_words": 35714,
     "confidence": 0.9,
-    "human_reviewed": false
+    "human_reviewed": false,
+    "source_fingerprint": {
+      "pass2_character.json": "16ddd24ac94f9a69",
+      "pass3_style.json": "a6e396a3b6ffc80a"
+    }
   },
   "narration": {
     "pov": "第三人称限知",

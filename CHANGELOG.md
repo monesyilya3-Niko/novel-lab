@@ -12,10 +12,20 @@
 - **章末钩子计分悬崖**：旧「每命中 +3、收束 +2」使「3 类钩子 + 有效收束」永远 11 分；改为 hits 主导（≥3+收束=12），补充转折/设问词表
 - **开头检测词表/窗口**：现实场景（会议室/巷口/车厢等）与动作词补齐；开头窗口先 `lstrip`
 - realistic-romance **对话带** 0.08–0.30 → **0.06–0.45**（157 章分位数实测，避免对峙/自白章误伤）
+- **`commercial-obs.common_mistakes` 组装时静默丢失**：该字段不来自 `pass4_commercial.json`，而是人工后补进资产文件的，`assemble_obs` 只搬运 pass 字段，因此每次重新组装都会丢掉它（sangshi_chosen 与 暮冬念春 各踩一次，两次都靠人工从备份补回）。现按同一口径兜底：优先取 `opening_analysis.common_mistakes`，否则由本卡 `retention_risk_points` 汇总为**字符串列表**（非新造观察）。回归见 `tests/test_assemble_commercial_common_mistakes.py`（8 用例）
+- **语料缺章无法被发现**：`sampler.split_chapters` 只按标题行切分，语料少章它看不出来——《暮冬念春》的语料曾静默缺掉第 154 章（156/157），直到人工逐章比对才发现。`pipeline.py` 现于采样前做**章号连续性校验**，缺号时明确告警并给出替换建议
+- **CLI 退出码全线丢失（严重）**：`scripts/` 下 **20 个**脚本的入口都写成 `if __name__ == "__main__": main()`，`main()` 里的 `return 1` 被直接丢弃，进程退出码恒为 0。而 `novel.py` 的 `run_script()` 正是靠返回码判断成败（如 `分析` 命令的 `if rc1 != 0: return rc1`），因此**所有失败分支从未触发过**——实测组装因 schema REJECT 失败时退出码仍为 0。现全部改为 `sys.exit(main())`（无 `import sys` 的用 `raise SystemExit(main())`），并加契约测试 `tests/test_cli_exit_code.py` 锁定
+- **组装在校验前就写盘**：原流程是「组装一个写一个」，校验发生在写盘之后——一旦 REJECT，磁盘上的旧资产已被覆盖，只能靠 git / 备份找回。现改为**先组装到内存 → 全部校验 → 通过才落盘**；失败时明确提示「已阻止写盘」，旧资产保持原样
+- **`consistency.py` 无退出码语义**：作为风格一致性质检脚本，此前只打印诊断、进程恒返回 0，无法用于 CI 或上层脚本判断。现按阈值给判定（默认 75，与 `chapter_check` / `qc` 的 PASS 线一致，可用 `--threshold` 覆盖），并补 `import sys`
+- **新增 `novel.py 同步检查`**：拆书是「pass 产出 → 组装」两段式，改了 pass 忘了组装会让资产**静默过期**，此前无任何检测手段。新命令查三项：资产缺失 / 资产过期 / 采样索引（`manifest.selected_indices`）与资产记录（`meta.sample_chapters`）不一致。实测抓出 `Lord_of_the_Mysteries` 采样漂移（manifest 27 章 vs 资产 19 章）
+- **资产加来源指纹**：资产此前只记 `extracted_at`（日期），无法判断「这份资产是从哪一版 pass 组装来的」，同步检查只能用 mtime 做启发式判断——**内容未变但文件被重写就会误报**（实测撞到过一次）。现组装时把来源 pass 的 sha256 前 16 位写入 `meta.source_fingerprint`，判定升级为**内容级确定性**（实测：内容改动后准确报「指纹 x → y，已过期」）；老资产无指纹时自动退回 mtime 并明确标注是启发式
+- **`total_sample_words` 名实不符（报告在说谎）**：该字段一律填 `metrics.total_chars`（**全书**字数），但字段名与两个消费方（`report.py` 写「**采样范围**：… 共 N 字」、`report_craft.py` 取 `words`）都要求它是**采样**字数。实测症状：《暮冬念春》报告写着「采样范围：第 1-2 章 等 27 章（共 **328658** 字）」——27 章采样不可能有 32.8 万字，自相矛盾。现 `pipeline` 生成 manifest 时算好 `sample_words`（采样章实际字数），`_sample_words()` 优先取它（修复后报告为 **61189** 字）；老 manifest 无该字段时退回旧行为。⚠ `assemble.py` 与 `pipeline.py` 各有一份该 helper（历史重复实现），已同时修正并由 `tests/test_sample_words.py` 锁定两处
+- **新增 `novel.py 回填元数据`**：`meta.source_fingerprint` 是新增字段，此前产出的资产没有它（只能退回 mtime 判据）。新命令一次性补齐 —— **只动该字段，不碰任何分析内容**（实测：16 个资产回填后，除 `source_fingerprint` 外**零差异**），避免重新组装覆盖既有产出。对纯会话产出的资产（`corpus/raw/<书>/` 为空，如 `Lord_of_the_Mysteries`）如实提示「无来源 pass 文件，无法计算指纹」，不伪造
+- **注入时角色顺序随机**：`inject.render_voices` 按 pass2 产出顺序渲染 ——《暮冬念春》13 个角色里配角「白汐」被排在 4 个工具人之后，主角也可能排在末尾。注入产物是喂给写作 LLM 的 **system prompt**，靠前内容注意力更高。现按 `_ROLE_ORDER`（主角 0 / 配角 1 / 工具人·龙套 2 / 未知 3）做**稳定排序**，同权重角色保持原有相对顺序
 
 ### Changed
-- 测试基线 **801 OK**（新增 hook/opening 回归 12 项）
-- 资产 **60** · 报告 **10** · 已拆书 **5**（campus-redemption×4 + realistic-romance×1）
+- 测试基线 **801 → 853 OK**（common_mistakes 8 + CLI 退出码契约 2 + 资产同步检查 9 + 采样字数语义 5 + 元数据回填 6 + 注入角色排序 6）
+- 资产 **65** · 报告 **10** · 已拆书 **6**（campus-redemption×4 + realistic-romance×1 + xuanhuan×1）
 - 口径变更后分数与历史分不可横比；详见 `docs/detection-authority.md`
 
 ## [1.1.1] - 2026-09-18

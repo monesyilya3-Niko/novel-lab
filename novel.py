@@ -39,6 +39,34 @@ def run_script(name: str, args: list) -> int:
     return subprocess.call(cmd)
 
 
+def resolve_book_src(book: str) -> Path:
+    """把「书名」或路径解析为语料文件。
+
+    2026-09-21 新增：此前 `novel 拆书 暮冬念春` 直接报「文件不存在: 暮冬念春」，
+    因为参数只被当路径用，必须写全 `corpus/暮冬念春.txt` 才能跑。现支持：
+      1) 存在的路径 → 原样返回；
+      2) 书名 → 在 corpus/ 下找 <name>.txt / <name>_chosen.txt；
+      3) 唯一模糊命中 → 返回该文件；
+      4) 仍找不到 → 报错并列出 corpus/ 下全部可用书目。
+    """
+    p = Path(book)
+    if p.exists():
+        return p
+    corpus = ROOT / "corpus"
+    for cand in (corpus / f"{book}.txt", corpus / f"{book}_chosen.txt"):
+        if cand.exists():
+            return cand
+    if corpus.is_dir():
+        hits = [x for x in sorted(corpus.glob("*.txt")) if book in x.stem]
+        if len(hits) == 1:
+            return hits[0]
+        avail = ", ".join(x.stem for x in sorted(corpus.glob("*.txt")))
+        sys.exit(f"找不到语料: {book}\n"
+                 f"  可传完整路径，或 corpus/ 下的书名。\n"
+                 f"  当前可用: {avail if avail else '(空)'}")
+    sys.exit(f"文件不存在: {p}")
+
+
 def cmd_status():
     """项目概览：资产/章节/报告状态。"""
     print("=" * 50)
@@ -215,6 +243,15 @@ def main():
     p13.add_argument("--genre", default="unknown", help="题材 id")
     p13.add_argument("--skip-craft", action="store_true", help="跳过 craft-card（pass5 缺失时）")
 
+    p14 = sub.add_parser("同步检查",
+                         help="资产同步检查（corpus/raw 的 pass 产出 vs assets/ 四卡）")
+    p14.add_argument("book", nargs="?", help="书名；省略则检查全部已拆书")
+
+    p15 = sub.add_parser("回填元数据",
+                         help="给已有资产补 meta.source_fingerprint（只动该字段）")
+    p15.add_argument("book", nargs="?", help="书名；省略则处理全部已拆书")
+    p15.add_argument("--dry-run", action="store_true", help="只预览，不写盘")
+
     p10 = sub.add_parser("模型", help="模型配置与连通性")
     p10.add_argument("--test", help="测试指定模型连通性")
 
@@ -227,12 +264,11 @@ def main():
 
     if args.cmd == "分析":
         # 一键：拆书 → 拆书报告 → 笔法报告 → 自动质检（Hook）
-        src = Path(args.book)
-        if not src.exists():
-            sys.exit(f"文件不存在: {src}")
+        src = resolve_book_src(args.book)
         name = src.stem
+        book_arg = str(src)
         # 1. 跑 pipeline（含 Pass5）
-        rc1 = run_script("pipeline.py", [args.book, "--genre", args.genre] +
+        rc1 = run_script("pipeline.py", [book_arg, "--genre", args.genre] +
                          (["--model-id", args.model_id] if args.model_id else []) +
                          (["--dry-run"] if args.dry_run else []))
         if rc1 != 0:
@@ -293,7 +329,8 @@ def main():
         return 0
 
     if args.cmd == "拆书":
-        return run_script("pipeline.py", [args.book, "--genre", args.genre] +
+        return run_script("pipeline.py",
+                          [str(resolve_book_src(args.book)), "--genre", args.genre] +
                           (["--model-id", args.model_id] if args.model_id else []) +
                           (["--dry-run"] if args.dry_run else []))
     if args.cmd == "批量":
@@ -473,6 +510,13 @@ def main():
     if args.cmd == "组装":
         return run_script("assemble.py", [args.name, "--genre", args.genre] +
                           (["--skip-craft"] if args.skip_craft else []))
+    if args.cmd == "同步检查":
+        return run_script("asset_sync_check.py",
+                          ([args.book] if args.book else []))
+    if args.cmd == "回填元数据":
+        return run_script("backfill_meta.py",
+                          ([args.book] if args.book else []) +
+                          (["--dry-run"] if args.dry_run else []))
     if args.cmd == "模型":
         if args.test:
             return run_script("llm_client.py", [args.test])

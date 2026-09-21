@@ -152,9 +152,18 @@ def _vt_to_str(item) -> str:
     return str(item)
 
 
+# 角色权重排序（2026-09-21 新增）
+# 注入的是 system prompt，AI 对靠前内容的注意力更高，主角/配角应当排在工具人之前。
+# 此前按 pass2 产出顺序注入，13 个角色的书里主角可能排在末尾。
+_ROLE_ORDER = {"主角": 0, "配角": 1, "工具人": 2, "龙套": 2}
+
+
 def render_voices(voices: list) -> str:
     if not voices:
         return "（无声线数据）"
+    # sorted 是稳定排序：同权重角色保持原有相对顺序
+    voices = sorted(voices,
+                    key=lambda v: _ROLE_ORDER.get(str(v.get("role", "")).strip(), 3))
     parts = []
     for v in voices:
         ss = v.get("speech_signature") or {}
@@ -614,4 +623,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

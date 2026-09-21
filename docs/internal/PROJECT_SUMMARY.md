@@ -172,4 +172,4 @@ PROMPTS_DIR    = novel-lab/prompts/generated/
 
 ---
 
-*文档更新时间：2026-09-21 ｜ 数据基准：测试 801 OK / 资产 60 / 报告 10 / Release v1.1.2*
+*文档更新时间：2026-09-21 ｜ 数据基准：测试 853 OK / 资产 65 / 报告 12 / Release v1.1.2*

@@ -20,6 +20,7 @@ voice-card / structure-obs / commercial-obs / craft-card 四类资产，写入 a
   assets/<书名>-craft-card.json
 """
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -28,6 +29,7 @@ from pathlib import Path
 
 import normalize as norm
 import compliance as comp
+import validate as validate_mod
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS_DIR = ROOT / "assets"
@@ -101,6 +103,20 @@ def _clean_verbatim(asset: dict, book_text: str) -> tuple:
     return asset, changed
 
 
+def _sample_words(manifest: dict, metrics: dict) -> int:
+    """采样字数：优先取 manifest.sample_words（pipeline 生成 manifest 时已算好）。
+
+    2026-09-21 修复：此前一律填 `metrics.total_chars`（**全书**字数），但字段名与
+    消费方（report.py 写「采样范围…共 N 字」、report_craft.py 取 words）都要求它是
+    **采样**字数 —— 报告因此写着「采样 27 章共 32.8 万字」，自相矛盾。
+    老 manifest 无该字段时退回旧行为，保持向后兼容。
+    """
+    v = manifest.get("sample_words")
+    if isinstance(v, int) and v > 0:
+        return v
+    return metrics.get("total_chars", 0)
+
+
 def assemble_voice_card(name: str, genre: str, manifest: dict, metrics: dict,
                         voices: list, narration: dict, dialogue: dict,
                         emotion: dict, imagery: dict, banned: dict) -> dict:
@@ -113,7 +129,7 @@ def assemble_voice_card(name: str, genre: str, manifest: dict, metrics: dict,
             "genre": genre,
             "extracted_at": date.today().isoformat(),
             "sample_chapters": manifest.get("selected_indices", []),
-            "total_sample_words": metrics.get("total_chars", 0),
+            "total_sample_words": _sample_words(manifest, metrics),
             "confidence": _confidence(manifest.get("selected_count", 0)),
             "human_reviewed": False,
         },
@@ -141,6 +157,31 @@ def assemble_obs(kind: str, name: str, genre: str, pass_out: dict) -> dict:
                 m = re.match(r"第\s*([0-9一二三四五六七八九十百千]+)\s*章", str(c["title"]))
                 if m:
                     c["chapter"] = m.group(1)
+    # 2026-09-21 修复：commercial-obs 的 common_mistakes 不来自 pass4 输出，
+    # 每次重新组装都会静默丢失（sangshi 与 暮冬念春 各踩一次，均靠人工补回）。
+    # 此处按同一口径兜底补齐，非新造观察：
+    #   优先取 pass4 的 opening_analysis.common_mistakes；
+    #   否则由本卡 retention_risk_points 汇总。
+    if kind == "commercial" and not body.get("common_mistakes"):
+        cm = None
+        oa = body.get("opening_analysis")
+        if isinstance(oa, dict) and oa.get("common_mistakes"):
+            cm = list(oa["common_mistakes"])
+        elif isinstance(body.get("retention_risk_points"), list) and body["retention_risk_points"]:
+            parts = []
+            for x in body["retention_risk_points"]:
+                if isinstance(x, dict):
+                    pos = x.get("position") or x.get("chapter") or x.get("range") or ""
+                    reason = (x.get("reason") or x.get("risk") or x.get("description")
+                              or x.get("detail") or "")
+                    txt = f"{pos}：{reason}".strip("：") if pos else str(reason)
+                    if txt:
+                        parts.append(txt)
+                elif x:
+                    parts.append(str(x))
+            cm = parts or None
+        if cm:
+            body["common_mistakes"] = cm
     return {
         "meta": {
             "source_title": name,
@@ -249,7 +290,7 @@ def assemble_craft_card(name: str, genre: str, manifest: dict, metrics: dict,
             "genre": genre,
             "extracted_at": date.today().isoformat(),
             "sample_chapters": manifest.get("selected_indices", []),
-            "total_sample_words": metrics.get("total_chars", 0),
+            "total_sample_words": _sample_words(manifest, metrics),
             "confidence": _confidence(manifest.get("selected_count", 0)),
             "pass5_version": "1.0",
         },
@@ -260,6 +301,30 @@ def assemble_craft_card(name: str, genre: str, manifest: dict, metrics: dict,
             "abstraction_note": "Pass5 笔法分析产物，经 compliance.py 扫描",
         },
     }
+
+
+# 各类资产的来源 pass 文件（用于记录内容指纹）
+SOURCE_PASSES = {
+    "voice-card": ["pass2_character.json", "pass3_style.json"],
+    "structure-obs": ["pass1_structure.json"],
+    "commercial-obs": ["pass4_commercial.json"],
+    "craft-card": ["pass5_craft.json"],
+}
+
+
+def source_fingerprint(raw_dir: Path, kind: str) -> dict:
+    """计算某类资产来源 pass 文件的内容指纹（sha256 前 16 位）。
+
+    2026-09-21 新增：资产此前只记 `extracted_at`（日期），无法判断「这份资产是从
+    哪一版 pass 产出组装的」。`asset_sync_check` 只能用 mtime 做启发式判断 ——
+    内容未变但文件被重写就会误报（实测撞到过一次）。指纹是内容级的确定性判据。
+    """
+    out = {}
+    for fname in SOURCE_PASSES.get(kind, []):
+        p = raw_dir / fname
+        if p.exists():
+            out[fname] = hashlib.sha256(p.read_bytes()).hexdigest()[:16]
+    return out
 
 
 def _read_pass(name: str, pass_file: str) -> dict:
@@ -311,23 +376,22 @@ def main():
         voice, cleaned = _clean_verbatim(voice, book_path.read_text(encoding="utf-8"))
         if cleaned:
             print(f"  ⚠ 已清洗 {cleaned} 处原文引用（corpus/{name}.txt）")
-    vc_path = ASSETS_DIR / f"{name}-voice-card.json"
-    vc_path.write_text(json.dumps(voice, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  ✓ {vc_path.name}")
+    # 2026-09-21 总工重构：四类资产**先组装到内存**，校验全通过后才落盘。
+    # 此前是「组装一个写一个」，校验在写盘之后——一旦校验失败，磁盘上的旧资产
+    # 已被覆盖，只能靠 git / 备份找回。数据安全优先于流程简洁。
+    built = []  # [(kind, path, data)]
+
+    built.append(("voice-card", ASSETS_DIR / f"{name}-voice-card.json", voice))
 
     # 2. structure-obs
     print("[2/4] 组装 structure-obs:")
-    so = assemble_obs("structure", name, args.genre, pass1)
-    so_path = ASSETS_DIR / f"{name}-structure-obs.json"
-    so_path.write_text(json.dumps(so, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  ✓ {so_path.name}")
+    built.append(("structure-obs", ASSETS_DIR / f"{name}-structure-obs.json",
+                  assemble_obs("structure", name, args.genre, pass1)))
 
     # 3. commercial-obs
     print("[3/4] 组装 commercial-obs:")
-    co = assemble_obs("commercial", name, args.genre, pass4)
-    co_path = ASSETS_DIR / f"{name}-commercial-obs.json"
-    co_path.write_text(json.dumps(co, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"  ✓ {co_path.name}")
+    built.append(("commercial-obs", ASSETS_DIR / f"{name}-commercial-obs.json",
+                  assemble_obs("commercial", name, args.genre, pass4)))
 
     # 4. craft-card（pass5 可选）
     if args.skip_craft:
@@ -335,15 +399,54 @@ def main():
     else:
         print("[4/4] 组装 craft-card:")
         pass5 = _read_pass(name, "pass5_craft.json")
-        craft = assemble_craft_card(name, args.genre, manifest, metrics, pass5)
-        cc_path = ASSETS_DIR / f"{name}-craft-card.json"
-        cc_path.write_text(json.dumps(craft, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"  ✓ {cc_path.name}")
+        built.append(("craft-card", ASSETS_DIR / f"{name}-craft-card.json",
+                      assemble_craft_card(name, args.genre, manifest, metrics, pass5)))
 
-    print("\n组装完成。下一步：")
-    print(f"  novel.py 校验 assets/{name}-voice-card.json")
+    # 4.5 注入来源指纹（2026-09-21）：让资产能自证「来自哪一版 pass 产出」
+    raw_dir = RAW_DIR / name
+    for kind, _path, data in built:
+        meta = data.setdefault("meta", {})
+        if isinstance(meta, dict):
+            fp = source_fingerprint(raw_dir, kind)
+            if fp:
+                meta["source_fingerprint"] = fp
+
+    # 5. 内存校验 → 通过才落盘（2026-09-21 总工重构）
+    # 组装成功 ≠ 资产合规（commercial-obs 曾因缺字段被静默写盘）；
+    # 且校验必须在**写盘之前**，否则失败时磁盘上的旧资产已被覆盖。
+    print("\n[5/5] 校验（内存对象，尚未落盘）:")
+    failed = []
+    for kind, _path, data in built:
+        try:
+            errs, warns = validate_mod.validate_asset_data(kind, data)
+        except Exception as exc:  # 校验器自身异常也算不通过，不静默放过
+            failed.append(kind)
+            print(f"  {kind:16} 校验器异常: {exc}")
+            continue
+        if errs:
+            failed.append(kind)
+            print(f"  {kind:16} REJECT（{len(errs)} 硬错误）")
+            for e in errs[:3]:
+                print(f"      · {e}")
+        else:
+            print(f"  {kind:16} PASS（{len(warns)} 警告）" if warns
+                  else f"  {kind:16} PASS")
+
+    if failed:
+        print(f"\n✗ {len(failed)} 类资产未通过校验：{', '.join(failed)}")
+        print("  **已阻止写盘** —— 磁盘上的旧资产保持原样，未被覆盖。")
+        print("  请修正对应 pass 产出后重新组装。")
+        return 1
+
+    print("\n落盘:")
+    for _kind, path, data in built:
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"  ✓ {path.name}")
+
+    print("\n组装完成：四类资产全部通过 schema 校验并已落盘。")
+    print("下一步（可选）：")
     print(f"  novel.py 合规 assets/{name}-voice-card.json corpus/<书>.txt")
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

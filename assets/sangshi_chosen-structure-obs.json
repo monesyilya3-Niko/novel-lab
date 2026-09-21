@@ -4,7 +4,10 @@
     "genre": "campus-redemption",
     "scope": "single-book-observation",
     "awaiting_aggregation": true,
-    "min_books_required": 3
+    "min_books_required": 3,
+    "source_fingerprint": {
+      "pass1_structure.json": "107f665c15052657"
+    }
   },
   "chapter_analyses": [
     {
