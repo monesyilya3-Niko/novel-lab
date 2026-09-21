@@ -89,7 +89,10 @@ def check_voices(text, voices):
         else:
             score = round(per * 0.85, 1)
         total += score
-        details.append(f"  {name}: 命中 {hit}/{len(kws)} 核心词({kws[:4]}) → {score:.1f}/{per:.0f}")
+        # 分子分母必须同精度：per 常为分数（如 35/13=2.6923），若分母按 :.0f
+        # 显示成「3」而分子按 :.1f 显示成「2.7」，满分角色会被下游
+        # qc._detail_is_meaningful_issue 误判为「低于满分」并记假 issue。
+        details.append(f"  {name}: 命中 {hit}/{len(kws)} 核心词({kws[:4]}) → {score:.1f}/{per:.1f}")
     return min(total, 35), details
 
 def check_emotion(text, emotion):
@@ -344,7 +347,10 @@ def score_text(voice_card: dict, text: str, label: str = ""):
         "emotion": emotion_score,
         "narration": narration_score,
         "banned": banned_score,
-        "imagery": imagery_score
+        "imagery": imagery_score,
+        # 逐角色声线明细同时被 character_arc 维度消费，单独回传以便下游去重，
+        # 避免同一条问题在 character_arc 与 craft 两个维度各记一次。
+        "voice_details": list(voice_details)
     }
 
     return total_score, details, raw

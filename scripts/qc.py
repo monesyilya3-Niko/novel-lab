@@ -292,8 +292,12 @@ def _dim_craft(texts: dict, voice_card: dict) -> DimensionScore:
                      + raw.get("banned", 0) + raw.get("imagery", 0))
         total = round(evaluable / evaluable_max * 100, 1)
         raw = dict(raw, renormalized="声线卡无角色，按可评估子项 65 分制重归一")
+    # 逐角色声线明细与 character_arc 维度同源，已由后者登记；此处去重，
+    # 避免同一条问题在「人物弧线」与「手法运用」两个维度各记一次。
+    voice_lines = {d.strip() for d in raw.get("voice_details", [])}
     issues = [{"type": "craft", "severity": "low", "chapter": 0,
-               "detail": d.strip()} for d in details if _detail_is_meaningful_issue(d)]
+               "detail": d.strip()} for d in details
+              if d.strip() not in voice_lines and _detail_is_meaningful_issue(d)]
     return DimensionScore(
         key="craft", label="手法运用", layer="L3",
         score=round(total, 1), weight=1.0, issues=issues,
