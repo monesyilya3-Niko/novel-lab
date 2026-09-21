@@ -159,8 +159,10 @@ class TestSecretStore(unittest.TestCase):
     def test_bin_is_not_plaintext(self):
         self.ss.save_secrets({"k": "sk-secret-value"}, self._tmp)
         blob = (self._tmp / ".secrets.bin").read_bytes()
+        # 只断言**密钥明文**不在密文中；不断言短字节片段（如 b'"k"'）——
+        # DPAPI 密文为随机分布，偶然包含两字节序列不代表未加密。
         self.assertNotIn(b"sk-secret-value", blob)
-        self.assertNotIn(b'"k"', blob)
+        self.assertNotIn(b"sk-", blob)
 
     @unittest.skipUnless(sys.platform == "win32", "明文迁移逻辑仅 Windows 路径")
     def test_plaintext_auto_migration(self):

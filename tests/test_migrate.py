@@ -322,15 +322,48 @@ class TestMigrateFlow(unittest.TestCase):
                                  f"实体 {it['id']} 泄漏了其他书")
 
     def test_list_assets_genre_filter_book_no_leak(self):
-        """回归 QA bug：book 实体无 genre 时，genre 筛选应返回空（而非全量泄漏）。"""
+        """genre 筛选：已拆书 book 回填 genre 后应命中；无 genre 书不得泄漏。
+
+        2026-09-21 行为变更：migrate 会从 voice-card 回填 books.genre。
+        回归点仍是「无关题材/无 genre 书不得全量泄漏」。
+        """
         migrate.run_migrate()
         idx = asset_index.AssetIndex(ttl_seconds=5)
         idx.invalidate()
-        # book 实体在 migrate 中未设置 genre（_upsert_book genre=None），
-        # 故按 genre 过滤时 book 种类应为 0，不泄漏全量书。
         res = idx.list_assets(genre="campus-redemption", limit=500)
         books = [it for it in res["items"] if it["kind"] == "book"]
-        self.assertEqual(books, [], "book 实体无 genre，按 genre 筛选应返回空而非泄漏全量")
+        got = sorted(b["book_id"] for b in books)
+        self.assertEqual(
+            got, ["chireng_chosen", "qingning_chosen"],
+            f"已拆书应从 voice-card 回填 genre 并命中筛选，实际 {got}")
+        self.assertFalse(
+            any(b["book_id"] == "autumn_chosen" for b in books),
+            "无 voice-card 的 idle 书不得泄漏进 campus-redemption 筛选")
+        # 无关题材：fixture 中无 xuanhuan 单书 → book 结果必须为空
+        res2 = idx.list_assets(genre="xuanhuan", limit=500)
+        books2 = [it for it in res2["items"] if it["kind"] == "book"]
+        self.assertEqual(books2, [], f"无关题材不得泄漏 book 实体: {books2}")
+
+    def test_run_migrate_backfills_book_genre_from_voice(self):
+        """books.genre 从 voice-card meta.genre 回填；已有非空 genre 不被覆盖。"""
+        migrate.run_migrate()
+        conn = db.get_conn()
+        rows = {
+            r["book_id"]: r["genre"]
+            for r in conn.execute("SELECT book_id, genre FROM books")
+        }
+        self.assertEqual(rows.get("chireng_chosen"), "campus-redemption")
+        self.assertEqual(rows.get("qingning_chosen"), "campus-redemption")
+        self.assertIsNone(rows.get("autumn_chosen"), "未拆 idle 书不应凭空有 genre")
+        # 手工写入的 genre 不被覆盖
+        conn.execute(
+            "UPDATE books SET genre='realistic-romance' WHERE book_id='chireng_chosen'"
+        )
+        migrate.run_migrate()
+        g = conn.execute(
+            "SELECT genre FROM books WHERE book_id='chireng_chosen'"
+        ).fetchone()["genre"]
+        self.assertEqual(g, "realistic-romance", f"已有 genre 不得被 migrate 覆盖，实际 {g}")
 
 
 class TestBackupRetention(unittest.TestCase):

@@ -485,6 +485,8 @@ def run_migrate() -> Dict[str, Any]:
             _upsert_book(conn, bid, bid, src, None, "done")
 
         # 2) 资产卡。
+        # 同时收集「单书卡 → genre」，供 books.genre 回填（中文书/英文书同理）。
+        book_genre_from_voice: Dict[str, str] = {}
         for fp in asset_files:
             content = _load_json(fp)
             kind = infer_kind(fp.name, content)
@@ -506,6 +508,17 @@ def run_migrate() -> Dict[str, Any]:
             # 题材登记（genres 表）。
             if genre:
                 _upsert_genre(conn, genre, display_name if isinstance(display_name, str) else None, kind)
+            # 单书 voice/craft 卡带 genre 时记录，用于回填 books.genre。
+            if book_id and genre and kind in ("voice", "craft"):
+                book_genre_from_voice.setdefault(book_id, genre)
+
+        # 2b) books.genre 回填：仅在为空时写入，不覆盖已有值。
+        for bid, g in sorted(book_genre_from_voice.items()):
+            conn.execute(
+                "UPDATE books SET genre = COALESCE(genre, ?), updated_at = datetime('now') "
+                "WHERE book_id = ? AND (genre IS NULL OR genre = '')",
+                (g, bid),
+            )
 
         # 3) 报告。
         for fp in report_files:
