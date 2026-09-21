@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "source_title": "Lord_of_the_Mysteries",
+    "genre": "xuanhuan",
+    "scope": "single-book-observation",
+    "awaiting_aggregation": true,
+    "min_books_required": 3,
+    "extracted_at": "2026-09-21",
+    "language": "en",
+    "contains_verbatim": false
+  },
+  "chapter_analyses": [
+    {
+      "chapter": 1,
+      "title": "Crimson",
+      "role": "铺垫",
+      "beats": [
+        "穿越/附体疼痛与意识挣扎 → 建立现代灵魂困境",
+        "环境与身体异常 → 异世界入口",
+        "危机色（crimson）与仪式感暗示 → 非凡力量侧写"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 8,
+        "skeleton": "[身体失控痛感]+[意识提问]+[异常场景]"
+      },
+      "foreshadow": {
+        "planted": ["灰雾/梦境异常", "身份错位", "神秘学相关道具"],
+        "resolved": []
+      },
+      "scenes": [
+        {
+          "location": "bedroom / dream-adjacent space",
+          "characters": ["Zhou Mingrui / later Klein"],
+          "function": "铺垫"
+        }
+      ]
+    },
+    {
+      "chapter": 6,
+      "title": "Beyonder",
+      "role": "推进",
+      "beats": [
+        "灰雾中召见陌生非凡者 → 金手指功能首次社交化",
+        "主角伪装与试探 → 身份双线启动",
+        "对方敬畏/恐惧 → 力量位格侧写"
+      ],
+      "hook": {
+        "type": "身份反转",
+        "strength": 8,
+        "skeleton": "[被动卷入仪式]+[主角成为主导者假象]+[信息不对称]"
+      },
+      "foreshadow": {
+        "planted": ["塔罗会雏形", "Fool 称号", "非凡途径存在"],
+        "resolved": ["灰雾可承载他人意识"]
+      }
+    },
+    {
+      "chapter": 13,
+      "title": "Nighthawk",
+      "role": "转折",
+      "beats": [
+        "邓恩以梦境方式接触 → 教会线正式入场",
+        "Nighthawk 称号与小队制度 → 组织规则展开",
+        "主角从流民向体制内非凡者靠拢"
+      ],
+      "hook": {
+        "type": "悬念揭示",
+        "strength": 7,
+        "skeleton": "[神秘来客]+[组织名号]+[邀请/审查意味]"
+      },
+      "foreshadow": {
+        "planted": ["黑夜教会制度", "梦境操控能力", "队友编制"],
+        "resolved": ["Nighthawk 与塔罗会口述线索的对应"]
+      }
+    },
+    {
+      "chapter": 129,
+      "title": "Rampager",
+      "role": "爆发",
+      "beats": [
+        "队友/同行失控事件实战化",
+        "代价规则从口述变成现场",
+        "主角职业身份与恐惧并行强化"
+      ],
+      "hook": {
+        "type": "危机降临",
+        "strength": 9,
+        "skeleton": "[失控警报]+[处置程序]+[情感冲击]"
+      },
+      "foreshadow": {
+        "planted": ["高序列失控后果", "同袍牺牲可能"],
+        "resolved": ["前期失控口述案例的现实化"]
+      }
+    },
+    {
+      "chapter": 1266,
+      "title": "Light",
+      "role": "爆发",
+      "beats": [
+        "高位者战死与意志残留 → 神话战争代价可视化",
+        "德里克线悲壮收束节点",
+        "光明意象与牺牲主题对齐书名/终局气质"
+      ],
+      "hook": {
+        "type": "情感冲击",
+        "strength": 9,
+        "skeleton": "[半神陨落]+[遗言式安慰]+[少年见证]"
+      },
+      "foreshadow": {
+        "planted": ["半神残留意志规则", "少年领袖的未来"],
+        "resolved": ["战争代价主题在终局前的兑现"]
+      }
+    }
+  ],
+  "aggregate": {
+    "role_mix_estimate": {
+      "铺垫": 0.35,
+      "推进": 0.28,
+      "转折": 0.12,
+      "爆发": 0.2,
+      "缓冲": 0.05
+    },
+    "hook_type_freq": {
+      "危机降临": 4,
+      "身份反转": 3,
+      "悬念揭示": 3,
+      "实力展示": 2,
+      "情感冲击": 3,
+      "信息断点": 2
+    },
+    "hook_min_interval": 1,
+    "foreshadow_avg_span": 40,
+    "foreshadow_max_span": 400,
+    "foreshadow_concurrent_open": 8,
+    "climax_cycle": "卷内小高潮（失控/任务）约20-40章一次；跨卷大高潮（教会战争/身份危机）拉开；终局前牺牲与位格冲突形成主峰。",
+    "notes": "长篇升级+悬疑组织文；爆发章集中于失控/战争/身份揭露；日常章承担成本与时代质感。样本来自开篇、中段与终局附近，非全量1430章逐章。"
+  },
+  "common_mistakes": [
+    "把序列体系写成说明书",
+    "金手指一次给满导致后期无力",
+    "配角视角过多稀释主角主频"
+  ]
+}

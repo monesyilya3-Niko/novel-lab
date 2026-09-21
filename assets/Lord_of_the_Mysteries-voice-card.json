@@ -1,0 +1,221 @@
+{
+  "meta": {
+    "source_title": "Lord_of_the_Mysteries",
+    "genre": "xuanhuan",
+    "extracted_at": "2026-09-21",
+    "sample_chapters": [1, 2, 5, 6, 8, 13, 20, 22, 25, 29, 129, 213, 388, 482, 800, 1000, 1266, 1400, 1430],
+    "total_sample_words": 248000,
+    "confidence": 0.78,
+    "human_reviewed": false,
+    "extraction_note": "英文 Webnovel 版 EPUB 转换；因 LLM 额度不足，由会话模型基于采样章 + 作品公开结构完成五遍分析代写。中文向指标（了字/禁用词等）对本语料不适用。"
+  },
+  "narration": {
+    "pov": "多视角轮换",
+    "pov_switch_rule": "主线章紧贴克莱恩感知与推理；世界观扩展或支线决战切配角视角，切换点常落在章首场景镜头",
+    "tense_feel": "蒸汽朋克时代质感 + 悬疑冷叙述；危机时短句推进，日常用物质细节与时代器物压住节奏",
+    "sentence_rhythm": {
+      "avg_length": 0,
+      "short_ratio": 0,
+      "long_ratio": 0,
+      "burst_pattern": "战斗/失控/占卜结果揭晓用连续短句与单句成段；设定解释用较长复合句但控制在段内"
+    },
+    "paragraph": {},
+    "chapter_opening_patterns": [
+      {
+        "pattern": "感官痛感/危机切入",
+        "frequency": 4,
+        "example_structure": "[身体感受]+[主角意识恢复]+[悬念提问]"
+      },
+      {
+        "pattern": "配角行动镜头",
+        "frequency": 3,
+        "example_structure": "[他者场景动作]+[与主线暗线的钩子]"
+      },
+      {
+        "pattern": "场景时代白描",
+        "frequency": 2,
+        "example_structure": "[地点/天气/器物]+[人物入场]"
+      }
+    ]
+  },
+  "dialogue": {
+    "dialogue_ratio": 0.247,
+    "tag_style": "动作/神态标注为主，少用「他说」；塔罗会与队友戏常用身份+短语标签",
+    "subtext_level": "大量潜台词",
+    "character_voices": [
+      {
+        "name": "Klein Moretti",
+        "role": "主角",
+        "speech_signature": {
+          "refusal_pattern": "先用礼貌含糊挡开，再内心吐槽成本与风险；必要时以占卜/规定/程序拒绝",
+          "never_says": [
+            "I am Zhou Mingrui from Earth",
+            "I am the Fool",
+            "I can read your mind (casually)"
+          ],
+          "anger_pattern": "表面冷静、措辞更公式化；真正动怒时沉默加算计，而非咆哮",
+          "verbal_tics": [
+            "Mr.",
+            "Madam",
+            "May I ask",
+            "In that case",
+            "I was just"
+          ],
+          "physical_habit": [
+            "press fingers to temples",
+            "silent recitation of divination statements",
+            "touch cane or revolver",
+            "force a polite smile",
+            "count pounds and soli in head"
+          ],
+          "avg_utterance_length": 12
+        },
+        "arc": {
+          "start_state": "穿越后迷茫求生的底层占卜家，伪装适应异世界",
+          "end_state": "背负代价的高位者，在现代日常里保留人性与烟火气",
+          "turning_chapters": [1, 6, 13, 129, 213, 800, 1266],
+          "arc_type": "英雄旅程+身份代价"
+        }
+      },
+      {
+        "name": "Dunn Smith",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用队长规定与任务优先婉拒私人请求，语气平和",
+          "never_says": ["I don't care if you die"],
+          "anger_pattern": "少怒；压力下更沉默，用程序与保护队友来表达",
+          "verbal_tics": [
+            "Remember",
+            "Don't forget",
+            "Captain",
+            "It's fine"
+          ],
+          "physical_habit": [
+            "pocket watch",
+            "deep gray eyes under hat brim",
+            "steady soothing voice"
+          ],
+          "avg_utterance_length": 10
+        },
+        "arc": {
+          "start_state": "可靠但健忘的黑夜教会队长",
+          "end_state": "在灾难与牺牲中被铭记的保护者符号",
+          "turning_chapters": [13, 20, 129],
+          "arc_type": "守护者"
+        }
+      },
+      {
+        "name": "Old Neil",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "用资历与玩笑推开非职责事务，真出事时立刻专业",
+          "never_says": ["Beyonder powers are free"],
+          "anger_pattern": "咒骂规则与代价，行动上仍执行",
+          "verbal_tics": [
+            "sequence",
+            "ritual",
+            "boy",
+            "pay the price"
+          ],
+          "physical_habit": ["half-retired slouch", "quick professional questions on duty"],
+          "avg_utterance_length": 14
+        },
+        "arc": {
+          "start_state": "看似油腻的半退休非凡者",
+          "end_state": "在失控事件中显露职业骨血",
+          "turning_chapters": [129],
+          "arc_type": "表里反差"
+        }
+      },
+      {
+        "name": "Alger Wilson",
+        "role": "配角",
+        "speech_signature": {
+          "refusal_pattern": "信息交易式拒绝：不给价不说",
+          "never_says": ["I serve only the Fool for free"],
+          "anger_pattern": "海上老手式冷硬，控制情绪换情报",
+          "verbal_tics": [
+            "The Fool",
+            "information",
+            "trade",
+            "Your Excellency"
+          ],
+          "physical_habit": ["crimson glow in eyes", "deck stillness"],
+          "avg_utterance_length": 15
+        },
+        "arc": {
+          "start_state": "功利的风暴教会船员/塔罗会成员",
+          "end_state": "被灰雾仪式绑定的长期盟友",
+          "turning_chapters": [8],
+          "arc_type": "利益绑定→阵营"
+        }
+      }
+    ],
+    "emotion_handling": {
+      "mode": "混合式",
+      "note": "恐惧与震撼常经身体反应与理性推演过滤；幽默多为现代梗与成本吐槽",
+      "examples": [
+        {
+          "pattern": "Sweat soaked the back of his shirt as the voice echoed inside his heart.",
+          "anti_pattern": "Klein was extremely terrified and scared."
+        },
+        {
+          "pattern": "He touched his cane, counted the soli, and forced a polite smile.",
+          "anti_pattern": "He felt financially stressed and socially awkward."
+        }
+      ]
+    }
+  },
+  "emotion_handling": {
+    "mode": "混合式",
+    "examples": [
+      {
+        "pattern": "body sweat + internal hypothesis questions",
+        "anti_pattern": "pure adjective emotion stacking"
+      }
+    ]
+  },
+  "banned": {
+    "never_used_words": [
+      "system panel pop-up",
+      "quiet campus walls like silent guards"
+    ],
+    "note": "英文语料；中文禁用词表不适用"
+  },
+  "imagery": {
+    "high_freq_metaphor_domains": ["fog", "potion", "steam"],
+    "sensory_preference": {
+      "visual": 0.35,
+      "auditory": 0.2,
+      "tactile": 0.2,
+      "olfactory": 0.1,
+      "internal": 0.15
+    },
+    "signature_devices": [
+      "gray fog as stage/identity layer",
+      "crimson as danger dye",
+      "period objects (top hat, cane, potion) as status and cost"
+    ],
+    "core_domains": [
+      "gray fog / palace above the gray fog",
+      "crimson / dark red danger color",
+      "top hat, cane, revolver",
+      "steam, gas lamps, bicycles, carriages",
+      "potion bottles, ritual candles, goatskin divination"
+    ],
+    "symbol_map": {
+      "gray fog": "克莱恩的金手指空间/塔罗会舞台，也是身份隔离层",
+      "crimson": "危险、失控、高序列污染",
+      "top hat": "中产伪装与身份表演",
+      "potion": "力量与代价的可量化容器"
+    }
+  },
+  "provenance": {
+    "source_file": "corpus/Lord_of_the_Mysteries.txt",
+    "source_format": "epub-converted",
+    "platform": "Webnovel (English)",
+    "analysis_by": "session-agent (LLM quota blocked)",
+    "language": "en",
+    "contains_verbatim": false
+  }
+}

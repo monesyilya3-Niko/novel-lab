@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "source_title": "Lord_of_the_Mysteries",
+    "genre": "xuanhuan",
+    "scope": "single-book-observation",
+    "awaiting_aggregation": true,
+    "min_books_required": 3,
+    "extracted_at": "2026-09-21",
+    "language": "en",
+    "contains_verbatim": false
+  },
+  "payoff_density": {
+    "per_thousand_words": 0.55,
+    "payoff_types": [
+      {
+        "type": "身份揭露",
+        "ratio": 0.28,
+        "buildup_length": 8000
+      },
+      {
+        "type": "升级",
+        "ratio": 0.22,
+        "buildup_length": 5000
+      },
+      {
+        "type": "反杀",
+        "ratio": 0.18,
+        "buildup_length": 4000
+      },
+      {
+        "type": "收益兑现",
+        "ratio": 0.17,
+        "buildup_length": 3000
+      },
+      {
+        "type": "他人认可",
+        "ratio": 0.1,
+        "buildup_length": 6000
+      },
+      {
+        "type": "情感回应",
+        "ratio": 0.05,
+        "buildup_length": 12000
+      }
+    ]
+  },
+  "skeleton": "卷一（Tingen/黑夜教会）：穿越求生→入队非凡→序列升级与代价；中卷（海上/贝克兰德等）：身份双线与组织政治，塔罗会情报网扩张；高潮卷：神话战争与牺牲，主角位格与人性代价对撞；尾声：现代日常回环，保留烟火气。全书以「知识/身份/代价」三元爽点驱动，而非单纯打怪。",
+  "dry_spell_tolerance": "允许约5-8章纯设定/成本/日常章；用失控事件或会议信息差刷新追读",
+  "opening_analysis": {
+    "chapter_1": {
+      "first_300_words_task": "痛感与意识恢复建立穿越事实，不立刻倒叙生平",
+      "hook_position": 200,
+      "protagonist_intro_method": "身体困境+现代灵魂内心，身份后置",
+      "conflict_intro_position": 400,
+      "golden_finger_reveal": "灰雾/占卜能力在第1-6章分层显现，不一次说明书",
+      "chapter_2_3_task": "环境与人际网（家庭/债务/神秘学）铺开，第5-6章仪式把金手指社交化"
+    },
+    "common_mistakes": [
+      "第1章大段地球回忆",
+      "序列体系开篇倾泻",
+      "会议章无危机只聊天",
+      "代价迟迟不兑现导致升级轻飘"
+    ]
+  },
+  "retention_risk_points": [
+    "长篇多视角章若连续超过2章易掉克莱恩主频",
+    "贝克兰德日常卷密度高，需持续小钩子",
+    "终局后现代番外对纯升级读者可能偏淡"
+  ],
+  "common_mistakes": "1.序列体系说明书式开篇；2.金手指一次给满；3.会议章无危机只聊天；4.代价迟迟不兑现。内容由本卡 opening_analysis / retention_risk_points 汇总，非新造观察。",
+  "paywall": {
+    "position_chapter": 1,
+    "cliffhanger_technique": "Webnovel 英文站按话付费/解锁；第1章以痛感与异常场景制造立即追读，而非完结后记式付费点。",
+    "pre_paywall_buildup": "前1章用穿越痛感+身份错位+异常空间侧写建立三重钩子，读者在未知与成本预期中进入付费追读。"
+  },
+  "update_rhythm": {
+    "chapters_per_day": "Webnovel 连载节奏，多为稳定日更或高频更；完结后全本可读。",
+    "burst_timing": "高潮卷（战争/身份危机）常出现加更/长章；日常卷节奏平稳。"
+  },
+  "payoff_density_note": "估计值：基于采样章类型学，非全书句级统计；英文语料未跑中文商业检测器。"
+}

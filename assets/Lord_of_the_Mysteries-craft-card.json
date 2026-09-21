@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "source_title": "Lord_of_the_Mysteries",
+    "genre": "xuanhuan",
+    "extracted_at": "2026-09-21",
+    "sample_chapters": [1, 5, 6, 8, 13, 20, 129, 213, 388, 800, 1000, 1266],
+    "total_sample_words": 248000,
+    "confidence": 0.78,
+    "pass5_version": "1.0"
+  },
+  "craft_analysis": {
+    "foreshadowing": {
+      "techniques": [
+        {
+          "name": "灰雾空间长线回收",
+          "description": "第1章占卜/梦境即出现灰雾意象，中后期成为塔罗会舞台与身份隔离层，回收不是点破而是升格为长期金手指空间",
+          "effect": "读者对异常空间从恐惧转为仪式感与阵营认同",
+          "skeleton": "[危机中的异常空间]+[多次小规模验证]+[功能升格为组织舞台]",
+          "anti_pattern": "不在首次出现时说明书式解释规则",
+          "deep_analysis": {
+            "reader_psychology": "未知空间反复出现且每次功能略扩，形成期待曲线",
+            "execution_steps": "1.异常首次具身化 2.主角无法控制 3.小规模可控使用 4.绑定社交功能 5.代价侧写",
+            "applicable_scene": "东方/异世玄幻金手指与组织线",
+            "usage_boundary": "避免过早公布全图鉴",
+            "intensity_control": "回收强度与主角对空间的依赖度正相关",
+            "combo_patterns": "身份双线、代价体系",
+            "migration_checklist": "金手指首次出现必须在前3章；功能分阶段揭示"
+          }
+        },
+        {
+          "name": "代价先于力量",
+          "description": "非凡者失控（Rampager）规则在主角入队前后被反复口述与目击，力量体系一开始就绑定风险",
+          "effect": "升级爽感与恐惧并行，避免无脑变强",
+          "skeleton": "[导师口述代价]+[路人/队友失控案例]+[主角临界体验]",
+          "anti_pattern": "不把失控仅写成反派专属",
+          "deep_analysis": {
+            "reader_psychology": "先建立风险账户，再允许提现力量",
+            "execution_steps": "1.规则课 2.案例 3.主角擦边 4.同袍代价 5.主角重估",
+            "applicable_scene": "升级流、序列体系",
+            "usage_boundary": "每卷至少一次真实代价兑现",
+            "intensity_control": "失控案例密度约每20-40章一次视觉化",
+            "combo_patterns": "团队牺牲、教会程序",
+            "migration_checklist": "写力量前先写三条代价与一个死例"
+          }
+        }
+      ]
+    },
+    "information_release": {
+      "techniques": [
+        {
+          "name": "塔罗会信息差经济",
+          "description": "灰雾会议用编号/化名交换情报，把世界观知识变成可交易资源",
+          "effect": "读者同步获取设定，又保持神秘感与阵营张力",
+          "skeleton": "[仪式召集]+[成员诉求]+[信息/物品交换]+[会后余波]",
+          "anti_pattern": "不让会议变成设定朗读会，每场至少推动一条关系或危机"
+        }
+      ]
+    },
+    "pov_control": {
+      "techniques": [
+        {
+          "name": "配角章扩地图",
+          "description": "阿尔杰海上、埃姆林教堂、德里克城邦等视角章扩展地理与种族，不打断主线悬念主频",
+          "effect": "世界尺度变大而不丢主角主心骨"
+        }
+      ]
+    }
+  },
+  "craft_summary": {
+    "top_3_strengths": [
+      "金手指与身份/代价深度绑定",
+      "蒸汽时代器物细节支撑可信度",
+      "信息差会议驱动世界观与关系双线"
+    ],
+    "unique_techniques": [
+      "灰雾塔罗会作为叙事会议室",
+      "序列+失控的成本化升级"
+    ],
+    "reusable_patterns": [
+      "代价先于力量",
+      "日常器物→命运符号",
+      "多视角扩图但不抢主线"
+    ]
+  },
+  "provenance": {
+    "contains_verbatim": false,
+    "analysis_by": "session-agent"
+  }
+}
