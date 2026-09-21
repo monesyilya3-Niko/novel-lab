@@ -8,11 +8,19 @@
       "热血",
       "东方奇幻"
     ],
-    "source_books": [],
+    "source_books": [
+      {
+        "title": "Lord_of_the_Mysteries",
+        "platform": "Webnovel",
+        "performance": "起点月票长期前列 / 完本高热",
+        "voice_card_ref": "Lord_of_the_Mysteries",
+        "language": "en"
+      }
+    ],
     "target_platform": "番茄",
-    "confidence": 0.5,
-    "scope": "seed-awaiting-corpus",
-    "note": "种子题材包（2026-09-21 开放通道）。当前无已拆样本；对话带/阈值先用系统默认，拆入≥1本后按语料分位数重标。文体假设：升级流+热血，对话与打斗/修炼描写并重。"
+    "confidence": 0.6,
+    "scope": "single-book-seed",
+    "note": "种子题材包（2026-09-21）。样本1本英文译本 LOTM：对话带实测约0.247；升级与代价/身份双线绑定；中文向质检（了字/体感词/部分钩子）对英文不完全适用。聚合需≥3本同题材；有中文玄幻语料后应重标对话带与章字阈值。"
   },
   "structure": {
     "chapter_word_range": {

@@ -44,16 +44,25 @@ BODY_WORDS = ["心跳", "指尖", "耳根", "脊背", "手心", "喉结", "呼�
               "掌心", "指节", "手腕", "脚趾", "脖子", "下巴", "眉心", "太阳穴"]
 
 # 钩子关键词（章末 300 字内出现 = 有钩子）
+# 2026-09-21：追加英文章末钩模式（多语料）；中文词表保持不变，仅增加可命中项。
 HOOK_KEYWORDS = [
-    r"[。！？]\s*$",  # 以句末标点结束（弱钩子）
-    r"[…]{1,3}",  # 省略号（悬念）
+    r"[。！？]\s*$",  # 以中文句末标点结束（弱钩子）
+    r"[.!?]\s*$",  # 英文章末句号/问号/叹号（弱钩子）
+    r"[…]{1,3}|\.\.\.",  # 省略号（悬念）
     r"忽然|突然|猛然|骤然",  # 突发事件
+    r"\b(Suddenly|Abruptly|Without warning)\b",  # EN 突发
     r"门.*开了|电话.*响|手机.*响|有人.*敲",  # 中断/引入
     r"她不知道|他不知道|谁也没想到",  # 悬念
+    r"\bdidn'?t know\b|\bhad no idea\b|\bnever expected\b",  # EN 悬念
     r"转身|回头|推门|拉开|站起",  # 动作钩子
+    r"\bturned around\b|\bturned to leave\b|\bpushed open\b|\bstepped forward\b|\bstood up\b",
     r"明天|以后|从此|那天起",  # 时间钩子
+    r"\btomorrow\b|\bfrom that day\b|\bnever again\b",
     r"可是|可那|但是|却只|却还|却在",  # 转折留白
+    r"\bBut\b|\bHowever\b|\bYet\b",  # EN 转折
     r"如果|难道|究竟能|是否还",  # 设问/不确定
+    r"\?$",  # 英文设问收尾
+    r"\bif only\b|\bwhat if\b|\bcould it be\b",
 ]
 
 # 评分阈值默认值（题材包未配置 quality_thresholds 时的回退线）
