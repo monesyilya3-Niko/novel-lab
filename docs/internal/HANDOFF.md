@@ -142,7 +142,7 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 | 优先级 | 事项 |
 |---|---|
 | — | GitHub Release：当前 **v1.1.2**（tag + 本机 `gh release upload` 附加安装包） |
-| P2 | 服务常驻 autostart：**Startup 快捷方式已启用**（2026-09-21）；`schtasks` 计划任务需管理员，当前会话 Access denied，未注册 |
+| P2 | 服务常驻 autostart：**已启用**（2026-09-21）— 计划任务 `novel-lab-gui-autostart`（ONLOGON，用户 monesy）+ Startup 快捷方式双通道 |
 | P3 | lint 债：`docs/lint-debt.md`（ruff ignore 基线，重构时顺手清） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
 | — | 检测口径权威说明：`docs/detection-authority.md` |
@@ -154,7 +154,7 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 |---|---|
 | `python -m gui.launch --check` | 全模块 import + engine_adapter 自检 **OK**；`gui/web/dist` 存在 |
 | `start_gui.bat` 根路径 | `%~dp0..\..` 解析到项目根，`gui/server.py` 可定位 |
-| 计划任务 `novel-lab-gui-autostart` | **schtasks 创建失败**（Access denied / 需管理员）；改用 Startup 快捷方式 **已安装** |
+| 计划任务 `novel-lab-gui-autostart` | **已注册**（提权 schtasks：ONLOGON / LIMITED / IT，Status=Ready，Run As=monesy，指向主仓 `start_gui.bat`） |
 | Startup 自启 | `%APPDATA%\...\Startup\novel-lab-gui-autostart.lnk` → `cmd /c start_gui.bat`，WorkDir=项目根 — **已验证存在** |
 | stale 锁（内容为死 PID） | 启动时自动清理并改写为新进程 PID — **通过** |
 | 单实例二次启动 | 锁被存活进程持有时拒绝启动 — **通过** |
@@ -173,7 +173,7 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 | 2026-09-17 第二轮 | `docs/superpowers/plans/2026-09-17-*.md` | 完成 |
 | 2026-09-18 第三轮 + 连续打分 + 发布 | `docs/superpowers/plans/2026-09-18-*.md` | 完成 |
 | 2026-09-18 GUI 实机 + v1.1.1 | 本会话 | 完成 |
-| 2026-09-21 锁/autostart 实测 | worktree `chore/autostart-lock-verify` | 完成（Startup 自启已装；schtasks 需管理员未装） |
+| 2026-09-21 锁/autostart 实测 | worktree 验证 + master 同步 | 完成（计划任务 + Startup 双通道已启用） |
 
 ---
 
