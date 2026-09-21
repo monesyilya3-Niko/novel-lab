@@ -85,7 +85,10 @@ if [ "$STATUS" -eq 0 ]; then
 
     # --- 资产 schema 校验：只查本次暂存的资产，无暂存资产则跳过 -----------------
     # 返回码约定（scripts/validate.py）：0=PASS，1=REJECT（阻止提交），2=WARN（仅提示）。
-    STAGED_ASSETS=$(git diff --cached --name-only --diff-filter=ACM -- 'assets/*.json' 2>/dev/null || true)
+    # core.quotepath=false：git 默认把非 ASCII 文件名转义成 \346\232\256…，
+    # 脚本拿转义串查文件必然「不存在」，导致中文资产（如「暮冬念春-*.json」）
+    # 被静默跳过校验（2026-09-21 实测 4 个文件被跳过）。
+    STAGED_ASSETS=$(git -c core.quotepath=false diff --cached --name-only --diff-filter=ACM -- 'assets/*.json' 2>/dev/null || true)
 
     if [ -z "$STAGED_ASSETS" ]; then
         echo "[pre-commit] 无变更资产，跳过 schema 校验。"
