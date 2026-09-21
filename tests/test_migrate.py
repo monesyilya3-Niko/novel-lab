@@ -78,8 +78,18 @@ class TestMigrateInfer(unittest.TestCase):
         self.assertEqual(
             migrate.infer_book_id("chireng_chosen-voice-card"), "chireng_chosen")
 
+    def test_infer_book_id_cjk_without_chosen(self):
+        """中文书名不含 _chosen 也必须能归属（回归：暮冬念春四卡曾被推断为 NULL）。"""
+        for suffix in ("-voice-card", "-craft-card", "-structure-obs", "-commercial-obs"):
+            self.assertEqual(
+                migrate.infer_book_id(f"暮冬念春{suffix}"), "暮冬念春", suffix)
+
+    def test_infer_book_id_genre_pack_none(self):
+        self.assertIsNone(migrate.infer_book_id("campus-redemption-genre-pack"))
+        self.assertIsNone(migrate.infer_book_id("realistic-romance-genre-pack"))
+
     def test_infer_book_id_distilled_none(self):
-        # 蒸馏卡无 _chosen 前缀 → None（跨书蒸馏，无单书归属）。
+        # 蒸馏卡 → None（跨书蒸馏，无单书归属）；不依赖 _chosen 启发式。
         self.assertIsNone(migrate.infer_book_id("campus-redemption-voice-card-distilled"))
 
     def test_index_has_no_book_id(self):

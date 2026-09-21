@@ -188,6 +188,7 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 | 2026-09-18 GUI 实机 + v1.1.1 | 本会话 | 完成 |
 | 2026-09-21 锁/autostart 实测 | worktree 验证 + master 同步 | 完成（计划任务 + Startup 双通道已启用） |
 | 2026-09-21 总工审计 | 生产 DB 卫生 + books.genre 回填 | 完成 |
+| 2026-09-21 infer_book_id 根因修复 | 去掉 `_chosen` 硬约束，中文书名可归属 | 见 fix 分支 |
 
 ---
 

@@ -66,7 +66,8 @@ BACKUP_KEEP = 3
 def infer_book_id(stem: str) -> Optional[str]:
     """从文件名反推 book_id（§6.3）。
 
-    书卡去后缀取前缀；题材文风卡/trope/索引/跨书蒸馏卡（无 ``_chosen`` 前缀）返回 None。
+    书卡去后缀取前缀；题材文风卡 / trope / 索引 / 跨书蒸馏卡 / 题材包返回 None。
+    单书名**不要求**含 ``_chosen``：中文书名（如「暮冬念春」）同样合法。
     """
     if not stem:
         return None
@@ -77,14 +78,14 @@ def infer_book_id(stem: str) -> Optional[str]:
     # 避免被下面的基础卡后缀剥离出「看似有归属」的前缀。
     if stem.endswith(_DISTILLED_SUFFIXES):
         return None
-    # 基础书卡：剥离后缀取前缀，仅当前缀含 _chosen（单书卡）时才有归属。
+    # 题材包是 genre 级资产，不是单书卡。
+    if stem.endswith("-genre-pack"):
+        return None
+    # 基础书卡：剥离后缀取前缀（voice/craft/structure/commercial 等）。
     for suffix in _BOOK_CARD_SUFFIXES:
         if stem.endswith(suffix):
             prefix = stem[: -len(suffix)]
-            # 蒸馏卡前缀不含 _chosen → book_id=NULL。
-            if "_chosen" not in prefix:
-                return None
-            return prefix
+            return prefix or None
     # 其他未匹配命名：无明确归属。
     return None
 
