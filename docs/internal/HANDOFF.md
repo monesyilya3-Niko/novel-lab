@@ -103,7 +103,7 @@ $PY -m gui.launch
 ## 五、测试与质量守卫
 
 ```bash
-$PY -B run_tests.py    # 全量（当前 751 OK）
+$PY -B run_tests.py    # 全量（当前 801 OK）
 ```
 
 - `.githooks/pre-commit`：全量测试 + 暂存资产 schema 校验
@@ -142,11 +142,26 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 | 优先级 | 事项 |
 |---|---|
 | — | GitHub Release：当前 **v1.1.2**（tag + 本机 `gh release upload` 附加安装包） |
-| P2 | 服务常驻 autostart 为可选项，未默认安装 |
+| P2 | 服务常驻 autostart：**Startup 快捷方式已启用**（2026-09-21）；`schtasks` 计划任务需管理员，当前会话 Access denied，未注册 |
 | P3 | lint 债：`docs/lint-debt.md`（ruff ignore 基线，重构时顺手清） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
 | — | 检测口径权威说明：`docs/detection-authority.md` |
 | — | 章内碎片重复已接入 n-gram 检测（2026-09-18） |
+
+### 2026-09-21 锁与 autostart 实测（worktree `chore/autostart-lock-verify`）
+
+| 项 | 结果 |
+|---|---|
+| `python -m gui.launch --check` | 全模块 import + engine_adapter 自检 **OK**；`gui/web/dist` 存在 |
+| `start_gui.bat` 根路径 | `%~dp0..\..` 解析到项目根，`gui/server.py` 可定位 |
+| 计划任务 `novel-lab-gui-autostart` | **schtasks 创建失败**（Access denied / 需管理员）；改用 Startup 快捷方式 **已安装** |
+| Startup 自启 | `%APPDATA%\...\Startup\novel-lab-gui-autostart.lnk` → `cmd /c start_gui.bat`，WorkDir=项目根 — **已验证存在** |
+| stale 锁（内容为死 PID） | 启动时自动清理并改写为新进程 PID — **通过** |
+| 单实例二次启动 | 锁被存活进程持有时拒绝启动 — **通过** |
+| 优雅关停 | `_release_lock` 删除 `.lock` — **通过** |
+| 关停后重启 | 可再次获取锁并启动 — **通过** |
+| 边界现象 | 存活进程仍持有锁文件句柄时，即使锁内容被改成死 PID，`os.replace` 会 WinError 32，`_clear_stale_lock` 返回 False → 维持「已在运行中」拒绝（fail-closed，正确） |
+| worktree 测试 skip=1 | `test_split_chapters_on_real_corpus` 因 worktree 无本地 `corpus/`（未入库语料）跳过；主仓同用例 **ok** |
 
 ---
 
@@ -158,7 +173,8 @@ $PY -B run_tests.py    # 全量（当前 751 OK）
 | 2026-09-17 第二轮 | `docs/superpowers/plans/2026-09-17-*.md` | 完成 |
 | 2026-09-18 第三轮 + 连续打分 + 发布 | `docs/superpowers/plans/2026-09-18-*.md` | 完成 |
 | 2026-09-18 GUI 实机 + v1.1.1 | 本会话 | 完成 |
+| 2026-09-21 锁/autostart 实测 | worktree `chore/autostart-lock-verify` | 完成（Startup 自启已装；schtasks 需管理员未装） |
 
 ---
 
-*本交接文档基于 2026-09-21 实测数据更新（801 tests OK / 60 资产 / 报告 10 / Release v1.1.2）。*
+*本交接文档基于 2026-09-21 实测数据更新（801 tests OK / 60 资产 / 报告 10 / Release v1.1.2；锁/autostart 实测见第八节）。*

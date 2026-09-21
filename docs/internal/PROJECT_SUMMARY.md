@@ -168,7 +168,7 @@ PROMPTS_DIR    = novel-lab/prompts/generated/
 1. **无外部模型**：写作改写循环需 AI 会话内接管，GUI 提供降级指引+手动入库；有模型时支持 fallback 链
 2. **前端 echarts**：独立按需加载 chunk
 3. **番茄抓书**：依赖 venv 的 fontTools/numpy/Pillow，探针曾通过，非日常路径
-4. **服务常驻**：`gui/autostart/install_task.bat` 存在但未默认启用
+4. **服务常驻**：Startup 快捷方式已启用（2026-09-21）；`schtasks` 计划任务需管理员未装；stale 锁 / 单实例 / 关停重启实测通过
 
 ---
 
