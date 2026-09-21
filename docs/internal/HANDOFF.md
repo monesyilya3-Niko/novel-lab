@@ -144,6 +144,7 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 | — | GitHub Release：当前 **v1.1.2**（tag + 本机 `gh release upload` 附加安装包） |
 | P2 | 服务常驻 autostart：**已启用**（2026-09-21）— 计划任务 `novel-lab-gui-autostart`（ONLOGON，用户 monesy）+ Startup 快捷方式双通道 |
 | P3 | lint 债：`docs/lint-debt.md`（ruff ignore 基线，重构时顺手清） |
+| P3 | 语料就绪未拆：`corpus/autumn_chosen.txt`、`corpus/duwo_chosen.txt`（books.status=idle） |
 | — | 连续打分后若扩充语料，需重算了字密度分位数常量 |
 | — | 检测口径权威说明：`docs/detection-authority.md` |
 | — | 章内碎片重复已接入 n-gram 检测（2026-09-18） |
@@ -163,6 +164,18 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 | 边界现象 | 存活进程仍持有锁文件句柄时，即使锁内容被改成死 PID，`os.replace` 会 WinError 32，`_clear_stale_lock` 返回 False → 维持「已在运行中」拒绝（fail-closed，正确） |
 | worktree 测试 skip=1 | `test_split_chapters_on_real_corpus` 因 worktree 无本地 `corpus/`（未入库语料）跳过；主仓同用例 **ok** |
 
+### 2026-09-21 总工审计（生产 `gui_state/index.db`）
+
+| 项 | 结果 |
+|---|---|
+| schema | 7 表齐备（books/assets/reports/analysis_tasks/genres/schema_migrations/sqlite_sequence）；迁移仅 `0001_init.sql`，无欠账 |
+| 磁盘对齐 | assets **60** · reports **10** · books **7**（与 `novel.py 状态` 一致） |
+| 发现 1 | 全部 `books.genre` 为空 → 已按资产回填：4 本 campus-redemption + 暮冬念春 realistic-romance |
+| 发现 2 | 暮冬念春四卡 `book_id` 为 NULL → 已回填 `暮冬念春`（voice/craft/structure/commercial） |
+| 发现 3 | `analysis_tasks` 残留 `qa_leak_probe`（2026-09-10）→ **已删除** |
+| 未做 | lint 大扫除（项目原则：触及再清）；autumn/duwo 未拆（业务选择，非缺陷） |
+| 备份 | `gui_state/index.db.bak-20260921-105415-chief` |
+
 ---
 
 ## 九、优化轮次索引
@@ -174,7 +187,8 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 | 2026-09-18 第三轮 + 连续打分 + 发布 | `docs/superpowers/plans/2026-09-18-*.md` | 完成 |
 | 2026-09-18 GUI 实机 + v1.1.1 | 本会话 | 完成 |
 | 2026-09-21 锁/autostart 实测 | worktree 验证 + master 同步 | 完成（计划任务 + Startup 双通道已启用） |
+| 2026-09-21 总工审计 | 生产 DB 卫生 + books.genre 回填 | 完成 |
 
 ---
 
-*本交接文档基于 2026-09-21 实测数据更新（801 tests OK / 60 资产 / 报告 10 / Release v1.1.2；锁/autostart 实测见第八节）。*
+*本交接文档基于 2026-09-21 实测数据更新（801 tests OK / 60 资产 / 报告 10 / Release v1.1.2；锁/autostart 与总工审计见第八节）。*
