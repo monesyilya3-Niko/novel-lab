@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "id": "genre-xuanhuan",
+    "name": "传统玄幻",
+    "sub_tags": [
+      "玄幻",
+      "升级",
+      "热血",
+      "东方奇幻"
+    ],
+    "source_books": [],
+    "target_platform": "番茄",
+    "confidence": 0.5,
+    "scope": "seed-awaiting-corpus",
+    "note": "种子题材包（2026-09-21 开放通道）。当前无已拆样本；对话带/阈值先用系统默认，拆入≥1本后按语料分位数重标。文体假设：升级流+热血，对话与打斗/修炼描写并重。"
+  },
+  "structure": {
+    "chapter_word_range": {
+      "min": 2000,
+      "typical": 2500,
+      "max": 3500
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.35,
+        "typical_position": "章首",
+        "beats": [
+          "境界/处境交代",
+          "势力关系",
+          "资源或危机伏笔"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.3,
+        "typical_position": "章中",
+        "beats": [
+          "修炼/任务进展",
+          "冲突升温",
+          "配角互动"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.25,
+        "typical_position": "章中后段至章末",
+        "beats": [
+          "战斗或突破",
+          "打脸/反转",
+          "境界或声望跃迁"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "章末",
+        "beats": [
+          "收获结算",
+          "下一目标",
+          "悬念钩子"
+        ]
+      }
+    ],
+    "hook_system": {
+      "hook_types": [
+        {
+          "type": "实力展示",
+          "frequency": 0.25,
+          "strength": 0.8,
+          "skeleton": "以战斗/测试结果展示主角当前战力，制造对比爽点。"
+        },
+        {
+          "type": "危机降临",
+          "frequency": 0.3,
+          "strength": 0.9,
+          "skeleton": "强敌压境或秘境险情，章末留下未解决危机。"
+        },
+        {
+          "type": "悬念揭示",
+          "frequency": 0.25,
+          "strength": 0.85,
+          "skeleton": "揭露身世、功法来历或势力阴谋的一角。"
+        },
+        {
+          "type": "身份反转",
+          "frequency": 0.2,
+          "strength": 0.95,
+          "skeleton": "关键人物真实身份/阵营反转，颠覆当前局势认知。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "power_system_type": "东方修炼体系（境界/功法/资源），力量成长可量化。",
+    "progression_granularity": "境界突破、功法小成、获得资源或势力认可。",
+    "naming_conventions": [
+      "中文人名/宗门名偏古风或热血向",
+      "境界名体系全书统一"
+    ]
+  },
+  "language_rules": {
+    "iron_rules": [
+      {
+        "rule": "战斗与突破段多用短句与动词，避免长绵比喻堆叠。",
+        "bad_example": "他体内那股力量仿佛沉睡了千年的远古巨龙终于苏醒一般缓缓涌动起来。",
+        "good_example": "丹田一热。气感冲开第一道关。\n\n他睁眼。",
+        "rationale": "升级流节奏靠短句爆发，长句易拖垮爽点。"
+      },
+      {
+        "rule": "境界/功法名词全书一致，禁止同物异名。",
+        "bad_example": "同一境界先后写作「炼气三层/练气三重/气海三阶」。",
+        "good_example": "统一为「炼气三层」。",
+        "rationale": "设定一致性硬门禁。"
+      }
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.12,
+      "max": 0.40
+    }
+  },
+  "commercial": {
+    "quality_thresholds": {
+      "dialogue_optimal": {
+        "min": 0.12,
+        "max": 0.40
+      }
+    },
+    "hooks": [
+      "境界突破",
+      "强敌压境",
+      "秘境开启",
+      "身份揭露"
+    ],
+    "payoff_density": {
+      "per_thousand_words": 0.9,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 2,
+          "skeleton": "轻视主角的对手被实力或战绩当场打脸。"
+        },
+        {
+          "type": "升级",
+          "ratio": 0.3,
+          "buildup_length": 3,
+          "skeleton": "修炼成果在战斗/测试中可视化呈现，境界或战力层级跃迁。"
+        },
+        {
+          "type": "身份揭露",
+          "ratio": 0.2,
+          "buildup_length": 5,
+          "skeleton": "身世或隐藏传承在关键节点揭开。"
+        },
+        {
+          "type": "他人认可",
+          "ratio": 0.2,
+          "buildup_length": 3,
+          "skeleton": "宗门/同伴对主角贡献或天赋的正式认可。"
+        }
+      ],
+      "dry_spell_tolerance": 2
+    },
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "建立主角当前处境与力量短板，埋下金手指或传承线索。",
+        "hook_position": 300,
+        "protagonist_intro_method": "通过一场受挫或测试结果展现起点，避免设定倾泻。",
+        "conflict_intro_position": 500,
+        "golden_finger_reveal": "第1章末或第2章以物件/记忆碎片暗示，不直接说明书式展开。"
+      },
+      "chapter_2_3_task": "首次使用金手指/突破小关，确立升级路径与首个对手。",
+      "common_mistakes": [
+        "开篇大段世界观说明",
+        "第1章即满级碾压",
+        "境界名词无解释堆叠"
+      ]
+    }
+  }
+}

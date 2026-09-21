@@ -182,6 +182,21 @@ class TestValidateCraftCardGenre(unittest.TestCase):
         self.assertEqual(genre_errors, [], f"合法 genre 不应触发 error: {genre_errors}")
         self.assertEqual(genre_warns, [], f"合法 genre 不应触发 warn: {genre_warns}")
 
+    def test_genre_xuanhuan_in_whitelist(self):
+        """xuanhuan 已开放：craft-card 使用该 genre 不得触发白名单 warn。"""
+        VALIDATE.validate_craft_card(self._craft("xuanhuan"))
+        genre_warns = [w for w in VALIDATE.WARNS if "不在已知题材白名单" in w]
+        self.assertEqual(genre_warns, [], f"xuanhuan 应在 KNOWN_GENRES: {genre_warns}")
+
+    def test_xuanhuan_genre_pack_on_disk(self):
+        """玄幻题材包文件存在且 meta.id / name 正确。"""
+        from pathlib import Path
+        p = Path(__file__).resolve().parents[1] / "assets" / "xuanhuan-genre-pack.json"
+        self.assertTrue(p.is_file(), f"缺少题材包 {p}")
+        data = p.read_text(encoding="utf-8")
+        self.assertIn("genre-xuanhuan", data)
+        self.assertIn("传统玄幻", data)
+
     def test_genre_empty_triggers_error(self):
         """genre 为空 → err（硬错误，题材缺失必须阻断）。"""
         VALIDATE.validate_craft_card(self._craft(""))
