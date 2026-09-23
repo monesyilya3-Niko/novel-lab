@@ -215,13 +215,35 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="只统计特征，不调 LLM")
     args = ap.parse_args()
 
-    book_names = [b.strip() for b in args.books.split(",")] if args.books else None
+    book_names = [b.strip() for b in args.books.split(",") if b.strip()] if args.books else None
     books, mismatches = collect_books(args.genre, book_names)
-    if mismatches:
-        detail = "；".join(f"{n}(genre={g or '缺失'})" for n, g in mismatches)
-        sys.exit(f"✗ 题材隔离违规：{detail} 与目标 '{args.genre}' 不符")
+
+    # ---- 铁律一：判定对象是「本次聚合的 source_books」，而非 assets/ 下全部 voice-card ----
+    #
+    # 2026-09-23（总工排查）修复：原实现只要 assets/ 下存在**任何**异题材 voice-card 就
+    # 直接 sys.exit(1)，即使用户已用 --books 显式限定书目。本项目常态就是多题材并存
+    # （campus-redemption / realistic-romance / xuanhuan），于是 `聚合` 命令**完全不可用**，
+    # `novel.py 状态` 里那句「拆 ≥3 本同题材后跑 'novel 聚合'」成了死路。
+    #
+    # 口径与 AGENTS.md §1 对齐：「聚合题材包时 **source_books** 的 genre 必须全部一致，
+    # 不一致 → 显式断言 + sys.exit(1)，禁止静默跳过」。因此：
+    #   · 显式 --books 时 —— 被点名的书必须全部属于目标题材，否则硬失败（防"以为聚合了
+    #     A+B，实际 B 被静默丢掉"）；
+    #   · 未显式限定时 —— source_books 天然只含目标题材的书，异题材书本就在范围之外，
+    #     明确列出（不静默跳过）但不阻断。
+    if book_names:
+        selected = {b["name"] for b in books}
+        actual_genre = {n: g for n, g in mismatches}
+        offenders = [(n, actual_genre.get(n, "不存在")) for n in book_names if n not in selected]
+        if offenders:
+            detail = "；".join(f"{n}(genre={g or '缺失'})" for n, g in offenders)
+            sys.exit(f"✗ 题材隔离违规：{detail} 与目标 '{args.genre}' 不符"
+                     f"（--books 显式指定的书必须属于该题材）")
     if not books:
         sys.exit(f"未找到 {args.genre} 题材的 voice-card（assets/ 下）")
+    if mismatches and not book_names:
+        excluded = "；".join(f"{n}(genre={g or '缺失'})" for n, g in mismatches)
+        print(f"[范围] 以下 {len(mismatches)} 本不属于 '{args.genre}'，本次不参与聚合：{excluded}")
     print(f"聚合样本: {len(books)} 本 → {[b['name'] for b in books]}")
     if len(books) < 3:
         print(f"⚠ 样本 <3 本（当前 {len(books)}），题材包置信度将受限制（schema 要求 ≥3 才可信）")

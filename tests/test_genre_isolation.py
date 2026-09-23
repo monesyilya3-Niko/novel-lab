@@ -61,14 +61,19 @@ class TestCollectBooks(unittest.TestCase):
         self.assertIsInstance(mismatches, list)
 
     def test_books_all_match_genre_mismatches_empty(self):
-        """当 assets 下该题材书全部 genre 一致时，mismatches 应为空列表。"""
-        # 用真实资产目录跑：当前 assets 下 voice-card 若全部为 campus-redemption
-        # 或不存在异题材书，mismatches 应为空。此断言验证"一致时不误报"。
+        """当 assets 下该题材书全部 genre 一致时，mismatches 应为空列表。
+
+        注（2026-09-23）：此处的语义边界需要明确——``collect_books`` 的 mismatch 判定
+        **不区分 ``book_names`` 作用域**，只要 ``assets/`` 里存在任何异题材 voice-card
+        就会被计入。当前仓库有 3 个题材（campus-redemption / realistic-romance /
+        xuanhuan），因此 ``collect_books("campus-redemption", None)`` 的 mismatches
+        必然非空（暮冬念春 + Lord_of_the_Mysteries），``聚合`` 命令也随之必然失败。
+        本用例只断言「与目标题材一致的书不会被误报为 mismatch」，不依赖 mismatches 为空。
+        """
         books, mismatches = PASS5_AGGREGATE.collect_books("campus-redemption", None)
         # 关键契约：返回的是列表（不因题材一致而抛异常或返回 None）
         self.assertIsInstance(mismatches, list)
-        # 若 assets 目录存在异题材书，mismatches 应非空——但当前项目资产均为
-        # campus-redemption，故验证"无跨题材混入时不报 mismatch"。
+        # 与目标题材一致的书不得被误判为 mismatch。
         for name, actual_genre in mismatches:
             self.assertNotEqual(
                 actual_genre, "campus-redemption",
@@ -333,6 +338,103 @@ class TestRetrieveTropes(unittest.TestCase):
     def test_empty_intent_returns_empty(self):
         self.assertEqual(RETRIEVE.retrieve_tropes("", genre=None, top_k=5), [])
         self.assertEqual(RETRIEVE.retrieve_tropes("   ", genre=None, top_k=5), [])
+
+
+# --------------------------------------------------------------------------
+# 5. main() 的铁律一判定作用域（2026-09-23 修复回归）
+# --------------------------------------------------------------------------
+
+class TestAggregateScopeEnforcement(unittest.TestCase):
+    """``pass5_aggregate.main()`` 只对「本次聚合的 source_books」做题材一致性判定。
+
+    修复前（2026-09-23 前）：只要 ``assets/`` 下存在**任何**异题材 voice-card 就
+    ``sys.exit(1)``，即使用户已用 ``--books`` 显式限定书目。本项目常态就是多题材并存
+    （campus-redemption / realistic-romance / xuanhuan），于是 ``聚合`` 命令**完全
+    不可用**，``novel.py 状态`` 里那句「拆 ≥3 本同题材后跑 'novel 聚合'」成了死路。
+
+    修复后判定口径与 AGENTS.md §1 对齐（**source_books** 的 genre 必须全部一致）：
+      · ``--books`` 显式指定 → 被点名的书必须全部属于目标题材，否则硬失败；
+      · 未显式限定 → 异题材书本就在范围之外，列出但不阻断。
+    """
+
+    @staticmethod
+    def _book(name: str) -> dict:
+        return {"name": name, "voice": {"meta": {"genre": "campus-redemption"}},
+                "struct": {}, "comm": {}}
+
+    def _run_main(self, argv, books, mismatches):
+        """在受控数据下跑 main()，返回 (返回值, stdout)。
+
+        ``main()`` 无参数、直接读 ``sys.argv``（argparse 默认行为），故需临时替换它。
+        """
+        import contextlib
+        import io
+
+        saved = (PASS5_AGGREGATE.collect_books,
+                 PASS5_AGGREGATE.extract_features,
+                 PASS5_AGGREGATE.summarize_thresholds)
+        saved_argv = sys.argv
+        PASS5_AGGREGATE.collect_books = lambda genre, names: (books, mismatches)
+        PASS5_AGGREGATE.extract_features = lambda bs: {}
+        PASS5_AGGREGATE.summarize_thresholds = lambda fr: {
+            "iron": [], "suggest": [], "personal": []}
+        sys.argv = ["pass5_aggregate.py"] + list(argv)
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf):
+                rc = PASS5_AGGREGATE.main()
+        finally:
+            sys.argv = saved_argv
+            (PASS5_AGGREGATE.collect_books,
+             PASS5_AGGREGATE.extract_features,
+             PASS5_AGGREGATE.summarize_thresholds) = saved
+        return rc, buf.getvalue()
+
+    def test_unscoped_run_does_not_fail_on_other_genre_books(self):
+        """不限定书目时，异题材书属范围之外 → 不阻断，但要明确列出（不静默跳过）。"""
+        books = [self._book("a"), self._book("b"), self._book("c")]
+        mismatches = [("lotm", "xuanhuan"), ("暮冬念春", "realistic-romance")]
+        rc, out = self._run_main(["--genre", "campus-redemption", "--dry-run"],
+                                 books, mismatches)
+        self.assertIsNone(rc, f"不限定书目时不应阻断（返回 {rc}）")
+        self.assertIn("范围", out, "未列出范围外的异题材书（等于静默跳过）")
+        self.assertIn("xuanhuan", out)
+        self.assertIn("realistic-romance", out)
+
+    def test_explicit_books_all_valid_passes(self):
+        """--books 全部属于目标题材 → 正常放行。"""
+        books = [self._book("a"), self._book("b")]
+        rc, out = self._run_main(
+            ["--genre", "campus-redemption", "--books", "a,b", "--dry-run"],
+            books, [("lotm", "xuanhuan")])
+        self.assertIsNone(rc, "显式指定的书全部合法时不应阻断")
+        self.assertIn("聚合样本: 2 本", out)
+
+    def test_explicit_books_with_other_genre_fails(self):
+        """--books 点名了异题材书 → 硬失败（防"以为聚合了 A+B，实际 B 被静默丢掉"）。"""
+        books = [self._book("a")]
+        mismatches = [("b", "realistic-romance")]
+        with self.assertRaises(SystemExit) as ctx:
+            self._run_main(["--genre", "campus-redemption", "--books", "a,b", "--dry-run"],
+                           books, mismatches)
+        msg = str(ctx.exception)
+        self.assertIn("题材隔离违规", msg)
+        self.assertIn("realistic-romance", msg)
+
+    def test_explicit_nonexistent_book_fails(self):
+        """--books 点名了根本不存在的书 → 硬失败（同样防静默漏掉）。"""
+        books = [self._book("a")]
+        with self.assertRaises(SystemExit) as ctx:
+            self._run_main(
+                ["--genre", "campus-redemption", "--books", "a,___nope___", "--dry-run"],
+                books, [])
+        self.assertIn("___nope___", str(ctx.exception))
+
+    def test_no_matching_book_fails(self):
+        """目标题材下没有任何书 → 报「未找到」。"""
+        with self.assertRaises(SystemExit) as ctx:
+            self._run_main(["--genre", "campus-redemption", "--dry-run"], [], [])
+        self.assertIn("未找到", str(ctx.exception))
 
 
 if __name__ == "__main__":
