@@ -9,7 +9,7 @@
 - **`python -m gui.migrate --prune`（含 `--dry-run`）**：删除「文件已不存在」的索引行（assets / reports），补上索引收敛能力。清理前自动 `backup()`，可回滚。
 - `gui/platform_service.get_platform` 错误码 400 → **404**：该函数的 `platform_id` 来自**路径**（`GET /api/platform/{id}`），按 `router.py` 约定属「资源不存在」；其余三个平台接口的 platform_id 来自**请求体**，属参数校验，维持 400。前端不区分 400/404，无兼容性风险。
 - `gui/style_service._rel_or_name()`：`save_style` 原先直接 `fp.relative_to(config.ROOT_DIR)`，当 ASSETS_ROOT 不在项目根内时抛 `ValueError`（这也是该模块此前**无法被隔离测试**、零覆盖的原因之一）。现与 `gui/migrate.py::_rel_path` 统一为同样的回退语义。
-- **CI 新增非阻断跨平台作业 `python-cross-platform`**：`ubuntu-latest` × Python 3.11/3.12/3.13。项目对外承诺「纯标准库、跨平台」，而原矩阵只有 windows-latest + 3.13 单点——承诺需要持续验证。设为 `continue-on-error: true` 先观测，稳定后删掉该行即升级为门禁（避免一次盲改让主干立刻变红）。
+- **CI 新增跨平台作业 `python-cross-platform`**：`ubuntu-latest` × Python 3.11/3.12/3.13。项目对外承诺「纯标准库、跨平台」，而原矩阵只有 windows-latest + 3.13 单点——承诺需要持续验证。首次加入时设 `continue-on-error: true`（本机只有 Windows + 3.13，新腿红绿无法本地预判）；**首轮 CI（run 35884685050）三个 ubuntu 腿全部通过**，日志实测确认 `Ran 909 tests`（与 Windows 同规模）且 `ruff check .` 全绿，跨平台兼容性已获证据 → **同日去掉 `continue-on-error` 升级为门禁**。若日后出现偶发失败，应排查根因而不是改回非阻断。
 - 新增测试文件 `tests/test_gui_module_smoke.py`（12 用例）：覆盖此前**零测试引用**的 `gui/launch.py`、`gui/platform_service.py`、`gui/style_service.py`。
 
 ### Fixed

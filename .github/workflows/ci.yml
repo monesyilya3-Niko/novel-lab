@@ -42,21 +42,21 @@ jobs:
           path: .coverage
           if-no-files-found: ignore
 
-  # 跨平台 / 多版本矩阵（2026-09-23 总工新增）。
+  # 跨平台 / 多版本矩阵（2026-09-23 总工新增，同日升级为门禁）。
   #
   # 为什么需要：原矩阵只有 windows-latest + Python 3.13 单点，而项目对外承诺
   # 「纯标准库、跨平台」（gui/server.py 的 _pid_is_alive 有 POSIX 回退、
   # secret_store 非 Windows 降级 0600 明文、DPAPI 用例有 skipUnless(win32) 守卫）。
   # 承诺必须有对应的持续验证，否则只是文案。
   #
-  # 为什么是**非阻断**（continue-on-error）：本机只有 Windows + Python 3.13，
-  # 新腿的绿/红无法本地预判。先让它跑起来观测若干轮，确认稳定后把
-  # `continue-on-error: true` 删掉即可升级为门禁——这样不会因为一次盲改而
-  # 让主干 CI 立刻变红。
+  # 升级记录：首次加入时设 continue-on-error: true（本机只有 Windows + 3.13，
+  # 新腿红绿无法本地预判，盲改会让主干立刻变红）。首轮 CI（run 35884685050）
+  # 三个 ubuntu 腿**全部通过**，实测日志确认 `Ran 909 tests`（与 Windows 同规模）
+  # 且 `ruff check .` 全绿——跨平台兼容性已获证据，故去掉 continue-on-error
+  # 升级为门禁。若日后出现偶发失败，应排查根因而不是改回非阻断。
   python-cross-platform:
-    name: Python ${{ matrix.python-version }} (${{ matrix.os }}) [non-blocking]
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
