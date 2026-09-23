@@ -301,6 +301,84 @@ class TestMigrateFlow(unittest.TestCase):
         self.assertIsNotNone(restored)
         self.assertEqual(self._n("assets"), n_before, "回滚后应恢复资产行")
 
+    # ---- prune：清理「文件已不存在」的索引行（2026-09-23 新增能力）----
+
+    def test_prune_removes_orphan_report_rows(self):
+        """报告文件被删除后，prune 应清掉对应索引行，使对账恢复一致。
+
+        背景：run_migrate() 只有 UPSERT，**从不删除**已消失文件的对应行——
+        删掉 reports/ 下的报告后，reports 表会永久留着指向不存在文件的幽灵记录，
+        而 --check 只能"报告"差异、无法修复。
+        """
+        migrate.run_migrate()
+        before = self._n("reports")
+        victim = config.REPORTS_DIR / "chireng_chosen-拆书报告.md"
+        victim.unlink()
+        try:
+            self.assertFalse(migrate.check()["ok"], "删除文件后对账应报不一致")
+            result = migrate.prune()
+            self.assertEqual(len(result["reports_pruned"]), 1, result)
+            self.assertEqual(self._n("reports"), before - 1, "孤儿报告行未被清理")
+            self.assertTrue(migrate.check()["ok"], "清理后对账应恢复一致")
+        finally:
+            victim.write_text("# 拆书报告", encoding="utf-8")
+            migrate.run_migrate()  # 恢复索引行，避免影响后续用例
+
+    def test_prune_removes_orphan_asset_rows(self):
+        migrate.run_migrate()
+        before = self._n("assets")
+        victim = config.ASSETS_ROOT / "trope-library.json"
+        victim.unlink()
+        try:
+            result = migrate.prune()
+            self.assertEqual(len(result["assets_pruned"]), 1, result)
+            self.assertEqual(self._n("assets"), before - 1, "孤儿资产行未被清理")
+        finally:
+            victim.write_text('{"tropes":{"a":1}}', encoding="utf-8")
+            migrate.run_migrate()
+
+    def test_prune_dry_run_does_not_write(self):
+        """dry-run 只统计、不写库。"""
+        migrate.run_migrate()
+        before = self._n("reports")
+        victim = config.REPORTS_DIR / "qingning_chosen-笔法分析.md"
+        victim.unlink()
+        try:
+            result = migrate.prune(dry_run=True)
+            self.assertTrue(result["dry_run"])
+            self.assertEqual(len(result["reports_pruned"]), 1, result)
+            self.assertEqual(self._n("reports"), before, "dry-run 不得写库")
+        finally:
+            victim.write_text("# 笔法分析", encoding="utf-8")
+            migrate.run_migrate()
+
+    def test_prune_does_not_touch_books(self):
+        """prune 只清 assets/reports 行；books 表不得被删（否则「已拆书」统计失真）。"""
+        migrate.run_migrate()
+        before_books = self._n("books")
+        before_done = db.get_conn().execute(
+            "SELECT COUNT(*) AS n FROM books WHERE status='done'").fetchone()["n"]
+        victim = config.ASSETS_ROOT / "chireng_chosen-craft-card.json"
+        victim.unlink()
+        try:
+            migrate.prune()
+            self.assertEqual(self._n("books"), before_books, "prune 删掉了 books 行")
+            self.assertEqual(
+                db.get_conn().execute(
+                    "SELECT COUNT(*) AS n FROM books WHERE status='done'").fetchone()["n"],
+                before_done, "prune 影响了已拆书统计")
+        finally:
+            victim.write_text(
+                json.dumps({"meta": {"genre": "campus-redemption"}}), encoding="utf-8")
+            migrate.run_migrate()
+
+    def test_prune_is_noop_when_consistent(self):
+        """库与磁盘一致时，prune 不得误删任何行（幂等安全）。"""
+        migrate.run_migrate()
+        result = migrate.prune()
+        self.assertEqual(result["assets_pruned"], [])
+        self.assertEqual(result["reports_pruned"], [])
+
     def test_list_assets_book_id_filter_no_leak(self):
         """回归 QA bug：list_assets(book_id=...) 不应泄漏其他书的 book 实体。
 

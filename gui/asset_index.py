@@ -294,14 +294,28 @@ class AssetIndex:
     @staticmethod
     def _asset_row_to_item(row: Dict[str, Any]) -> Dict[str, Any]:
         name = row.get("name") or ""
-        stem = Path(row.get("path", "")).stem if row.get("path") else name
+        path = row.get("path")
+        stem = Path(path).stem if path else name
+        # 2026-09-23（总工排查）修复：DB 里的 size/mtime 是**上一次索引时的快照**，
+        # 文件此后被改写就失真——实测 65 个资产中 24 个 size 不符（最严重
+        # 暮冬念春-structure-obs：DB 28593 vs 磁盘 74875，差 2.6 倍），GUI 资产库
+        # 因此显示错误体积。AGENTS.md §7 要求「所有数字以实测磁盘为准」，
+        # 故以实时 stat 为准，仅在文件不可读（已删除/无权限）时退回 DB 缓存值。
+        size = row.get("size")
+        mtime = row.get("mtime")
+        if path:
+            try:
+                st = Path(path).stat()
+                size, mtime = st.st_size, st.st_mtime
+            except OSError:
+                pass
         return {
             "kind": row.get("kind"),
             "id": f"{row.get('kind')}:{stem}",
             "name": name,
-            "path": row.get("path"),
-            "size": row.get("size"),
-            "mtime": row.get("mtime"),
+            "path": path,
+            "size": size,
+            "mtime": mtime,
             "book_id": row.get("book_id"),
             "genre": row.get("genre"),
         }

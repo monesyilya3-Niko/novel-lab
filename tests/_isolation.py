@@ -16,6 +16,7 @@ R1 回归防线（根因：``STATE_JSON_DIR`` 新增后，多个测试只 patch 
 from __future__ import annotations
 
 import contextlib
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, Iterator, Tuple
 
@@ -49,6 +50,11 @@ DATA_PATH_CONSTANTS: Tuple[str, ...] = (
 
 # 真实状态 JSON 目录：由项目根推导，**不读 config**，避免被 patch 影响。
 REAL_STATE_JSON_DIR = ROOT_DIR / "gui" / "state"
+
+# 真实运行时状态目录（SQLite 索引 + settings.json + 锁）。
+# 2026-09-23 新增：既有守卫只覆盖 REAL_STATE_JSON_DIR（派生镜像），而当日发现的隔离
+# 事故发生在 **gui_state/**（settings.json 被测试覆写），故必须单独守卫。
+REAL_GUI_STATE_DIR = ROOT_DIR / "gui_state"
 
 
 def _canonical_config_namespace() -> Dict[str, Any]:
@@ -108,6 +114,35 @@ def snapshot_real_state_json_dir() -> frozenset:
     return frozenset(p.name for p in REAL_STATE_JSON_DIR.glob("gui_state_*.json"))
 
 
+def snapshot_real_gui_state() -> Dict[str, Any]:
+    """真实 ``gui_state/`` 的可观测快照：文件集合 + ``settings.json`` 内容 sha256 + mtime。
+
+    只取「稳定可判定的可观测量」：**不含** SQLite 的 ``-wal`` / ``-shm`` 边车——
+    SQLite 在只读打开 WAL 库时也可能创建它们，纳入比对会造成假阳性。
+
+    同时记录 **mtime** 而不只是内容哈希：若测试把文件覆写成**相同内容**
+    （例如真实文件恰好已是测试写入值），哈希不变会漏报，mtime 仍会变化。
+    测试期间没有任何合法理由写这个文件，故 mtime 变化本身就是泄漏信号。
+
+    2026-09-23 新增：用于捕获「模块级路径常量在导入期固化、config patch 失效」
+    这一类隔离漏洞（既有登记表机制只能覆盖通过 config 属性访问的代码）。
+    """
+    if not REAL_GUI_STATE_DIR.is_dir():
+        return {"files": frozenset(), "settings_exists": False,
+                "settings_sha256": None, "settings_mtime_ns": None}
+    files = frozenset(p.name for p in REAL_GUI_STATE_DIR.iterdir() if p.is_file())
+    settings = REAL_GUI_STATE_DIR / "settings.json"
+    exists = settings.is_file()
+    digest = mtime = None
+    if exists:
+        st = settings.stat()
+        digest = hashlib.sha256(settings.read_bytes()).hexdigest()
+        mtime = st.st_mtime_ns
+    return {"files": files, "settings_exists": exists,
+            "settings_sha256": digest, "settings_mtime_ns": mtime}
+
+
 # 测试会话开始时的真实目录快照（本模块在 discover 阶段被首个测试模块 import，
 # 早于任何测试执行），供末位泄漏守卫比对。
 SESSION_START_STATE_JSON_SNAPSHOT = snapshot_real_state_json_dir()
+SESSION_START_GUI_STATE_SNAPSHOT = snapshot_real_gui_state()

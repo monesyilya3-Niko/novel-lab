@@ -820,9 +820,14 @@ def _schedule_report_generation(book_id: str, book: Dict[str, Any]) -> None:
 
 
 def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
-    """组装拆书报告 + 笔法报告，写 reports/{book_id}-*.md，并 invalidate 资产索引。
+    """组装拆书报告 + 笔法报告，**校验通过后**写 reports/{book_id}-*.md，并 invalidate 资产索引。
 
     尽力而为（DESIGN §8 D3）：craft-card 缺失时笔法报告留空并在结果提示，不阻断。
+
+    2026-09-23（总工排查）改为**先校验、后落盘**：原实现是「先写盘 → 再校验」，
+    校验失败只抑制 report_ready 事件、**不删已落盘的文件**，于是低于门槛的报告会
+    永久留在 reports/ 里冒充合格品（实测存量 6 本书里 4 本不达标）。现在两份 Markdown
+    先在内存里生成并判定合计字符数，通过才落盘；不通过则一个字节都不写。
     """
     voice = _load_assembled_card(book_id, "voice")
     structure = _load_assembled_card(book_id, "structure")
@@ -831,31 +836,22 @@ def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
 
     title = (voice.get("meta") or {}).get("source_title", book.get("title", book_id))
     reports_dir = config.REPORTS_DIR
-    reports_dir.mkdir(parents=True, exist_ok=True)
 
-    # 拆书报告（voice/structure/commercial 任一存在即尝试生成）。
+    # 1. 全部在内存里生成（不落盘）。
+    #    拆书报告（voice/structure/commercial 任一存在即尝试生成）。
+    book_md = ""
     if voice or structure or commercial:
-        md = engine_adapter.build_report(voice or {}, structure or {}, commercial or {},
-                                         title_override=title)
-        (reports_dir / f"{book_id}-拆书报告.md").write_text(md, encoding="utf-8")
+        book_md = engine_adapter.build_report(voice or {}, structure or {}, commercial or {},
+                                              title_override=title)
+    #    笔法报告（craft-card 缺失则留空提示，不阻断）。
+    craft_md = engine_adapter.render_craft_report(craft) if craft else ""
 
-    # 笔法报告（craft-card 缺失则留空提示，不阻断）。
-    if craft:
-        md = engine_adapter.render_craft_report(craft)
-        (reports_dir / f"{book_id}-笔法分析.md").write_text(md, encoding="utf-8")
-
-    # 刷新资产索引。
-    asset_index.index.invalidate()
-
-    # ---- 铁律二：合计 ≥10000 字符硬校验（与 CLI 共用同一实现）-------------------
-    # 历史缺陷：GUI 此前直接生成并发布 report_ready，完全不做合计校验，
-    # 铁律二在 GUI 路径被整条绕过（低于门槛的报告照样当合格品交付）。
-    # 现在与 novel.py 共用 engine_adapter.check_report_min_length（单一来源）。
-    chk = engine_adapter.check_report_min_length(reports_dir, book_id)
+    # 2. 铁律二：合计 ≥10000 字符硬校验（与 CLI 共用同一实现，写盘**之前**判定）。
+    chk = engine_adapter.combined_report_ok(len(book_md), len(craft_md))
     if not chk.get("ok"):
         msg = (f"铁律二未通过：拆书报告 {chk['book_chars']} 字 + 笔法分析 "
                f"{chk['craft_chars']} 字 = 合计 {chk['total']} 字 < 硬门槛 "
-               f"{chk['min_chars']} 字（不发布 report_ready）")
+               f"{chk['min_chars']} 字（已阻止写盘，未产出任何报告文件）")
         st = state_store.load_state(book_id)
         st["report_error"] = msg
         state_store.save_state(st)
@@ -870,7 +866,24 @@ def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
         })
         return
 
-    # SSE 推送 report_ready 事件。
+    # 3. 校验通过才落盘（此时两份报告都已确定合格）。
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    if book_md:
+        (reports_dir / f"{book_id}-拆书报告.md").write_text(book_md, encoding="utf-8")
+    if craft_md:
+        (reports_dir / f"{book_id}-笔法分析.md").write_text(craft_md, encoding="utf-8")
+
+    # 刷新资产索引。
+    asset_index.index.invalidate()
+
+    # 4. SSE 推送 report_ready 事件。
+    #    2026-09-23：report_ids 只列**实际写出**的报告——此前恒列两份，
+    #    craft-card 缺失时「笔法分析」并不存在，属虚报。
+    report_ids = []
+    if book_md:
+        report_ids.append(f"report:{book_id}-拆书报告")
+    if craft_md:
+        report_ids.append(f"report:{book_id}-笔法分析")
     broker.publish({
         "book_id": book_id,
         "status": "report_ready",
@@ -878,6 +891,6 @@ def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
         "batch_index": 0,
         "done": 0,
         "total": 0,
-        "report_ids": [f"report:{book_id}-拆书报告", f"report:{book_id}-笔法分析"],
+        "report_ids": report_ids,
         "report_chars": chk.get("total", 0),
     })

@@ -315,6 +315,19 @@ def render_craft_report(craft: Dict[str, Any]) -> str:
     return _get_report_craft().render_craft_report(craft)
 
 
+def combined_report_ok(book_chars: int, craft_chars: int) -> Dict[str, Any]:
+    """铁律二判定（纯长度，不读盘）——供 GUI **写盘前**校验使用。
+
+    2026-09-23 新增（总工排查）：GUI 原先「先写盘 → 再校验」，校验失败只抑制
+    ``report_ready`` 事件，不达标的两份报告仍留在 reports/ 里。现改为先用本函数
+    判定，通过才落盘。门槛与口径与 CLI 共用 ``scripts/report.py`` 的同一实现。
+
+    Returns:
+        dict: {book_chars, craft_chars, total, ok, min_chars}
+    """
+    return _get_report().combined_report_ok(book_chars, craft_chars)
+
+
 def check_report_min_length(reports_dir, name: str) -> Dict[str, Any]:
     """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符。
 

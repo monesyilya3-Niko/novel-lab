@@ -394,6 +394,19 @@ def main():
     if args.cmd == "质检":
         import book_quality
         result = book_quality.book_quality_check(args.chapter_dir, args.voice)
+        # 2026-09-23（总工排查）修复：引擎用 {"error": ..., "error_type": ...} 表达
+        # 「无法质检」（目录不存在 / 空目录 / 同章号命中多个物理文件），这种返回里
+        # **没有** total_chapters 等字段。原实现直接索引 result['total_chapters']，
+        # 于是 `novel 质检 <不存在目录>` 抛裸 KeyError 崩栈，用户看到的是 traceback
+        # 而不是「目录不存在」。现先判 error，给出可读信息并非零退出。
+        if result.get("error"):
+            # --json 时仍输出机器可读的错误对象（消费者按 code/error 判定），
+            # 非 --json 时给人看的可读信息走 stderr；两种模式都以非零退出表意失败。
+            if args.json:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            else:
+                print(f"✗ 质检失败: {result['error']}", file=sys.stderr)
+            return 1
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         else:

@@ -582,6 +582,55 @@ def check() -> Dict[str, Any]:
     }
 
 
+def prune(dry_run: bool = False) -> Dict[str, Any]:
+    """删除「路径已不存在」的索引行（assets / reports），修复库与磁盘的永久漂移。
+
+    2026-09-23 新增（总工排查）：``run_migrate()`` 只有 UPSERT，**从不删除**已消失
+    文件对应的行。于是删掉 ``reports/`` 下的报告后，``reports`` 表仍留着指向不存在
+    文件的记录——GUI 资产库会列出**幽灵报告**，而 ``--check`` 只能"报告"差异
+    （``extra`` 列表永远非空），**没有任何手段修复**。本函数补上这个能力。
+
+    只删「相对 ROOT_DIR 的路径确实不存在」的行；**books 表不动**——书是否存在由
+    语料/资产决定，删行会让「已拆书」统计失真（业务语义与索引一致性是两件事）。
+
+    Args:
+        dry_run: True 时只统计不写库。
+
+    Returns:
+        dict: {"assets_pruned": [...], "reports_pruned": [...], "dry_run": bool}
+    """
+    # 复用 check() 的扫描对账结果作为唯一判据，避免「两处各自解析路径」造成口径分叉。
+    # （曾试过用 config.ROOT_DIR / rel 解析存量相对路径，但 _rel_path 在源目录不在
+    #  ROOT_DIR 内时走的是 `<目录名>/<文件名>` 回退分支，解析会失真。）
+    diff = check()
+    gone_asset_paths = set(diff["assets"]["extra"])
+    gone_report_paths = set(diff["reports"]["extra"])
+
+    assets_gone = [(str(r.get("asset_key") or ""), r.get("path"))
+                   for r in db.list_asset_rows(limit=100000)
+                   if r.get("path") in gone_asset_paths]
+    reports_gone = [(str(r.get("report_key") or ""), r.get("path"))
+                    for r in db.list_reports()
+                    if r.get("path") in gone_report_paths]
+
+    if not dry_run and (assets_gone or reports_gone):
+        # 破坏性操作：先备份现有库，保证可回滚（与 run_migrate 同口径）。
+        backup()
+        with db.tx() as conn:
+            for key, _rel in assets_gone:
+                if key:
+                    conn.execute("DELETE FROM assets WHERE asset_key = ?", (key,))
+            for key, _rel in reports_gone:
+                if key:
+                    conn.execute("DELETE FROM reports WHERE report_key = ?", (key,))
+
+    return {
+        "assets_pruned": [{"key": k, "path": p} for k, p in assets_gone],
+        "reports_pruned": [{"key": k, "path": p} for k, p in reports_gone],
+        "dry_run": dry_run,
+    }
+
+
 # ---------------------------------------------------------------------------
 # CLI 入口
 # ---------------------------------------------------------------------------
@@ -639,6 +688,10 @@ def sync_asset(fp: Path) -> None:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description="novel-lab GUI 数据迁移 CLI")
     parser.add_argument("--check", action="store_true", help="只读对账，不写库")
+    parser.add_argument("--prune", action="store_true",
+                        help="删除「文件已不存在」的索引行（assets/reports），修复库与磁盘漂移")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="配合 --prune：只统计将删除的行，不写库")
     parser.add_argument("--rollback", action="store_true", help="从最新备份恢复 index.db")
     parser.add_argument("--backup", action="store_true", help="仅备份现有 index.db")
     args = parser.parse_args(argv)
@@ -652,6 +705,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         p = rollback()
         print(f"[migrate] 已回滚: {p}" if p else "[migrate] 无备份可回滚")
         return 0 if p else 1
+
+    if args.prune:
+        result = prune(dry_run=args.dry_run)
+        a, r = result["assets_pruned"], result["reports_pruned"]
+        head = "[migrate] 将清理（dry-run）" if args.dry_run else "[migrate] 已清理"
+        print(f"{head}：assets {len(a)} 行 / reports {len(r)} 行")
+        for item in a:
+            print(f"  - assets  {item['key']}  → {item['path']}（文件不存在）")
+        for item in r:
+            print(f"  - reports {item['key']}  → {item['path']}（文件不存在）")
+        if not a and not r:
+            print("  库与磁盘一致，无需清理")
+        return 0
 
     if args.check:
         result = check()

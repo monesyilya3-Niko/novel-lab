@@ -16,13 +16,18 @@ from gui.services import ServiceError
 
 _log = get_logger("style_service")
 
-# 风格资产目录
-STYLES_DIR = config.ASSETS_ROOT / "styles"
+# 风格资产目录：**每次调用实时求值**。
+# 2026-09-23（总工排查）修复：此前是模块级常量 ``STYLES_DIR = config.ASSETS_ROOT / "styles"``，
+# 在导入期固化路径，测试重定向 ``config.ASSETS_ROOT`` 时不会跟随（与 system_service
+# 的 ``_SETTINGS_FILE`` 同类隐患，后者已实际造成测试污染真实运行态）。
+def _styles_dir() -> Path:
+    return config.ASSETS_ROOT / "styles"
 
 
 def _ensure_styles_dir() -> Path:
-    STYLES_DIR.mkdir(parents=True, exist_ok=True)
-    return STYLES_DIR
+    d = _styles_dir()
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _sanitize_name(name: str) -> str:
@@ -104,23 +109,37 @@ def analyze_style(text: str, name: str = "") -> Dict[str, Any]:
     return style_card
 
 
+def _rel_or_name(fp: Path) -> str:
+    """返回相对 ROOT_DIR 的路径；不在项目根内时退回 ``<目录名>/<文件名>``。
+
+    2026-09-23（总工排查）：``save_style`` 原先直接 ``fp.relative_to(config.ROOT_DIR)``，
+    当 ASSETS_ROOT 不在项目根内（测试隔离到临时目录、或未来改成外部资产目录）时抛
+    ``ValueError`` —— 这既让本模块**无法被隔离测试**（此前零测试覆盖的原因之一），
+    也与 ``gui/migrate.py::_rel_path`` 的既有口径不一致。统一为同样的回退语义。
+    """
+    try:
+        return str(fp.relative_to(config.ROOT_DIR))
+    except ValueError:
+        return f"{fp.parent.name}/{fp.name}"
+
+
 def save_style(name: str, style_card: Dict[str, Any]) -> Dict[str, Any]:
     """保存风格卡到资产目录。"""
     n = _sanitize_name(name)
     _ensure_styles_dir()
-    fp = STYLES_DIR / f"{n}.json"
+    fp = _styles_dir() / f"{n}.json"
     if fp.exists():
         raise ServiceError(f"风格已存在: {n}", 409)
     style_card["name"] = n
     fp.write_text(json.dumps(style_card, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"name": n, "path": str(fp.relative_to(config.ROOT_DIR)), "saved": True}
+    return {"name": n, "path": _rel_or_name(fp), "saved": True}
 
 
 def list_styles() -> List[Dict[str, Any]]:
     """列出已保存的风格卡。"""
     _ensure_styles_dir()
     styles = []
-    for fp in sorted(STYLES_DIR.glob("*.json")):
+    for fp in sorted(_styles_dir().glob("*.json")):
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
             styles.append({
@@ -137,7 +156,7 @@ def list_styles() -> List[Dict[str, Any]]:
 def get_style(name: str) -> Dict[str, Any]:
     """获取风格卡详情。"""
     n = _sanitize_name(name)
-    fp = STYLES_DIR / f"{n}.json"
+    fp = _styles_dir() / f"{n}.json"
     if not fp.is_file():
         raise ServiceError(f"风格不存在: {n}", 404)
     try:
@@ -149,7 +168,7 @@ def get_style(name: str) -> Dict[str, Any]:
 def delete_style(name: str) -> Dict[str, Any]:
     """删除风格卡。"""
     n = _sanitize_name(name)
-    fp = STYLES_DIR / f"{n}.json"
+    fp = _styles_dir() / f"{n}.json"
     if not fp.is_file():
         raise ServiceError(f"风格不存在: {n}", 404)
     fp.unlink()

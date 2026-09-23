@@ -15,6 +15,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import sys
 import tempfile
 import unittest
@@ -30,6 +31,14 @@ if str(_TESTS_DIR) not in sys.path:
 
 from gui import config, state_store, db  # noqa: E402
 import _isolation  # noqa: E402
+
+
+def _file_fingerprint(path: Path):
+    """文件指纹 (存在性, sha256, mtime_ns)；不存在返回 (False, None, None)。"""
+    if not path.is_file():
+        return (False, None, None)
+    st = path.stat()
+    return (True, hashlib.sha256(path.read_bytes()).hexdigest(), st.st_mtime_ns)
 
 
 class TestConfigPathIsolation(unittest.TestCase):
@@ -87,6 +96,76 @@ class TestConfigPathIsolation(unittest.TestCase):
             before,
             after,
             f"隔离态写入污染了真实 gui/state/：新增={sorted(after - before)}",
+        )
+
+
+class TestRuntimePathFollowsConfig(unittest.TestCase):
+    """运行时路径常量必须**跟随 config 的当前值**，不得在导入期固化。
+
+    2026-09-23 事故（总工排查）：``gui/system_service.py`` 曾写
+
+        _SETTINGS_FILE = config.STATE_ROOT / "settings.json"
+
+    该赋值在导入期执行，路径被固化；测试用 ``setattr(config, "STATE_ROOT", tmp)``
+    重定向时它不跟随，于是 ``tests/test_system_service.py`` 写进了**真实**
+    ``gui_state/settings.json``。
+
+    本测试是**确定性**判定——主动重定向 config 后断言真实文件未被触碰，
+    不依赖「真实文件当前内容恰好与测试写入值不同」这种偶然条件
+    （仅靠内容哈希的守卫会因覆写成同值而漏报）。
+    """
+
+    def test_update_settings_writes_to_patched_state_root_not_real_file(self):
+        from gui import system_service
+
+        real_settings = _isolation.REAL_GUI_STATE_DIR / "settings.json"
+        before = _file_fingerprint(real_settings)
+
+        with tempfile.TemporaryDirectory() as td:
+            with _isolation.isolate_paths(Path(td)):
+                system_service.update_settings({"thresholds": {"consistency_target": 91}})
+                redirected = config.STATE_ROOT / "settings.json"
+                self.assertTrue(
+                    redirected.is_file(),
+                    f"隔离态下设置未写入被重定向的 STATE_ROOT: {redirected}",
+                )
+                self.assertIn(
+                    "91",
+                    redirected.read_text(encoding="utf-8"),
+                    "隔离态下写入的设置内容不正确",
+                )
+                self.assertFalse(
+                    str(redirected.resolve()).startswith(str(_isolation.ROOT_DIR)),
+                    "重定向后的路径仍落在项目根内",
+                )
+
+        after = _file_fingerprint(real_settings)
+        self.assertEqual(
+            before,
+            after,
+            "隔离态下 update_settings 污染了**真实** gui_state/settings.json"
+            f"（会话前={before}，之后={after}）——说明 settings.json 路径在导入期"
+            "被固化，config patch 对它无效。",
+        )
+
+    def test_reset_settings_does_not_delete_real_file_under_isolation(self):
+        from gui import system_service
+
+        real_settings = _isolation.REAL_GUI_STATE_DIR / "settings.json"
+        before = _file_fingerprint(real_settings)
+
+        with tempfile.TemporaryDirectory() as td:
+            with _isolation.isolate_paths(Path(td)):
+                system_service.reset_settings()
+                self.assertFalse(
+                    (config.STATE_ROOT / "settings.json").is_file(),
+                    "隔离态下 reset_settings 未删除被重定向路径下的文件",
+                )
+
+        self.assertEqual(
+            before,
+            _file_fingerprint(real_settings),
+            "隔离态下 reset_settings 误删/改动了**真实** gui_state/settings.json",
         )
 
 

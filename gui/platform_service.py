@@ -93,9 +93,17 @@ def list_platforms() -> List[Dict[str, Any]]:
 
 
 def get_platform(platform_id: str) -> Dict[str, Any]:
-    """获取平台详情。"""
+    """获取平台详情。
+
+    2026-09-23（总工排查）修正错误码：本函数的 ``platform_id`` 来自**路径**
+    （路由 ``GET /api/platform/{platform_id}``），语义是「按 id 取资源」，
+    因此不存在时按 ``gui/router.py`` 的约定应返回 **404 资源不存在**，
+    而非 400 参数错误。其余三个平台接口的 platform_id 来自**请求体**
+    （``/platform/check`` / ``format`` / ``export``），属参数校验，维持 400。
+    前端不区分 400/404（只展示 message），故无兼容性风险。
+    """
     if platform_id not in PLATFORMS:
-        raise ServiceError(f"不支持的平台: {platform_id}", 400)
+        raise ServiceError(f"不支持的平台: {platform_id}", 404)
     return {"id": platform_id, **PLATFORMS[platform_id]}
 
 

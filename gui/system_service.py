@@ -204,15 +204,30 @@ def model_info() -> Dict[str, Any]:
 # 设置（读写配置）
 # ---------------------------------------------------------------------------
 
-_SETTINGS_FILE = config.STATE_ROOT / "settings.json"
+def _settings_file() -> Path:
+    """settings.json 的当前路径（**每次调用实时求值**）。
+
+    2026-09-23（总工排查）修复：此前是模块级常量
+
+        _SETTINGS_FILE = config.STATE_ROOT / "settings.json"
+
+    在**导入期**就把路径固化了。测试用 ``setattr(config, "STATE_ROOT", tmp)`` 做
+    路径重定向时该常量**不会跟随**，于是 ``tests/test_system_service.py`` 实际写进了
+    **真实** ``gui_state/settings.json``（受控实验已证实：写入哨兵值后被测试覆写）。
+    这与 AGENTS.md §4 记录的 R1 事故同类，但 config patch 对它完全无效。
+
+    改为函数后，路径始终跟随 ``config.STATE_ROOT`` 的当前值，隔离机制重新生效。
+    """
+    return config.STATE_ROOT / "settings.json"
 
 
 def _load_settings_file() -> Dict[str, Any]:
     """读取 settings.json（不存在返回空 dict）。"""
-    if not _SETTINGS_FILE.is_file():
+    path = _settings_file()
+    if not path.is_file():
         return {}
     try:
-        data = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
     except (json.JSONDecodeError, OSError) as exc:
         _log.warning(f"settings.json 损坏，回退为空配置（阈值/写作配置将用默认值）: {exc}")
@@ -221,10 +236,11 @@ def _load_settings_file() -> Dict[str, Any]:
 
 def _save_settings_file(data: Dict[str, Any]) -> None:
     """写入 settings.json（原子写）。"""
-    _SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp = _SETTINGS_FILE.with_suffix(".tmp")
+    path = _settings_file()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(_SETTINGS_FILE)
+    tmp.replace(path)
 
 
 def get_settings() -> Dict[str, Any]:
@@ -317,6 +333,7 @@ def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
 
 def reset_settings() -> Dict[str, Any]:
     """重置设置为默认值（删除 settings.json）。"""
-    if _SETTINGS_FILE.is_file():
-        _SETTINGS_FILE.unlink()
+    path = _settings_file()
+    if path.is_file():
+        path.unlink()
     return get_settings()

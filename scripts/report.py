@@ -36,6 +36,36 @@ def _report_char_len(path: Path) -> int:
         return 0
 
 
+def combined_report_ok(book_chars: int, craft_chars: int) -> Dict[str, Any]:
+    """铁律二判定（**纯长度，不读盘**）——供「写盘前校验」使用。
+
+    2026-09-23 新增（总工排查）：GUI 的 ``_generate_reports`` 原先是「先写盘 → 再校验」，
+    校验不通过只抑制 ``report_ready`` 事件，**不达标的两份报告仍留在 reports/ 里冒充
+    合格品**。实测后果：6 本书里 4 本合计仅 5612–7024 字（门槛 10000），全部躺在
+    交付目录里，且没有任何机制回头复核。
+
+    要把它改成「校验通过才落盘」，就必须有一个不依赖磁盘的判定入口；门槛与口径
+    仍由本模块单一来源提供，避免 GUI 另写一份阈值。
+
+    Args:
+        book_chars: 拆书报告字符数
+        craft_chars: 笔法分析字符数
+
+    Returns:
+        dict: {book_chars, craft_chars, total, ok, min_chars}
+    """
+    book = int(book_chars or 0)
+    craft = int(craft_chars or 0)
+    total = book + craft
+    return {
+        "book_chars": book,
+        "craft_chars": craft,
+        "total": total,
+        "ok": total >= MIN_REPORT_CHARS,
+        "min_chars": MIN_REPORT_CHARS,
+    }
+
+
 def check_combined_report_length(reports_dir, name: str) -> Dict[str, Any]:
     """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ MIN_REPORT_CHARS。
 
@@ -60,18 +90,11 @@ def check_combined_report_length(reports_dir, name: str) -> Dict[str, Any]:
     base = Path(reports_dir)
     book_path = base / REPORT_NAME_BOOK.format(name=name)
     craft_path = base / REPORT_NAME_CRAFT.format(name=name)
-    book_chars = _report_char_len(book_path)
-    craft_chars = _report_char_len(craft_path)
-    total = book_chars + craft_chars
-    return {
-        "book_chars": book_chars,
-        "craft_chars": craft_chars,
-        "total": total,
-        "ok": total >= MIN_REPORT_CHARS,
-        "min_chars": MIN_REPORT_CHARS,
-        "book_path": str(book_path),
-        "craft_path": str(craft_path),
-    }
+    # 判定口径统一走 combined_report_ok（单一来源），本函数只负责「读盘 + 附加路径」。
+    result = combined_report_ok(_report_char_len(book_path), _report_char_len(craft_path))
+    result["book_path"] = str(book_path)
+    result["craft_path"] = str(craft_path)
+    return result
 
 
 # --------------------------------------------------------------------------
