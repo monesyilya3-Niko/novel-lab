@@ -87,7 +87,7 @@ python -m gui.launch
 ## 开发
 
 ```bash
-python run_tests.py        # 全量测试（782 用例基线，2026-09-18）
+python run_tests.py        # 全量测试（当前基线见 AGENTS.md §7「当前实测口径」）
 git config core.hooksPath .githooks   # 启用提交前自动测试
 ```
 

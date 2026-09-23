@@ -42,6 +42,40 @@ jobs:
           path: .coverage
           if-no-files-found: ignore
 
+  # 跨平台 / 多版本矩阵（2026-09-23 总工新增）。
+  #
+  # 为什么需要：原矩阵只有 windows-latest + Python 3.13 单点，而项目对外承诺
+  # 「纯标准库、跨平台」（gui/server.py 的 _pid_is_alive 有 POSIX 回退、
+  # secret_store 非 Windows 降级 0600 明文、DPAPI 用例有 skipUnless(win32) 守卫）。
+  # 承诺必须有对应的持续验证，否则只是文案。
+  #
+  # 为什么是**非阻断**（continue-on-error）：本机只有 Windows + Python 3.13，
+  # 新腿的绿/红无法本地预判。先让它跑起来观测若干轮，确认稳定后把
+  # `continue-on-error: true` 删掉即可升级为门禁——这样不会因为一次盲改而
+  # 让主干 CI 立刻变红。
+  python-cross-platform:
+    name: Python ${{ matrix.python-version }} (${{ matrix.os }}) [non-blocking]
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dev tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Full test suite
+        run: python run_tests.py
+
   web:
     name: Web (build + lint + test)
     runs-on: ubuntu-latest

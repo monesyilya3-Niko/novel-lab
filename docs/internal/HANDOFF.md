@@ -31,9 +31,9 @@
 
 ### 产出统计（以磁盘为准）
 
-- **资产 55 个**：0 WARN / 0 REJECT（sangshi `common_mistakes` 已由本卡观察汇总补齐）
-- **报告 8 份**：4 书 × (拆书报告 + 笔法分析)
-- **测试 780 用例 OK**（`python -B run_tests.py`，2026-09-18）
+- **资产 65 个**：0 WARN / 0 REJECT（含 distilled 4 + genre-prose-card-index 1）
+- **报告 4 份**：2 书 × (拆书报告 + 笔法分析)（2026-09-23 删除 4 本不达标存量报告，见 CHANGELOG）
+- **测试 909 用例 OK**（`python run_tests.py`，2026-09-23）
 - **git**：本地 `master`；远程 `monesyilya3-Niko/novel-lab`
 
 ### 评分语义（2026-09-18 变更，必读）
@@ -103,7 +103,7 @@ $PY -m gui.launch
 ## 五、测试与质量守卫
 
 ```bash
-$PY -B run_tests.py    # 全量（当前 801 OK）
+$PY run_tests.py       # 全量（当前 909 OK）
 ```
 
 - `.githooks/pre-commit`：全量测试 + 暂存资产 schema 校验
@@ -192,4 +192,4 @@ $PY -B run_tests.py    # 全量（当前 801 OK）
 
 ---
 
-*本交接文档基于 2026-09-21 实测数据更新（801 tests OK / 60 资产 / 报告 10 / Release v1.1.2；锁/autostart 与总工审计见第八节）。*
+*本交接文档基于 2026-09-23 实测数据更新（909 tests OK / 65 资产 / 报告 4 / Release v1.1.2；锁/autostart 与总工审计见第八节）。*

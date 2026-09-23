@@ -1,6 +1,23 @@
 # 模型配置说明
 
-> ⚠️ **2026-09-01 起本手册仅作参考存档**：外部模型（mimo/ds）及密钥已按用户指令删除，当前项目**不调用任何外部 LLM API**——拆书分析与写作由 niko 内置智能在会话内直接完成（见 docs/internal/HANDOFF.md 第六节）。本手册仅在未来需要恢复外部模型时使用。
+> **当前状态（2026-09-23 实测，取代下方历史声明）**
+>
+> 本仓库**已配置 1 个外部模型**，本手册**当前有效**，不是存档：
+>
+> | 项 | 实测值 |
+> |---|---|
+> | 模型 id | `workbuddy-deepseek` |
+> | 协议 / model_name | `openai` / `DeepSeek-V4-Pro-plus` |
+> | 配置来源 | `config/models.json`（入库跟踪） |
+> | 密钥 | `config/.secrets.bin`（DPAPI 密文，**不入库**）；`secret_store.load_secrets()` 实测可读到 `workbuddy-deepseek` 条目 |
+> | GUI 判定 | `/api/overview` 返回 `model_configured: true` |
+> | roles / routes | default / cheap / strong 均指向该模型；pass1-5、writing、consistency_check 均有路由 |
+>
+> ⚠️ **历史声明（已被上述实测取代，保留以存档决策脉络）**：
+> 「2026-09-01 起本手册仅作参考存档：外部模型（mimo/ds）及密钥已按用户指令删除，
+> 当前项目**不调用任何外部 LLM API**——拆书分析与写作由内置智能在会话内直接完成。」
+> 该声明在 2026-09-01 当时为真；后续重新配置了 `workbuddy-deepseek`，故不再成立。
+> 无模型时（密钥缺失 / 额度失败）仍会走会话内接管路径，见 `docs/internal/HANDOFF.md` 第六节。
 
 零依赖，只用 Python 标准库。不需要 `pip install` 任何东西。
 

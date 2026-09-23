@@ -78,19 +78,26 @@ NOVEL_DIR      = novel-lab/novel/
 
 ### 运行方式
 ```bash
-python run_tests.py          # 全量（基线 853 用例，2026-09-21）
+python run_tests.py          # 全量（基线 909 用例，2026-09-23）
 ```
 
 ### 隔离要求（血泪教训）
 **新增 config 路径常量时，所有 patch 该类路径的测试必须同步审查。**
 
-已发生的事故：`gui/config.py` 的 L2 修复新增 `STATE_JSON_DIR` 后，`tests/test_overview_api.py` 与 `tests/test_asset_index.py` 的 `setUpClass` 只 patch 了 `STATE_ROOT`，漏了 `STATE_JSON_DIR`，导致测试夹具数据写进**真实的 `gui/state/`** 并跨轮累积，造成 2 个测试持续失败。
+已发生的事故 ①（2026-09-11）：`gui/config.py` 的 L2 修复新增 `STATE_JSON_DIR` 后，`tests/test_overview_api.py` 与 `tests/test_asset_index.py` 的 `setUpClass` 只 patch 了 `STATE_ROOT`，漏了 `STATE_JSON_DIR`，导致测试夹具数据写进**真实的 `gui/state/`** 并跨轮累积，造成 2 个测试持续失败。
+
+已发生的事故 ②（2026-09-23）：`gui/system_service.py` 把 settings.json 路径写成**模块级常量** `_SETTINGS_FILE = config.STATE_ROOT / "settings.json"`。该赋值在**导入期**执行、路径被固化，因此 `setattr(config, "STATE_ROOT", tmp)` 这类重定向**对它完全无效**，`tests/test_system_service.py` 实际写进了**真实** `gui_state/settings.json`（受控实验：写入哨兵值 → 跑全量测试 → 哨兵被完全抹掉、内容变成测试入参值）。事故 ① 的防线只覆盖 `gui/state/`，故未能拦住。
 
 **规矩**：
 - 测试若涉及路径常量，必须 patch **全部**相关常量，不得只 patch 其中一部分
 - patch 后必须在 `tearDownClass` 恢复
 - 临时目录要覆盖所有被 patch 的路径
-- 已有防线测试守护此约束（见 `tests/`），**不得删除或弱化**
+- **运行时路径一律在函数内实时求值**（`config.STATE_ROOT / "x.json"`），禁止写成模块级常量——导入期快照无法被 patch 重定向
+- 已有防线测试守护此约束（见 `tests/`），**不得删除或弱化**：
+  - `tests/test_config_isolation.py`（登记表全覆盖 + 确定性路径跟随）
+  - `tests/test_module_config_snapshot.py`（AST 扫描导入期快照，白名单需附理由）
+  - `tests/test_zz_state_dir_leak_guard.py`（`gui/state/` 与 `gui_state/` 双目录泄漏守卫）
+  - `tests/test_doc_metrics.py`（`AGENTS.md` §7 口径与实测一致）
 
 ### 提交前自动测试守卫
 仓库内 `.githooks/pre-commit` 会在每次提交前跑 `python run_tests.py`，失败则阻止提交。
@@ -136,7 +143,7 @@ git config core.hooksPath .githooks
 ## 7. 数据真实性红线
 
 - 所有资产/报告数字**以实测磁盘为准**，不得臆造或沿用旧口径
-- 当前实测口径（2026-09-21）：资产 **65** / 报告 **12** / 书 **8**（已拆 6）/ 测试 **853** / API 端点 **65+** / 版本 **1.1.2**
+- 当前实测口径（2026-09-23）：资产 **65** / 报告 **4** / 书 **8**（已拆 6）/ 测试 **909** / API 端点 **65** / 版本 **1.1.2**
 - ⚠️ 历史文档中的「17 资产 / 33 测试 / 3 本书 / 68 资产 / 272 测试 / 353/373/648 测试 / 44 端点」等均为**过时或错误口径**
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**
 
@@ -146,9 +153,9 @@ git config core.hooksPath .githooks
 
 | 文件 | 用途 | 可信度 |
 |---|---|---|
-| `docs/internal/PROJECT_LAW.md` | 三铁律条文 | ✅ 权威 |
-| `docs/internal/RULES.md` | 可执行规则全集 | ✅ 大体可用 |
-| `AGENTS.md` | 本文件 | ✅ 权威 |
+| `docs/internal/PROJECT_LAW.md` | **规则单一权威来源**（v2：三铁律 + 六条工程约束，含判定标准与事故依据） | ✅ 权威，优先于本文件 |
+| `docs/internal/RULES.md` | 可执行规则全集（操作层细则） | ✅ 大体可用 |
+| `AGENTS.md` | 本文件（AI 协作者入口 + 当前实测口径） | ✅ 权威 |
 | `docs/internal/PROJECT_SUMMARY.md` | 项目总结 | ✅ 已重写（2026-09-11，基于实测） |
 | `docs/internal/HANDOFF.md` | 交接文档 | ✅ 已重写（2026-09-11，基于实测） |
 | `docs/DESIGN_gui_phase2_writing_quality.md` | 阶段二设计（W10-W18） | ✅ 权威 |

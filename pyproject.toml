@@ -5,7 +5,7 @@
 [tool.ruff]
 line-length = 110
 target-version = "py310"
-exclude = ["gui/web", ".worktrees", "docs/archive", "指纹拆书"]
+exclude = ["gui/web", "docs/archive"]
 
 [tool.ruff.lint]
 # 基线从宽：默认规则集（pyflakes + 关键 pycodestyle）。
