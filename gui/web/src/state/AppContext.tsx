@@ -86,9 +86,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setOverview(ov)
   }, [])
 
+  // 竞态守卫：只让最后一次请求的响应写入全局 bookResults
+  const bookResultsSeq = useRef(0)
   const loadBookResults = useCallback(async (bookId: string) => {
+    const seq = ++bookResultsSeq.current
     const r = await api.getBookResults(bookId)
-    setBookResults(r)
+    if (seq === bookResultsSeq.current) setBookResults(r)
   }, [])
 
   const refreshBookResults = useCallback(async () => {
