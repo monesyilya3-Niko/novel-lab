@@ -2,6 +2,29 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-28（企业级整改第二轮：P0-3/P0-4 + P1 全清 + 门禁）
+
+### Added
+- **`GET /api/genres`**：题材注册表 API，前端下拉与后端校验的**同一来源**（`scripts/genre_registry` 磁盘派生，34 题材）。
+- **`tests/test_genre_validation.py`**（7 例）：adapter 与注册表同源、已知/未知/空/非字符串题材、非法题材 400、`GET /api/genres` 排序。
+- **Coverage fail-under=60**：`pyproject.toml` 与 CI 双配置，覆盖率跌破基线即失败。
+
+### Fixed
+- **P0-3 书籍导入**：`POST /api/import-upload`（multipart），前端直传 `File`，不再依赖非标准 `File.path`；修复 `batch_size=NULL` 时 `get_status` 崩溃。
+- **P0-4 题材必填**：`start_analysis` 非法题材返回 400；前端题材改为必填下拉（`/api/genres` 动态加载），移除 `'未知'` 默认值。
+- **P1-F8**：`AppContext` 初始化错误写入 `initError` 并在顶部展示，不再静默吞错。
+- **P1-F5**：`AnalysisResultView` bookId 切换竞态守卫（latest 标志 + 渲染期重置）。
+- **P1-F3/F4**：QC 合格线改从 `qualityPassLine`（默认 75）、写书目标分改从 `consistencyTarget`，不再硬编码 70/90。
+- **P1-F1**：暗色模式硬编码 `#fff` 改 `background.paper`。
+- **P1-F2**：E2E 饼图断言加强为 canvas 真实渲染 + 有尺寸。
+- **P2-B5/B6**：`chapter_num`/`batch_size` 非法值返回 400 而非 500。
+- **P2-F14**：写书 AssemblePanel 默认题材改为空，强制显式选择。
+- **P2-F19**：删除 `ControlBar.tsx` 死代码。
+- **ESLint**：4 warnings → 0（exhaustive-deps、memoization、第三方库兼容性注释）。
+
+### Changed
+- **ECharts 按需引入**：`BaseChart` 改用 `echarts/core` + 显式注册，chunk 1126KB → 604KB（-46%）。
+
 ## [Unreleased] - 2026-09-27（企业级整改第一轮：P0 全清）
 
 基线 `edfae04`（909 测试全绿）起，在独立 worktree 分支 `feat/enterprise-hardening` 完成 6 次提交。测试基线 **909 → 951**，`ruff check .` 全程保持全绿，pre-commit 每次跑全量。
