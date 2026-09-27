@@ -85,6 +85,8 @@ export default function SettingsWorkbench() {
   }
 
   const resetSettings = async () => {
+    // P2-F11/F13：重置二次确认
+    if (!window.confirm('确定将所有设置重置为默认值吗？此操作不可恢复。')) return
     setSaving(true)
     setMessage('')
     setError('')
@@ -116,7 +118,7 @@ export default function SettingsWorkbench() {
       {/* 打分阈值 */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>打分阈值</Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 1.5, flexWrap: 'wrap' }}>
           <TextField
             label="一致性目标分" type="number" size="small" fullWidth
             value={consistencyTarget} onChange={(e) => setConsistencyTarget(Number(e.target.value))}
@@ -141,7 +143,7 @@ export default function SettingsWorkbench() {
       {/* 写作设置 */}
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" gutterBottom>写作设置</Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 1.5, flexWrap: 'wrap' }}>
           <TextField
             label="默认字数" type="number" size="small" fullWidth
             value={defaultWords} onChange={(e) => setDefaultWords(Number(e.target.value))}
@@ -158,7 +160,7 @@ export default function SettingsWorkbench() {
       </Paper>
 
       {/* 操作按钮 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
         <Button variant="contained" onClick={saveSettings} disabled={saving}>
           {saving ? <CircularProgress size={20} /> : '保存设置'}
         </Button>

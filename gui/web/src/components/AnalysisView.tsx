@@ -20,13 +20,16 @@ export default function AnalysisView() {
       {/* 左侧：章节导航 */}
       <Box
         sx={{
-          width: 280,
-          minWidth: 280,
-          borderRight: 1,
+          width: { xs: '100%', md: 280 },
+          minWidth: { xs: 'auto', md: 280 },
+          borderRight: { xs: 0, md: 1 },
+          borderBottom: { xs: 1, md: 0 },
           borderColor: 'divider',
           bgcolor: 'background.paper',
           display: 'flex',
           flexDirection: 'column',
+          maxHeight: { xs: 200, md: 'none' },
+          overflow: { xs: 'auto', md: 'visible' },
         }}
       >
         <ImportPanel compact />
