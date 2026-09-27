@@ -196,8 +196,8 @@ def _call_openai_compatible(model: dict, api_key: str, system: str,
     raw = _post_json(url, payload, headers, model.get("timeout", 180))
     try:
         text = raw["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
-        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}")
+    except (KeyError, IndexError) as exc:
+        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}") from exc
     usage = raw.get("usage") or {}
     return {
         "text": text,
@@ -228,8 +228,8 @@ def _call_anthropic(model: dict, api_key: str, system: str,
     raw = _post_json(url, payload, headers, model.get("timeout", 180))
     try:
         text = "".join(b.get("text", "") for b in raw["content"])
-    except (KeyError, TypeError):
-        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}")
+    except (KeyError, TypeError) as exc:
+        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}") from exc
     usage = raw.get("usage") or {}
     return {
         "text": text,
@@ -260,8 +260,8 @@ def _call_ollama(model: dict, api_key: str, system: str,
     raw = _post_json(url, payload, {}, model.get("timeout", 600))
     try:
         text = raw["message"]["content"]
-    except KeyError:
-        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}")
+    except KeyError as exc:
+        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}") from exc
     return {
         "text": text,
         "prompt_tokens": raw.get("prompt_eval_count", 0),

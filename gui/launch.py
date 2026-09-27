@@ -35,10 +35,10 @@ def run_check() -> int:
     """自检：import 全部后端模块，校验路径，不弹浏览器。"""
     from gui import engine_adapter, router, server, services, sse, state_store
 
-    mods = [engine_adapter, router, server, services, sse, state_store]
-    names = ["engine_adapter", "router", "server", "services", "sse", "state_store"]
-    for name, mod in zip(names, mods):
-        print(f"[check] import gui.{name} ... OK")
+    # 名字直接从模块对象派生。原先另抄一份 names 字符串列表与模块列表 zip：
+    # 加模块时漏改 names 就会静默少打一行自检结果，让自检报告看起来是绿的。
+    for mod in (engine_adapter, router, server, services, sse, state_store):
+        print(f"[check] import {mod.__name__} ... OK")
 
     if config.DIST_DIR.is_dir():
         print(f"[check] 静态目录存在: {config.DIST_DIR}")

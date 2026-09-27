@@ -76,7 +76,7 @@ def _load_asset_json(ref: str) -> Dict[str, Any]:
     try:
         return json.loads(fp.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        raise ServiceError(f"资产文件损坏: {exc}", 500)
+        raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
 
 def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
@@ -196,7 +196,7 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
         try:
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:
-            raise ServiceError(f"读取章节失败: {exc}", 400)
+            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
 
     voice_data = _load_asset_of_kind(voice, "voice")
     cons = engine_adapter.score_text(voice_data, text, label=label)
@@ -406,12 +406,12 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
         daemon=True, name=f"writing-{task_id}")
     try:
         thread.start()
-    except RuntimeError:
+    except RuntimeError as exc:
         # HIGH：start 失败必须释放并发槽位，否则永久占用
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id]["status"] = "error"
             _WRITING_TASKS[task_id]["error"] = "线程启动失败"
-        raise ServiceError("线程启动失败，请稍后重试", 500)
+        raise ServiceError("线程启动失败，请稍后重试", 500) from exc
     return {"task_id": task_id, "status": "running", "mode": "llm", "chapter_no": chapter_no}
 
 

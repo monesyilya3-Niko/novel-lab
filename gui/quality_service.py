@@ -154,7 +154,7 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
         try:
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:
-            raise ServiceError(f"读取章节失败: {exc}", 400)
+            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
 
     gp_data = None
     if genre_pack:
@@ -319,12 +319,12 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
         daemon=True, name=f"qc-{task_id}")
     try:
         thread.start()
-    except RuntimeError:
+    except RuntimeError as exc:
         # HIGH：start 失败必须释放并发槽位
         with _QUALITY_LOCK:
             _QUALITY_TASKS[task_id]["status"] = "error"
             _QUALITY_TASKS[task_id]["error"] = "线程启动失败"
-        raise ServiceError("线程启动失败，请稍后重试", 500)
+        raise ServiceError("线程启动失败，请稍后重试", 500) from exc
     return {"task_id": task_id, "status": "running", "target": display_target}
 
 

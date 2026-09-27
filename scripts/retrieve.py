@@ -407,7 +407,7 @@ def build_index(assets: Dict[str, Dict[str, dict]], persist_path: Optional[str] 
             _add_doc(dimension, group)
             continue
         # {dimension: {book: asset_dict}} 结构。
-        for key, asset_dict in group.items():
+        for asset_dict in group.values():
             if not isinstance(asset_dict, dict):
                 continue
             _add_doc(dimension, asset_dict)
@@ -638,7 +638,7 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
     expanded_terms: List[str] = list(query_terms)
     for keyword, dim_map in INTENT_MAP.items():
         if keyword in query_terms or keyword in intent_lower:
-            for dimension, extra_terms in dim_map.items():
+            for extra_terms in dim_map.values():
                 for et in extra_terms:
                     if et not in expanded_terms:
                         expanded_terms.append(et)
@@ -689,7 +689,9 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
 
     # 融合打分。
     hits: List[HitEntry] = []
-    for doc, bm25, cos in zip(index.docs, bm25_scores, cos_scores):
+    # 三个平行数组必须等长：长度不一致意味着打分逻辑与索引脱节，
+    # 静默截断会丢掉尾部文档（表现为"莫名少几条结果"且无任何报错）。
+    for doc, bm25, cos in zip(index.docs, bm25_scores, cos_scores, strict=True):
         score = _fused_score(bm25, bm25_max, cos, FUSION_ALPHA)
         if score < MIN_FUSION_SCORE:
             continue

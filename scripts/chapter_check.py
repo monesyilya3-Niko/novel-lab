@@ -649,7 +649,9 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
             f"章节评分维度数漂移：实际 {len(checks)}，权重表 {len(DIMENSION_ORDER)}；"
             "新增/删除维度必须同步 DIMENSION_WEIGHTS 与文件头 docstring"
         )
-    for dim, (score, detail) in zip(DIMENSION_ORDER, checks):
+    # strict=True：上方已断言等长，此处再兜一层——若有人调整 checks 构造
+    # 使其少一项，zip 会静默截断并让权重校验漏掉尾部维度。
+    for dim, (score, detail) in zip(DIMENSION_ORDER, checks, strict=True):
         cap = DIMENSION_WEIGHTS[dim]
         if float(score) > cap + 1e-6:
             raise RuntimeError(
@@ -659,7 +661,7 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
     total = _score1(min(sum(float(s) for s, _ in checks), float(TOTAL_MAX_SCORE)))
     details = [d for _, d in checks]
     issues = []
-    for s, d in checks:
+    for _, d in checks:
         if "偏短" in d and "严重" not in d:
             continue
         if "严重" in d or "不足" in d or "截断" in d:

@@ -138,8 +138,8 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
         # 尝试 gbk（中文 txt 常见编码）
         try:
             text = src.read_text(encoding="gbk")
-        except UnicodeDecodeError:
-            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400)
+        except UnicodeDecodeError as exc:
+            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400) from exc
 
     chapters_raw = engine_adapter.split_chapters(text)
     if not chapters_raw:
@@ -560,7 +560,7 @@ def list_assets(kind: Optional[str] = None, genre: Optional[str] = None,
     try:
         return asset_index.index.list_assets(kind, genre, book_id, offset, limit)
     except ValueError as exc:
-        raise ServiceError(str(exc), 400)
+        raise ServiceError(str(exc), 400) from exc
 
 
 def get_asset_detail(kind: str, asset_id: str) -> Dict[str, Any]:
@@ -568,9 +568,9 @@ def get_asset_detail(kind: str, asset_id: str) -> Dict[str, Any]:
     try:
         return asset_index.index.get_asset_detail(kind, asset_id)
     except ValueError as exc:
-        raise ServiceError(str(exc), 400)
+        raise ServiceError(str(exc), 400) from exc
     except KeyError as exc:
-        raise ServiceError(str(exc), 404)
+        raise ServiceError(str(exc), 404) from exc
 
 
 def list_reports() -> List[Dict[str, Any]]:
@@ -662,7 +662,7 @@ def get_report(report_id: str) -> Dict[str, Any]:
     try:
         detail = asset_index.index.get_asset_detail("report", report_id)
     except (ValueError, KeyError) as exc:
-        raise ServiceError(str(exc), 404)
+        raise ServiceError(str(exc), 404) from exc
     return {"id": report_id, "name": detail["name"], "markdown": detail["markdown"]}
 
 

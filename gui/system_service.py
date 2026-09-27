@@ -113,7 +113,7 @@ def compliance_scan(voice: Optional[str] = None,
         try:
             asset = json.loads(fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            raise ServiceError(f"资产文件损坏: {exc}", 500)
+            raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
         # HIGH：book_path 也必须在项目根内
         book_text = ""
@@ -126,7 +126,7 @@ def compliance_scan(voice: Optional[str] = None,
             try:
                 book_text = bp.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError) as exc:
-                raise ServiceError(f"读取原文失败: {exc}", 400)
+                raise ServiceError(f"读取原文失败: {exc}", 400) from exc
 
         # 调用 compliance.scan_asset（需要 ngram 索引）
         _ensure_scripts_path()

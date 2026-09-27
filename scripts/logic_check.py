@@ -194,7 +194,8 @@ def _check_number_contradictions(texts: dict) -> list:
     entity_values = {}
     for ch in sorted(texts.keys()):
         text = texts[ch]
-        for cat, pat, label in _NUM_PATTERNS:
+        # label 在下方按 cat 从 _NUM_PATTERN_MAP 权威回查，此处解包仅为对齐三元组
+        for cat, pat, _label in _NUM_PATTERNS:
             for name, raw in pat.findall(text):
                 name = name.strip()
                 if not _looks_like_name(name):

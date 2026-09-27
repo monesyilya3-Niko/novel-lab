@@ -116,8 +116,8 @@ def _h_asset(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
     try:
         chapter_index = int(params.get("chapter", 0))
         batch_index = int(params.get("batch", 0))
-    except (TypeError, ValueError):
-        raise ServiceError("chapter/batch 必须为整数", 400)
+    except (TypeError, ValueError) as exc:
+        raise ServiceError("chapter/batch 必须为整数", 400) from exc
     pass_name = params.get("pass", "")
     if not pass_name:
         raise ServiceError("缺少 pass", 400)
@@ -144,8 +144,8 @@ def _h_list_assets(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, A
     try:
         offset = int(params.get("offset", "0") or "0")
         limit = int(params.get("limit", "50") or "50")
-    except ValueError:
-        raise ServiceError("offset/limit 必须为整数", 400)
+    except ValueError as exc:
+        raise ServiceError("offset/limit 必须为整数", 400) from exc
     return ok(services.list_assets(kind, genre, book_id, offset, limit))
 
 
@@ -213,8 +213,8 @@ def _safe_int(value: Any, default: int, field: str) -> int:
         return default
     try:
         return int(value)
-    except (TypeError, ValueError):
-        raise ServiceError(f"{field} 必须为整数", 400)
+    except (TypeError, ValueError) as exc:
+        raise ServiceError(f"{field} 必须为整数", 400) from exc
 
 
 def _h_writing_generate(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
@@ -602,8 +602,8 @@ def read_body(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
     raw_len = handler.headers.get("Content-Length", "0") or "0"
     try:
         length = int(raw_len)
-    except ValueError:
-        raise ServiceError("Content-Length 非法", 400)
+    except ValueError as exc:
+        raise ServiceError("Content-Length 非法", 400) from exc
     if length < 0:
         raise ServiceError("Content-Length 非法", 400)
     if length == 0:
@@ -615,5 +615,5 @@ def read_body(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
         return {}
     try:
         return json.loads(raw.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        raise ServiceError("请求体不是合法 JSON", 400)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ServiceError("请求体不是合法 JSON", 400) from exc

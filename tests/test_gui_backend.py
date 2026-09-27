@@ -201,7 +201,7 @@ class TestEngineAdapter(unittest.TestCase):
         batches = engine_adapter.split_batches(text, 20)
         self.assertEqual(batches[0]["char_start"], 0)
         self.assertEqual(batches[-1]["char_end"], len(text))
-        for a, b in zip(batches, batches[1:]):
+        for a, b in zip(batches, batches[1:], strict=False):
             self.assertEqual(a["char_end"], b["char_start"], "批次边界必须连续无缝隙/无重叠")
 
 

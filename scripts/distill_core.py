@@ -358,7 +358,9 @@ def _normalize_payoff_ratios(items: Any) -> Any:
     total = math.fsum(v for v in parsed if v is not None)
 
     normalized: List[Any] = []
-    for item, value in zip(items, parsed):
+    # parsed 由 items 逐项推导，长度必然相等；strict=True 让将来的过滤/分支
+    # 改动在错位的第一时间抛出，而不是静默丢项。
+    for item, value in zip(items, parsed, strict=True):
         if not isinstance(item, dict):
             normalized.append(copy.deepcopy(item))
             continue

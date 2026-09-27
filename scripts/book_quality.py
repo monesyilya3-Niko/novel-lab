@@ -106,7 +106,7 @@ def check_duplicate_sentences(texts: dict) -> list:
     for sent, chs in sent_chapters.items():
         if len(chs) >= 2:
             chapters = sorted(chs)
-            adjacent = any(b - a == 1 for a, b in zip(chapters, chapters[1:]))
+            adjacent = any(b - a == 1 for a, b in zip(chapters, chapters[1:], strict=False))
             detail = f"句子「{sent[:30]}…」在 {len(chs)} 章重复"
             if adjacent:
                 detail += "（相邻章）"
@@ -369,7 +369,7 @@ def check_word_padding(texts: dict) -> list:
     for ch in chapters:
         text = texts[ch]
         paras = text.split('\n')
-        for i, para in enumerate(paras):
+        for para in paras:
             p = para.strip()
             if len(p) > 20:
                 # 检查同一段内重复

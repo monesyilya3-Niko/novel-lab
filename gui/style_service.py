@@ -162,7 +162,7 @@ def get_style(name: str) -> Dict[str, Any]:
     try:
         return json.loads(fp.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        raise ServiceError(f"风格文件损坏: {exc}", 500)
+        raise ServiceError(f"风格文件损坏: {exc}", 500) from exc
 
 
 def delete_style(name: str) -> Dict[str, Any]:

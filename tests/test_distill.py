@@ -375,7 +375,9 @@ class TestPayoffRatioNormalization(unittest.TestCase):
             {"type": "身份揭露", "ratio": 0.15},
         ]
         out = CORE._normalize_payoff_ratios(items)
-        for before, after in zip(items, out):
+        # strict=True：若归一化少返回一项，普通 zip 会静默截断，
+        # 使这条断言只覆盖前 N 项而看起来是通过。
+        for before, after in zip(items, out, strict=True):
             self.assertAlmostEqual(after["ratio"], before["ratio"], delta=1e-9)
 
     def test_normalize_all_zero_or_empty_is_none(self):
