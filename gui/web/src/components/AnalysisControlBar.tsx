@@ -48,8 +48,7 @@ export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarPro
       .then((list) => {
         if (cancelled) return
         setGenres(list)
-        // 默认选中第一个，避免空值提交
-        if (list.length > 0) setGenre((g) => g || list[0])
+        // P0-4：不自动选中，用户必须显式选择题材（必填）
       })
       .catch(() => {
         if (!cancelled) setError('题材列表加载失败，请刷新重试')
