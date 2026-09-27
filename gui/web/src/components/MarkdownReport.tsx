@@ -17,7 +17,7 @@ export interface MarkdownReportProps {
 /** 将 markdown 字符串渲染为富文本（支持 GFM 表格/列表/代码块）。 */
 export default function MarkdownReport({ title, markdown }: MarkdownReportProps) {
   return (
-    <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fff' }}>
+    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper' }}>
       {title && (
         <>
           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>

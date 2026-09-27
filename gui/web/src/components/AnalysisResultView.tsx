@@ -134,13 +134,27 @@ export default function AnalysisResultView() {
 
   const bookId = book?.bookId ?? null
 
-  useEffect(() => {
-    if (!bookId) return
+  // P1-F5：请求竞态守卫——bookId 快速切换时，只有最新请求能写状态。
+  // 渲染期重置 loading/error（React 推荐模式，避免 effect 内同步 setState）。
+  const [prevBookId, setPrevBookId] = useState(bookId)
+  if (bookId !== prevBookId) {
+    setPrevBookId(bookId)
     setLoading(true)
     setError('')
+  }
+  useEffect(() => {
+    if (!bookId) return
+    let latest = true
     loadBookResults(bookId)
-      .catch((e) => setError(friendlyError(e)))
-      .finally(() => setLoading(false))
+      .catch((e) => {
+        if (latest) setError(friendlyError(e))
+      })
+      .finally(() => {
+        if (latest) setLoading(false)
+      })
+    return () => {
+      latest = false
+    }
   }, [bookId, loadBookResults])
 
   const scoreCategories = useMemo(

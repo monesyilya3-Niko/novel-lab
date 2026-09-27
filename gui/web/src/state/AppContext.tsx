@@ -11,6 +11,7 @@ import React, {
 import type { Book, BookResults, Chapter, Overview, ProgressEvent, StatusInfo } from '../types'
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
 import * as api from '../api/client'
+import { systemApi } from '../api/client'
 
 interface AppState {
   // 当前导入的书
@@ -35,6 +36,13 @@ interface AppState {
   loadBookResults: (bookId: string) => Promise<void>
   refreshBookResults: () => Promise<void>
 
+  // 初始化错误（P1-F8：不再静默吞错，UI 可展示）
+  initError: string | null
+
+  // 系统设置阈值（P1-F3/F4：QC 合格线/写书目标分统一口径，不再硬编码）
+  qualityPassLine: number
+  consistencyTarget: number
+
   // actions
   importBook: (path: string) => Promise<void>
   uploadBook: (file: File) => Promise<void>
@@ -56,6 +64,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<StatusInfo | null>(null)
   const [lastEvent, setLastEvent] = useState<ProgressEvent | null>(null)
   const [batchStates, setBatchStates] = useState<Record<string, { status: string; asset?: string }>>({})
+  const [initError, setInitError] = useState<string | null>(null)
+  const [qualityPassLine, setQualityPassLine] = useState(75)
+  const [consistencyTarget, setConsistencyTarget] = useState(90)
 
   // 阶段一新增状态。
   const [workbench, setWorkbench] = useState<WorkbenchKey>('home')
@@ -177,20 +188,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refreshStatus()
   }, [refreshStatus])
 
-  // 初始加载：恢复会话 + 加载概览。
+  // 初始加载：恢复会话 + 加载概览（P1-F8：错误写入 initError，不再静默吞掉）。
+  /* eslint-disable react-hooks/set-state-in-effect -- 本 effect 内所有 setState
+     均在异步回调（.then/.catch）中触发，非 effect 同步体；这是标准的数据加载模式。 */
   useEffect(() => {
-    refreshStatus().then(() => {
-      const bid = bookIdRef.current
-      if (bid) {
-        api.getBook(bid).then((b) => setBook(b)).catch(() => {})
-      }
-    })
-    refreshOverview().catch(() => {})
+    let cancelled = false
+    const fail = (e: unknown) => {
+      if (!cancelled) setInitError(e instanceof Error ? e.message : String(e))
+    }
+    refreshStatus()
+      .then(() => {
+        const bid = bookIdRef.current
+        if (bid) return api.getBook(bid).then((b) => { if (!cancelled) setBook(b) })
+      })
+      .catch(fail)
+    refreshOverview().catch(fail)
+    // P1-F3/F4：加载系统阈值设置（失败则用默认值，不阻断初始化）
+    systemApi
+      .settings()
+      .then((d) => {
+        if (cancelled) return
+        const th = (d as Record<string, unknown>).thresholds as
+          | { qualityPassLine?: number; consistencyTarget?: number }
+          | undefined
+        if (typeof th?.qualityPassLine === 'number') setQualityPassLine(th.qualityPassLine)
+        if (typeof th?.consistencyTarget === 'number') setConsistencyTarget(th.consistencyTarget)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
   }, [refreshStatus, refreshOverview])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const value = useMemo<AppState>(
     () => ({
       book,
+      initError,
+      qualityPassLine,
+      consistencyTarget,
       selectedChapter,
       currentChapter,
       status,
@@ -215,6 +249,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       book, selectedChapter, currentChapter, status, lastEvent, batchStates,
+      initError, qualityPassLine, consistencyTarget,
       workbench, overview, bookResults,
       importBook, uploadBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
       pauseAnalysis, resumeAnalysis, retryFailed, refreshOverview, loadBookResults, refreshBookResults,

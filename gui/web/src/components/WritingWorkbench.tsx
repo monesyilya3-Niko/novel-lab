@@ -9,6 +9,7 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
+import { useApp } from '../state/AppContext'
 import CircularProgress from '@mui/material/CircularProgress'
 import LinearProgress from '@mui/material/LinearProgress'
 import Divider from '@mui/material/Divider'
@@ -135,6 +136,8 @@ function InjectPanel() {
 // ---------------------------------------------------------------------------
 
 function GeneratePanel() {
+  // P1-F4：写书目标分来自系统设置，不再硬编码 90。
+  const { consistencyTarget } = useApp()
   const [projects, setProjects] = useState<WritingProject[]>([])
   const [project, setProject] = useState('')
   const [chapterNo, setChapterNo] = useState(1)
@@ -171,7 +174,7 @@ function GeneratePanel() {
     sseUnsubRef.current?.()  // 清理旧订阅
     try {
       const r = await writingApi.generate({
-        voice, project, chapter_no: chapterNo, task, target_score: 90,
+        voice, project, chapter_no: chapterNo, task, target_score: consistencyTarget,
       })
       setTaskState(r)
       if (r.status === 'running' && r.taskId) {

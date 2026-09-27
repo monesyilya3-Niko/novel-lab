@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import CssBaseline from '@mui/material/CssBaseline'
 import Box from '@mui/material/Box'
+import Alert from '@mui/material/Alert'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import IconButton from '@mui/material/IconButton'
@@ -80,7 +81,7 @@ const WORKBENCH_ORDER: WorkbenchKey[] = [
 ]
 
 function AppShell() {
-  const { workbench, setWorkbench, overview } = useApp()
+  const { workbench, setWorkbench, overview, initError } = useApp()
   const wide = useMediaQuery('(min-width: 961px)')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [onboarded, setOnboarded] = useState(isOnboarded)
@@ -119,6 +120,11 @@ function AppShell() {
         <OnboardingWizard onDone={() => setOnboarded(true)} onNavigate={setWorkbench} />
       )}
       <AppBar position="static" elevation={0} sx={{ bgcolor: 'primary.main' }}>
+      {initError && (
+        <Alert severity="error" sx={{ borderRadius: 0 }}>
+          初始化失败：{initError}
+        </Alert>
+      )}
         <Toolbar sx={{ minHeight: 48, gap: 1 }}>
           {!wide && (
             <IconButton color="inherit" edge="start" onClick={() => setDrawerOpen(true)} aria-label="打开导航">

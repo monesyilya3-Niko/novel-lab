@@ -1,5 +1,5 @@
 // M1 高级分析 + M4 资产写入工作台：蒸馏 / 聚合 / 批量状态 / 资产编辑。
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback} from 'react'
 import Box from '@mui/material/Box'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
@@ -47,14 +47,14 @@ function DistillPanel() {
   const [rawOpen, setRawOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       const data = await advancedApi.distillStatus(genre)
       setStatus(data as Record<string, unknown>)
     } catch { /* ignore */ }
-  }
+  }, [genre])
 
-  useEffect(() => { loadStatus() }, [genre])
+  useEffect(() => { loadStatus() }, [loadStatus])
 
   const doDistill = async () => {
     setLoading(true)

@@ -19,6 +19,9 @@ export default function ReaderPanel() {
     return text.split(/\n+/).filter((p) => p.trim())
   }, [currentChapter])
 
+  // @tanstack/react-virtual 与 React Compiler 不兼容（库内部实现限制），
+  // 跳过编译不影响功能；虚拟滚动本身工作正常。
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: paragraphs.length,
     getScrollElement: () => parentRef.current,

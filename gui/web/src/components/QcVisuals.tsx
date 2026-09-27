@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
 import type { EChartsOption } from 'echarts'
 import BaseChart from './charts/BaseChart'
+import { useApp } from '../state/AppContext'
 import type { QcIssue, QcLayer } from '../types'
 
 // 四层固定配色（与 palette 图表色板一致）。
@@ -16,7 +17,7 @@ const LAYER_COLORS: Record<string, string> = {
   L4: '#0288d1',
 }
 
-const PASS_LINE = 70
+// P1-F3：合格线来自系统设置（默认 75），不再硬编码 70。
 
 export default function QcVisuals({
   layers = [],
@@ -25,6 +26,7 @@ export default function QcVisuals({
   layers?: QcLayer[]
   issues?: QcIssue[]
 }) {
+  const { qualityPassLine } = useApp()
   // ---- 12 维总览（条形）----
   const barOption = useMemo<EChartsOption | null>(() => {
     const dims = (layers ?? []).flatMap((l) =>
@@ -47,19 +49,19 @@ export default function QcVisuals({
           markLine: {
             symbol: 'none',
             lineStyle: { color: '#d32f2f', type: 'dashed' },
-            data: [{ xAxis: PASS_LINE }],
-            label: { formatter: `合格线 ${PASS_LINE}`, fontSize: 10 },
+            data: [{ xAxis: qualityPassLine }],
+            label: { formatter: `合格线 ${qualityPassLine}`, fontSize: 10 },
           },
           data: dims
             .map((d) => ({
               value: d.score,
-              itemStyle: { color: d.score < PASS_LINE ? '#d32f2f' : (LAYER_COLORS[d.layer] ?? '#1976d2') },
+              itemStyle: { color: d.score < qualityPassLine ? '#d32f2f' : (LAYER_COLORS[d.layer] ?? '#1976d2') },
             }))
             .reverse(),
         },
       ],
     }
-  }, [layers])
+  }, [layers, qualityPassLine])
 
   // ---- 章节×维度热力图（仅含有 raw.perChapter 的维度，维度内归一）----
   const heat = useMemo(() => {
@@ -151,7 +153,7 @@ export default function QcVisuals({
     <Box>
       <Paper sx={{ p: 2, mb: 2 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-          十二维得分总览（红 = 低于合格线 {PASS_LINE}）
+          十二维得分总览（红 = 低于合格线 {qualityPassLine}）
         </Typography>
         <BaseChart option={barOption} height={Math.max(200, 26 * (layers.reduce((n, l) => n + l.dimensions.length, 0) + 2))} ariaLabel="十二维得分总览条形图" notMerge={false} />
       </Paper>

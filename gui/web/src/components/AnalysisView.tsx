@@ -22,8 +22,9 @@ export default function AnalysisView() {
         sx={{
           width: 280,
           minWidth: 280,
-          borderRight: '1px solid #e0e0e0',
-          bgcolor: '#fff',
+          borderRight: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
           display: 'flex',
           flexDirection: 'column',
         }}
