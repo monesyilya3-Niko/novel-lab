@@ -25,8 +25,9 @@ except ImportError:  # 兼容无蒸馏层时的最小运行。
 
 # 二期 · 检索模块（同目录），供 context_intent 针对性注入使用。
 try:
-    from retrieve import build_index, render_retrieval, retrieve_for_intent as _retrieve
     from distill_core import collect_assets
+    from retrieve import build_index, render_retrieval
+    from retrieve import retrieve_for_intent as _retrieve
 except ImportError:  # 兼容无检索模块时的最小运行。
     def render_retrieval(hits):
         return ""

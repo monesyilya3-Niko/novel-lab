@@ -16,13 +16,12 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Optional
-from urllib.parse import urlparse, parse_qs, unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
-from gui import auto_backup, config, router
-from gui import db
+from gui import auto_backup, config, db, router
 from gui.logging_setup import get_logger, setup_logging
-from gui.sse import broker
 from gui.services import ServiceError
+from gui.sse import broker
 
 _log = get_logger("server")
 

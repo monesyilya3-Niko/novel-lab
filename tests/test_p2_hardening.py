@@ -23,8 +23,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from gui import config  # noqa: E402
-from gui import logging_setup  # noqa: E402
+from gui import (
+    config,  # noqa: E402
+    logging_setup,  # noqa: E402
+)
 
 
 class TestLoggingSetup(unittest.TestCase):

@@ -42,7 +42,7 @@ import argparse
 import json
 import re
 import sys
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -54,10 +54,9 @@ import chapter_check
 import chapter_loader
 import compliance
 import consistency
-import logic_check
 import llm_hook as llm_hook_mod
+import logic_check
 import setting_check
-
 
 # ---------------------------------------------------------------------------
 # 数据结构

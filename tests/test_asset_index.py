@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, asset_index, state_store  # noqa: E402
+from gui import asset_index, config, state_store  # noqa: E402
 
 
 class TestAssetIndex(unittest.TestCase):

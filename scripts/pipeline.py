@@ -27,12 +27,12 @@ import re
 import sys
 from pathlib import Path
 
-import sampler
-import metrics as metrics_mod
-import llm_client
-import validate as validate_mod
 import compliance as compliance_mod
+import llm_client
+import metrics as metrics_mod
 import normalize as normalize_mod
+import sampler
+import validate as validate_mod
 
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "prompts"

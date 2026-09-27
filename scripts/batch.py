@@ -15,12 +15,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-import sampler
-import metrics as metrics_mod
-import validate as validate_mod
 import compliance as compliance_mod
+import metrics as metrics_mod
 import normalize as norm
 import pipeline
+import sampler
+import validate as validate_mod
 
 
 def run_book(src: Path, genre: str, model_id: str | None, dry_run: bool) -> dict:

@@ -21,8 +21,8 @@ import argparse
 import json
 import re
 import sys
-from pathlib import Path
 from collections import Counter, defaultdict
+from pathlib import Path
 
 import chapter_loader
 
@@ -567,7 +567,7 @@ def _book_quality_coverage(texts: dict, entities: dict = None,
     entities_loaded = bool(isinstance(entities, dict) and entities.get("characters"))
     voice_card_loaded = bool(_voice_card_mode(voice_card))
 
-    checks = {key: True for key in BQ_CHECK_ORDER}
+    checks = dict.fromkeys(BQ_CHECK_ORDER, True)
     for key in BQ_CROSS_CHAPTER_CHECKS:
         checks[key] = has_multi_chapters
     checks["fabrication_name"] = entities_loaded

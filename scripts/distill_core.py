@@ -27,7 +27,8 @@ import math
 import re
 import statistics
 from collections import defaultdict
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -1140,7 +1141,7 @@ def _aggregate_craft(
                 _aggregate_field(
                     dimension="craft-card",
                     field=f"craft_analysis.{dim}",
-                    book_vals={b: None for b in books},
+                    book_vals=dict.fromkeys(books),
                     books=books,
                     aggregator="median",
                 )

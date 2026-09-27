@@ -36,7 +36,6 @@ from typing import Callable, List, Optional
 # 仅 import 项目内 `llm_client`（本身是纯标准库 urllib 实现，不违反铁律三）
 import llm_client
 
-
 # 系统提示（固定：判定角色 + 只输出 JSON 的输出契约）
 SYSTEM_PROMPT = (
     "你是一名网文逻辑审校员。任务：判断给定的「疑似逻辑矛盾」是否是真矛盾，"

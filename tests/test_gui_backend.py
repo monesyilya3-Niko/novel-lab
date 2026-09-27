@@ -20,8 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, state_store, engine_adapter, router, services  # noqa: E402
-
+from gui import config, engine_adapter, router, services, state_store  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # 隔离：把 STATE_ROOT / STATE_JSON_DIR / ASSETS_ROOT 指向临时目录，避免污染

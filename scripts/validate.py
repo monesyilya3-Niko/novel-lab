@@ -45,7 +45,11 @@ try:
     from genre_registry import (
         PROSE_ID_RE,
         PROSE_SLUG_PREFIX,
+    )
+    from genre_registry import (
         core_genres as _core_genres,
+    )
+    from genre_registry import (
         prose_genres as _prose_genres,
     )
 except ImportError:  # pragma: no cover - 精简打包环境兜底

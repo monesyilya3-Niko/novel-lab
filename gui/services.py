@@ -11,9 +11,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from gui import config, engine_adapter, state_store, asset_index
+from gui import asset_index, config, db, engine_adapter, state_store
 from gui.logging_setup import get_logger
-from gui import db
 from gui.sse import broker
 
 _log = get_logger("services")

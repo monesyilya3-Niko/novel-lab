@@ -252,8 +252,9 @@ class TestListProjects(unittest.TestCase):
         """全新环境：NOVEL_DIR 不存在时 default 仍必须出现在列表中（D1）。"""
         import tempfile
         from pathlib import Path
-        from tests import _isolation  # noqa: F401  — ensure package importable
+
         import gui.config as gconfig
+        from tests import _isolation  # noqa: F401  — ensure package importable
         missing = Path(tempfile.mkdtemp()) / "novel-missing"
         assert not missing.exists()
         old = gconfig.NOVEL_DIR

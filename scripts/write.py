@@ -258,8 +258,8 @@ def main():
 
         # 章节质量自检
         try:
-            import chapter_check
             import book_quality
+            import chapter_check
             qc = chapter_check.chapter_check(content, gp)
             quality_score = qc["score"]
             quality_issues = qc["issues"]

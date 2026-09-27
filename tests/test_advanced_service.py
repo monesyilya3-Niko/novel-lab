@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, advanced_service  # noqa: E402
+from gui import advanced_service, config  # noqa: E402
 from gui.services import ServiceError  # noqa: E402
 
 _TMP = None

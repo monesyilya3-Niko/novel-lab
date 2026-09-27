@@ -8,9 +8,14 @@ target-version = "py310"
 exclude = ["gui/web", "docs/archive"]
 
 [tool.ruff.lint]
-# 基线从宽：默认规则集（pyflakes + 关键 pycodestyle）。
+# 基线：默认规则集（pyflakes + 关键 pycodestyle）+ 导入排序 + 推导式冗余。
 # E501 行宽不作为硬门禁（存量 CLI 文案含长中文行），由 review 把关。
-select = ["E4", "E7", "E9", "F"]
+# 启用节奏（2026-09-27 企业级整改 P0-4）：按「存量体量 × 缺陷相关性」分批，
+# 而不是一次全开——每批必须能被全量测试证明无行为变化。
+#   本批：I（导入排序，34 处）、C4（推导式冗余，5 处）
+#   待启：B（41 处，含 B023 真 bug 风险）、UP（1036 处，需独立提交）
+#   不启：PTH（49 处，os.path 正当用法，纯风格无实质收益）
+select = ["E4", "E7", "E9", "F", "I", "C4"]
 ignore = [
     # ---- 已知风格债，有意豁免（治理清单见 docs/lint-debt.md）----
     "E402",  # gui 层函数级延迟 import 依赖 sys.path 引导（engine_adapter 既有设计）

@@ -34,7 +34,7 @@ import chapter_loader
 
 # 从 logic_check 复用实体加载（同目录导入，纯标准库）
 try:
-    from logic_check import load_entities, _load_texts
+    from logic_check import _load_texts, load_entities
 except ImportError:  # 直接以脚本方式运行时的兜底（独立可用）
     def load_entities(novel_dir):
         novel_dir = Path(novel_dir)

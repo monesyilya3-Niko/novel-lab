@@ -117,7 +117,7 @@ def parse_sections(body: str) -> Dict[str, str]:
     Returns:
         以 13 个规范标题为 key 的字典（未出现的 section 值为空字符串）。
     """
-    sections: Dict[str, str] = {title: "" for title in _SECTION_TITLES}
+    sections: Dict[str, str] = dict.fromkeys(_SECTION_TITLES, "")
     current_title: Optional[str] = None
     buffer: List[str] = []
 

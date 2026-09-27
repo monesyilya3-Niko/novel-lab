@@ -13,9 +13,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from gui import config
+from gui import config, db
 from gui.logging_setup import get_logger
-from gui import db
 
 _log = get_logger("state_store")
 

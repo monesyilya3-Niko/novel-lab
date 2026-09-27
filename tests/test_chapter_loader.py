@@ -33,10 +33,10 @@ sys.path.insert(0, str(SCRIPTS))
 # 用常规 import 而非 importlib 动态加载：logic_check / qc / book_quality 会在模块级
 # `import chapter_loader`，动态加载会产生第二个模块实例，导致 `ChapterLoadError`
 # 类身份不一致、assertRaises 误判。
+import book_quality  # noqa: E402
 import chapter_loader  # noqa: E402
 import logic_check  # noqa: E402
 import qc  # noqa: E402
-import book_quality  # noqa: E402
 
 
 def _link_directory(target: Path, link: Path) -> bool:

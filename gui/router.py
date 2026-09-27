@@ -15,7 +15,6 @@ from typing import Any, Callable, Dict, Optional, Tuple
 from gui import engine_adapter, services
 from gui.services import ServiceError
 
-
 # ---------------------------------------------------------------------------
 # 响应工具
 # ---------------------------------------------------------------------------
