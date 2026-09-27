@@ -1,6 +1,5 @@
 // P0-4 AnalysisControlBar 回归：题材必填、下拉加载、失败提示、选择后可分析。
 import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import AnalysisControlBar from './AnalysisControlBar'
 
