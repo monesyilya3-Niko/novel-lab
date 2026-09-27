@@ -1,9 +1,35 @@
 // ECharts 统一封装：直接使用 echarts 原生 API（弃用 echarts-for-react 包装——
 // 其实例化路径在 echarts 6 + Vite 7 组合下静默失败且无报错，自研更可控）。
 // 统一主题 / setOption / resize / dispose，其余图表组件继承本组件。
+// 性能：使用 echarts/core 按需引入（Bar/Pie/Radar/Gauge + 常用组件），
+// 避免全量 import 'echarts' 打出 1.1MB+ 的 chunk。
 import { useEffect, useMemo, useRef } from 'react'
-import * as echarts from 'echarts'
+import * as echarts from 'echarts/core'
 import type { EChartsOption } from 'echarts'
+import { BarChart, PieChart, RadarChart, GaugeChart } from 'echarts/charts'
+import {
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  RadarComponent,
+  VisualMapComponent,
+  MarkLineComponent,
+} from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([
+  BarChart,
+  PieChart,
+  RadarChart,
+  GaugeChart,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  RadarComponent,
+  VisualMapComponent,
+  MarkLineComponent,
+  CanvasRenderer,
+])
 import { chartDefaults } from '../../theme'
 import { useThemeMode } from '../../state/ThemeModeContext'
 
