@@ -51,7 +51,7 @@ def _multipart(filename: str | None, content: bytes,
     return b"".join(parts), f"multipart/form-data; boundary={BOUNDARY}"
 
 
-BOOK_TXT = "第1章 楔子\n这是第一章正文内容。\n\n第2章 相遇\n这是第二章正文内容。\n".encode("utf-8")
+BOOK_TXT = "第1章 楔子\n这是第一章正文内容。\n\n第2章 相遇\n这是第二章正文内容。\n".encode()
 
 
 class TestParseMultipartUpload(unittest.TestCase):
