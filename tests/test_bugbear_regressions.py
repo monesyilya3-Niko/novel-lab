@@ -53,6 +53,11 @@ class TestSentenceAtIsPureRefactor(unittest.TestCase):
         "没有标点的长句",
         "。",
         "",
+        # 含首尾空白：切片要从分隔符起始位开始，故返回串可能带前后空格/换行；
+        # 若样本全是紧凑文本，改写实现时去掉 .strip() 也不会有任何测试报警
+        # （本条为 2026-09-27 深度检查发现该弱点后补入）。
+        "甲。  乙。\n丙。",
+        "开场。\n\n  他说：“走吧。”  \n结尾。",
     ]
 
     def test_matches_pre_refactor_closure_for_every_k(self):
