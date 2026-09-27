@@ -363,7 +363,8 @@ function ScorePanel() {
 function AssemblePanel() {
   const [candidates, setCandidates] = useState<{ name: string; passes: string[] }[]>([])
   const [name, setName] = useState('')
-  const [genre, setGenre] = useState('campus-redemption')
+  // P2-F14：默认题材改为空，必须显式选择，避免误用 campus-redemption。
+  const [genre, setGenre] = useState('')
   const [result, setResult] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

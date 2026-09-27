@@ -46,7 +46,7 @@ def _h_import(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     root = _config.ROOT_DIR.resolve()
     if not resolved.is_relative_to(root):
         raise ServiceError("导入路径必须在项目目录内", 403)
-    batch_size = (body or {}).get("batch_size")
+    batch_size = _safe_batch_size((body or {}).get("batch_size"))
     return ok(services.import_book(path, batch_size))
 
 
@@ -68,7 +68,7 @@ def _h_split_batch(params: dict[str, Any], body: dict[str, Any]) -> dict[str, An
     idx = _safe_int(params.get("idx"), -1, "idx")
     if idx < 0:
         raise ServiceError("缺少或非法 idx", 400)
-    batch_size = (body or {}).get("batch_size")
+    batch_size = _safe_batch_size((body or {}).get("batch_size"))
     return ok(services.split_chapter_batches(book_id, idx, batch_size))
 
 
@@ -76,7 +76,7 @@ def _h_start(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = (body or {}).get("book_id", "")
     genre = (body or {}).get("genre", "unknown")
     model_id = (body or {}).get("model_id")
-    batch_size = (body or {}).get("batch_size")
+    batch_size = _safe_batch_size((body or {}).get("batch_size"))
     if not book_id:
         raise ServiceError("缺少 book_id", 400)
     return ok(services.start_analysis(book_id, genre, model_id, batch_size))
@@ -222,6 +222,16 @@ def _safe_int(value: Any, default: int, field: str) -> int:
         return int(value)
     except (TypeError, ValueError) as exc:
         raise ServiceError(f"{field} 必须为整数", 400) from exc
+
+
+def _safe_batch_size(value: Any) -> int | None:
+    """P2-B6：batch_size 非法值返回 400 而非透传导致 500。"""
+    if value is None:
+        return None
+    bs = _safe_int(value, 0, "batch_size")
+    if bs <= 0:
+        raise ServiceError("batch_size 必须为正整数", 400)
+    return bs
 
 
 def _h_writing_generate(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
@@ -441,7 +451,7 @@ def _h_format_chapter(_params: dict[str, Any], body: dict[str, Any]) -> dict[str
     from gui import platform_service
     b = body or {}
     return ok(platform_service.format_chapter(
-        b.get("platform_id", ""), int(b.get("chapter_num", 1)),
+        b.get("platform_id", ""), _safe_int(b.get("chapter_num"), 1, "chapter_num"),
         b.get("title", ""), b.get("content", "")))
 
 
