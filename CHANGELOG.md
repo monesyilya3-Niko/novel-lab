@@ -2,6 +2,32 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-27（企业级整改第一轮：P0 全清）
+
+基线 `edfae04`（909 测试全绿）起，在独立 worktree 分支 `feat/enterprise-hardening` 完成 6 次提交。测试基线 **909 → 951**，`ruff check .` 全程保持全绿，pre-commit 每次跑全量。
+
+### Added
+- **`scripts/genre_registry.py`**：`CORE_GENRES`（3 个全链路题材）与 `KNOWN_GENRES`（34 个，含 32 个仅有 prose 卡的题材）改为**扫描 `assets/` 磁盘派生**，取代 `validate.py` / `chapter_check.py` 中的硬编码题材清单。刻意不引入 `config/genres.json`——那会成为第二个真相源，把漂移从「代码 vs 磁盘」换成「配置 vs 磁盘」。语义分裂为两集是必要的：craft-card 校验只用 `CORE_GENRES`（避免为 prose-only 题材造假阳性），tropes 标注用 `KNOWN_GENRES`。
+- **第三方许可证归因**：新增 `LICENSES/oh-story-claudecode/LICENSE`（逐字保留上游 1081 字节 MIT 文本，未作修改）与 `THIRD_PARTY_NOTICES.md`（清单由脚本从磁盘派生生成，不手抄 slug）。32 张 `genre-prose-card-*.json` 的 `provenance` 补写 `copyright`。
+- 守卫测试新增 3 文件共 **40 例**：`test_genre_registry.py`(19)、`test_third_party_notices.py`(15)、`test_bugbear_regressions.py`(6)。全部配「正向基线 + 负向拒绝」双向断言，防止守卫本身空转。
+
+### Fixed
+- **12 维评分权重的单一真相源**：`chapter_check.py` 的权重常量此前与文件头 docstring、`DIMENSION_ORDER` 互为并行副本，而 `tests/test_regressions.py` 的对应断言是**空转的**（断言表达式恒真）。改为运行时守卫 + 真断言。
+- **`provenance` 校验 warn → err**：原先只是「建议声明」，结果 32 张卡长期无人填写 `copyright`，使 MIT「许可证副本须同时包含版权声明与许可声明」的条件不成立。软约束在归因这类问题上不起作用，必须硬阻断。
+- **异常链断裂 21 处（`B904`）**：`gui/*_service.py`、`gui/router.py`、`scripts/llm_client.py` 在 `except` 中 `raise` 未带 `from exc`，导致 400/500 业务异常丢失原始栈信息，排查时无法区分底层错误与处理过程自身的错误。
+- **`gui/launch.py` 自检可静默失效**：`names` 是 `mods` 的手抄副本，新增模块时漏改会让自检少打一行、整体看起来仍是绿的。改为从 `mod.__name__` 派生名字，消除平行列表这一根因。
+- **`dist/` 换行符假脏**：`git status` 长期挂着十余个实质为空的「已修改」（`git diff` 实测为空），既污染变更视图，也威胁 CI 的 dist freshness 门禁。`.gitattributes` 补 `gui/web/dist/** -text`，并补 `gui/web/index.html text eol=lf`——后者才是根因：产物换行风格继承自源模板，只给产物打补丁治不好。验证：完整 `vite build` 后 `git status --porcelain` 仅剩 `.gitattributes` 自身。
+
+### Changed
+- **ruff 规则集 `["E4","E7","E9","F"]` → `["E4","E7","E9","F","I","C4","B"]`**：按「存量体量 × 缺陷相关性」分两批启用，每批都由全量测试证明无行为变化。启用 `I` 前专门用 `--diff` 核验重排不会越过 `sys.path` 引导块（本项目 ignore `E402` 正因依赖该引导顺序，此类故障静态检查发现不了）。`B023` 的 4 处经核验**当前不是 bug**（闭包每轮立即调用、未逃逸出循环），选择重构为模块级函数消除隐患而非 `# noqa` 压制；`zip` 的 7 处按语义分 `strict=True`（5，等长即应报错）与 `strict=False`（2，`zip(xs, xs[1:])` 天然差一），未一刀切。
+- `AGENTS.md` 记录题材注册表派生机制、第三方归因登记约定，测试基线同步至 951。
+
+### Known Issues（本轮未做，已定性排序）
+- `UP`（pyupgrade）存量 **1036 处**，其中 `UP006`+`UP045` 共 968 处是 `List→list` / `Optional[X]→X|None` 的纯注解现代化。收益是风格统一，代价是几乎每个文件都改，**须独立提交**以便整体回滚，故不混入本轮。
+- `SIM`(56) / `RET`(12) 以风格为主，暂缓；`PTH`(49) 判定**不启用**：`os.path` 属正当用法，纯风格迁移只制造 diff 噪音。
+- 前端审计项「移除 console.log」经实测**不成立**：`gui/web/src` 下仅 3 处 `console.*`，两处是 SSE 帧解析失败的诊断告警、一处是 `ErrorBoundary.componentDidCatch` 的标准写法，删掉会让故障静默，故保留。
+- `provenance.verified` 维持 `false`：其语义是**内容级**核验，许可证已核验不等于内容已核验。
+
 ## [Unreleased] - 2026-09-23（总工第二轮：规则体系 + 存量处置 + 铁律一修复）
 
 ### Added
