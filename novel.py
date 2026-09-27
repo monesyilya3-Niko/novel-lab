@@ -314,9 +314,21 @@ def main():
                 print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
                 sys.exit(1)
             print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
-            for _src in (book_out, craft_out):
-                if _src.exists():
-                    shutil.move(str(_src), str(ROOT / "reports" / _src.name))
+            # 原子发布：两份报告要么全进 reports/，要么全不进；中途失败回滚已搬入的。
+            _moved: list[Path] = []
+            try:
+                for _src in (book_out, craft_out):
+                    if _src.exists():
+                        _dst = ROOT / "reports" / _src.name
+                        shutil.move(str(_src), str(_dst))
+                        _moved.append(_dst)
+            except Exception:
+                for _dst in _moved:
+                    try:
+                        _dst.unlink()
+                    except OSError:
+                        pass
+                raise
         finally:
             shutil.rmtree(staging, ignore_errors=True)
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）
