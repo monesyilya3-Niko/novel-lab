@@ -463,7 +463,7 @@ def resume(book_id: str, genre: str | None = None, model_id: str | None = None) 
     state = state_store.load_state(book_id)
     g = genre or state.get("genre", "unknown")
     mid = model_id or state.get("model_id")
-    bs = state.get("batch_size", config.batch_size_from_env())
+    bs = state.get("batch_size") or config.batch_size_from_env()
     return start_analysis(book_id, g, mid, bs)
 
 
@@ -523,7 +523,7 @@ def get_status(book_id: str | None = None) -> dict[str, Any]:
     book = _BOOKS.get(book_id)
     total = 0
     if book:
-        total = _count_total_batches(book["chapters"], state.get("batch_size", config.batch_size_from_env()))
+        total = _count_total_batches(book["chapters"], state.get("batch_size") or config.batch_size_from_env())
     done = sum(1 for v in state.get("chapter_states", {}).values() if v.get("status") == "success")
     return {
         "book_id": book_id,

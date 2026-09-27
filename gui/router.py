@@ -618,3 +618,50 @@ def read_body(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
         return json.loads(raw.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ServiceError("请求体不是合法 JSON", 400) from exc
+
+_MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB（长篇 txt 上传上限）
+
+
+def parse_multipart_upload(raw: bytes, content_type: str) -> tuple[str, bytes, dict[str, str]]:
+    """解析 multipart/form-data，返回 (文件名, 文件字节, 文本字段)。
+
+    纯函数（只用 stdlib email 包），供 server 的 POST /api/import-upload 使用。
+    只取第一个带文件名的 part 为上传文件；其余 form-data 文本 part 进 fields。
+    文件名按 RFC2231 解码（含中文文件名）。
+    """
+    from email import policy
+    from email.parser import BytesParser
+
+    try:
+        msg = BytesParser(policy=policy.HTTP).parsebytes(
+            b"Content-Type: " + content_type.encode("latin-1", errors="replace")
+            + b"\r\n\r\n" + raw
+        )
+    except Exception as exc:
+        raise ServiceError("multipart 解析失败", 400) from exc
+    if not msg.is_multipart():
+        raise ServiceError("Content-Type 不是 multipart/form-data", 400)
+
+    filename = ""
+    file_bytes = b""
+    fields: dict[str, str] = {}
+    for part in msg.iter_parts():
+        part_filename = part.get_filename()
+        if part_filename and not filename:
+            # 第一个文件 part
+            filename = part_filename
+            payload = part.get_payload(decode=True)
+            file_bytes = payload if isinstance(payload, bytes) else b""
+        elif not part_filename and (part.get_content_disposition() or "") == "form-data":
+            pname = part.get_param("name", header="content-disposition") or ""
+            if pname:
+                payload = part.get_payload(decode=True)
+                if isinstance(payload, bytes):
+                    charset = part.get_content_charset() or "utf-8"
+                    try:
+                        fields[str(pname)] = payload.decode(charset, errors="replace")
+                    except LookupError:
+                        fields[str(pname)] = payload.decode("utf-8", errors="replace")
+    if not filename:
+        raise ServiceError("未找到上传文件（form 字段名应为 file）", 400)
+    return filename, file_bytes, fields

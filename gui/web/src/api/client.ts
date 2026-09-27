@@ -115,6 +115,11 @@ async function typedRequest<T>(
     clearTimeout(timer)
   }
 
+  return parseApiResponse<T>(res)
+}
+
+/** 解析统一响应体：非 JSON / 业务 code 非零都抛 ApiError。 */
+async function parseApiResponse<T>(res: Response): Promise<T> {
   let json: ApiResponse<unknown>
   try {
     json = (await res.json()) as ApiResponse<unknown>
@@ -128,6 +133,22 @@ async function typedRequest<T>(
   return deepToCamel<T>(json.data)
 }
 
+const UPLOAD_TIMEOUT_MS = 120_000
+
+/** 上传文件导入（P0-3）：浏览器 File 直传，不走 path。 */
+async function uploadRequest<T>(path: string, form: FormData): Promise<T> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), UPLOAD_TIMEOUT_MS)
+  let res: Response
+  try {
+    // 注意：不手动设 Content-Type，浏览器会自动带 boundary。
+    res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, signal: ctrl.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+  return parseApiResponse<T>(res)
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   return typedRequest<T>(method, path, body)
 }
@@ -138,6 +159,15 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export async function importBook(path: string, batchSize?: number): Promise<Book> {
   const data = await request<Record<string, unknown>>('POST', '/import', { path, batch_size: batchSize })
+  return bookFromSnake(data)
+}
+
+/** 上传 .txt 文件导入（P0-3 修复：浏览器拿不到 file.path，改走 multipart 上传）。 */
+export async function uploadBook(file: File, batchSize?: number): Promise<Book> {
+  const form = new FormData()
+  form.append('file', file, file.name)
+  if (batchSize) form.append('batch_size', String(batchSize))
+  const data = await uploadRequest<Record<string, unknown>>('/import-upload', form)
   return bookFromSnake(data)
 }
 

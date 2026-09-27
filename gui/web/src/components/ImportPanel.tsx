@@ -1,4 +1,4 @@
-// 导入面板：拖拽 / 选文件（txt）。
+// 导入面板：拖拽 / 选文件（txt），经 multipart 上传到后端。
 import { useCallback, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -12,25 +12,29 @@ interface Props {
 }
 
 export default function ImportPanel({ compact }: Props) {
-  const { importBook, book } = useApp()
+  const { uploadBook, book } = useApp()
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const doImport = useCallback(
-    async (path: string) => {
+  const doUpload = useCallback(
+    async (file: File) => {
+      if (!file.name.toLowerCase().endsWith('.txt')) {
+        setError('仅支持 .txt 文件导入')
+        return
+      }
       setLoading(true)
       setError(null)
       try {
-        await importBook(path)
+        await uploadBook(file)
       } catch (e) {
         setError((e as Error).message)
       } finally {
         setLoading(false)
       }
     },
-    [importBook],
+    [uploadBook],
   )
 
   const onDrop = useCallback(
@@ -39,15 +43,9 @@ export default function ImportPanel({ compact }: Props) {
       setDragging(false)
       const file = e.dataTransfer.files?.[0]
       if (!file) return
-      // 浏览器无法直接拿到本地绝对路径，这里用文件名提示用户走「选择文件」，
-      // 或通过后端上传（首版用 path 方式，需配合后端 file 上传，此处走选择框）。
-      if ((file as unknown as { path?: string }).path) {
-        doImport((file as unknown as { path: string }).path)
-      } else {
-        setError('请点击「选择文件」按钮导入（浏览器安全限制无法直接读取拖拽路径）')
-      }
+      void doUpload(file)
     },
-    [doImport],
+    [doUpload],
   )
 
   const onPick = useCallback(() => {
@@ -57,16 +55,10 @@ export default function ImportPanel({ compact }: Props) {
   const onFileChosen = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0]
-      if (!file) return
-      const path = (file as unknown as { path?: string }).path
-      if (path) {
-        doImport(path)
-      } else {
-        setError('无法获取本地文件绝对路径，请使用支持 path 的环境')
-      }
+      if (file) void doUpload(file)
       e.target.value = ''
     },
-    [doImport],
+    [doUpload],
   )
 
   return (

@@ -37,6 +37,7 @@ interface AppState {
 
   // actions
   importBook: (path: string) => Promise<void>
+  uploadBook: (file: File) => Promise<void>
   selectChapter: (idx: number) => Promise<void>
   refreshStatus: () => Promise<void>
   startAnalysis: (genre: string) => Promise<void>
@@ -112,8 +113,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return close
   }, [refreshStatus, refreshBookResults, refreshOverview])
 
-  const importBook = useCallback(async (path: string) => {
-    const b = await api.importBook(path)
+  const applyImportedBook = useCallback(async (b: Book) => {
     setBook(b)
     bookIdRef.current = b.bookId
     setSelectedChapter(null)
@@ -128,6 +128,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setBatchStates(states)
     await refreshStatus()
   }, [refreshStatus])
+
+  const importBook = useCallback(async (path: string) => {
+    const b = await api.importBook(path)
+    await applyImportedBook(b)
+  }, [applyImportedBook])
+
+  // P0-3：浏览器文件上传导入（拿不到 file.path 时走这里）。
+  const uploadBook = useCallback(async (file: File) => {
+    const b = await api.uploadBook(file)
+    await applyImportedBook(b)
+  }, [applyImportedBook])
 
   const selectChapter = useCallback(async (idx: number) => {
     if (!bookIdRef.current) return
@@ -193,6 +204,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadBookResults,
       refreshBookResults,
       importBook,
+      uploadBook,
       selectChapter,
       refreshStatus,
       startAnalysis,
@@ -204,7 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       book, selectedChapter, currentChapter, status, lastEvent, batchStates,
       workbench, overview, bookResults,
-      importBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
+      importBook, uploadBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
       pauseAnalysis, resumeAnalysis, retryFailed, refreshOverview, loadBookResults, refreshBookResults,
     ],
   )

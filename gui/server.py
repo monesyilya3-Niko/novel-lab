@@ -18,12 +18,47 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
-from gui import auto_backup, config, db, router
+from gui import auto_backup, config, db, router, services
 from gui.logging_setup import get_logger, setup_logging
 from gui.services import ServiceError
 from gui.sse import broker
 
 _log = get_logger("server")
+
+
+def _safe_upload_filename(name: str) -> str:
+    """上传文件名安全检查：去目录、去控制字符、仅允许 .txt。"""
+    base = Path(name).name.strip()
+    base = re.sub(r'[\x00-\x1f\x7f/\\]', "_", base)
+    if not base or base in (".", ".."):
+        raise ServiceError("文件名非法", 400)
+    if not base.lower().endswith(".txt"):
+        raise ServiceError("首版仅支持 .txt 导入", 400)
+    return base
+
+
+def _unique_corpus_path(name: str) -> Path:
+    """corpus/ 下防重名：已存在则追加 -1/-2…。"""
+    dest = config.CORPUS_DIR / name
+    if not dest.exists():
+        return dest
+    stem, suffix = Path(name).stem, Path(name).suffix
+    i = 1
+    while True:
+        cand = config.CORPUS_DIR / f"{stem}-{i}{suffix}"
+        if not cand.exists():
+            return cand
+        i += 1
+
+
+def _parse_upload_batch_size(value: str | None) -> int | None:
+    """上传表单的 batch_size：缺省走服务端默认；非法值 400（不透传成 500）。"""
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    if not value.isdigit() or int(value) <= 0:
+        raise ServiceError("batch_size 必须为正整数", 400)
+    return int(value)
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -92,6 +127,10 @@ class _Handler(BaseHTTPRequestHandler):
             return
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
+        if path == "/api/import-upload":
+            # P0-3：浏览器文件上传导入（multipart），不走 JSON body。
+            self._handle_import_upload()
+            return
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
 
         try:
@@ -152,6 +191,39 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception:  # noqa: BLE001
             return False
         return host in ("localhost", "127.0.0.1", "::1", "[::1]", "")
+
+    def _handle_import_upload(self) -> None:
+        """POST /api/import-upload：multipart 文件上传导入。
+
+        流程：解析 multipart → 文件名安全检查 → 存入 corpus/ →
+        调 services.import_book。全部错误转为统一 JSON 错误体。
+        """
+        try:
+            ctype = self.headers.get("Content-Type", "")
+            if "multipart/form-data" not in ctype:
+                raise ServiceError("Content-Type 必须为 multipart/form-data", 400)
+            raw_len = self.headers.get("Content-Length", "0") or "0"
+            try:
+                length = int(raw_len)
+            except ValueError as exc:
+                raise ServiceError("Content-Length 非法", 400) from exc
+            if length <= 0:
+                raise ServiceError("请求体为空", 400)
+            if length > router._MAX_UPLOAD_BYTES:
+                raise ServiceError("上传文件过大（上限 100MB）", 413)
+            raw = self.rfile.read(length)
+            filename, file_bytes, fields = router.parse_multipart_upload(raw, ctype)
+            safe_name = _safe_upload_filename(filename)
+            config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
+            dest = _unique_corpus_path(safe_name)
+            dest.write_bytes(file_bytes)
+            batch_size = _parse_upload_batch_size(fields.get("batch_size"))
+            result = services.import_book(str(dest), batch_size)
+            self._send_json(router.ok(result))
+        except ServiceError as exc:
+            self._send_json(router.err(exc.code, exc.message), exc.code)
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
 
     def _send_json(self, payload: dict, status: int = 200) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
