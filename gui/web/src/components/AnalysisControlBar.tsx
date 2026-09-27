@@ -1,12 +1,16 @@
-// 一键分析控制条：题材输入 + 「一键分析」按钮（runFullAnalysis）+ 任务状态。
-import { useState } from 'react'
+// 一键分析控制条：题材下拉（必填，来自 /api/genres）+ 「一键分析」按钮 + 任务状态。
+import { useEffect, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import TextField from '@mui/material/TextField'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import CircularProgress from '@mui/material/CircularProgress'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
 import { useApp } from '../state/AppContext'
+import { getGenres } from '../api/client'
 import type { TaskStatus } from '../types'
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
@@ -32,14 +36,37 @@ export interface AnalysisControlBarProps {
 
 export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarProps) {
   const { book, status, runFullAnalysis } = useApp()
-  const [genre, setGenre] = useState('未知')
+  const [genres, setGenres] = useState<string[]>([])
+  const [genre, setGenre] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // P0-4：题材列表来自后端注册表（与后端校验同源），必填，无"未知"默认值。
+  useEffect(() => {
+    let cancelled = false
+    getGenres()
+      .then((list) => {
+        if (cancelled) return
+        setGenres(list)
+        // 默认选中第一个，避免空值提交
+        if (list.length > 0) setGenre((g) => g || list[0])
+      })
+      .catch(() => {
+        if (!cancelled) setError('题材列表加载失败，请刷新重试')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const taskStatus: TaskStatus = status?.status ?? 'idle'
   const isRunning = taskStatus === 'running'
 
   const doRun = async () => {
+    if (!genre) {
+      setError('请选择题材')
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -69,18 +96,26 @@ export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarPro
         </Typography>
       ) : (
         <>
-          <TextField
-            size="small"
-            label="题材"
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            sx={{ width: 130 }}
-            inputProps={{ style: { fontSize: 13 } }}
-          />
+          <FormControl size="small" sx={{ minWidth: 150 }} required>
+            <InputLabel id="genre-select-label">题材 *</InputLabel>
+            <Select
+              labelId="genre-select-label"
+              value={genre}
+              label="题材 *"
+              onChange={(e) => setGenre(e.target.value)}
+              sx={{ fontSize: 13 }}
+            >
+              {genres.map((g) => (
+                <MenuItem key={g} value={g} sx={{ fontSize: 13 }}>
+                  {g}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button
             variant="contained"
             size="small"
-            disabled={busy || isRunning}
+            disabled={busy || isRunning || !genre}
             onClick={doRun}
             startIcon={busy ? <CircularProgress size={14} color="inherit" /> : undefined}
           >

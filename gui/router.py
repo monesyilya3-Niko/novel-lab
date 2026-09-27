@@ -188,6 +188,12 @@ def _h_full_analysis(params: dict[str, Any], body: dict[str, Any]) -> dict[str, 
     return ok(services.run_full_analysis(book_id, genre, model_id))
 
 
+def _h_genres(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    """P0-4：题材列表（前端下拉唯一来源，与后端校验同源）。"""
+    from gui import engine_adapter
+    return ok({"genres": engine_adapter.known_genres()})
+
+
 # ---------------------------------------------------------------------------
 # W15 阶段二：写作（M2）+ 质检（M3）端点
 # ---------------------------------------------------------------------------
@@ -500,6 +506,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)/chapter/(?P<idx>\d+)$"), _h_get_chapter),
     ("POST", re.compile(r"^/api/book/(?P<book_id>[^/]+)/chapter/(?P<idx>\d+)/batch$"), _h_split_batch),
     ("POST", re.compile(r"^/api/analyze/start$"), _h_start),
+    ("GET", re.compile(r"^/api/genres$"), _h_genres),
     ("POST", re.compile(r"^/api/analyze/pause$"), _h_pause),
     ("POST", re.compile(r"^/api/analyze/resume$"), _h_resume),
     ("POST", re.compile(r"^/api/analyze/retry-failed$"), _h_retry_failed),

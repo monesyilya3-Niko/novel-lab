@@ -308,7 +308,7 @@ class TestServicesImport(unittest.TestCase):
         try:
             book_id = services.import_book(str(self.tmp_txt))["book_id"]
             with self.assertRaises(services.ServiceError) as cm:
-                services.start_analysis(book_id, "unknown")
+                services.start_analysis(book_id, "campus-redemption")
             self.assertEqual(cm.exception.code, 400)
         finally:
             engine_adapter.any_model_configured = orig
@@ -363,7 +363,7 @@ class TestResumeSkipsSuccess(unittest.TestCase):
         故本测试会 FAIL，用于路由给工程师修复。
         """
         book_id = services.import_book(str(self.tmp_txt))["book_id"]
-        services.start_analysis(book_id, "unknown")
+        services.start_analysis(book_id, "campus-redemption")
         st = self._wait_done(book_id)
         self.assertEqual(st["status"], "done", f"首次分析未完成: {st}")
 

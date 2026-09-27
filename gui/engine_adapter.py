@@ -602,6 +602,37 @@ def clean_verbatim(asset: dict[str, Any], book_text: str) -> tuple[dict, int]:
 
 
 # ---------------------------------------------------------------------------
+# 题材注册表（P0-4：后端校验唯一来源，磁盘资产派生）
+# ---------------------------------------------------------------------------
+
+def _get_genre_registry():
+    """延迟加载 scripts/genre_registry（P0-1：gui 层不得直连 scripts/）。"""
+    from scripts import genre_registry
+    return genre_registry
+
+
+def known_genres() -> list[str]:
+    """返回已知题材 slug 列表（排序，稳定）。"""
+    try:
+        return sorted(_get_genre_registry().known_genres())
+    except Exception:
+        # 精简打包/资产缺失时用兜底集，保证 API 可用
+        from scripts.genre_registry import FALLBACK_CORE_GENRES
+        return sorted(FALLBACK_CORE_GENRES)
+
+
+def is_known_genre(genre: str) -> bool:
+    """题材是否在注册表中（P0-4 后端校验入口）。"""
+    if not isinstance(genre, str) or not genre.strip():
+        return False
+    try:
+        return bool(_get_genre_registry().is_known_genre(genre.strip()))
+    except Exception:
+        from scripts.genre_registry import FALLBACK_CORE_GENRES
+        return genre.strip() in FALLBACK_CORE_GENRES
+
+
+# ---------------------------------------------------------------------------
 # 自检
 # ---------------------------------------------------------------------------
 

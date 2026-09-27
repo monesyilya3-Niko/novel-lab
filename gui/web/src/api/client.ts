@@ -226,6 +226,11 @@ export async function retryFailed(bookId: string): Promise<{ retried: number }> 
   return toCamel(await request<Record<string, unknown>>('POST', '/analyze/retry-failed', { book_id: bookId }))
 }
 
+export async function getGenres(): Promise<string[]> {
+  const data = await request<{ genres: string[] }>('GET', '/genres')
+  return data.genres ?? []
+}
+
 export async function getStatus(bookId?: string): Promise<StatusInfo> {
   const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
   const data = await request<Record<string, unknown>>('GET', `/status${q}`)

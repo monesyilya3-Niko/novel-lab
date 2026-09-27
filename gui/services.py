@@ -285,6 +285,11 @@ def start_analysis(book_id: str, genre: str, model_id: str | None = None,
     if not engine_adapter.any_model_configured():
         raise ServiceError("未配置外部模型，请先运行 model_config.py 配置（PRD Q7：首版 GUI 仅支持已配置模型）", 400)
 
+    # P0-4：题材必填且必须在注册表中（唯一来源：engine_adapter.is_known_genre）。
+    if not engine_adapter.is_known_genre(genre):
+        raise ServiceError(
+            f"未知题材 {genre!r}，请从题材列表中选择（GET /api/genres）", 400)
+
     bs = batch_size or config.batch_size_from_env()
 
     # 【修复 M6】「检查 + 建 ctx + 建线程 + 登记 + 启动」必须在一个临界区内完成。
