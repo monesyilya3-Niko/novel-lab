@@ -6,6 +6,10 @@ import LinearProgress from '@mui/material/LinearProgress'
 import Tooltip from '@mui/material/Tooltip'
 import { useApp } from '../state/AppContext'
 
+const STATUS_LABEL: Record<string, string> = {
+  idle: '空闲', pending: '等待', running: '运行中',
+  success: '成功', failed: '失败', skipped: '跳过',
+}
 const CELL_COLOR: Record<string, string> = {
   pending: '#e0e0e0',
   running: '#1976d2',
@@ -55,7 +59,7 @@ export default function ProgressPanel() {
         </Typography>
       </Box>
       <Typography variant="caption" color="text.secondary">
-        当前状态：{status?.status ?? 'idle'} · 断点 {status?.cursor || '-'}
+        当前状态：{STATUS_LABEL[status?.status ?? 'idle'] ?? status?.status ?? 'idle'} · 断点 {status?.cursor || '-'}
       </Typography>
 
       {/* 章×批矩阵 */}

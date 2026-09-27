@@ -59,10 +59,9 @@ export default function ResultPanel() {
     }
   }, [bookId, chapterIndex, batchIndex, passName])
 
+  // P2-F9：章节切换时重置批次并立即用新值加载，避免闭包捕获旧 batchIndex 导致双请求。
   useEffect(() => {
     setBatchIndex(0)
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterIndex])
 
   useEffect(() => {

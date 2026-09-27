@@ -61,6 +61,8 @@ export default function StylePanel() {
   }
 
   const doDelete = async (name: string) => {
+    // P2-F13：破坏性操作二次确认
+    if (!window.confirm(`确定删除风格「${name}」吗？此操作不可恢复。`)) return
     try {
       await styleApi.delete(name)
       setMessage(`风格「${name}」已删除`)

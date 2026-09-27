@@ -32,7 +32,12 @@ export default function PlatformPanel() {
 
   useEffect(() => {
     platformApi.list()
-      .then((data) => setPlatforms((data.platforms ?? []) as Platform[]))
+      .then((data) => {
+        const list = (data.platforms ?? []) as Platform[]
+        setPlatforms(list)
+        // P2-F16：若默认 qidian 不在列表中，校准为第一个可用平台
+        setSelected((prev) => (list.some((pl) => pl.id === prev) ? prev : (list[0]?.id ?? '')))
+      })
       .catch((e) => setError(`加载平台列表失败: ${e}`))
   }, [])
 

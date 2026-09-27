@@ -341,6 +341,12 @@ function ScorePanel() {
             {result.consistency.details.slice(0, 8).map((d, i) => (
               <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>{d}</Typography>
             ))}
+            {/* P2-F17：截断时提示剩余条数 */}
+            {result.consistency.details.length > 8 && (
+              <Typography variant="caption" color="text.secondary">
+                还有 {result.consistency.details.length - 8} 条未显示
+              </Typography>
+            )}
           </Box>
           {result.quality.issues.length > 0 && (
             <Box sx={{ mt: 1 }}>
