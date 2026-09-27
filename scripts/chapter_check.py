@@ -32,6 +32,41 @@ from pathlib import Path
 
 from metrics import dialogue_char_count
 
+# ---------------------------------------------------------------------------
+# 12 维权重 · 单一真相源（Single Source of Truth）
+#
+# 2026-09-27 企业级整改 P0-1：此前 12 维权重只存在于「文件头 docstring 的中文散文」
+# 与 chapter_check() 的行尾注释里，代码层没有任何可导入的常量。后果是回归测试
+# tests/test_regressions.py 只能靠人工抄录一串字面量来断言，抄错了也被「求和==100」
+# 掩盖（旧抄录表第 9/11/12 位写成 8/4/4，真实值为 4/5/7，两表恰好都等于 100）。
+#
+# 现在：权重以本常量为唯一权威。测试侧必须用正则从 docstring 解析权重并与本表
+# 逐项比对，任一侧改动未同步即变红；运行时另设逐维上限校验（见 chapter_check）。
+# ---------------------------------------------------------------------------
+DIMENSION_WEIGHTS: dict[str, int] = {
+    "word_count": 8,          # 1. 字数 — ≥1500 满分
+    "dialogue_ratio": 12,     # 2. 对话占比 — 15-40% 满分
+    "hook": 12,               # 3. 章末钩子
+    "opening": 8,             # 4. 开头吸引力 — 前 200 字
+    "emotion_density": 12,    # 5. 情绪密度 — 每 400 字 ≥1 处体感词
+    "direct_emotion": 8,      # 6. 直陈式情绪词 — 零出现满分
+    "paragraph_rhythm": 8,    # 7. 段落节奏 — 短段占比 10-40%
+    "structure": 8,           # 8. 结构完整性
+    "ai_tics": 4,             # 9. AI 味检测
+    "fatigue_words": 8,       # 10. 疲劳词检测
+    "rang_character": 5,      # 11. 让字专项
+    "emotion_tags": 7,        # 12. 情绪标签词
+}
+
+#: 维度顺序 = 文件头 docstring 的编号顺序，供 docstring 交叉校验与逐维上限校验使用
+DIMENSION_ORDER: tuple[str, ...] = tuple(DIMENSION_WEIGHTS)
+
+#: 总分满分 = 各维权重之和（恒为 100；由回归测试守卫，不得用 min(sum,100) 截断掩盖）
+TOTAL_MAX_SCORE: int = sum(DIMENSION_WEIGHTS.values())
+
+#: checks 列表 → 维度键的映射，用于运行时逐维上限校验
+CHECK_DIMENSIONS: tuple[str, ...] = DIMENSION_ORDER
+
 # 直陈式情绪词（出现即扣分）
 DIRECT_EMOTION = ["很愤怒", "很生气", "感到难过", "非常开心", "很伤心", "感到害怕",
                   "很紧张", "很幸福", "很沮丧", "很兴奋", "很失落", "很委屈",
@@ -591,21 +626,37 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
     判定线调整: 默认 PASS≥75 / WARN≥60，可经题材包 quality_thresholds 适配。
     """
     checks = [
-        check_word_count(text),       # 8分
-        check_dialogue_ratio(text, resolve_dialogue_band(genre_pack)),  # 12分
-        check_hook(text),             # 12分
-        check_opening(text),          # 8分
-        check_emotion_density(text),  # 12分
-        check_direct_emotion(text),   # 8分
-        check_paragraph_rhythm(text), # 8分
-        check_structure(text),        # 8分
-        check_ai_tics(text),          # 4分
-        check_fatigue_words(text),    # 8分
-        check_rang_character(text),   # 5分
-        check_emotion_tags(text),     # 7分
+        check_word_count(text),       # DIMENSION_WEIGHTS["word_count"]
+        check_dialogue_ratio(text, resolve_dialogue_band(genre_pack)),  # dialogue_ratio
+        check_hook(text),             # hook
+        check_opening(text),          # opening
+        check_emotion_density(text),  # emotion_density
+        check_direct_emotion(text),   # direct_emotion
+        check_paragraph_rhythm(text), # paragraph_rhythm
+        check_structure(text),        # structure
+        check_ai_tics(text),          # ai_tics
+        check_fatigue_words(text),    # fatigue_words
+        check_rang_character(text),   # rang_character
+        check_emotion_tags(text),     # emotion_tags
     ]
 
-    total = _score1(min(sum(float(s) for s, _ in checks), 100.0))
+    # P0-1 真守卫：维度数量与逐维上限都必须与 DIMENSION_WEIGHTS 一致。
+    # 旧实现只有一句 sum(手抄表)==100 的空断言，抓不到任何真实回归；此处改为
+    # 校验「实际打分」本身——任一维度打出超过自身权重的分数即抛错，而不是
+    # 靠 min(sum, 100) 把超发的分截断掉（那正是 2026-09-05 C1 事故的成因）。
+    if len(checks) != len(DIMENSION_ORDER):
+        raise RuntimeError(
+            f"章节评分维度数漂移：实际 {len(checks)}，权重表 {len(DIMENSION_ORDER)}；"
+            "新增/删除维度必须同步 DIMENSION_WEIGHTS 与文件头 docstring"
+        )
+    for dim, (score, detail) in zip(DIMENSION_ORDER, checks):
+        cap = DIMENSION_WEIGHTS[dim]
+        if float(score) > cap + 1e-6:
+            raise RuntimeError(
+                f"维度 {dim} 得分 {score} 超过其权重上限 {cap}（detail={detail}）"
+            )
+
+    total = _score1(min(sum(float(s) for s, _ in checks), float(TOTAL_MAX_SCORE)))
     details = [d for _, d in checks]
     issues = []
     for s, d in checks:
@@ -625,7 +676,7 @@ def chapter_check(text: str, genre_pack: dict = None) -> dict:
 
     return {
         "score": total,
-        "max_score": 100,
+        "max_score": TOTAL_MAX_SCORE,
         "verdict": verdict,
         "details": details,
         "issues": issues,

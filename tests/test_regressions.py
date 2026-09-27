@@ -127,15 +127,46 @@ class TestBookQualityRecursiveGlob(unittest.TestCase):
 
 
 class TestChapterCheckWeightsSum100(unittest.TestCase):
-    """回归 #3：chapter_check 12 维权重合计应恰为 100，不得靠 min(sum,100) 截断掩盖。"""
+    """回归 #3（2026-09-27 重写）：12 维权重以代码常量为唯一权威，且与 docstring 逐项一致。
 
-    def test_weights_sum_exactly_100(self):
+    旧实现为：读入 src 却从不使用 + 手抄 12 个字面量 + 只断言求和==100。手抄表第
+    9/11/12 位是 8/4/4，真实 docstring 是 4/5/7，两表恰好都等于 100 —— 抄错被求和
+    完全掩盖，断言恒真（见交付物 baseline/A06 发现 B，原列为 HIGH 未修项）。
+    """
+
+    def test_weights_are_single_source_of_truth(self):
         cc = _load("chapter_check")
-        # chapter_check() 返回结构含 per-dimension 分数，通过满分文本无法直接测权重；
-        # 更稳的方式：核对源码 docstring 声明的 12 维权重之和 == 100
-        src = (SCRIPTS / "chapter_check.py").read_text(encoding="utf-8")
-        docstring_weights = [8, 12, 12, 8, 12, 8, 8, 8, 8, 8, 4, 4]  # 12 维，见文件头 docstring
-        self.assertEqual(sum(docstring_weights), 100, "12 维权重之和应恰为 100")
+        self.assertEqual(len(cc.DIMENSION_WEIGHTS), 12, "应为 12 维权重")
+        self.assertEqual(sum(cc.DIMENSION_WEIGHTS.values()), 100, "12 维权重之和应恰为 100")
+        self.assertEqual(cc.TOTAL_MAX_SCORE, 100, "TOTAL_MAX_SCORE 应由权重表导出且为 100")
+
+    def test_docstring_matches_code_weights(self):
+        """真守卫：文件头 docstring 散文声明的权重必须与代码常量逐项相等。"""
+        import re
+
+        cc = _load("chapter_check")
+        declared = [
+            int(x)
+            for x in re.findall(r"^\s*\d+\.\s+.*?[（(](\d+)[)）]", cc.__doc__ or "", re.M)
+        ]
+        self.assertEqual(len(declared), 12, f"docstring 应声明 12 维权重，实得 {declared}")
+        actual = [cc.DIMENSION_WEIGHTS[k] for k in cc.DIMENSION_ORDER]
+        self.assertEqual(
+            declared,
+            actual,
+            "docstring 声明的权重与 DIMENSION_WEIGHTS 不一致：改一处必须同步另一处",
+        )
+
+    def test_check_count_matches_weight_table(self):
+        """checks 维度数必须与权重表同步（防新增维度漏配权重）。"""
+        cc = _load("chapter_check")
+        text = "她走进教室，脚步很轻。" + "这是一段足够长的测试正文。" * 80
+        result = cc.chapter_check(text)
+        self.assertEqual(
+            len(result["details"]),
+            len(cc.DIMENSION_WEIGHTS),
+            "chapter_check 实际维度数与权重表不一致",
+        )
 
     def test_max_score_is_100(self):
         cc = _load("chapter_check")
