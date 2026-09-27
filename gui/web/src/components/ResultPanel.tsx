@@ -130,7 +130,7 @@ export default function ResultPanel() {
       ) : asset && Object.keys(asset).length > 0 ? (
         <Paper
           variant="outlined"
-          sx={{ p: 2, bgcolor: '#f7f7f7', overflow: 'auto' }}
+          sx={{ p: 2, bgcolor: 'background.paper', overflow: 'auto' }}
         >
           <pre
             style={{

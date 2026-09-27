@@ -37,13 +37,13 @@ export default function MarkdownReport({ title, markdown }: MarkdownReportProps)
           '& code': {
             fontFamily: 'monospace',
             fontSize: '0.85em',
-            bgcolor: '#f5f5f5',
+            bgcolor: 'background.paper',
             px: 0.5,
             py: 0.2,
             borderRadius: 0.5,
           },
           '& pre': {
-            bgcolor: '#f5f5f5',
+            bgcolor: 'background.paper',
             p: 1.5,
             borderRadius: 1,
             overflow: 'auto',
@@ -62,7 +62,7 @@ export default function MarkdownReport({ title, markdown }: MarkdownReportProps)
             py: 0.5,
             textAlign: 'left',
           },
-          '& th': { bgcolor: '#fafafa', fontWeight: 600 },
+          '& th': { bgcolor: 'background.paper', fontWeight: 600 },
           '& blockquote': {
             borderLeft: '3px solid #1976d2',
             pl: 1.5,

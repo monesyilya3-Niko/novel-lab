@@ -122,7 +122,7 @@ function InjectPanel() {
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {prompt && (
-        <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto', bgcolor: '#f5f5f5' }}>
+        <Paper sx={{ p: 2, maxHeight: 400, overflow: 'auto', bgcolor: 'background.paper' }}>
           <Typography variant="caption" color="text.secondary">{prompt.length} 字符</Typography>
           <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: 0 }}>{prompt}</pre>
         </Paper>
@@ -269,7 +269,7 @@ function GeneratePanel() {
         入库并打分
       </Button>
       {importResult && (
-        <Paper sx={{ p: 1, mt: 1, bgcolor: '#f5f5f5' }}>
+        <Paper sx={{ p: 1, mt: 1, bgcolor: 'background.paper' }}>
           <pre style={{ fontSize: 12, margin: 0 }}>{importResult}</pre>
         </Paper>
       )}
@@ -407,7 +407,7 @@ function AssemblePanel() {
         </Button>
       </Box>
       {result && (
-        <Paper sx={{ p: 1, bgcolor: '#f5f5f5' }}>
+        <Paper sx={{ p: 1, bgcolor: 'background.paper' }}>
           <pre style={{ fontSize: 12, margin: 0 }}>{result}</pre>
         </Paper>
       )}
