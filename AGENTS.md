@@ -22,7 +22,9 @@
 ### 铁律一：题材隔离
 - 不同题材的资产/配置严格隔离，注入时按题材匹配，**禁止跨题材污染**
 - 执行机制：聚合题材包时 `source_books` 的 genre 必须全部一致，不一致 → `pass5_aggregate.py` 显式断言 + `sys.exit(1)`，禁止静默跳过
-- 执行机制：`craft-card.meta.genre` 必须 ∈ `KNOWN_GENRES` 白名单（`validate.py` 校验）
+- 执行机制：`craft-card.meta.genre` 必须 ∈ `CORE_GENRES`（完整链题材白名单，`validate.py` 校验；warn 级，不阻断拆书但阻断聚合）
+- 执行机制：题材集**不存在人工维护清单**——由 `scripts/genre_registry.py` 扫描 `assets/` 派生（`CORE_GENRES` 完整链 ∪ `PROSE_GENRES` prose 卡 = `KNOWN_GENRES`），磁盘是唯一真相源
+- 执行机制：`genre-prose-card.meta.id` 必须符合 `genre-<slug>` 命名规范，且文件名与之严格对应（`tests/test_genre_registry.py` 双向守卫）
 - 执行机制：桥段库每个 trope 必须标注 `genre_scope`（universal / 题材专属 id）
 
 ### 铁律二：万字报告硬校验
@@ -78,7 +80,7 @@ NOVEL_DIR      = novel-lab/novel/
 
 ### 运行方式
 ```bash
-python run_tests.py          # 全量（基线 911 用例，2026-09-27）
+python run_tests.py          # 全量（基线 930 用例，2026-09-27）
 ```
 
 ### 隔离要求（血泪教训）
@@ -143,7 +145,7 @@ git config core.hooksPath .githooks
 ## 7. 数据真实性红线
 
 - 所有资产/报告数字**以实测磁盘为准**，不得臆造或沿用旧口径
-- 当前实测口径（2026-09-27）：资产 **65** / 报告 **4** / 书 **8**（已拆 6）/ 测试 **911** / API 端点 **65** / 版本 **1.1.2**
+- 当前实测口径（2026-09-27）：资产 **65** / 报告 **4** / 书 **8**（已拆 6）/ 测试 **930** / API 端点 **65** / 版本 **1.1.2**
 - ⚠️ 历史文档中的「17 资产 / 33 测试 / 3 本书 / 68 资产 / 272 测试 / 353/373/648 测试 / 44 端点」等均为**过时或错误口径**
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**
 
