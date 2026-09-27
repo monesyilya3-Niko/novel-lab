@@ -586,8 +586,17 @@ def validate_genre_prose_card(d):
             check_enum(meta.get("upgrade_status"), ("seed", "upgraded"), "meta.upgrade_status")
         prov = meta.get("provenance")
         if prov is None:
-            warn("建议显式声明 provenance 溯源（来源/许可证/是否验证）", "meta.provenance")
+            err("缺少 provenance 溯源：第三方衍生内容必须声明来源/许可证/版权", "meta.provenance")
         elif check_obj(prov, "meta.provenance"):
+            # MIT 归因硬要求（2026-09-27 P0-3）：来源、许可证、版权声明缺一不可。
+            # 原为 warn 级「建议声明」，结果 32 张卡长期无人填写 copyright——
+            # 软约束在归因这类问题上不起作用，必须硬阻断。
+            for k, label in (("source", "来源"), ("license", "许可证"),
+                             ("copyright", "版权声明")):
+                value = prov.get(k)
+                if not isinstance(value, str) or not value.strip():
+                    err(f"provenance.{k} 必须为非空字符串（第三方{label}归因必需）",
+                        f"meta.provenance.{k}")
             if "verified" in prov:
                 check_bool(prov["verified"], "meta.provenance.verified")
                 if prov.get("verified") is not False:
