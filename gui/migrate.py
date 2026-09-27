@@ -223,7 +223,8 @@ def prune_backups(keep: int = BACKUP_KEEP) -> list[Path]:
             pass
     if removed:
         print(f"[migrate] 备份保留策略：清理最旧 {len(removed)} 个备份"
-              f"（保留最近 {keep} 个）: " + ", ".join(p.name for p in removed))
+              f"（保留最近 {keep} 个，目录={parent}）: "
+              + ", ".join(p.name for p in removed))
     return removed
 
 
