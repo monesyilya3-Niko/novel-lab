@@ -11,7 +11,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from gui import config, migrate
+from gui import config, engine_adapter, migrate
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
 
@@ -54,15 +54,11 @@ def distill_genre(genre: str, book_names: list[str] | None = None) -> dict[str, 
         raise ServiceError(f"非法 genre 名: {genre!r}", 400)
 
     # 调用 distill（CRITICAL：必须调 run_distill 而非 distill_genre，后者不写盘）
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
-    import distill as distill_mod
-
+    # 铁律：scripts/ 只经 engine_adapter 触碰。
     # 写盘门禁失败（payload 不合法）抛 ValueError；这是**可诊断的输入问题**，
     # 必须转成 400 可读错误，否则会冒到路由层变成 500，用户只看到「服务器内部错误」。
     try:
-        result = distill_mod.run_distill(genre, book_names=books)
+        result = engine_adapter.distill_run(genre, book_names=books)
     except ValueError as exc:
         raise ServiceError(f"蒸馏写盘门禁失败：{exc}", 400) from exc
     written = result.get("written", [])
@@ -123,10 +119,6 @@ def aggregate_genre(genre: str) -> dict[str, Any]:
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
     genre = genre.strip()
-
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
 
     # 检查书数
     books = []

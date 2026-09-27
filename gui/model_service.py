@@ -1,23 +1,27 @@
 """模型管理服务层：自定义 API/模型的增删改查与测试。
 
 分层边界：只经 ``engine_adapter`` 触碰 scripts/，不直接 import llm_client。
+（铁律：只有 gui/engine_adapter.py 可以 import scripts/）
 """
 from __future__ import annotations
 
+import os
 import re
 from typing import Any
 
-from gui import config
+from gui import engine_adapter
 from gui.services import ServiceError
 
 
-def _get_llm_client():
-    """延迟获取 llm_client 模块（经 engine_adapter 的 sys.path 注入）。"""
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
-    import llm_client
-    return llm_client
+def _model_has_key(secrets: dict[str, Any], model_id: str, model: dict[str, Any]) -> bool:
+    """模型是否有可用密钥：secret store 有值，或 api_key_env 指向的环境变量真实存在。
+
+    注意：只看 ``api_key_env`` 名称不看环境变量是否设置会误报（P1-B2）。
+    """
+    if secrets.get(model_id):
+        return True
+    env_name = model.get("api_key_env")
+    return bool(env_name and os.environ.get(env_name))
 
 
 def _validate_model_id(model_id: str) -> str:
@@ -52,13 +56,12 @@ def _validate_base_url(url: str) -> str:
 
 def list_models() -> dict[str, Any]:
     """列出已配置模型（脱敏展示）。"""
-    llm = _get_llm_client()
-    cfg = llm.load_models()
-    secrets = llm.load_secrets()
+    cfg = engine_adapter.models_load()
+    secrets = engine_adapter.secrets_load()
 
     models = []
     for mid, m in cfg.get("models", {}).items():
-        has_key = bool(secrets.get(mid)) or bool(m.get("api_key_env"))
+        has_key = _model_has_key(secrets, mid, m)
         models.append({
             "id": mid,
             "label": m.get("label", mid),
@@ -82,15 +85,14 @@ def list_models() -> dict[str, Any]:
 def get_model(model_id: str) -> dict[str, Any]:
     """获取单个模型详情（脱敏）。"""
     mid = _validate_model_id(model_id)
-    llm = _get_llm_client()
-    cfg = llm.load_models()
-    secrets = llm.load_secrets()
+    cfg = engine_adapter.models_load()
+    secrets = engine_adapter.secrets_load()
 
     m = cfg.get("models", {}).get(mid)
     if not m:
         raise ServiceError(f"模型不存在: {model_id}", 404)
 
-    has_key = bool(secrets.get(mid)) or bool(m.get("api_key_env"))
+    has_key = _model_has_key(secrets, mid, m)
     return {
         "id": mid,
         "label": m.get("label", mid),
@@ -120,8 +122,7 @@ def add_model(body: dict[str, Any]) -> dict[str, Any]:
     if not model_name:
         raise ServiceError("model_name 不能为空", 400)
 
-    llm = _get_llm_client()
-    cfg = llm.load_models()
+    cfg = engine_adapter.models_load()
 
     if mid in cfg.get("models", {}):
         raise ServiceError(f"模型已存在: {mid}", 409)
@@ -144,14 +145,14 @@ def add_model(body: dict[str, Any]) -> dict[str, Any]:
         model_entry["extra_headers"] = body["extra_headers"]
 
     cfg.setdefault("models", {})[mid] = model_entry
-    llm.save_models(cfg)
+    engine_adapter.models_save(cfg)
 
     # 如果提供了 API key，同时保存到 secrets
     api_key = body.get("api_key", "").strip()
     if api_key:
-        secrets = llm.load_secrets()
+        secrets = engine_adapter.secrets_load()
         secrets[mid] = api_key
-        llm.save_secrets(secrets)
+        engine_adapter.secrets_save(secrets)
 
     return get_model(mid)
 
@@ -162,8 +163,7 @@ def update_model(model_id: str, body: dict[str, Any]) -> dict[str, Any]:
     if not body or not isinstance(body, dict):
         raise ServiceError("请求体必须为 JSON 对象", 400)
 
-    llm = _get_llm_client()
-    cfg = llm.load_models()
+    cfg = engine_adapter.models_load()
 
     if mid not in cfg.get("models", {}):
         raise ServiceError(f"模型不存在: {model_id}", 404)
@@ -200,14 +200,14 @@ def update_model(model_id: str, body: dict[str, Any]) -> dict[str, Any]:
         else:
             m.pop("extra_headers", None)
 
-    llm.save_models(cfg)
+    engine_adapter.models_save(cfg)
 
     # 更新 API key
     api_key = body.get("api_key", "").strip()
     if api_key:
-        secrets = llm.load_secrets()
+        secrets = engine_adapter.secrets_load()
         secrets[mid] = api_key
-        llm.save_secrets(secrets)
+        engine_adapter.secrets_save(secrets)
 
     return get_model(mid)
 
@@ -215,8 +215,7 @@ def update_model(model_id: str, body: dict[str, Any]) -> dict[str, Any]:
 def delete_model(model_id: str) -> dict[str, Any]:
     """删除模型。"""
     mid = _validate_model_id(model_id)
-    llm = _get_llm_client()
-    cfg = llm.load_models()
+    cfg = engine_adapter.models_load()
 
     if mid not in cfg.get("models", {}):
         raise ServiceError(f"模型不存在: {model_id}", 404)
@@ -226,13 +225,13 @@ def delete_model(model_id: str) -> dict[str, Any]:
     for role, bound_id in list(cfg.get("roles", {}).items()):
         if bound_id == mid:
             del cfg["roles"][role]
-    llm.save_models(cfg)
+    engine_adapter.models_save(cfg)
 
     # 清除密钥
-    secrets = llm.load_secrets()
+    secrets = engine_adapter.secrets_load()
     if mid in secrets:
         del secrets[mid]
-        llm.save_secrets(secrets)
+        engine_adapter.secrets_save(secrets)
 
     return {"deleted": mid}
 
@@ -243,14 +242,13 @@ def set_api_key(model_id: str, api_key: str) -> dict[str, Any]:
     if not api_key or not api_key.strip():
         raise ServiceError("api_key 不能为空", 400)
 
-    llm = _get_llm_client()
-    cfg = llm.load_models()
+    cfg = engine_adapter.models_load()
     if mid not in cfg.get("models", {}):
         raise ServiceError(f"模型不存在: {model_id}", 404)
 
-    secrets = llm.load_secrets()
+    secrets = engine_adapter.secrets_load()
     secrets[mid] = api_key.strip()
-    llm.save_secrets(secrets)
+    engine_adapter.secrets_save(secrets)
 
     return {"id": mid, "has_key": True}
 
@@ -258,10 +256,9 @@ def set_api_key(model_id: str, api_key: str) -> dict[str, Any]:
 def test_model(model_id: str) -> dict[str, Any]:
     """测试模型连通性。"""
     mid = _validate_model_id(model_id)
-    llm = _get_llm_client()
 
     try:
-        result = llm.test_model(mid)
+        result = engine_adapter.model_test(mid)
         return {"id": mid, "success": True, "result": result}
     except Exception as e:
         return {"id": mid, "success": False, "error": str(e)}
@@ -269,8 +266,4 @@ def test_model(model_id: str) -> dict[str, Any]:
 
 def get_presets() -> dict[str, Any]:
     """获取内置服务商预设。"""
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
-    import model_config
-    return {"presets": model_config.PRESETS}
+    return engine_adapter.model_presets()

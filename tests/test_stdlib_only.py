@@ -3,10 +3,10 @@
 两层校验（用 sys.stdlib_module_names 作标准库白名单，3.10+）：
 1. 第三方依赖：任何层级（模块级/函数级）出现非标准库、非本仓模块的
    import 即违规——这是本测试的核心保护。
-2. 依赖方向：scripts/ 本仓模块（llm_client/model_config/compliance 等）
-   仅允许**函数级延迟 import**（经 engine_adapter 注入 sys.path 的既有
-   设计，见 gui/model_service.py::get_llm_client），模块级直接 import
-   即违规（gui/engine_adapter.py 是唯一例外）。
+2. 依赖方向（任务书 v2__1.md §4.3.1 架构硬约束）：
+   只有 gui/engine_adapter.py 可以 import scripts/；
+   其他任何 gui 模块不得直接 import——**含函数级延迟 import**。
+   gui 服务层触碰 scripts/ 一律走 engine_adapter 的薄封装。
 
 gui.web 是前端（Vite/React），不受铁律三约束。
 """
@@ -90,7 +90,10 @@ class StdlibOnlyGuard(unittest.TestCase):
                 offenders.append(f"{path.relative_to(ROOT).as_posix()}: import {mod}（第三方）")
         self.assertEqual(offenders, [], "铁律三违规（第三方 import）：\n" + "\n".join(offenders))
 
-    def test_gui_layer_imports_scripts_only_via_engine_adapter_or_lazy(self) -> None:
+    def test_gui_layer_imports_scripts_only_via_engine_adapter(self) -> None:
+        # 全层级扫描：模块级 import 与函数级延迟 import 同样违规。
+        # （曾有盲区：只查模块级，model_service/advanced_service/system_service 的
+        # 函数级直连全部漏网。2026-09-28 收紧。）
         stdlib = set(sys.stdlib_module_names)
         offenders: list[str] = []
         for path in _iter_py_files():
@@ -98,10 +101,10 @@ class StdlibOnlyGuard(unittest.TestCase):
             if not rel.startswith("gui/") or rel == "gui/engine_adapter.py":
                 continue  # 依赖方向约束的是 gui 层；engine_adapter 是唯一例外
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-            for mod in _top_level_names(tree) - stdlib:
+            for mod in _all_imports(tree) - stdlib:
                 if (ROOT / "scripts" / f"{mod}.py").is_file():
-                    offenders.append(f"{rel}: 模块级 import {mod}（应走 engine_adapter 或函数级延迟）")
-        self.assertEqual(offenders, [], "依赖方向违规（gui 层模块级 import scripts/ 模块）：\n" + "\n".join(offenders))
+                    offenders.append(f"{rel}: import {mod}（应走 engine_adapter 薄封装）")
+        self.assertEqual(offenders, [], "依赖方向违规（gui 层 import scripts/ 模块）：\n" + "\n".join(offenders))
 
     def test_scoped_files_actually_covered(self) -> None:
         files = _iter_py_files()

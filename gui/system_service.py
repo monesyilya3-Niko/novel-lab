@@ -16,13 +16,6 @@ from gui.services import ServiceError
 _log = get_logger("system_service")
 
 
-def _ensure_scripts_path() -> None:
-    """确保 scripts/ 在 sys.path 中（幂等）。"""
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
-
-
 # ---------------------------------------------------------------------------
 # 系统状态
 # ---------------------------------------------------------------------------
@@ -129,9 +122,7 @@ def compliance_scan(voice: str | None = None,
                 raise ServiceError(f"读取原文失败: {exc}", 400) from exc
 
         # 调用 compliance.scan_asset（需要 ngram 索引）
-        _ensure_scripts_path()
-        import compliance as compliance_mod
-
+        # 铁律：scripts/ 只经 engine_adapter 触碰。
         ngram = set()
         if book_text:
             WINDOW = 12
@@ -139,7 +130,7 @@ def compliance_scan(voice: str | None = None,
             for i in range(len(compact) - WINDOW + 1):
                 ngram.add(compact[i:i + WINDOW])
 
-        errors, warns = compliance_mod.scan_asset(asset, ngram)
+        errors, warns = engine_adapter.compliance_scan_asset(asset, ngram)
         results.append({
             "name": name,
             "errors": errors,
@@ -148,16 +139,13 @@ def compliance_scan(voice: str | None = None,
         })
     else:
         # 全量扫描（不带原文，只做字段级检查）
-        _ensure_scripts_path()
-        import compliance as compliance_mod
-
         for fp in sorted(config.ASSETS_ROOT.glob("*.json")):
             try:
                 asset = json.loads(fp.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
                 _log.warning(f"合规扫描跳过无法解析的资产 {fp.name}: {exc}")
                 continue
-            errors, warns = compliance_mod.scan_asset(asset, set())
+            errors, warns = engine_adapter.compliance_scan_asset(asset, set())
             results.append({
                 "name": fp.stem,
                 "errors": errors,

@@ -85,6 +85,33 @@ def _get_consistency():
     return _consistency
 
 
+# 延迟 import：model_config / distill / compliance（gui 服务层经本模块触碰）。
+_model_config = None
+_distill = None
+_compliance = None
+
+
+def _get_model_config():
+    global _model_config
+    if _model_config is None:
+        import model_config as _model_config  # type: ignore
+    return _model_config
+
+
+def _get_distill():
+    global _distill
+    if _distill is None:
+        import distill as _distill  # type: ignore
+    return _distill
+
+
+def _get_compliance():
+    global _compliance
+    if _compliance is None:
+        import compliance as _compliance  # type: ignore
+    return _compliance
+
+
 # ---------------------------------------------------------------------------
 # 章切分（复用 sampler）
 # ---------------------------------------------------------------------------
@@ -441,6 +468,51 @@ def llm_chat(user: str, system: str, task: str = "writing", max_tokens: int = 60
     return _get_llm_client().chat(user=user, system=system, task=task,
                                   max_tokens=max_tokens, temperature=temperature,
                                   json_mode=json_mode)
+
+
+# ---------------------------------------------------------------------------
+# 模型管理 / 蒸馏 / 合规（gui 服务层经此触碰 scripts/）
+# 铁律：只有本模块可以直接 import scripts/；其他 gui 模块一律走这里。
+# ---------------------------------------------------------------------------
+
+def models_load() -> dict[str, Any]:
+    """读取模型配置（复用 llm_client.load_models）。供 model_service。"""
+    return _get_llm_client().load_models()
+
+
+def models_save(cfg: dict[str, Any]) -> None:
+    """保存模型配置（复用 llm_client.save_models）。供 model_service。"""
+    _get_llm_client().save_models(cfg)
+
+
+def secrets_load() -> dict[str, Any]:
+    """读取模型密钥（复用 llm_client.load_secrets）。供 model_service。"""
+    return _get_llm_client().load_secrets()
+
+
+def secrets_save(secrets: dict[str, Any]) -> None:
+    """保存模型密钥（复用 llm_client.save_secrets）。供 model_service。"""
+    _get_llm_client().save_secrets(secrets)
+
+
+def model_test(model_id: str) -> dict[str, Any]:
+    """模型连通性测试（复用 llm_client.test_model）。供 model_service。"""
+    return _get_llm_client().test_model(model_id)
+
+
+def model_presets() -> dict[str, Any]:
+    """内置服务商预设（复用 model_config.PRESETS）。供 model_service。"""
+    return {"presets": _get_model_config().PRESETS}
+
+
+def distill_run(genre: str, book_names: list[str] | None = None) -> dict[str, Any]:
+    """题材蒸馏（复用 distill.run_distill）。供 advanced_service。"""
+    return _get_distill().run_distill(genre, book_names=book_names)
+
+
+def compliance_scan_asset(asset: dict[str, Any], ngram: set) -> tuple:
+    """合规扫描单个资产（复用 compliance.scan_asset）。供 system_service。"""
+    return _get_compliance().scan_asset(asset, ngram)
 
 
 def ensure_novel_structure(novel_dir: str, name: str = "新书") -> Path:
