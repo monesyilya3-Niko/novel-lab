@@ -10,7 +10,7 @@ import re
 import threading
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, engine_adapter, migrate
 from gui.logging_setup import get_logger
@@ -21,7 +21,7 @@ _log = get_logger("writing_service")
 # ---------------------------------------------------------------------------
 # 任务注册表（进程内，不落库）
 # ---------------------------------------------------------------------------
-_WRITING_TASKS: Dict[str, Dict[str, Any]] = {}
+_WRITING_TASKS: dict[str, dict[str, Any]] = {}
 _WRITING_LOCK = threading.Lock()
 
 _ACTIVE_STATUSES = frozenset({"pending", "running", "scoring", "rewriting"})
@@ -58,7 +58,7 @@ def _sanitize_project(project: str) -> str:
     return p
 
 
-def _load_asset_json(ref: str) -> Dict[str, Any]:
+def _load_asset_json(ref: str) -> dict[str, Any]:
     """把 '<kind>:<id>' 资产引用解析为 JSON dict。CRITICAL：防路径穿越。"""
     if not ref or ":" not in ref:
         raise ServiceError(f"非法资产引用: {ref!r}", 400)
@@ -79,7 +79,7 @@ def _load_asset_json(ref: str) -> Dict[str, Any]:
         raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
 
-def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
+def _load_asset_of_kind(ref: str, expected: str) -> dict[str, Any]:
     """加载资产引用并按**内容契约**校验 kind。
 
     文件名不保证与内容一致（蒸馏卡历史上落成 ``*-voice-card-distilled.json``），
@@ -95,13 +95,13 @@ def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
 # 同步能力
 # ---------------------------------------------------------------------------
 
-def list_projects() -> List[Dict[str, Any]]:
+def list_projects() -> list[dict[str, Any]]:
     """枚举 NOVEL_DIR 下项目；始终追加只读项目 default（D1）。
 
     2026-09-18 修复：此前仅当 ``novel/`` 目录已存在时才返回 default，
     全新环境 GUI 写作台项目列表为空。契约要求 default **恒在**（只读）。
     """
-    projects: List[Dict[str, Any]] = []
+    projects: list[dict[str, Any]] = []
     nd = config.NOVEL_DIR
     try:
         nd.mkdir(parents=True, exist_ok=True)
@@ -123,11 +123,11 @@ def list_projects() -> List[Dict[str, Any]]:
     return projects
 
 
-def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str] = None,
-           genre_pack: Optional[str] = None, craft: Optional[str] = None,
-           distilled: Optional[str] = None, prose_card: Optional[str] = None,
-           context_intent: Optional[str] = None, tracking_state: Optional[str] = None,
-           save: bool = False) -> Dict[str, Any]:
+def inject(voice: str, structure: str | None = None, commercial: str | None = None,
+           genre_pack: str | None = None, craft: str | None = None,
+           distilled: str | None = None, prose_card: str | None = None,
+           context_intent: str | None = None, tracking_state: str | None = None,
+           save: bool = False) -> dict[str, Any]:
     """资产 → 写作 system prompt。
 
     每个资产参数只接受对应 kind 的内容：distilled 必须走 ``distilled`` 参数
@@ -181,8 +181,8 @@ def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str
     }
 
 
-def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = None,
-          label: str = "", genre_pack: Optional[str] = None) -> Dict[str, Any]:
+def score(voice: str, text: str | None = None, chapter_path: str | None = None,
+          label: str = "", genre_pack: str | None = None) -> dict[str, Any]:
     """双维度打分：一致性五维 + 章节质量十二维。"""
     if not text and not chapter_path:
         raise ServiceError("需要 text 或 chapter_path", 400)
@@ -235,7 +235,7 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
     }
 
 
-def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
+def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
     """组装 pass1-5 → 4 类资产入库。genre 必填（D7）。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空（铁律一：题材隔离）", 400)
@@ -249,7 +249,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if not raw_dir.is_dir():
         raise ServiceError(f"pass 输出目录不存在: {raw_dir}", 404)
 
-    def _load_pass(fname: str) -> Optional[Dict[str, Any]]:
+    def _load_pass(fname: str) -> dict[str, Any] | None:
         fp = raw_dir / fname
         if not fp.is_file():
             return None
@@ -275,7 +275,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
         except (json.JSONDecodeError, OSError) as exc:
             _log.warning(f"量化指标加载失败，注入提示将不含统计画像 {metrics_fp.name}: {exc}")
 
-    written: List[str] = []
+    written: list[str] = []
 
     # voice-card
     if pass2 and pass3:
@@ -316,7 +316,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     return {"name": name, "genre": genre, "written": written}
 
 
-def assemble_candidates() -> List[Dict[str, Any]]:
+def assemble_candidates() -> list[dict[str, Any]]:
     """列出 corpus/raw/ 下可组装的书（有 pass1 即可组装）。"""
     raw_root = config.CORPUS_DIR / "raw"
     candidates = []
@@ -333,10 +333,10 @@ def assemble_candidates() -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 def generate(voice: str, project: str, chapter_no: int, task: str,
-             novel_name: Optional[str] = None, prompt: Optional[str] = None,
-             genre_pack: Optional[str] = None, words: int = 2400,
-             target_score: int = 90, quality_target: Optional[int] = None,
-             save_prompt: bool = False) -> Dict[str, Any]:
+             novel_name: str | None = None, prompt: str | None = None,
+             genre_pack: str | None = None, words: int = 2400,
+             target_score: int = 90, quality_target: int | None = None,
+             save_prompt: bool = False) -> dict[str, Any]:
     """开始写作任务。无模型时同步返回降级指引；有模型时后台线程跑改写循环。"""
     project = _sanitize_project(project)
     if chapter_no < 1:
@@ -415,7 +415,7 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
     return {"task_id": task_id, "status": "running", "mode": "llm", "chapter_no": chapter_no}
 
 
-def task_state(task_id: str) -> Dict[str, Any]:
+def task_state(task_id: str) -> dict[str, Any]:
     """查询写作任务状态。"""
     import copy
     with _WRITING_LOCK:
@@ -427,8 +427,8 @@ def task_state(task_id: str) -> Dict[str, Any]:
 
 
 def import_chapter(project: str, chapter_no: int, content: str,
-                   novel_name: Optional[str] = None, voice: Optional[str] = None,
-                   genre_pack: Optional[str] = None) -> Dict[str, Any]:
+                   novel_name: str | None = None, voice: str | None = None,
+                   genre_pack: str | None = None) -> dict[str, Any]:
     """手动入库：用户贴回会话内写好的正文 → 落盘 + 双维度打分。"""
     project = _sanitize_project(project)
     if chapter_no < 1:
@@ -445,7 +445,7 @@ def import_chapter(project: str, chapter_no: int, content: str,
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
     chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
         "chapter_no": chapter_no, "char_count": len(content),
     }
@@ -463,7 +463,7 @@ def import_chapter(project: str, chapter_no: int, content: str,
     return result
 
 
-def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> None:
+def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> None:
     """后台线程：初稿 + 最多 2 轮改写循环。"""
     from gui import sse
 
@@ -567,9 +567,9 @@ def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> Non
         })
 
 
-def _build_rewrite_user(prev_user: str, req: Dict, score: float, target: int,
-                        details: List[str], quality_issues: List[str],
-                        voice_data: Dict, content: str) -> str:
+def _build_rewrite_user(prev_user: str, req: dict, score: float, target: int,
+                        details: list[str], quality_issues: list[str],
+                        voice_data: dict, content: str) -> str:
     """构建改写指令：指出扣分点，要求重写。"""
     problems = []
     for d in details[:8]:
@@ -591,7 +591,7 @@ def _build_rewrite_user(prev_user: str, req: Dict, score: float, target: int,
     )
 
 
-def _build_degrade_guide(req: Dict, prompt: str, chapter_path: Path, pass_line: int) -> str:
+def _build_degrade_guide(req: dict, prompt: str, chapter_path: Path, pass_line: int) -> str:
     """组装无模型降级指引 Markdown。"""
     return (
         f"# 内置智能接管写作任务（无外部模型模式）\n\n"

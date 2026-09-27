@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict
+from typing import Any
 
 from gui import config
 from gui.services import ServiceError
@@ -50,7 +50,7 @@ def _validate_base_url(url: str) -> str:
     return url.rstrip("/")
 
 
-def list_models() -> Dict[str, Any]:
+def list_models() -> dict[str, Any]:
     """列出已配置模型（脱敏展示）。"""
     llm = _get_llm_client()
     cfg = llm.load_models()
@@ -79,7 +79,7 @@ def list_models() -> Dict[str, Any]:
     }
 
 
-def get_model(model_id: str) -> Dict[str, Any]:
+def get_model(model_id: str) -> dict[str, Any]:
     """获取单个模型详情（脱敏）。"""
     mid = _validate_model_id(model_id)
     llm = _get_llm_client()
@@ -108,7 +108,7 @@ def get_model(model_id: str) -> Dict[str, Any]:
     }
 
 
-def add_model(body: Dict[str, Any]) -> Dict[str, Any]:
+def add_model(body: dict[str, Any]) -> dict[str, Any]:
     """添加新模型。"""
     if not body or not isinstance(body, dict):
         raise ServiceError("请求体必须为 JSON 对象", 400)
@@ -126,7 +126,7 @@ def add_model(body: Dict[str, Any]) -> Dict[str, Any]:
     if mid in cfg.get("models", {}):
         raise ServiceError(f"模型已存在: {mid}", 409)
 
-    model_entry: Dict[str, Any] = {
+    model_entry: dict[str, Any] = {
         "label": body.get("label", mid),
         "protocol": protocol,
         "base_url": base_url,
@@ -156,7 +156,7 @@ def add_model(body: Dict[str, Any]) -> Dict[str, Any]:
     return get_model(mid)
 
 
-def update_model(model_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+def update_model(model_id: str, body: dict[str, Any]) -> dict[str, Any]:
     """更新模型配置。"""
     mid = _validate_model_id(model_id)
     if not body or not isinstance(body, dict):
@@ -212,7 +212,7 @@ def update_model(model_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
     return get_model(mid)
 
 
-def delete_model(model_id: str) -> Dict[str, Any]:
+def delete_model(model_id: str) -> dict[str, Any]:
     """删除模型。"""
     mid = _validate_model_id(model_id)
     llm = _get_llm_client()
@@ -237,7 +237,7 @@ def delete_model(model_id: str) -> Dict[str, Any]:
     return {"deleted": mid}
 
 
-def set_api_key(model_id: str, api_key: str) -> Dict[str, Any]:
+def set_api_key(model_id: str, api_key: str) -> dict[str, Any]:
     """设置/更新 API Key。"""
     mid = _validate_model_id(model_id)
     if not api_key or not api_key.strip():
@@ -255,7 +255,7 @@ def set_api_key(model_id: str, api_key: str) -> Dict[str, Any]:
     return {"id": mid, "has_key": True}
 
 
-def test_model(model_id: str) -> Dict[str, Any]:
+def test_model(model_id: str) -> dict[str, Any]:
     """测试模型连通性。"""
     mid = _validate_model_id(model_id)
     llm = _get_llm_client()
@@ -267,7 +267,7 @@ def test_model(model_id: str) -> Dict[str, Any]:
         return {"id": mid, "success": False, "error": str(e)}
 
 
-def get_presets() -> Dict[str, Any]:
+def get_presets() -> dict[str, Any]:
     """获取内置服务商预设。"""
     import sys
     if str(config.SCRIPTS_DIR) not in sys.path:

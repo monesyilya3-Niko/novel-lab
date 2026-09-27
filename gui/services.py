@@ -9,7 +9,7 @@ import json
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import asset_index, config, db, engine_adapter, state_store
 from gui.logging_setup import get_logger
@@ -53,7 +53,7 @@ _KIND_HINTS = {
 }
 
 
-def detect_asset_kind(data: Any) -> Optional[str]:
+def detect_asset_kind(data: Any) -> str | None:
     """按**内容**识别资产 kind（不接触磁盘）；无法自证的返回 None。
 
     Returns:
@@ -105,10 +105,10 @@ def assert_asset_kind(data: Any, expected: str, ref: str) -> None:
 # ---------------------------------------------------------------------------
 
 # 已导入书籍：book_id -> {title, source_path, chapters:[(title, body)], metrics}
-_BOOKS: Dict[str, Dict[str, Any]] = {}
+_BOOKS: dict[str, dict[str, Any]] = {}
 
 # 分析运行时：book_id -> 分析上下文（线程 + 控制标志）
-_runtime: Dict[str, Dict[str, Any]] = {}
+_runtime: dict[str, dict[str, Any]] = {}
 _runtime_lock = threading.Lock()
 
 
@@ -120,7 +120,7 @@ def _books_dir() -> Path:
 # 导入
 # ---------------------------------------------------------------------------
 
-def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
+def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     """读 txt → 切章 → 切批 → 生成 book_id → 建状态文件 → 返回 Book。
 
     返回的 Book 章节列表只含批次元信息（不含正文），正文按需由 chapter 接口返回。
@@ -150,7 +150,7 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
     book_id = state_store.book_id_from_title(title, str(src))
 
     # 计算每章批次（只存元信息；正文不入响应，按需由 chapter 接口返回）。
-    chapters_meta: List[Dict[str, Any]] = []
+    chapters_meta: list[dict[str, Any]] = []
     for i, (ctitle, cbody) in enumerate(chapters_raw, start=1):
         batches = engine_adapter.split_batches(cbody, bs)
         chapters_meta.append({
@@ -190,7 +190,7 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
     }
 
 
-def get_book(book_id: str) -> Dict[str, Any]:
+def get_book(book_id: str) -> dict[str, Any]:
     """返回 Book 摘要（章节 + 批元信息，不含正文全文）。"""
     book = _get_book_or_raise(book_id)
     chapters_meta = _chapters_meta(book_id, book)
@@ -203,7 +203,7 @@ def get_book(book_id: str) -> Dict[str, Any]:
     }
 
 
-def get_chapter(book_id: str, idx: int) -> Dict[str, Any]:
+def get_chapter(book_id: str, idx: int) -> dict[str, Any]:
     """返回单章（含全文 + 批切分结果）。"""
     book = _get_book_or_raise(book_id)
     chapters = book["chapters"]
@@ -220,7 +220,7 @@ def get_chapter(book_id: str, idx: int) -> Dict[str, Any]:
     }
 
 
-def split_chapter_batches(book_id: str, idx: int, batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+def split_chapter_batches(book_id: str, idx: int, batch_size: int | None = None) -> list[dict[str, Any]]:
     """切批薄封装，可配置 batch_size。"""
     book = _get_book_or_raise(book_id)
     chapters = book["chapters"]
@@ -239,14 +239,14 @@ def split_chapter_batches(book_id: str, idx: int, batch_size: Optional[int] = No
     } for b in batches]
 
 
-def _get_book_or_raise(book_id: str) -> Dict[str, Any]:
+def _get_book_or_raise(book_id: str) -> dict[str, Any]:
     book = _BOOKS.get(book_id)
     if book is None:
         raise ServiceError(f"书籍 {book_id} 未导入（请先 import）", 404)
     return book
 
 
-def _chapters_meta(book_id: str, book: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _chapters_meta(book_id: str, book: dict[str, Any]) -> list[dict[str, Any]]:
     """构造章节元信息（批数 + 状态，从状态文件同步状态）。"""
     state = state_store.load_state(book_id)
     chapter_states = state.get("chapter_states", {})
@@ -278,8 +278,8 @@ def _chapters_meta(book_id: str, book: Dict[str, Any]) -> List[Dict[str, Any]]:
 # 分析执行（串行：章→批→pass）
 # ---------------------------------------------------------------------------
 
-def start_analysis(book_id: str, genre: str, model_id: Optional[str] = None,
-                   batch_size: Optional[int] = None) -> Dict[str, Any]:
+def start_analysis(book_id: str, genre: str, model_id: str | None = None,
+                   batch_size: int | None = None) -> dict[str, Any]:
     """开始/重启分析。串行跑，后台线程执行，SSE 推送进度。"""
     book = _get_book_or_raise(book_id)
     if not engine_adapter.any_model_configured():
@@ -326,7 +326,7 @@ def start_analysis(book_id: str, genre: str, model_id: Optional[str] = None,
     return {"task_id": book_id, "cursor": cursor, "status": "running"}
 
 
-def _run_analysis(book_id: str, genre: str, model_id: Optional[str], batch_size: int, ctx: Dict[str, Any]) -> None:
+def _run_analysis(book_id: str, genre: str, model_id: str | None, batch_size: int, ctx: dict[str, Any]) -> None:
     """后台串行分析主循环。"""
     book = _BOOKS.get(book_id)
     if book is None:
@@ -408,13 +408,13 @@ def _run_analysis(book_id: str, genre: str, model_id: Optional[str], batch_size:
         state_store.save_state(state)
 
 
-def _wait_if_paused(ctx: Dict[str, Any]) -> None:
+def _wait_if_paused(ctx: dict[str, Any]) -> None:
     """暂停时阻塞，直到 resume 或 stop。"""
     while ctx["paused"].is_set() and not ctx["stop_flag"].is_set():
         time.sleep(0.2)
 
 
-def _publish(book_id: str, ci: int, bi: int, status: str, done: int, total: int, ctx: Dict[str, Any]) -> None:
+def _publish(book_id: str, ci: int, bi: int, status: str, done: int, total: int, ctx: dict[str, Any]) -> None:
     broker.publish({
         "book_id": book_id,
         "cursor": state_store.batch_id(ci, bi),
@@ -426,7 +426,7 @@ def _publish(book_id: str, ci: int, bi: int, status: str, done: int, total: int,
     })
 
 
-def _count_total_batches(chapters: List[Any], batch_size: int) -> int:
+def _count_total_batches(chapters: list[Any], batch_size: int) -> int:
     total = 0
     for _, cbody in chapters:
         total += len(engine_adapter.split_batches(cbody, batch_size))
@@ -437,7 +437,7 @@ def _count_total_batches(chapters: List[Any], batch_size: int) -> int:
 # 暂停 / 续传 / 重试
 # ---------------------------------------------------------------------------
 
-def pause(book_id: str) -> Dict[str, Any]:
+def pause(book_id: str) -> dict[str, Any]:
     """暂停（当前批完成后停）。"""
     ctx = _runtime.get(book_id)
     if ctx is None:
@@ -449,7 +449,7 @@ def pause(book_id: str) -> Dict[str, Any]:
     return {"cursor": state.get("cursor", "")}
 
 
-def resume(book_id: str, genre: Optional[str] = None, model_id: Optional[str] = None) -> Dict[str, Any]:
+def resume(book_id: str, genre: str | None = None, model_id: str | None = None) -> dict[str, Any]:
     """从中断批续传（跳过已 success 批，幂等）。"""
     book = _get_book_or_raise(book_id)
     ctx = _runtime.get(book_id)
@@ -467,7 +467,7 @@ def resume(book_id: str, genre: Optional[str] = None, model_id: Optional[str] = 
     return start_analysis(book_id, g, mid, bs)
 
 
-def retry_failed(book_id: str) -> Dict[str, Any]:
+def retry_failed(book_id: str) -> dict[str, Any]:
     """重试所有失败批（P1）。把失败批状态重置为 pending，再触发续传。"""
     state = state_store.load_state(book_id)
     failed = [k for k, v in state.get("chapter_states", {}).items() if v.get("status") == "failed"]
@@ -488,7 +488,7 @@ def retry_failed(book_id: str) -> Dict[str, Any]:
 # 状态查询
 # ---------------------------------------------------------------------------
 
-def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str) -> Dict[str, Any]:
+def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str) -> dict[str, Any]:
     """读取某批某个 pass 的资产 JSON 内容。
 
     pass_name 允许传入任意值，但会做白名单校验以防路径穿越；
@@ -507,7 +507,7 @@ def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str
         return {}
 
 
-def get_status(book_id: Optional[str] = None) -> Dict[str, Any]:
+def get_status(book_id: str | None = None) -> dict[str, Any]:
     """返回 TaskState（含 cursor + chapter_states）。
 
     优先从 ``state_store.load_task``（SQLite 权威 + JSON 降级）读取，保证进程重启后
@@ -540,7 +540,7 @@ def get_status(book_id: Optional[str] = None) -> Dict[str, Any]:
 # 阶段一：概览 / 资产 / 报告 / 拆书结果 / 一键分析
 # ---------------------------------------------------------------------------
 
-def get_overview() -> Dict[str, Any]:
+def get_overview() -> dict[str, Any]:
     """首页概览聚合：SQL 聚合计数 + 已拆书本数 + 模型状态。"""
     ov = asset_index.index.get_overview()
     # 「已拆 N 本」来自 SQLite books 表（status='done'）优先，回退 gui_state 目录。
@@ -554,8 +554,8 @@ def get_overview() -> Dict[str, Any]:
     return ov
 
 
-def list_assets(kind: Optional[str] = None, genre: Optional[str] = None,
-                book_id: Optional[str] = None, offset: int = 0, limit: int = 50) -> Dict[str, Any]:
+def list_assets(kind: str | None = None, genre: str | None = None,
+                book_id: str | None = None, offset: int = 0, limit: int = 50) -> dict[str, Any]:
     """资产清单分页（kind/genre/book_id 可选组合筛选）。"""
     try:
         return asset_index.index.list_assets(kind, genre, book_id, offset, limit)
@@ -563,7 +563,7 @@ def list_assets(kind: Optional[str] = None, genre: Optional[str] = None,
         raise ServiceError(str(exc), 400) from exc
 
 
-def get_asset_detail(kind: str, asset_id: str) -> Dict[str, Any]:
+def get_asset_detail(kind: str, asset_id: str) -> dict[str, Any]:
     """资产详情（只读，白名单校验）。"""
     try:
         return asset_index.index.get_asset_detail(kind, asset_id)
@@ -573,7 +573,7 @@ def get_asset_detail(kind: str, asset_id: str) -> Dict[str, Any]:
         raise ServiceError(str(exc), 404) from exc
 
 
-def list_reports() -> List[Dict[str, Any]]:
+def list_reports() -> list[dict[str, Any]]:
     """报告清单（拆书报告 + 笔法分析），优先 SQLite，空则回退扫描。"""
     rows = db.list_reports()
     if rows:
@@ -603,7 +603,7 @@ def list_reports() -> List[Dict[str, Any]]:
     return out
 
 
-def get_stats() -> Dict[str, Any]:
+def get_stats() -> dict[str, Any]:
     """关系统计（P1）：书→资产/报告计数、题材→卡片计数、kind 分布。
 
     返回结构：
@@ -656,7 +656,7 @@ def get_stats() -> Dict[str, Any]:
     return {"books": book_stats, "genres": genres, "by_kind": by_kind, "totals": totals}
 
 
-def get_report(report_id: str) -> Dict[str, Any]:
+def get_report(report_id: str) -> dict[str, Any]:
     """报告 Markdown 原文（前端 react-markdown 渲染）。"""
     # report_id 形如 ``report:<name>``。
     try:
@@ -666,7 +666,7 @@ def get_report(report_id: str) -> Dict[str, Any]:
     return {"id": report_id, "name": detail["name"], "markdown": detail["markdown"]}
 
 
-def _load_assembled_card(book_id: str, card_type: str) -> Dict[str, Any]:
+def _load_assembled_card(book_id: str, card_type: str) -> dict[str, Any]:
     """从 assets/{book_id}/ 或 assets/ 根目录定位**单书基础组装卡**。
 
     阶段一沿用旧 DESIGN A6：整书跑完统一组装，命名 ``{book_id}-{card_type}.json``，
@@ -697,7 +697,7 @@ def _load_assembled_card(book_id: str, card_type: str) -> Dict[str, Any]:
     return {}
 
 
-def get_book_results(book_id: str) -> Dict[str, Any]:
+def get_book_results(book_id: str) -> dict[str, Any]:
     """某书拆书结构化结果（组装卡 + 章节打分 + 报告关联）。
 
     阶段一：voice-card/structure/commercial 缺失时降级返回批级 pass 原始 JSON 聚合
@@ -728,18 +728,18 @@ def get_book_results(book_id: str) -> Dict[str, Any]:
     }
 
 
-def _collect_chapter_scores(book_id: str, voice: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _collect_chapter_scores(book_id: str, voice: dict[str, Any]) -> list[dict[str, Any]]:
     """章节打分（阶段一尽力而为）。
 
     若组装卡含一致性相关分数则提取；否则扫描批级 pass 结果 JSON，尝试读取内嵌的
     一致性/质量分。阶段一通常返回空列表（打分属阶段二）。
     """
-    scores: List[Dict[str, Any]] = []
+    scores: list[dict[str, Any]] = []
     assets_dir = config.ASSETS_ROOT / book_id
     if not assets_dir.is_dir():
         return scores
     # 扫描批级 pass JSON，按章节聚合（尽力而为提取 quality/consistency 字段）。
-    seen: Dict[int, Dict[str, Any]] = {}
+    seen: dict[int, dict[str, Any]] = {}
     for fp in sorted(assets_dir.glob("c*-b*-pass*.json")):
         # 文件名形如 c{ch}-b{bi}-{pass}.json。
         stem = fp.stem  # e.g. c3-b2-pass1_structure
@@ -770,12 +770,12 @@ def _collect_chapter_scores(book_id: str, voice: Dict[str, Any]) -> List[Dict[st
     return scores
 
 
-def get_book_scores(book_id: str) -> List[Dict[str, Any]]:
+def get_book_scores(book_id: str) -> list[dict[str, Any]]:
     """章节打分数据（供章节打分对比图）。"""
     return get_book_results(book_id)["chapter_scores"]
 
 
-def run_full_analysis(book_id: str, genre: str, model_id: Optional[str] = None) -> Dict[str, Any]:
+def run_full_analysis(book_id: str, genre: str, model_id: str | None = None) -> dict[str, Any]:
     """一键「分析」：拆书 + 拆书报告 + 笔法报告串联。
 
     拆书阶段复用现有 ``start_analysis``（后台线程 + SSE）；报告阶段在拆书线程
@@ -794,7 +794,7 @@ def run_full_analysis(book_id: str, genre: str, model_id: Optional[str] = None) 
     return result
 
 
-def _schedule_report_generation(book_id: str, book: Dict[str, Any]) -> None:
+def _schedule_report_generation(book_id: str, book: dict[str, Any]) -> None:
     """拆书线程完成后回调生成两份报告（拆书报告 + 笔法分析，尽力而为）。
 
     用独立守护线程轮询拆书状态，done 后调用 ``_generate_reports``。不阻塞
@@ -818,7 +818,7 @@ def _schedule_report_generation(book_id: str, book: Dict[str, Any]) -> None:
     threading.Thread(target=_watch, daemon=True, name=f"report-{book_id}").start()
 
 
-def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
+def _generate_reports(book_id: str, book: dict[str, Any]) -> None:
     """组装拆书报告 + 笔法报告，**校验通过后**写 reports/{book_id}-*.md，并 invalidate 资产索引。
 
     尽力而为（DESIGN §8 D3）：craft-card 缺失时笔法报告留空并在结果提示，不阻断。

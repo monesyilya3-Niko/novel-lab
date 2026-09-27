@@ -19,11 +19,11 @@
 - **`dist/` 换行符假脏**：`git status` 长期挂着十余个实质为空的「已修改」（`git diff` 实测为空），既污染变更视图，也威胁 CI 的 dist freshness 门禁。`.gitattributes` 补 `gui/web/dist/** -text`，并补 `gui/web/index.html text eol=lf`——后者才是根因：产物换行风格继承自源模板，只给产物打补丁治不好。验证：完整 `vite build` 后 `git status --porcelain` 仅剩 `.gitattributes` 自身。
 
 ### Changed
-- **ruff 规则集 `["E4","E7","E9","F"]` → `["E4","E7","E9","F","I","C4","B"]`**：按「存量体量 × 缺陷相关性」分两批启用，每批都由全量测试证明无行为变化。启用 `I` 前专门用 `--diff` 核验重排不会越过 `sys.path` 引导块（本项目 ignore `E402` 正因依赖该引导顺序，此类故障静态检查发现不了）。`B023` 的 4 处经核验**当前不是 bug**（闭包每轮立即调用、未逃逸出循环），选择重构为模块级函数消除隐患而非 `# noqa` 压制；`zip` 的 7 处按语义分 `strict=True`（5，等长即应报错）与 `strict=False`（2，`zip(xs, xs[1:])` 天然差一），未一刀切。
+- **ruff 规则集 `["E4","E7","E9","F"]` → `["E4","E7","E9","F","I","C4","B","UP"]`**：按「存量体量 × 缺陷相关性」分三批启用（`I`+`C4` / `B` / `UP`），每批都由全量测试证明无行为变化。启用 `I` 前专门用 `--diff` 核验重排不会越过 `sys.path` 引导块（本项目 ignore `E402` 正因依赖该引导顺序，此类故障静态检查发现不了）。`B023` 的 4 处经核验**当前不是 bug**（闭包每轮立即调用、未逃逸出循环），选择重构为模块级函数消除隐患而非 `# noqa` 压制；`zip` 的 7 处按语义分 `strict=True`（5，等长即应报错）与 `strict=False`（2，`zip(xs, xs[1:])` 天然差一），未一刀切。
+- **`UP`（pyupgrade）1036 处存量落地**（第三批，独立提交以便整体回滚）：984 处安全自动修复 + 52 处 `UP035` 收敛，实测 `+644/−649`。此处有一条不看就会踩的耦合——`UP006`/`UP045` 把注解迁到内置容器后，原 `from typing import Dict, List, Tuple` 全部成为未使用导入，而本仓库 `select` 早已含 `F`（`F401`），**只应用 `UP` 而不同步清理导入会让门禁当场报 52+ 处失败**；`UP035`（deprecated-import）自身标记为不可自动修复，实为靠 `F401` 删除失效导入后自然归零，无需手写迁移。运行时安全性另有论证而非仅凭测试转绿：`target-version=py310` 使 PEP 604 的 `X | None` 在运行时即可求值，故未加 `from __future__ import annotations` 的文件也不会炸，CI 矩阵 3.11/3.12/3.13 全部 ≥3.10。75 处 `F401` 删除逐个核过范围：被改写的 29 行导入全为 `from typing import ...` 形态，无任何 `from gui.xxx import` 项目内 re-export 被动过——那是唯一可能悄悄破坏外部调用方的类别。
 - `AGENTS.md` 记录题材注册表派生机制、第三方归因登记约定，测试基线同步至 951。
 
 ### Known Issues（本轮未做，已定性排序）
-- `UP`（pyupgrade）存量 **1036 处**，其中 `UP006`+`UP045` 共 968 处是 `List→list` / `Optional[X]→X|None` 的纯注解现代化。收益是风格统一，代价是几乎每个文件都改，**须独立提交**以便整体回滚，故不混入本轮。
 - `SIM`(56) / `RET`(12) 以风格为主，暂缓；`PTH`(49) 判定**不启用**：`os.path` 属正当用法，纯风格迁移只制造 diff 噪音。
 - 前端审计项「移除 console.log」经实测**不成立**：`gui/web/src` 下仅 3 处 `console.*`，两处是 SSE 帧解析失败的诊断告警、一处是 `ErrorBoundary.componentDidCatch` 的标准写法，删掉会让故障静默，故保留。
 - `provenance.verified` 维持 `false`：其语义是**内容级**核验，许可证已核验不等于内容已核验。

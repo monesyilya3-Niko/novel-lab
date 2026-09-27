@@ -15,7 +15,7 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
 from gui import auto_backup, config, db, router
@@ -190,7 +190,7 @@ class _Handler(BaseHTTPRequestHandler):
         task_type = query.get("task_type")
         q: queue.Queue = broker.subscribe()
         try:
-            self.wfile.write(f"data: {json.dumps({'status': 'connected', 'book_id': book_id, 'task_id': task_id}, ensure_ascii=False)}\n\n".encode("utf-8"))
+            self.wfile.write(f"data: {json.dumps({'status': 'connected', 'book_id': book_id, 'task_id': task_id}, ensure_ascii=False)}\n\n".encode())
             self.wfile.flush()
             while True:
                 try:
@@ -206,7 +206,7 @@ class _Handler(BaseHTTPRequestHandler):
                     continue
                 if not task_id and not book_id and task_type and event.get("task_type") != task_type:
                     continue
-                self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode("utf-8"))
+                self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode())
                 self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
@@ -270,7 +270,7 @@ class _Handler(BaseHTTPRequestHandler):
         _log.info("http %s %s", self.address_string(), line)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """常驻入口（W09）：``python -m gui.server`` 阻塞运行，重复启动被单实例锁拦截。"""
     import argparse
     from pathlib import Path as _P
@@ -313,7 +313,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0
 
 
-def _win_pid_is_alive(pid: int) -> Optional[bool]:
+def _win_pid_is_alive(pid: int) -> bool | None:
     """Windows 专用存活探测：``OpenProcess`` + ``GetExitCodeProcess``（仅 ctypes 标准库）。
 
     相比 ``os.kill(pid, 0)`` 更可靠——实测本机（Windows + CPython 3.13）`os.kill`
@@ -407,7 +407,7 @@ def _pid_is_alive(pid: int) -> bool:
     return True
 
 
-def _read_lock_pid(path: Path) -> Optional[int]:
+def _read_lock_pid(path: Path) -> int | None:
     """读取锁文件内容并解析为 pid；文件缺失/为空/非数字/非正数一律返回 None。"""
     try:
         raw = path.read_text(encoding="ascii").strip()
@@ -425,9 +425,9 @@ def _read_lock_pid(path: Path) -> Optional[int]:
 class GuiServer:
     """封装 ThreadingHTTPServer 的启动 / 停机。"""
 
-    def __init__(self, preferred_port: Optional[int] = None) -> None:
+    def __init__(self, preferred_port: int | None = None) -> None:
         self.preferred_port = preferred_port
-        self._lock_fd: Optional[int] = None
+        self._lock_fd: int | None = None
 
     def _acquire_lock(self) -> bool:
         """单实例锁（W09）：``gui_state/.lock`` 用 O_CREAT|O_EXCL 独占创建。
@@ -464,7 +464,7 @@ class GuiServer:
         # 清理后重试仍被抢占（并发启动）→ 承认冲突。
         return False
 
-    def _clear_stale_lock(self, lock_path: Path, observed_pid: Optional[int]) -> bool:
+    def _clear_stale_lock(self, lock_path: Path, observed_pid: int | None) -> bool:
         """原子清理 stale 锁：先 rename 到本进程专属临时名，复核后再删除。
 
         直接 ``unlink`` 会与并发启动进程产生「双删双获取」竞态。改为：

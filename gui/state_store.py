@@ -11,7 +11,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, db
 from gui.logging_setup import get_logger
@@ -40,7 +40,7 @@ def state_path_for(book_id: str) -> Path:
     return config.STATE_JSON_DIR / f"gui_state_{book_id}.json"
 
 
-def resolve_state_path(book_id: str) -> Optional[Path]:
+def resolve_state_path(book_id: str) -> Path | None:
     """定位某本书**已存在**的状态文件：优先新目录，回退旧位置（兼容历史数据）。
 
     Returns:
@@ -68,7 +68,7 @@ def book_id_from_title(title: str, source_path: str) -> str:
     return f"{sanitized}-{digest}"
 
 
-def new_state(book_id: str, title: str) -> Dict[str, Any]:
+def new_state(book_id: str, title: str) -> dict[str, Any]:
     """构造空的任务状态骨架。"""
     return {
         "schema_version": SCHEMA_VERSION,
@@ -81,7 +81,7 @@ def new_state(book_id: str, title: str) -> Dict[str, Any]:
     }
 
 
-def load_state(book_id: str) -> Dict[str, Any]:
+def load_state(book_id: str) -> dict[str, Any]:
     """读取任务状态文件；不存在时返回空状态。
 
     读取顺序（L2 兼容）：新目录 ``STATE_JSON_DIR`` 优先，缺失时回退旧位置
@@ -98,7 +98,7 @@ def load_state(book_id: str) -> Dict[str, Any]:
         return new_state(book_id, "")
 
 
-def _save_state_json(state: Dict[str, Any]) -> None:
+def _save_state_json(state: dict[str, Any]) -> None:
     """原子写回任务状态文件（JSON 降级副本，纯文件写入）。"""
     book_id = state.get("book_id", "")
     if not book_id:
@@ -112,7 +112,7 @@ def _save_state_json(state: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-def save_state(state: Dict[str, Any]) -> None:
+def save_state(state: dict[str, Any]) -> None:
     """原子写回任务状态文件，并**尽力**同步到 SQLite（权威）。
 
     双写（Q4/D3）：JSON 副本必写（可备份/可读）；SQLite 权威写为**尽力而为**——
@@ -128,7 +128,7 @@ def save_state(state: Dict[str, Any]) -> None:
               f"{state.get('book_id')}: {exc}")
 
 
-def bump_revision(state: Dict[str, Any]) -> Dict[str, Any]:
+def bump_revision(state: dict[str, Any]) -> dict[str, Any]:
     """单调递增 state_revision 并返回 state（原地修改）。"""
     state["state_revision"] = state.get("state_revision", 0) + 1
     return state
@@ -139,7 +139,7 @@ def batch_id(chapter_index: int, batch_index: int) -> str:
     return f"c{chapter_index}-b{batch_index}"
 
 
-def parse_cursor(cursor: str) -> Optional[tuple[int, int]]:
+def parse_cursor(cursor: str) -> tuple[int, int] | None:
     """解析 cursor 字符串 ``c{ch}-b{batch}`` 为 (chapter_index, batch_index)。
 
     非法或空字符串返回 None。
@@ -161,12 +161,12 @@ def parse_cursor(cursor: str) -> Optional[tuple[int, int]]:
 
 
 def set_batch_state(
-    state: Dict[str, Any],
+    state: dict[str, Any],
     chapter_index: int,
     batch_index: int,
     status: str,
-    asset: Optional[str] = None,
-) -> Dict[str, Any]:
+    asset: str | None = None,
+) -> dict[str, Any]:
     """记录某批的状态并推进 cursor（原地修改，调用方负责 save_state）。
 
     cursor 指向「下一个待处理批」：本批成功后，cursor 推进到下一批；失败/跳过
@@ -193,17 +193,17 @@ def asset_path(book_id: str, chapter_index: int, batch_index: int, pass_name: st
     return config.ASSETS_ROOT / book_id / f"c{chapter_index}-b{batch_index}-{pass_name}.json"
 
 
-def list_asset_ids_for_chapter(state: Dict[str, Any], chapter_index: int) -> List[str]:
+def list_asset_ids_for_chapter(state: dict[str, Any], chapter_index: int) -> list[str]:
     """返回某章的批次 ID 列表（有资产记录的）。"""
     return state.get("asset_index", {}).get(f"c{chapter_index}", [])
 
 
-def _iter_state_files() -> List[Path]:
+def _iter_state_files() -> list[Path]:
     """枚举所有状态 JSON 文件：新目录 + 旧位置（L2 兼容），去重（新目录优先）。
 
     同一 book_id 若新旧两处都存在，只保留新目录的（load_state 的读取顺序一致）。
     """
-    seen: Dict[str, Path] = {}
+    seen: dict[str, Path] = {}
     # 旧位置先收集，新目录后收集 → 后者覆盖前者（新优先）。
     for root in (config.STATE_ROOT, config.STATE_JSON_DIR):
         if not root.is_dir():
@@ -213,7 +213,7 @@ def _iter_state_files() -> List[Path]:
     return list(seen.values())
 
 
-def list_books_summary() -> List[Dict[str, Any]]:
+def list_books_summary() -> list[dict[str, Any]]:
     """扫描状态 JSON 目录，返回「已拆 N 本」概览清单（供首页）。
 
     返回每本书的 book_id / title / status / cursor / done 批数，按文件 mtime 倒序
@@ -221,7 +221,7 @@ def list_books_summary() -> List[Dict[str, Any]]:
 
     L2：同时覆盖新目录 ``STATE_JSON_DIR`` 与旧位置 ``STATE_ROOT``（兼容历史数据）。
     """
-    summaries: List[Dict[str, Any]] = []
+    summaries: list[dict[str, Any]] = []
     for fp in _iter_state_files():
         try:
             data = json.loads(fp.read_text(encoding="utf-8"))
@@ -251,7 +251,7 @@ def list_books_summary() -> List[Dict[str, Any]]:
 # 分析进度双写（SQLite 权威 + gui_state/*.json 降级副本）
 # ---------------------------------------------------------------------------
 
-def upsert_task(task: Dict[str, Any]) -> None:
+def upsert_task(task: dict[str, Any]) -> None:
     """分析任务双写：先写 SQLite（权威），后原子写 JSON（降级副本）。
 
     ``task`` 需含 ``book_id``；``chapter_states`` 映射为 SQLite 的 ``batch_state``
@@ -282,7 +282,7 @@ def upsert_task(task: Dict[str, Any]) -> None:
     _save_state_json(task)
 
 
-def load_task(book_id: str) -> Dict[str, Any]:
+def load_task(book_id: str) -> dict[str, Any]:
     """读取分析任务：优先 SQLite，缺失回退 JSON（state_store.load_state）。
 
     返回统一结构（含 book_id/status/cursor/batch_state/state_revision 等）。

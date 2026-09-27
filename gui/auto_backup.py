@@ -11,16 +11,15 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Optional
 
 from gui.logging_setup import get_logger
 
 _log = get_logger("auto_backup")
 
-_last_backup_date: Optional[str] = None
+_last_backup_date: str | None = None
 
 
-def startup_backup() -> Optional[Path]:
+def startup_backup() -> Path | None:
     """执行一次备份并登记日期。返回备份路径，无可备份库/失败返回 None。"""
     global _last_backup_date
     try:

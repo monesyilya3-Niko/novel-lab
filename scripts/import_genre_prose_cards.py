@@ -40,7 +40,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # 允许作为脚本独立运行，也允许被 novel.py 子进程调用（cwd 为项目根）。
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -48,7 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from yaml_lite import load_frontmatter  # noqa: E402
 
 # 32 题材中文名 → 拼音 slug 的确定性映射（team-lead 已拍板，照抄）。
-GENRE_ID_MAP: Dict[str, str] = {
+GENRE_ID_MAP: dict[str, str] = {
     "东方仙侠": "genre-xianxia",
     "传统玄幻": "genre-xuanhuan",
     "历史古代": "genre-lishi",
@@ -109,7 +109,7 @@ def _confidence_map(level: Any) -> float:
     return 0.5
 
 
-def parse_sections(body: str) -> Dict[str, str]:
+def parse_sections(body: str) -> dict[str, str]:
     """把 markdown 正文按 ``## 标题`` 动态切成 ``{标题: 内容}``。
 
     与 convert_genre_card.py 的 parse_sections 不同，这里**不依赖固定标题清单**：
@@ -122,9 +122,9 @@ def parse_sections(body: str) -> Dict[str, str]:
     Returns:
         标题 → 内容（去首尾空白）的字典，按出现顺序保留。
     """
-    sections: Dict[str, str] = {}
-    current_title: Optional[str] = None
-    buffer: List[str] = []
+    sections: dict[str, str] = {}
+    current_title: str | None = None
+    buffer: list[str] = []
 
     def _flush() -> None:
         if current_title is not None:
@@ -147,7 +147,7 @@ def parse_sections(body: str) -> Dict[str, str]:
     return sections
 
 
-def _extract_forbidden_elements(text: str) -> List[str]:
+def _extract_forbidden_elements(text: str) -> list[str]:
     """从「禁止漂移」小节提取 forbidden_elements（按「不要/禁止/不得」句式）。
 
     提取为空则返回空列表；原文仍在 ``prose.sections["禁止漂移"]`` 兜底，不丢数据。
@@ -155,7 +155,7 @@ def _extract_forbidden_elements(text: str) -> List[str]:
     """
     if not text or not text.strip():
         return []
-    elements: List[str] = []
+    elements: list[str] = []
     # 按句号/分号/换行切分，逐句找标记。
     clauses = re.split(r"[。；;\n]", text)
     for clause in clauses:
@@ -172,7 +172,7 @@ def _extract_forbidden_elements(text: str) -> List[str]:
     return elements
 
 
-def _as_str_list(value: Any) -> List[str]:
+def _as_str_list(value: Any) -> list[str]:
     """把 frontmatter 的 aliases 等字段规范为字符串列表。"""
     if value is None:
         return []
@@ -183,7 +183,7 @@ def _as_str_list(value: Any) -> List[str]:
     return [str(value)]
 
 
-def resolve_genre_id(name: str, fallback_id: Optional[str] = None) -> str:
+def resolve_genre_id(name: str, fallback_id: str | None = None) -> str:
     """由题材中文名确定性生成 ``meta.id``。
 
     优先查内置 32 项映射表；未命中时回退到显式传入的 ``fallback_id``，
@@ -204,10 +204,10 @@ def resolve_genre_id(name: str, fallback_id: Optional[str] = None) -> str:
 
 
 def build_genre_prose_card(
-    frontmatter: Dict[str, Any],
-    sections: Dict[str, str],
+    frontmatter: dict[str, Any],
+    sections: dict[str, str],
     genre_id: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """组装 genre-prose-card dict（按架构文档 3.1/1.2 节映射规则）。
 
     Args:
@@ -234,7 +234,7 @@ def build_genre_prose_card(
     payoff_notes = sections.get("爽点与情绪释放", "")
     evidence = sections.get("证据摘要", "")
 
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         "id": genre_id,
         "name": name or genre_id,
         "kind": "genre-prose-card",
@@ -252,24 +252,24 @@ def build_genre_prose_card(
         "source_books": [],  # 占位，升格时由范文拆书填充。
     }
 
-    language_rules: Dict[str, Any] = {
+    language_rules: dict[str, Any] = {
         "forbidden_elements": forbidden_elements,
         "banned_phrases": [],
         "voice_notes": voice_notes,
     }
 
     # structure / commercial 仅在定性描述非空时附带（避免注入空段）。
-    structure: Dict[str, Any] = {}
+    structure: dict[str, Any] = {}
     if hook_notes:
         structure["hook_notes"] = hook_notes
     if arc_rhythm_notes:
         structure["arc_rhythm_notes"] = arc_rhythm_notes
 
-    commercial: Dict[str, Any] = {}
+    commercial: dict[str, Any] = {}
     if payoff_notes:
         commercial["payoff_notes"] = payoff_notes
 
-    card: Dict[str, Any] = {
+    card: dict[str, Any] = {
         "meta": meta,
         "language_rules": language_rules,
         "prose": {"sections": sections},
@@ -284,8 +284,8 @@ def build_genre_prose_card(
 def import_cards(
     src_dir: Path,
     out_dir: Path,
-    genre_id_override: Optional[str] = None,
-) -> Tuple[List[str], List[str], List[str], Dict[str, Dict[str, str]]]:
+    genre_id_override: str | None = None,
+) -> tuple[list[str], list[str], list[str], dict[str, dict[str, str]]]:
     """扫描源目录，逐卡转换落库。
 
     Args:
@@ -306,10 +306,10 @@ def import_cards(
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    success: List[str] = []
-    skipped: List[str] = []
-    failed: List[str] = []
-    index: Dict[str, Dict[str, str]] = {}
+    success: list[str] = []
+    skipped: list[str] = []
+    failed: list[str] = []
+    index: dict[str, dict[str, str]] = {}
 
     for md_path in md_files:
         name = md_path.stem
@@ -347,10 +347,10 @@ def import_cards(
     return success, skipped, failed, index
 
 
-def write_index(index: Dict[str, Dict[str, str]], out_dir: Path) -> Path:
+def write_index(index: dict[str, dict[str, str]], out_dir: Path) -> Path:
     """写出 ``genre-prose-card-index.json`` 索引。"""
     out_path = out_dir / "genre-prose-card-index.json"
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "_description": "题材文风卡索引：题材中文名 → id / 落库文件名。",
         "_count": len(index),
         "cards": index,
@@ -361,7 +361,7 @@ def write_index(index: Dict[str, Dict[str, str]], out_dir: Path) -> Path:
     return out_path
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="oh-story 题材文风卡 → genre-prose-card 轻量资产批量转换器",
     )

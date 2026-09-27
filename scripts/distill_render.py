@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """蒸馏注入渲染：把 distilled JSON 渲染为可注入 prompt 的文本段。
 
 渲染规则（§3.4）：
@@ -13,7 +12,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
@@ -21,7 +20,7 @@ if str(_SCRIPTS) not in sys.path:
 
 
 # 维度中文名，用于渲染标题。
-DIMENSION_LABELS: Dict[str, str] = {
+DIMENSION_LABELS: dict[str, str] = {
     "voice-card": "声线风格",
     "craft-card": "写作技法",
     "structure-obs": "结构规律",
@@ -52,7 +51,7 @@ def _render_value(value: Any) -> str:
     return str(value)
 
 
-def render_distilled(distilled: Optional[dict]) -> str:
+def render_distilled(distilled: dict | None) -> str:
     """把单个维度的 distilled dict 渲染为 prompt 文本段。
 
     Args:
@@ -63,9 +62,9 @@ def render_distilled(distilled: Optional[dict]) -> str:
     """
     if not distilled:
         return ""
-    rules: List[dict] = distilled.get("rules") or []
-    blindspots: List[dict] = distilled.get("blindspots") or []
-    meta: Dict[str, Any] = distilled.get("meta") or {}
+    rules: list[dict] = distilled.get("rules") or []
+    blindspots: list[dict] = distilled.get("blindspots") or []
+    meta: dict[str, Any] = distilled.get("meta") or {}
 
     if not rules and not blindspots:
         return ""
@@ -75,7 +74,7 @@ def render_distilled(distilled: Optional[dict]) -> str:
     books_count = meta.get("books_count", 0)
     source_books = "、".join(meta.get("source_books") or []) or "未知"
 
-    lines: List[str] = []
+    lines: list[str] = []
     lines.append(f"## 〇·五、蒸馏规则（{label} · 跨 {books_count} 本聚合）")
     lines.append(f"> 来源书籍：{source_books}。以下为多本对标作品聚合出的共性规则。")
 
@@ -123,9 +122,9 @@ def _render_rule_line(rule: dict, kind_label: str) -> str:
     return f"- {tag} {field}: {text} {conf}"
 
 
-def render_all_distilled(distilled_by_dim: Dict[str, dict]) -> str:
+def render_all_distilled(distilled_by_dim: dict[str, dict]) -> str:
     """渲染全部四个维度的蒸馏段，用分隔符拼接。"""
-    sections: List[str] = []
+    sections: list[str] = []
     for dimension in ("voice-card", "craft-card", "structure-obs", "commercial-obs"):
         seg = render_distilled(distilled_by_dim.get(dimension))
         if seg:

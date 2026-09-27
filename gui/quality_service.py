@@ -9,7 +9,7 @@ import json
 import threading
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, engine_adapter
 from gui.logging_setup import get_logger
@@ -20,7 +20,7 @@ _log = get_logger("quality_service")
 # ---------------------------------------------------------------------------
 # 任务注册表
 # ---------------------------------------------------------------------------
-_QUALITY_TASKS: Dict[str, Dict[str, Any]] = {}
+_QUALITY_TASKS: dict[str, dict[str, Any]] = {}
 # RLock：qc() 提交路径在外层持锁后还会调 _active_quality_count()（同样拿锁），
 # 非重入 Lock 会自死锁（GUI 质检台 QC 按钮曾因此完全不可用）。
 _QUALITY_LOCK = threading.RLock()
@@ -50,7 +50,7 @@ def _active_quality_count() -> int:
 # 路径安全
 # ---------------------------------------------------------------------------
 
-def resolve_chapter_target(target: str, *, novel_dir: Optional[str] = None) -> Path:
+def resolve_chapter_target(target: str, *, novel_dir: str | None = None) -> Path:
     """把前端 target 解析为磁盘上真实存在的章节文件/目录（防路径穿越）。
 
     只允许解析到 NOVEL_DIR / CORPUS_DIR 之内；越界 → 400。
@@ -111,7 +111,7 @@ def clean_stale_scratch() -> int:
 # 同步能力
 # ---------------------------------------------------------------------------
 
-def _safe_asset_path(ref: str) -> Optional[Path]:
+def _safe_asset_path(ref: str) -> Path | None:
     """安全解析资产引用路径（防路径穿越）。"""
     name = ref.split(":")[-1]
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
@@ -122,7 +122,7 @@ def _safe_asset_path(ref: str) -> Optional[Path]:
     return fp if fp.is_file() else None
 
 
-def _checked_asset_path(ref: str, expected: str) -> Optional[Path]:
+def _checked_asset_path(ref: str, expected: str) -> Path | None:
     """解析资产引用 → 读取 JSON → 内容契约校验，返回可用路径。
 
     - 引用非法 / 文件不存在 / JSON 损坏：返回 None（沿用调用方「跳过该资产」语义）；
@@ -142,8 +142,8 @@ def _checked_asset_path(ref: str, expected: str) -> Optional[Path]:
     return fp
 
 
-def check(target: Optional[str] = None, text: Optional[str] = None,
-          voice: Optional[str] = None, genre_pack: Optional[str] = None) -> Dict[str, Any]:
+def check(target: str | None = None, text: str | None = None,
+          voice: str | None = None, genre_pack: str | None = None) -> dict[str, Any]:
     """单章双维度检查：质量 12 维 + 一致性 5 维。"""
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
@@ -166,7 +166,7 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
                 _log.warning(f"题材包加载失败，本次检查不带题材约束 {gp_fp.name}: {exc}")
 
     qc = engine_adapter.chapter_check(text, gp_data)
-    result: Dict[str, Any] = {"quality": qc}
+    result: dict[str, Any] = {"quality": qc}
 
     if voice:
         voice_fp = _safe_asset_path(voice)
@@ -188,8 +188,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
     return result
 
 
-def book(target: Optional[str] = None, text: Optional[str] = None,
-         voice: Optional[str] = None) -> Dict[str, Any]:
+def book(target: str | None = None, text: str | None = None,
+         voice: str | None = None) -> dict[str, Any]:
     """全书质检（重复/连贯/凑字数/乱编/AI味）。"""
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
@@ -203,8 +203,8 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
         if vfp:
             voice_path = str(vfp)
 
-    chapter_dir: Optional[str] = None
-    scratch_fp: Optional[Path] = None
+    chapter_dir: str | None = None
+    scratch_fp: Path | None = None
     if target:
         fp = resolve_chapter_target(target)
         if fp.is_file():
@@ -229,7 +229,7 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
                 pass
 
 
-def list_qc_reports() -> List[Dict[str, Any]]:
+def list_qc_reports() -> list[dict[str, Any]]:
     """列出 reports/qc/ 下的历史报告。"""
     qc_dir = config.REPORTS_DIR / "qc"
     reports = []
@@ -254,10 +254,10 @@ def list_qc_reports() -> List[Dict[str, Any]]:
 # W14 长任务：qc / qc_task_state
 # ---------------------------------------------------------------------------
 
-def qc(target: Optional[str] = None, text: Optional[str] = None,
-       voice: Optional[str] = None, genre_pack: Optional[str] = None,
-       asset: Optional[str] = None, book: Optional[str] = None,
-       novel_dir: Optional[str] = None, llm_hook: bool = False) -> Dict[str, Any]:
+def qc(target: str | None = None, text: str | None = None,
+       voice: str | None = None, genre_pack: str | None = None,
+       asset: str | None = None, book: str | None = None,
+       novel_dir: str | None = None, llm_hook: bool = False) -> dict[str, Any]:
     """启动 qc 长任务（四层十二维）。并发上限 2（D6）。"""
     task_id = f"q-{uuid.uuid4().hex[:12]}"
 
@@ -283,7 +283,7 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
         raise ServiceError("需要 target 或 text", 400)
 
     # 解析资产路径
-    def _asset_path(ref: Optional[str]) -> Optional[str]:
+    def _asset_path(ref: str | None) -> str | None:
         if not ref:
             return None
         name = ref.split(':')[-1]
@@ -328,7 +328,7 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
     return {"task_id": task_id, "status": "running", "target": display_target}
 
 
-def qc_task_state(task_id: str) -> Dict[str, Any]:
+def qc_task_state(task_id: str) -> dict[str, Any]:
     """查询 qc 任务状态。"""
     import copy
     with _QUALITY_LOCK:
@@ -338,9 +338,9 @@ def qc_task_state(task_id: str) -> Dict[str, Any]:
         return copy.deepcopy(t)
 
 
-def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
-                 gp_path: Optional[str], asset_path: Optional[str],
-                 book_path: Optional[str], novel_dir: Optional[str],
+def _run_qc_task(task_id: str, chapter_dir: str, voice_path: str | None,
+                 gp_path: str | None, asset_path: str | None,
+                 book_path: str | None, novel_dir: str | None,
                  llm_hook: bool, display_target: str) -> None:
     """后台线程：跑 qc 并落盘报告。"""
     from gui import sse

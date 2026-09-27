@@ -20,7 +20,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # 标量字面量正则（支持被单/双引号包裹的值，去引号后返回）。
 _QUOTED_RE = re.compile(r'^([\'"])(.*)\1$', re.DOTALL)
@@ -84,9 +84,9 @@ def _parse_scalar(raw: str) -> Any:
     return text
 
 
-def _split_inline_list(body: str) -> List[str]:
+def _split_inline_list(body: str) -> list[str]:
     """按逗号切分内联列表体（尊重引号内的逗号）。"""
-    parts: List[str] = []
+    parts: list[str] = []
     buf = ""
     in_single = False
     in_double = False
@@ -123,7 +123,7 @@ def _parse_value(raw: str) -> Any:
     # 内联映射 {a: 1, b: 2}
     m = _INLINE_MAP_RE.match(text)
     if m:
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
         for kv in _split_inline_list(m.group(1)):
             if ":" in kv:
                 k, v = kv.split(":", 1)
@@ -134,7 +134,7 @@ def _parse_value(raw: str) -> Any:
     return _parse_scalar(text)
 
 
-def _split_key_value(line: str) -> Tuple[Optional[str], Optional[str]]:
+def _split_key_value(line: str) -> tuple[str | None, str | None]:
     """把一行拆成 ``(key, value)``，无 ``:`` 时返回 ``(None, None)``。
 
     尊重引号内的冒号，避免把 ``http://`` 或带冒号的字符串拆坏。
@@ -164,11 +164,11 @@ def parse_yaml(text: str) -> Any:
         空输入返回空 ``dict``。
     """
     lines = text.splitlines()
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     # 当前正在填充的列表所属 key（``key:`` 后紧跟 ``- item`` 时）。
-    current_list_key: Optional[str] = None
+    current_list_key: str | None = None
     # 顶层纯列表（无 key）时的累积列表。
-    top_list: Optional[List[Any]] = None
+    top_list: list[Any] | None = None
 
     for raw_line in lines:
         line = _strip_comment(raw_line)
@@ -235,7 +235,7 @@ def parse_yaml(text: str) -> Any:
     return result
 
 
-def load_frontmatter(md_text: str) -> Tuple[Dict[str, Any], str]:
+def load_frontmatter(md_text: str) -> tuple[dict[str, Any], str]:
     """从 markdown 文本中提取 frontmatter 并解析。
 
     识别以 ``---`` 或 ``+++`` 分隔的 YAML frontmatter 块（位于文件开头）。
@@ -256,7 +256,7 @@ def load_frontmatter(md_text: str) -> Tuple[Dict[str, Any], str]:
         return {}, md_text
 
     # 找到闭合分隔符。
-    end_idx: Optional[int] = None
+    end_idx: int | None = None
     for idx in range(1, len(lines)):
         if lines[idx].strip() in ("---", "+++"):
             end_idx = idx

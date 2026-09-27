@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 novel-lab 拆书数据看板 · 数据快照生成器（纯标准库，零第三方依赖）
 
@@ -29,7 +28,7 @@ BOOK_TITLES = {
 
 
 def load_json(path):
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -58,7 +57,7 @@ def as_str(v):
 def md_chars(path):
     if not os.path.exists(path):
         return 0
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return len(f.read())
 
 

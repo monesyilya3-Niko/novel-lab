@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, db
 from gui.logging_setup import get_logger
@@ -83,9 +83,9 @@ class AssetIndex:
     回退源与 ``migrate`` 的同步参照。查询方法优先 SQL，SQL 为空则回退 scan。
     """
 
-    def __init__(self, ttl_seconds: Optional[int] = None) -> None:
+    def __init__(self, ttl_seconds: int | None = None) -> None:
         self.ttl_seconds = ttl_seconds if ttl_seconds is not None else _default_ttl()
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self._cache_ts: float = 0.0
 
     # ------------------------------------------------------------------
@@ -109,7 +109,7 @@ class AssetIndex:
     # 目录扫描（回退源，阶段一行为）
     # ------------------------------------------------------------------
 
-    def scan(self, force: bool = False) -> Dict[str, Any]:
+    def scan(self, force: bool = False) -> dict[str, Any]:
         """全量目录扫描，返回结构化索引 dict（含 items / counts）。
 
         保留作为 SQLite 为空时的回退源；生产迁移后一般不再调用。
@@ -118,12 +118,12 @@ class AssetIndex:
         if not force and self._cache and (now - self._cache_ts) < self.ttl_seconds:
             return self._cache
 
-        items: List[Dict[str, Any]] = []
+        items: list[dict[str, Any]] = []
         items.extend(self._scan_assets())
         items.extend(self._scan_reports())
         items.extend(self._scan_corpus())
 
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for it in items:
             counts[it["kind"]] = counts.get(it["kind"], 0) + 1
 
@@ -141,8 +141,8 @@ class AssetIndex:
         self._cache = {}
         self._cache_ts = 0.0
 
-    def _scan_assets(self) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
+    def _scan_assets(self) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         root = config.ASSETS_ROOT
         if not root.is_dir():
             return out
@@ -153,8 +153,8 @@ class AssetIndex:
             out.append(self._make_item(kind, fp, root))
         return out
 
-    def _scan_reports(self) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
+    def _scan_reports(self) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         root = config.REPORTS_DIR
         if not root.is_dir():
             return out
@@ -170,8 +170,8 @@ class AssetIndex:
             out.append(item)
         return out
 
-    def _scan_corpus(self) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
+    def _scan_corpus(self) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         root = config.CORPUS_DIR
         if not root.is_dir():
             return out
@@ -192,14 +192,14 @@ class AssetIndex:
         return isinstance(models, dict) and len(models) > 0
 
     @staticmethod
-    def _classify_asset_name(name: str) -> Optional[str]:
+    def _classify_asset_name(name: str) -> str | None:
         """按文件名后缀归类 asset 文件（扫描回退源）；无法归类返回 None。"""
         for suffix, kind in _SUFFIX_KIND:
             if suffix in name:
                 return kind
         return None
 
-    def _make_item(self, kind: str, fp: Path, root: Path) -> Dict[str, Any]:
+    def _make_item(self, kind: str, fp: Path, root: Path) -> dict[str, Any]:
         try:
             rel = str(fp.relative_to(config.ROOT_DIR))
         except ValueError:
@@ -220,7 +220,7 @@ class AssetIndex:
         return f"{kind}:{fp.stem}"
 
     @staticmethod
-    def _book_id_from_name(kind: str, stem: str) -> Optional[str]:
+    def _book_id_from_name(kind: str, stem: str) -> str | None:
         if kind == "report":
             return stem
         # 跨书蒸馏卡（题材级聚合）与题材文风卡索引（寻址表）：均无单书归属。
@@ -237,8 +237,8 @@ class AssetIndex:
     # 查询（SQLite 为主 + 扫描回退）
     # ------------------------------------------------------------------
 
-    def list_assets(self, kind: Optional[str] = None, genre: Optional[str] = None,
-                    book_id: Optional[str] = None, offset: int = 0, limit: int = 50) -> Dict[str, Any]:
+    def list_assets(self, kind: str | None = None, genre: str | None = None,
+                    book_id: str | None = None, offset: int = 0, limit: int = 50) -> dict[str, Any]:
         """资产清单分页。kind/genre/book_id 可选，缺省返回全部。
 
         兼容旧签名 ``list_assets(kind, offset, limit)``（阶段一测试/调用方）：当第 2、3
@@ -262,15 +262,15 @@ class AssetIndex:
             return self._list_from_db(kind, genre, book_id, offset, limit)
         return self._list_from_scan(kind, genre, book_id, offset, limit)
 
-    def _list_from_db(self, kind: Optional[str], genre: Optional[str],
-                      book_id: Optional[str], offset: int, limit: int) -> Dict[str, Any]:
+    def _list_from_db(self, kind: str | None, genre: str | None,
+                      book_id: str | None, offset: int, limit: int) -> dict[str, Any]:
         """SQLite 查询：资产卡走 assets 表，report/book 走对应表，None 合并三类。"""
         if kind is None:
             kinds = list(ASSET_KINDS) + ["report", "book"]
         else:
             kinds = [kind]
 
-        all_items: List[Dict[str, Any]] = []
+        all_items: list[dict[str, Any]] = []
         for k in kinds:
             all_items.extend(self._query_kind(k, genre, book_id))
         # 稳定排序（name）。
@@ -278,7 +278,7 @@ class AssetIndex:
         total = len(all_items)
         return {"total": total, "items": all_items[offset:offset + limit]}
 
-    def _query_kind(self, kind: str, genre: Optional[str], book_id: Optional[str]) -> List[Dict[str, Any]]:
+    def _query_kind(self, kind: str, genre: str | None, book_id: str | None) -> list[dict[str, Any]]:
         """按单个 kind 查询（assets 卡 / report / book）。"""
         if kind == "report":
             rows = db.list_reports(book_id)
@@ -291,7 +291,7 @@ class AssetIndex:
         return [self._asset_row_to_item(r) for r in rows]
 
     @staticmethod
-    def _asset_row_to_item(row: Dict[str, Any]) -> Dict[str, Any]:
+    def _asset_row_to_item(row: dict[str, Any]) -> dict[str, Any]:
         name = row.get("name") or ""
         path = row.get("path")
         stem = Path(path).stem if path else name
@@ -320,7 +320,7 @@ class AssetIndex:
         }
 
     @staticmethod
-    def _report_row_to_item(row: Dict[str, Any]) -> Dict[str, Any]:
+    def _report_row_to_item(row: dict[str, Any]) -> dict[str, Any]:
         path = row.get("path", "")
         stem = Path(path).stem if path else row.get("title", "")
         return {
@@ -335,7 +335,7 @@ class AssetIndex:
         }
 
     @staticmethod
-    def _book_row_to_item(row: Dict[str, Any]) -> Dict[str, Any]:
+    def _book_row_to_item(row: dict[str, Any]) -> dict[str, Any]:
         return {
             "kind": "book",
             "id": f"book:{row.get('book_id')}",
@@ -346,8 +346,8 @@ class AssetIndex:
             "book_id": row.get("book_id"),
         }
 
-    def _list_from_scan(self, kind: Optional[str], genre: Optional[str],
-                        book_id: Optional[str], offset: int, limit: int) -> Dict[str, Any]:
+    def _list_from_scan(self, kind: str | None, genre: str | None,
+                        book_id: str | None, offset: int, limit: int) -> dict[str, Any]:
         """扫描回退：阶段一行为（无 genre/book_id 过滤，报告/书也纳入）。"""
         data = self.scan()
         items = data["items"]
@@ -356,7 +356,7 @@ class AssetIndex:
         total = len(items)
         return {"total": total, "items": items[offset:offset + limit]}
 
-    def count_by_kind(self) -> Dict[str, int]:
+    def count_by_kind(self) -> dict[str, int]:
         """按 kind 计数（SQLite GROUP BY，空则回退扫描计数）。"""
         if self._db_ready():
             counts = db.count_by_kind()
@@ -366,7 +366,7 @@ class AssetIndex:
             return counts
         return dict(self.scan()["counts"])
 
-    def get_asset_detail(self, kind: str, asset_id: str) -> Dict[str, Any]:
+    def get_asset_detail(self, kind: str, asset_id: str) -> dict[str, Any]:
         """资产详情：按 kind + id 定位并读取 JSON/文本内容。
 
         安全：kind 白名单 + id 校验（防路径穿越）。报告返回 markdown 原文。
@@ -386,7 +386,7 @@ class AssetIndex:
         # 回退：直接按目录读取（阶段一行为）。
         return self._detail_from_scan(kind, name, asset_id)
 
-    def _detail_from_db(self, kind: str, name: str, asset_id: str) -> Optional[Dict[str, Any]]:
+    def _detail_from_db(self, kind: str, name: str, asset_id: str) -> dict[str, Any] | None:
         if kind == "report":
             rows = db.list_reports()
             for r in rows:
@@ -412,7 +412,7 @@ class AssetIndex:
             data = {}
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 
-    def _detail_from_scan(self, kind: str, name: str, asset_id: str) -> Dict[str, Any]:
+    def _detail_from_scan(self, kind: str, name: str, asset_id: str) -> dict[str, Any]:
         if kind == "report":
             fp = config.REPORTS_DIR / f"{name}.md"
             if not fp.is_file():
@@ -436,13 +436,13 @@ class AssetIndex:
             data = {}
         return {"kind": kind, "id": asset_id, "name": name, "content": data}
 
-    def get_overview(self) -> Dict[str, Any]:
+    def get_overview(self) -> dict[str, Any]:
         """首页概览聚合（SQL 聚合为主，空则回退扫描计数）。
 
         total_assets 只统计 ASSET_KINDS（真资产卡）；report/book 是虚拟 kind，
         已由 total_reports/total_books 单独展示，计入 total_assets 会虚报。
         """
-        def _asset_total(counts: Dict[str, int]) -> int:
+        def _asset_total(counts: dict[str, int]) -> int:
             return sum(counts.get(k, 0) for k in ASSET_KINDS)
 
         if self._db_ready():
@@ -473,7 +473,7 @@ class AssetIndex:
     # 工具
     # ------------------------------------------------------------------
 
-    def _resolve_name(self, kind: str, asset_id: str) -> Optional[str]:
+    def _resolve_name(self, kind: str, asset_id: str) -> str | None:
         raw = str(asset_id)
         prefix = f"{kind}:"
         if not raw.startswith(prefix):

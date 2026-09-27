@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
@@ -77,7 +77,7 @@ PLATFORMS = {
 }
 
 
-def list_platforms() -> List[Dict[str, Any]]:
+def list_platforms() -> list[dict[str, Any]]:
     """列出支持的平台。"""
     return [
         {
@@ -92,7 +92,7 @@ def list_platforms() -> List[Dict[str, Any]]:
     ]
 
 
-def get_platform(platform_id: str) -> Dict[str, Any]:
+def get_platform(platform_id: str) -> dict[str, Any]:
     """获取平台详情。
 
     2026-09-23（总工排查）修正错误码：本函数的 ``platform_id`` 来自**路径**
@@ -108,7 +108,7 @@ def get_platform(platform_id: str) -> Dict[str, Any]:
 
 
 def check_chapter_compliance(platform_id: str, chapter_text: str,
-                              chapter_title: str = "") -> Dict[str, Any]:
+                              chapter_title: str = "") -> dict[str, Any]:
     """检查章节是否符合平台要求。"""
     if platform_id not in PLATFORMS:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
@@ -176,7 +176,7 @@ def check_chapter_compliance(platform_id: str, chapter_text: str,
 
 
 def format_chapter(platform_id: str, chapter_num: int, title: str,
-                   content: str) -> Dict[str, Any]:
+                   content: str) -> dict[str, Any]:
     """按平台格式化章节。"""
     if platform_id not in PLATFORMS:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
@@ -198,7 +198,7 @@ def format_chapter(platform_id: str, chapter_num: int, title: str,
     }
 
 
-def export_book_for_platform(platform_id: str, book_dir: str) -> Dict[str, Any]:
+def export_book_for_platform(platform_id: str, book_dir: str) -> dict[str, Any]:
     """将整本书导出为平台适配格式。
 
     读取章节目录，按平台格式化并检查合规性。

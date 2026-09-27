@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from gui import config, engine_adapter
 from gui.logging_setup import get_logger
@@ -27,7 +27,7 @@ def _ensure_scripts_path() -> None:
 # 系统状态
 # ---------------------------------------------------------------------------
 
-def system_status() -> Dict[str, Any]:
+def system_status() -> dict[str, Any]:
     """系统状态总览：磁盘、数据库、模型、任务。"""
     # 磁盘占用
     def _dir_size(p: Path) -> int:
@@ -95,8 +95,8 @@ def system_status() -> Dict[str, Any]:
 # 版权合规扫描
 # ---------------------------------------------------------------------------
 
-def compliance_scan(voice: Optional[str] = None,
-                    book_path: Optional[str] = None) -> Dict[str, Any]:
+def compliance_scan(voice: str | None = None,
+                    book_path: str | None = None) -> dict[str, Any]:
     """版权合规扫描：对指定资产或全部资产做 12 字原文匹配检查。"""
     results = []
 
@@ -180,7 +180,7 @@ def compliance_scan(voice: Optional[str] = None,
 # 模型配置（只读展示，修改走 CLI model_config.py）
 # ---------------------------------------------------------------------------
 
-def model_info() -> Dict[str, Any]:
+def model_info() -> dict[str, Any]:
     """模型配置信息（脱敏展示）。"""
     configured = engine_adapter.any_model_configured()
     models = engine_adapter.list_models() if configured else []
@@ -221,7 +221,7 @@ def _settings_file() -> Path:
     return config.STATE_ROOT / "settings.json"
 
 
-def _load_settings_file() -> Dict[str, Any]:
+def _load_settings_file() -> dict[str, Any]:
     """读取 settings.json（不存在返回空 dict）。"""
     path = _settings_file()
     if not path.is_file():
@@ -234,7 +234,7 @@ def _load_settings_file() -> Dict[str, Any]:
         return {}
 
 
-def _save_settings_file(data: Dict[str, Any]) -> None:
+def _save_settings_file(data: dict[str, Any]) -> None:
     """写入 settings.json（原子写）。"""
     path = _settings_file()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -243,7 +243,7 @@ def _save_settings_file(data: Dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def get_settings() -> Dict[str, Any]:
+def get_settings() -> dict[str, Any]:
     """当前系统设置。优先级：环境变量 > settings.json > 默认值。"""
     saved = _load_settings_file()
     return {
@@ -275,7 +275,7 @@ def get_settings() -> Dict[str, Any]:
     }
 
 
-def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
+def update_settings(updates: dict[str, Any]) -> dict[str, Any]:
     """更新设置（写入 settings.json）。只接受白名单字段。"""
     if not updates or not isinstance(updates, dict):
         raise ServiceError("updates 必须为 JSON 对象", 400)
@@ -331,7 +331,7 @@ def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
     return get_settings()
 
 
-def reset_settings() -> Dict[str, Any]:
+def reset_settings() -> dict[str, Any]:
     """重置设置为默认值（删除 settings.json）。"""
     path = _settings_file()
     if path.is_file():

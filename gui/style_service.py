@@ -8,7 +8,7 @@ import json
 import re
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from gui import config
 from gui.logging_setup import get_logger
@@ -42,7 +42,7 @@ def _sanitize_name(name: str) -> str:
     return n
 
 
-def analyze_style(text: str, name: str = "") -> Dict[str, Any]:
+def analyze_style(text: str, name: str = "") -> dict[str, Any]:
     """分析文本风格特征，返回结构化风格卡。
 
     提取维度：句长分布 / 对话密度 / 情绪词密度 / 标点习惯 / 段落节奏 / 常用词
@@ -123,7 +123,7 @@ def _rel_or_name(fp: Path) -> str:
         return f"{fp.parent.name}/{fp.name}"
 
 
-def save_style(name: str, style_card: Dict[str, Any]) -> Dict[str, Any]:
+def save_style(name: str, style_card: dict[str, Any]) -> dict[str, Any]:
     """保存风格卡到资产目录。"""
     n = _sanitize_name(name)
     _ensure_styles_dir()
@@ -135,7 +135,7 @@ def save_style(name: str, style_card: Dict[str, Any]) -> Dict[str, Any]:
     return {"name": n, "path": _rel_or_name(fp), "saved": True}
 
 
-def list_styles() -> List[Dict[str, Any]]:
+def list_styles() -> list[dict[str, Any]]:
     """列出已保存的风格卡。"""
     _ensure_styles_dir()
     styles = []
@@ -153,7 +153,7 @@ def list_styles() -> List[Dict[str, Any]]:
     return styles
 
 
-def get_style(name: str) -> Dict[str, Any]:
+def get_style(name: str) -> dict[str, Any]:
     """获取风格卡详情。"""
     n = _sanitize_name(name)
     fp = _styles_dir() / f"{n}.json"
@@ -165,7 +165,7 @@ def get_style(name: str) -> Dict[str, Any]:
         raise ServiceError(f"风格文件损坏: {exc}", 500) from exc
 
 
-def delete_style(name: str) -> Dict[str, Any]:
+def delete_style(name: str) -> dict[str, Any]:
     """删除风格卡。"""
     n = _sanitize_name(name)
     fp = _styles_dir() / f"{n}.json"
@@ -175,7 +175,7 @@ def delete_style(name: str) -> Dict[str, Any]:
     return {"deleted": n}
 
 
-def apply_style_prompt(style_name: str, base_prompt: str) -> Dict[str, Any]:
+def apply_style_prompt(style_name: str, base_prompt: str) -> dict[str, Any]:
     """将风格卡应用到写作 prompt，生成风格增强版 prompt。
 
     基于风格卡的指标，生成风格指导段落并追加到 base_prompt。

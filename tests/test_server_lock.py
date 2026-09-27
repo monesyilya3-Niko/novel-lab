@@ -55,7 +55,7 @@ class TestStaleLock(unittest.TestCase):
         config.LOCK_PATH = self._orig_lock
         shutil.rmtree(self._tmp, ignore_errors=True)
 
-    def _new_server(self) -> "server.GuiServer":
+    def _new_server(self) -> server.GuiServer:
         s = server.GuiServer()
         self._servers.append(s)
         return s

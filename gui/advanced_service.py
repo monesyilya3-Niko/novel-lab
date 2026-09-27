@@ -9,7 +9,7 @@ import json
 import shutil
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, migrate
 from gui.logging_setup import get_logger
@@ -22,7 +22,7 @@ _log = get_logger("advanced_service")
 # M1: 蒸馏
 # ---------------------------------------------------------------------------
 
-def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[str, Any]:
+def distill_genre(genre: str, book_names: list[str] | None = None) -> dict[str, Any]:
     """触发题材蒸馏：跨书聚合资产 → distilled JSON。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
@@ -81,7 +81,7 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
     }
 
 
-def distill_status(genre: str) -> Dict[str, Any]:
+def distill_status(genre: str) -> dict[str, Any]:
     """查看题材蒸馏状态：已有 distilled 资产 + 可蒸馏的书。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
@@ -118,7 +118,7 @@ def distill_status(genre: str) -> Dict[str, Any]:
 # M1: 题材聚合
 # ---------------------------------------------------------------------------
 
-def aggregate_genre(genre: str) -> Dict[str, Any]:
+def aggregate_genre(genre: str) -> dict[str, Any]:
     """聚合题材包：≥3 本同题材 → genre-pack。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
@@ -166,7 +166,7 @@ def aggregate_genre(genre: str) -> Dict[str, Any]:
 # M1: 批量拆书状态
 # ---------------------------------------------------------------------------
 
-def batch_status() -> Dict[str, Any]:
+def batch_status() -> dict[str, Any]:
     """批量拆书状态：corpus/raw/ 下各书的 pass 完成情况。"""
     raw_root = config.CORPUS_DIR / "raw"
     books = []
@@ -192,7 +192,7 @@ def batch_status() -> Dict[str, Any]:
 # M4: 资产写入
 # ---------------------------------------------------------------------------
 
-def update_asset(kind: str, asset_id: str, content: Dict[str, Any]) -> Dict[str, Any]:
+def update_asset(kind: str, asset_id: str, content: dict[str, Any]) -> dict[str, Any]:
     """更新资产 JSON 内容。"""
     if not content or not isinstance(content, dict):
         raise ServiceError("content 必须为 JSON 对象", 400)
@@ -216,7 +216,7 @@ def update_asset(kind: str, asset_id: str, content: Dict[str, Any]) -> Dict[str,
     return {"name": name, "path": str(fp.relative_to(config.ROOT_DIR)), "updated": True}
 
 
-def delete_asset(kind: str, asset_id: str) -> Dict[str, Any]:
+def delete_asset(kind: str, asset_id: str) -> dict[str, Any]:
     """删除资产（移到回收站而非硬删除）。"""
     name = asset_id.split(":")[-1] if ":" in asset_id else asset_id
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00")):
@@ -239,7 +239,7 @@ def delete_asset(kind: str, asset_id: str) -> Dict[str, Any]:
     return {"name": name, "trashed_to": str(dst.relative_to(config.ROOT_DIR)), "deleted": True}
 
 
-def create_asset(name: str, kind: str, content: Dict[str, Any]) -> Dict[str, Any]:
+def create_asset(name: str, kind: str, content: dict[str, Any]) -> dict[str, Any]:
     """新建资产。"""
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00")):
         raise ServiceError(f"非法资产名: {name}", 400)

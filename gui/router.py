@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any
 
 from gui import engine_adapter, services
 from gui.services import ServiceError
@@ -19,15 +20,15 @@ from gui.services import ServiceError
 # 响应工具
 # ---------------------------------------------------------------------------
 
-def ok(data: Any = None) -> Dict[str, Any]:
+def ok(data: Any = None) -> dict[str, Any]:
     return {"code": 0, "data": data, "message": ""}
 
 
-def err(code: int, message: str) -> Dict[str, Any]:
+def err(code: int, message: str) -> dict[str, Any]:
     return {"code": code, "data": None, "message": message}
 
 
-def _json_bytes(payload: Dict[str, Any]) -> bytes:
+def _json_bytes(payload: dict[str, Any]) -> bytes:
     return json.dumps(payload, ensure_ascii=False).encode("utf-8")
 
 
@@ -35,7 +36,7 @@ def _json_bytes(payload: Dict[str, Any]) -> bytes:
 # 处理器
 # ---------------------------------------------------------------------------
 
-def _h_import(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_import(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     path = (body or {}).get("path", "")
     if not path:
         raise ServiceError("缺少 path 参数", 400)
@@ -49,12 +50,12 @@ def _h_import(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     return ok(services.import_book(path, batch_size))
 
 
-def _h_get_book(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_book(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     book_id = params["book_id"]
     return ok(services.get_book(book_id))
 
 
-def _h_get_chapter(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_chapter(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     book_id = params["book_id"]
     idx = _safe_int(params.get("idx"), -1, "idx")
     if idx < 0:
@@ -62,7 +63,7 @@ def _h_get_chapter(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, A
     return ok(services.get_chapter(book_id, idx))
 
 
-def _h_split_batch(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_split_batch(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = params["book_id"]
     idx = _safe_int(params.get("idx"), -1, "idx")
     if idx < 0:
@@ -71,7 +72,7 @@ def _h_split_batch(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, An
     return ok(services.split_chapter_batches(book_id, idx, batch_size))
 
 
-def _h_start(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_start(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = (body or {}).get("book_id", "")
     genre = (body or {}).get("genre", "unknown")
     model_id = (body or {}).get("model_id")
@@ -81,14 +82,14 @@ def _h_start(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     return ok(services.start_analysis(book_id, genre, model_id, batch_size))
 
 
-def _h_pause(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_pause(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = (body or {}).get("book_id", "")
     if not book_id:
         raise ServiceError("缺少 book_id", 400)
     return ok(services.pause(book_id))
 
 
-def _h_resume(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_resume(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = (body or {}).get("book_id", "")
     if not book_id:
         raise ServiceError("缺少 book_id", 400)
@@ -97,19 +98,19 @@ def _h_resume(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
     return ok(services.resume(book_id, genre, model_id))
 
 
-def _h_retry_failed(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_retry_failed(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = (body or {}).get("book_id", "")
     if not book_id:
         raise ServiceError("缺少 book_id", 400)
     return ok(services.retry_failed(book_id))
 
 
-def _h_status(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_status(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     book_id = params.get("book_id")
     return ok(services.get_status(book_id))
 
 
-def _h_asset(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_asset(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     book_id = params.get("book_id", "")
     if not book_id:
         raise ServiceError("缺少 book_id", 400)
@@ -124,7 +125,7 @@ def _h_asset(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
     return ok(services.get_asset(book_id, chapter_index, batch_index, pass_name))
 
 
-def _h_models(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_models(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     return ok({"models": engine_adapter.list_models(),
                "any_configured": engine_adapter.any_model_configured()})
 
@@ -133,11 +134,11 @@ def _h_models(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
 # 阶段一新增端点
 # ---------------------------------------------------------------------------
 
-def _h_overview(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_overview(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     return ok(services.get_overview())
 
 
-def _h_list_assets(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_list_assets(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     kind = params.get("kind") or None
     genre = params.get("genre") or None
     book_id = params.get("book_id") or None
@@ -149,36 +150,36 @@ def _h_list_assets(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, A
     return ok(services.list_assets(kind, genre, book_id, offset, limit))
 
 
-def _h_stats(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_stats(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     return ok(services.get_stats())
 
 
-def _h_asset_detail(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_asset_detail(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     kind = params["kind"]
     asset_id = params["id"]
     return ok(services.get_asset_detail(kind, asset_id))
 
 
-def _h_list_reports(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_list_reports(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     return ok(services.list_reports())
 
 
-def _h_get_report(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_report(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     report_id = params["id"]
     return ok(services.get_report(report_id))
 
 
-def _h_book_results(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_book_results(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     book_id = params["book_id"]
     return ok(services.get_book_results(book_id))
 
 
-def _h_book_scores(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_book_scores(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     book_id = params["book_id"]
     return ok(services.get_book_scores(book_id))
 
 
-def _h_full_analysis(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_full_analysis(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     book_id = (body or {}).get("book_id", "")
     genre = (body or {}).get("genre", "unknown")
     model_id = (body or {}).get("model_id")
@@ -191,12 +192,12 @@ def _h_full_analysis(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, 
 # W15 阶段二：写作（M2）+ 质检（M3）端点
 # ---------------------------------------------------------------------------
 
-def _h_writing_projects(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_projects(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     return ok(writing_service.list_projects())
 
 
-def _h_writing_inject(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_inject(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     b = body or {}
     return ok(writing_service.inject(
@@ -217,7 +218,7 @@ def _safe_int(value: Any, default: int, field: str) -> int:
         raise ServiceError(f"{field} 必须为整数", 400) from exc
 
 
-def _h_writing_generate(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_generate(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     b = body or {}
     return ok(writing_service.generate(
@@ -230,12 +231,12 @@ def _h_writing_generate(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[s
         save_prompt=bool(b.get("save_prompt"))))
 
 
-def _h_writing_task(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_task(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     return ok(writing_service.task_state(params["task_id"]))
 
 
-def _h_writing_import_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_import_chapter(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     b = body or {}
     return ok(writing_service.import_chapter(
@@ -244,7 +245,7 @@ def _h_writing_import_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> 
         voice=b.get("voice"), genre_pack=b.get("genre_pack")))
 
 
-def _h_writing_score(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_score(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     b = body or {}
     return ok(writing_service.score(
@@ -252,7 +253,7 @@ def _h_writing_score(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str,
         chapter_path=b.get("chapter_path"), label=b.get("label", "")))
 
 
-def _h_writing_assemble(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_assemble(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     b = body or {}
     return ok(writing_service.assemble(
@@ -260,12 +261,12 @@ def _h_writing_assemble(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[s
         skip_craft=bool(b.get("skip_craft"))))
 
 
-def _h_writing_assemble_candidates(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_writing_assemble_candidates(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     return ok(writing_service.assemble_candidates())
 
 
-def _h_quality_check(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_quality_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     b = body or {}
     return ok(quality_service.check(
@@ -273,14 +274,14 @@ def _h_quality_check(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str,
         voice=b.get("voice"), genre_pack=b.get("genre_pack")))
 
 
-def _h_quality_book(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_quality_book(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     b = body or {}
     return ok(quality_service.book(
         target=b.get("target"), text=b.get("text"), voice=b.get("voice")))
 
 
-def _h_quality_qc(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_quality_qc(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     b = body or {}
     return ok(quality_service.qc(
@@ -289,123 +290,123 @@ def _h_quality_qc(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, An
         novel_dir=b.get("novel_dir"), llm_hook=bool(b.get("llm_hook"))))
 
 
-def _h_quality_task(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_quality_task(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     return ok(quality_service.qc_task_state(params["task_id"]))
 
 
-def _h_quality_reports(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_quality_reports(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     return ok(quality_service.list_qc_reports())
 
 
 # --- M5 系统与合规 handlers ---
 
-def _h_system_status(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_system_status(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import system_service
     return ok(system_service.system_status())
 
 
-def _h_compliance_scan(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_compliance_scan(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import system_service
     b = body or {}
     return ok(system_service.compliance_scan(
         voice=b.get("voice"), book_path=b.get("book_path")))
 
 
-def _h_model_info(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_model_info(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import system_service
     return ok(system_service.model_info())
 
 
-def _h_get_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_settings(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import system_service
     return ok(system_service.get_settings())
 
 
-def _h_update_settings(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_update_settings(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import system_service
     return ok(system_service.update_settings(body or {}))
 
 
-def _h_reset_settings(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_reset_settings(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import system_service
     return ok(system_service.reset_settings())
 
 
 # --- 模型管理 handlers ---
 
-def _h_list_models(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_list_models(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.list_models())
 
 
-def _h_get_model(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_model(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.get_model(params["model_id"]))
 
 
-def _h_add_model(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_add_model(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.add_model(body or {}))
 
 
-def _h_update_model(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_update_model(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.update_model(params["model_id"], body or {}))
 
 
-def _h_delete_model(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_delete_model(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.delete_model(params["model_id"]))
 
 
-def _h_set_model_key(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_set_model_key(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     b = body or {}
     return ok(model_service.set_api_key(params["model_id"], b.get("api_key", "")))
 
 
-def _h_test_model(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_test_model(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.test_model(params["model_id"]))
 
 
-def _h_get_presets(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_presets(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import model_service
     return ok(model_service.get_presets())
 
 
 # --- 文风集成 handlers ---
 
-def _h_analyze_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_analyze_style(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import style_service
     b = body or {}
     return ok(style_service.analyze_style(b.get("text", ""), b.get("name", "")))
 
 
-def _h_save_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_save_style(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import style_service
     b = body or {}
     return ok(style_service.save_style(b.get("name", ""), b.get("style_card", {})))
 
 
-def _h_list_styles(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_list_styles(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import style_service
     return ok({"styles": style_service.list_styles()})
 
 
-def _h_get_style(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_style(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import style_service
     return ok(style_service.get_style(params["name"]))
 
 
-def _h_delete_style(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_delete_style(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import style_service
     return ok(style_service.delete_style(params["name"]))
 
 
-def _h_apply_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_apply_style(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import style_service
     b = body or {}
     return ok(style_service.apply_style_prompt(b.get("style_name", ""), b.get("base_prompt", "")))
@@ -413,24 +414,24 @@ def _h_apply_style(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, A
 
 # --- 多平台适配 handlers ---
 
-def _h_list_platforms(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_list_platforms(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import platform_service
     return ok({"platforms": platform_service.list_platforms()})
 
 
-def _h_get_platform(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_get_platform(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import platform_service
     return ok(platform_service.get_platform(params["platform_id"]))
 
 
-def _h_check_compliance(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_check_compliance(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import platform_service
     b = body or {}
     return ok(platform_service.check_chapter_compliance(
         b.get("platform_id", ""), b.get("chapter_text", ""), b.get("chapter_title", "")))
 
 
-def _h_format_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_format_chapter(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import platform_service
     b = body or {}
     return ok(platform_service.format_chapter(
@@ -438,7 +439,7 @@ def _h_format_chapter(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str
         b.get("title", ""), b.get("content", "")))
 
 
-def _h_export_book(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_export_book(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import platform_service
     b = body or {}
     return ok(platform_service.export_book_for_platform(
@@ -447,41 +448,41 @@ def _h_export_book(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, A
 
 # --- M1 高级分析 handlers ---
 
-def _h_distill_status(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_distill_status(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     return ok(advanced_service.distill_status(params["genre"]))
 
 
-def _h_distill_run(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_distill_run(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     return ok(advanced_service.distill_genre(params["genre"]))
 
 
-def _h_aggregate(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_aggregate(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     return ok(advanced_service.aggregate_genre(params["genre"]))
 
 
-def _h_batch_status(_params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_batch_status(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     return ok(advanced_service.batch_status())
 
 
 # --- M4 资产写入 handlers ---
 
-def _h_asset_update(params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_asset_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     b = body or {}
     return ok(advanced_service.update_asset(
         params["kind"], params["id"], b.get("content", {})))
 
 
-def _h_asset_delete(params: Dict[str, Any], _body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_asset_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     return ok(advanced_service.delete_asset(params["kind"], params["id"]))
 
 
-def _h_asset_create(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, Any]:
+def _h_asset_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import advanced_service
     b = body or {}
     return ok(advanced_service.create_asset(
@@ -493,7 +494,7 @@ def _h_asset_create(_params: Dict[str, Any], body: Dict[str, Any]) -> Dict[str, 
 # ---------------------------------------------------------------------------
 
 # (method, 正则, handler)。命名捕获组通过正则分组名传入 params。
-ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
+ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/import$"), _h_import),
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)$"), _h_get_book),
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)/chapter/(?P<idx>\d+)$"), _h_get_chapter),
@@ -571,7 +572,7 @@ ROUTES: list[Tuple[str, re.Pattern, Callable[[Dict, Dict], Dict]]] = [
 ]
 
 
-def dispatch(method: str, path: str, body: Dict[str, Any], query: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+def dispatch(method: str, path: str, body: dict[str, Any], query: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
     """路由分发。返回 (响应 payload, 或 None 表示非 API 路由)。
 
     对于 SSE 端点返回特殊标记 ``__sse__`` 让 server 层接管长连接。
@@ -597,7 +598,7 @@ def dispatch(method: str, path: str, body: Dict[str, Any], query: Dict[str, Any]
 _MAX_BODY_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
-def read_body(handler: BaseHTTPRequestHandler) -> Dict[str, Any]:
+def read_body(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
     """读取 JSON 请求体。L4：非法 Content-Length 返回 400；超大 body 返回 413。"""
     raw_len = handler.headers.get("Content-Length", "0") or "0"
     try:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """蒸馏层二期 · 语义检索/RAG 桥接（零第三方依赖）。
 
 用「倒排索引 + 词项重叠打分（BM25 简化版）」近似语义检索，把四类蒸馏资产
@@ -28,7 +27,7 @@ from collections import Counter
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _SCRIPTS = Path(__file__).resolve().parent
 if str(_SCRIPTS) not in sys.path:
@@ -91,7 +90,7 @@ _TOKEN_RE = re.compile(r"[\w\u4e00-\u9fff]+")
 # 首版只挂高频领域词（钩子/悬念/爽点/铺垫/伏笔）→ 对应维度。
 # 结构：{关键词: {维度: 额外权重词项列表}}，命中关键词时把额外词项注入查询，
 # 使其能召回对应维度的文档（额外词项会完整进入打分，用于提升对应维度召回权重）。
-INTENT_MAP: Dict[str, Dict[str, List[str]]] = {
+INTENT_MAP: dict[str, dict[str, list[str]]] = {
     "钩子": {"structure-obs": ["钩子", "hook"], "craft-card": ["钩子"]},
     "hook": {"structure-obs": ["钩子", "hook"], "craft-card": ["钩子"]},
     "悬念": {"craft-card": ["悬念"], "structure-obs": ["钩子", "悬念"]},
@@ -105,7 +104,7 @@ INTENT_MAP: Dict[str, Dict[str, List[str]]] = {
 }
 
 # 维度优先级（用于同分排序时的稳定性兜底，正常按 asset_id 升序）。
-_DIMENSION_ORDER: Dict[str, int] = {
+_DIMENSION_ORDER: dict[str, int] = {
     "voice-card": 0,
     "craft-card": 1,
     "structure-obs": 2,
@@ -131,7 +130,7 @@ class DocEntry:
 
     asset_id: str = ""
     dimension: str = ""
-    asset_dict: Dict[str, Any] = dc_field(default_factory=dict)
+    asset_dict: dict[str, Any] = dc_field(default_factory=dict)
     terms: Counter = dc_field(default_factory=Counter)
     snippet: str = ""
     ngrams: Counter = dc_field(default_factory=Counter)
@@ -166,31 +165,31 @@ class Index:
         idf_cache: 词项 -> idf 缓存。
     """
 
-    inverted: Dict[str, List[int]] = dc_field(default_factory=dict)
-    doc_freq: Dict[str, int] = dc_field(default_factory=dict)
-    docs: List[DocEntry] = dc_field(default_factory=list)
-    idf_cache: Dict[str, float] = dc_field(default_factory=dict)
-    norms: List[float] = dc_field(default_factory=list)
+    inverted: dict[str, list[int]] = dc_field(default_factory=dict)
+    doc_freq: dict[str, int] = dc_field(default_factory=dict)
+    docs: list[DocEntry] = dc_field(default_factory=list)
+    idf_cache: dict[str, float] = dc_field(default_factory=dict)
+    norms: list[float] = dc_field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
 # 分词与规范化
 # ---------------------------------------------------------------------------
 
-def _tokenize(text: str) -> List[str]:
+def _tokenize(text: str) -> list[str]:
     """把文本切分为词项列表（字母数字 + 中日韩字符连续串）。"""
     if not text:
         return []
     return _TOKEN_RE.findall(str(text).lower())
 
 
-def _build_snippet(asset_dict: Dict[str, Any]) -> str:
+def _build_snippet(asset_dict: dict[str, Any]) -> str:
     """从资产 dict 生成约 200 字符的可读摘要。
 
     优先取 distilled 的 ``rules``（field:value）文本；无规则时退化为「扁平化全文」，
     覆盖原始资产（craft-card 技法名等）。截断到 ``SNIPPET_LEN`` 字符。
     """
-    parts: List[str] = []
+    parts: list[str] = []
     rules = asset_dict.get("rules")
     if isinstance(rules, list):
         for rule in rules:
@@ -212,7 +211,7 @@ def _build_snippet(asset_dict: Dict[str, Any]) -> str:
     return snippet
 
 
-def _flatten_asset_body(asset_dict: Dict[str, Any]) -> str:
+def _flatten_asset_body(asset_dict: dict[str, Any]) -> str:
     """把资产正文（排除 meta/provenance 元信息）扁平化为可检索文本。"""
     keep_keys = {
         "craft_analysis",
@@ -227,7 +226,7 @@ def _flatten_asset_body(asset_dict: Dict[str, Any]) -> str:
         "imagery",
         "banned",
     }
-    parts: List[str] = []
+    parts: list[str] = []
     for key, value in asset_dict.items():
         if key in ("meta", "provenance", "rules", "blindspots", "stats"):
             continue
@@ -271,14 +270,14 @@ def _flatten_value(value: Any) -> str:
 # 字符 n-gram 向量（纯标准库）
 # ---------------------------------------------------------------------------
 
-def _corpus_text(asset_id: str, dimension: str, asset_dict: Dict[str, Any]) -> str:
+def _corpus_text(asset_id: str, dimension: str, asset_dict: dict[str, Any]) -> str:
     """从资产提取规范化 corpus 全文。
 
     与 ``_add_doc`` 原有拼接逻辑一致：asset_id + 维度 + 正文（经
     ``_flatten_asset_body`` 字段白名单清洗）+ rules 的 field/value。BM25 词项与
     向量 n-gram 都从此文本派生，保证两份表示看到同一份文档语义。
     """
-    corpus_parts: List[str] = [asset_id, dimension]
+    corpus_parts: list[str] = [asset_id, dimension]
     corpus_parts.append(_flatten_asset_body(asset_dict))
     for rule in asset_dict.get("rules") or []:
         if isinstance(rule, dict):
@@ -333,7 +332,7 @@ def _cosine_sim(q: Counter, q_norm: float, d: Counter, d_norm: float) -> float:
 # 索引构建
 # ---------------------------------------------------------------------------
 
-def build_index(assets: Dict[str, Dict[str, dict]], persist_path: Optional[str] = None) -> Index:
+def build_index(assets: dict[str, dict[str, dict]], persist_path: str | None = None) -> Index:
     """把四类资产构建为倒排索引。
 
     兼容两种输入结构：
@@ -364,7 +363,7 @@ def build_index(assets: Dict[str, Dict[str, dict]], persist_path: Optional[str] 
 
     index = Index()
 
-    def _add_doc(dimension: str, asset_dict: Dict[str, Any]) -> None:
+    def _add_doc(dimension: str, asset_dict: dict[str, Any]) -> None:
         """把单个 asset_dict 加入索引。
 
         asset_dict 非 dict（如 None）时静默跳过，避免后续 ``.get`` 与
@@ -451,7 +450,7 @@ def _save_index(index: Index, persist_path: str) -> None:
         fh.write("\n")
 
 
-def _load_index(persist_path: str) -> Optional[Index]:
+def _load_index(persist_path: str) -> Index | None:
     """从 ``persist_path`` 加载索引；不存在或损坏返回 None。"""
     path = Path(persist_path)
     if not path.exists():
@@ -496,7 +495,7 @@ def _idf(term: str, index: Index) -> float:
 
 
 def _bm25_score(
-    query_terms: List[str],
+    query_terms: list[str],
     doc: DocEntry,
     index: Index,
     k1: float = BM25_K1,
@@ -608,7 +607,7 @@ def _fused_score(bm25_raw: float, bm25_max: float, cos_sim: float, alpha: float 
 # 检索
 # ---------------------------------------------------------------------------
 
-def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[HitEntry]:
+def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> list[HitEntry]:
     """按意图字符串检索最相关的蒸馏片段。
 
     流程：分词 → 意图映射加权（命中关键词注入额外召回词项）→ 倒排索引打分
@@ -635,7 +634,7 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
     # 关键词匹配采用「子串包含」而非仅 token 相等：中文意图如「悬疑反转钩子」
     # 会被分词为一个连续 token，但其中包含「钩子」等关键词，需子串识别。
     intent_lower = str(intent).lower()
-    expanded_terms: List[str] = list(query_terms)
+    expanded_terms: list[str] = list(query_terms)
     for keyword, dim_map in INTENT_MAP.items():
         if keyword in query_terms or keyword in intent_lower:
             for extra_terms in dim_map.values():
@@ -649,7 +648,7 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
     # 单字 n-gram 文档频率过滤：单字 gram 在 ≥80% 文档中出现时无判别力，属于
     # 「无关查询与文档在单字层伪重叠」的噪声源（如「学/量/力」等高频字），过滤后
     # 恢复「完全无关意图 → 空列表」语义，同时保留「钩/爽」等低频单字意图的召回。
-    unigram_df: Dict[str, int] = {}
+    unigram_df: dict[str, int] = {}
     for doc in index.docs:
         for key in doc.ngrams:
             if key.startswith("1:"):
@@ -670,8 +669,8 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
     q_norm = _norm(query_ngrams)
 
     # 先对每篇文档算 BM25 原始分与余弦分，收集 BM25 最大值用于归一化。
-    bm25_scores: List[float] = []
-    cos_scores: List[float] = []
+    bm25_scores: list[float] = []
+    cos_scores: list[float] = []
     for doc in index.docs:
         bm25_scores.append(_bm25_score(expanded_terms, doc, index))
         cos_scores.append(_vector_score(query_ngrams, q_norm, doc, index))
@@ -688,7 +687,7 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
             return []
 
     # 融合打分。
-    hits: List[HitEntry] = []
+    hits: list[HitEntry] = []
     # 三个平行数组必须等长：长度不一致意味着打分逻辑与索引脱节，
     # 静默截断会丢掉尾部文档（表现为"莫名少几条结果"且无任何报错）。
     for doc, bm25, cos in zip(index.docs, bm25_scores, cos_scores, strict=True):
@@ -713,7 +712,7 @@ def retrieve_for_intent(intent: str, index: Index, top_k: int = TOP_K) -> List[H
 # 渲染
 # ---------------------------------------------------------------------------
 
-def render_retrieval(hits: List[HitEntry]) -> str:
+def render_retrieval(hits: list[HitEntry]) -> str:
     """把检索命中渲染为「针对性注入」段。
 
     Returns:
@@ -721,7 +720,7 @@ def render_retrieval(hits: List[HitEntry]) -> str:
     """
     if not hits:
         return ""
-    lines: List[str] = ["### 针对性注入（来自检索）"]
+    lines: list[str] = ["### 针对性注入（来自检索）"]
     for h in hits:
         lines.append(f"- {h.snippet}")
     return "\n".join(lines)
@@ -732,7 +731,7 @@ def render_retrieval(hits: List[HitEntry]) -> str:
 # ---------------------------------------------------------------------------
 
 def build_index_from_genre(
-    genre: str, book_names: Optional[List[str]] = None
+    genre: str, book_names: list[str] | None = None
 ) -> Index:
     """从资产目录采集四类资产并构建索引（依赖 distill_core.collect_assets）。"""
     try:
@@ -751,7 +750,7 @@ def build_index_from_genre(
 _TROPE_LIBRARY_PATH = Path(__file__).resolve().parent.parent / "assets" / "trope-library.json"
 
 
-def _load_tropes() -> List[Dict[str, Any]]:
+def _load_tropes() -> list[dict[str, Any]]:
     """读取 assets/trope-library.json 的 tropes 数组；缺失/解析失败返回空列表。"""
     try:
         data = json.loads(_TROPE_LIBRARY_PATH.read_text(encoding="utf-8"))
@@ -763,7 +762,7 @@ def _load_tropes() -> List[Dict[str, Any]]:
     return tropes if isinstance(tropes, list) else []
 
 
-def _trope_score(intent: str, trope: Dict[str, Any]) -> float:
+def _trope_score(intent: str, trope: dict[str, Any]) -> float:
     """对单个桥段做轻量意图匹配打分（名称/类别/骨架关键词重叠）。"""
     if not intent:
         return 0.0
@@ -793,7 +792,7 @@ def _trope_score(intent: str, trope: Dict[str, Any]) -> float:
     return score
 
 
-def retrieve_tropes(intent: str, genre: str | None = None, top_k: int = 5) -> List[Dict[str, Any]]:
+def retrieve_tropes(intent: str, genre: str | None = None, top_k: int = 5) -> list[dict[str, Any]]:
     """按意图检索桥段库，按 genre_scope 过滤（铁律一）。
 
     过滤规则：
