@@ -19,8 +19,10 @@ novel-lab CLI 统一入口 — 一条命令覆盖全部工作流
 """
 import argparse
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent  # novel-lab/ 本身
@@ -275,33 +277,48 @@ def main():
             return rc1
         if args.dry_run:
             return 0
-        # 2. 生成拆书报告
-        vc = ROOT / "assets" / f"{name}-voice-card.json"
-        so = ROOT / "assets" / f"{name}-structure-obs.json"
-        co = ROOT / "assets" / f"{name}-commercial-obs.json"
-        cc = ROOT / "assets" / f"{name}-craft-card.json"
-        if vc.exists():
-            rpt_args = [str(vc)]
-            if so.exists():
-                rpt_args += ["--structure", str(so)]
-            if co.exists():
-                rpt_args += ["--commercial", str(co)]
-            run_script("report.py", rpt_args)
-        # 3. 生成笔法报告
-        cc = ROOT / "assets" / f"{name}-craft-card.json"
-        if cc.exists():
-            run_script("report_craft.py", [str(cc)])
-        # 3.5 铁律二合计校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符（真·合计口径）
+        # 2/3. 生成报告 → 先写 staging 临时目录（校验先于副作用：reports/ 不见次品）
+        # P0-2 修复：原来先直写 reports/ 再做万字校验，校验失败次品已落盘。
+        # P1-B4 修复：原来丢弃 run_script 返回码，脚本失败时旧报告冒充本轮成果。
         # 【单一来源】校验逻辑在 scripts/report.py::check_combined_report_length，
         # 与 GUI（services._generate_reports）共用同一函数，避免两处口径漂移。
         from report import check_combined_report_length  # 局部导入：scripts 路径在此处才注入
-        _chk = check_combined_report_length(ROOT / "reports", name)
-        _book_len, _craft_len, _total = _chk["book_chars"], _chk["craft_chars"], _chk["total"]
-        print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
-        if not _chk["ok"]:
-            print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
-            sys.exit(1)
-        print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
+        staging = Path(tempfile.mkdtemp(prefix=f"novel-lab-staging-{name}-"))
+        try:
+            vc = ROOT / "assets" / f"{name}-voice-card.json"
+            so = ROOT / "assets" / f"{name}-structure-obs.json"
+            co = ROOT / "assets" / f"{name}-commercial-obs.json"
+            cc = ROOT / "assets" / f"{name}-craft-card.json"
+            book_out = staging / f"{name}-拆书报告.md"
+            craft_out = staging / f"{name}-笔法分析.md"
+            if vc.exists():
+                rpt_args = [str(vc), "--out", str(book_out)]
+                if so.exists():
+                    rpt_args += ["--structure", str(so)]
+                if co.exists():
+                    rpt_args += ["--commercial", str(co)]
+                rc = run_script("report.py", rpt_args)
+                if rc != 0:
+                    print(f"  ✗ 拆书报告生成失败（exit {rc}），reports/ 未写入")
+                    return rc
+            if cc.exists():
+                rc = run_script("report_craft.py", [str(cc), "--out", str(craft_out)])
+                if rc != 0:
+                    print(f"  ✗ 笔法报告生成失败（exit {rc}），reports/ 未写入")
+                    return rc
+            # 3.5 铁律二合计校验：在 staging 上做，通过后才搬入 reports/
+            _chk = check_combined_report_length(staging, name)
+            _book_len, _craft_len, _total = _chk["book_chars"], _chk["craft_chars"], _chk["total"]
+            print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
+            if not _chk["ok"]:
+                print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
+                sys.exit(1)
+            print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
+            for _src in (book_out, craft_out):
+                if _src.exists():
+                    shutil.move(str(_src), str(ROOT / "reports" / _src.name))
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）
         print("\n[Hook] 自动质检:")
         corpus_file = ROOT / "corpus" / f"{name}.txt"
