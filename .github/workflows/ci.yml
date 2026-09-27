@@ -33,7 +33,7 @@ jobs:
         run: |
           coverage run --parallel-mode run_tests.py
           coverage combine
-          coverage report
+          coverage report --fail-under=60
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7
