@@ -55,7 +55,9 @@ def _migrate_legacy_state(target: Path) -> None:
     - novel/ -> <user>/novel/
     - prompts/generated/ -> <user>/prompts/generated/
     - gui/state/ -> <user>/state_json/
-    目标已存在则跳过对应项；失败不阻断启动。
+    目标已存在且标记完整则跳过对应项；失败不阻断启动，下次重试。
+    标记机制：copytree 成功后在 dest 内写 `.migration-complete`；若 dest 存在
+    但无标记（上次部分失败），先删不完整 dest 再重拷，避免用户拿到半截数据。
     """
     import shutil
     migrations = [
@@ -68,12 +70,19 @@ def _migrate_legacy_state(target: Path) -> None:
         (ROOT_DIR / "gui" / "state", target / "state_json"),
     ]
     for legacy, dest in migrations:
-        if dest.exists() or not legacy.is_dir():
+        if not legacy.is_dir():
+            continue
+        marker = dest / ".migration-complete"
+        if marker.exists():
             continue
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
+            # dest 存在但无标记 = 上次部分失败，删掉重来。
+            if dest.exists():
+                shutil.rmtree(dest)
             # 排除 .lock（单实例锁含旧 PID，复制过去会误判）
             shutil.copytree(legacy, dest, ignore=shutil.ignore_patterns('.lock'))
+            marker.touch()
         except OSError:
             pass  # 迁移失败不阻断启动，下次再试
 
