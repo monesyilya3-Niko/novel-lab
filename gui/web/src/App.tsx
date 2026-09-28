@@ -18,6 +18,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import { AppProvider, useApp } from './state/AppContext'
 import { useThemeMode } from './state/ThemeModeContext'
 import { buildMuiTheme } from './theme'
+import { ink, fontStack } from './ink'
 import WorkbenchNav from './layout/WorkbenchNav'
 import type { WorkbenchKey } from './layout/WorkbenchNav'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -120,22 +121,42 @@ function AppShell() {
       {showWizard && (
         <OnboardingWizard onDone={() => setOnboarded(true)} onNavigate={setWorkbench} />
       )}
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'primary.main' }}>
+      <AppBar position="static" elevation={0} sx={{
+        background: (theme) => theme.palette.mode === 'dark'
+          ? `linear-gradient(135deg, #2A1414 0%, ${ink.nightCard} 100%)`
+          : `linear-gradient(135deg, ${ink.cinnabar} 0%, ${ink.cinnabarDeep} 100%)`,
+        borderBottom: (theme) => `1px solid ${theme.palette.mode === 'dark' ? ink.nightLine : 'rgba(0,0,0,0.12)'}`,
+      }}>
       {initError && (
         <Alert severity="error" sx={{ borderRadius: 0 }}>
           初始化失败：{initError}
         </Alert>
       )}
-        <Toolbar sx={{ minHeight: 48, gap: 1 }}>
+        <Toolbar sx={{ minHeight: 56, gap: 1.5, px: { xs: 2, md: 3 } }}>
           {!wide && (
-            <IconButton color="inherit" edge="start" onClick={() => setDrawerOpen(true)} aria-label="打开导航">
+            <IconButton color="inherit" edge="start" onClick={() => setDrawerOpen(true)} aria-label="打开导航" sx={{ color: '#fff' }}>
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="h6" sx={{ fontSize: 18, flex: 1 }}>
-            novel-lab 全功能工作台
-          </Typography>
-          <ModeToggle />
+          <Box sx={{
+            width: 32, height: 32, borderRadius: 2,
+            background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: fontStack.serif, fontWeight: 700, color: '#fff', fontSize: 18,
+          }}>
+            墨
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle1" sx={{ color: '#fff', fontFamily: fontStack.serif, fontWeight: 700, letterSpacing: '0.15em', lineHeight: 1.2 }}>
+              novel-lab
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', letterSpacing: '0.3em', fontSize: 10 }}>
+              全功能工作台
+            </Typography>
+          </Box>
+          <Box sx={{ color: '#fff' }}>
+            <ModeToggle />
+          </Box>
         </Toolbar>
       </AppBar>
 

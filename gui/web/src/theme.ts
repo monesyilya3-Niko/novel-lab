@@ -1,36 +1,39 @@
 // 统一主题色板：MUI theme 与 ECharts 共用（见 DESIGN_gui_workbench §7）。
 // 单一数据源，避免图表与组件色值漂移。
-// P3：双模式（light/dark）——品牌色不变，表面色/文本色随模式切换。
+// 「墨」设计系统 v2：纸墨质感 + 朱砂点缀 + 双模式（light/dark）。
+// 品牌色板定义见 ink.ts，本文件负责 MUI theme 组装。
+
+import { ink, fontStack } from './ink'
 
 export const palette = {
-  primary: '#1976d2',
-  success: '#2e7d32',
-  info: '#0288d1',
+  primary: ink.cinnabar,
+  success: ink.teal,
+  info: '#3A7CA5',
   error: '#d32f2f',
-  warning: '#b0a47a',
-  // 章节打分图：一致性 = 主色，质量 = 成功绿。
-  consistency: '#1976d2',
-  quality: '#2e7d32',
+  warning: ink.gold,
+  // 章节打分图：一致性 = 朱砂，质量 = 石青。
+  consistency: ink.cinnabar,
+  quality: ink.teal,
   // 图表色板（ECharts series 默认取色顺序）——暗色下提高明度保证可读。
   chartSeriesLight: [
-    '#1976d2',
-    '#2e7d32',
-    '#ed6c02',
-    '#9c27b0',
-    '#0288d1',
-    '#d32f2f',
-    '#b0a47a',
-    '#00796b',
+    ink.cinnabar,
+    ink.teal,
+    ink.gold,
+    '#3A7CA5',
+    '#7B5EA7',
+    '#C17C5B',
+    '#5B8C5A',
+    '#8A8478',
   ] as const,
   chartSeriesDark: [
-    '#64b5f6',
-    '#81c784',
-    '#ffb74d',
-    '#ce93d8',
-    '#4fc3f7',
-    '#e57373',
-    '#cbc28a',
-    '#4db6ac',
+    '#E57373',
+    '#4DB6AC',
+    ink.goldBright,
+    '#64B5F6',
+    '#BA9BC9',
+    '#D4A574',
+    '#81C784',
+    ink.moonSoft,
   ] as const,
 } as const
 
@@ -41,26 +44,56 @@ export const chartSeries = (isDark: boolean) =>
 export const buildMuiTheme = (isDark: boolean) => ({
   palette: {
     mode: (isDark ? 'dark' : 'light') as 'dark' | 'light',
-    primary: { main: palette.primary },
+    primary: { main: palette.primary, dark: ink.cinnabarDeep, light: '#E57373' },
     success: { main: palette.success },
     info: { main: palette.info },
     error: { main: palette.error },
     warning: { main: palette.warning },
-    ...(isDark
-      ? { background: { default: '#121820', paper: '#1a222d' } }
-      : {}),
+    text: {
+      primary: isDark ? ink.moonWhite : ink.ink,
+      secondary: isDark ? ink.moonSoft : ink.inkSoft,
+      disabled: isDark ? '#6B655A' : ink.inkFaint,
+    },
+    divider: isDark ? ink.nightLine : ink.line,
+    background: isDark
+      ? { default: ink.night, paper: ink.nightCard }
+      : { default: ink.paper, paper: ink.card },
   },
   typography: {
-    fontFamily:
-      "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+    fontFamily: fontStack.sans,
+    h1: { fontFamily: fontStack.serif, fontWeight: 700, letterSpacing: '0.02em' },
+    h2: { fontFamily: fontStack.serif, fontWeight: 700, letterSpacing: '0.02em' },
+    h3: { fontFamily: fontStack.serif, fontWeight: 600, letterSpacing: '0.02em' },
+    h4: { fontFamily: fontStack.serif, fontWeight: 600 },
+    h5: { fontFamily: fontStack.serif, fontWeight: 600 },
+    h6: { fontFamily: fontStack.serif, fontWeight: 600 },
+  },
+  shape: { borderRadius: 12 },
+  components: {
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          border: `1px solid ${isDark ? ink.nightLine : ink.line}`,
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: { backgroundImage: 'none' },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: { textTransform: 'none' as const, fontWeight: 600 },
+      },
+    },
   },
 })
 
 // ECharts 统一文本样式（暗色下用浅字色）。
 export const chartTextStyle = (isDark: boolean) => ({
-  color: isDark ? '#c3cfdd' : '#37474f',
-  fontFamily:
-    "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+  color: isDark ? ink.moonSoft : ink.inkSoft,
+  fontFamily: fontStack.sans,
 })
 
 // 图表工具提示 / 图例等共用默认值。
@@ -68,4 +101,3 @@ export const chartDefaults = (isDark: boolean) => ({
   textStyle: chartTextStyle(isDark),
   color: [...chartSeries(isDark)],
 })
-
