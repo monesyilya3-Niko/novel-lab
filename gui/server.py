@@ -158,7 +158,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(router.err(exc.code, exc.message), exc.code)
             return
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
             return
 
         # 静态文件
@@ -192,7 +195,10 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
 
     def do_PUT(self) -> None:
         """CRITICAL：M4 资产更新需要 PUT 支持。"""
@@ -212,7 +218,10 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
 
     def do_DELETE(self) -> None:
         """CRITICAL：M4 资产删除需要 DELETE 支持。"""
@@ -231,7 +240,10 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
 
     # ------------------------------------------------------------------
     # 管理员登录 / 登出（Cookie 会话，需在 router 分发前处理 Set-Cookie）
@@ -255,7 +267,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(router.err(exc.code, exc.message), exc.code)
             return
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
             return
         self._send_json(
             router.ok({"username": result["username"],
@@ -319,7 +334,10 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
 
     def _send_json(self, payload: dict, status: int = 200,
                    extra_headers: dict[str, str] | None = None) -> None:

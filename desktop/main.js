@@ -92,10 +92,45 @@ function startBackend() {
   })
 }
 
+const fs = require('fs')
+
+function windowStatePath() {
+  return path.join(app.getPath('userData'), 'window-state.json')
+}
+
+function loadWindowState() {
+  const defaults = { width: 1440, height: 900, x: undefined, y: undefined }
+  try {
+    const raw = fs.readFileSync(windowStatePath(), 'utf-8')
+    const s = JSON.parse(raw)
+    // 校验数值合法性，损坏的配置回退默认值。
+    if (typeof s.width === 'number' && s.width >= 1024) defaults.width = s.width
+    if (typeof s.height === 'number' && s.height >= 640) defaults.height = s.height
+    if (typeof s.x === 'number') defaults.x = s.x
+    if (typeof s.y === 'number') defaults.y = s.y
+  } catch (_) { /* 首次启动或配置损坏，用默认值 */ }
+  return defaults
+}
+
+function saveWindowState(win) {
+  if (!win || win.isDestroyed()) return
+  try {
+    const [width, height] = win.getSize()
+    const [x, y] = win.getPosition()
+    // 最大化状态下不保存位置（恢复时位置无意义），只记大小。
+    const state = win.isMaximized() ? { width, height } : { width, height, x, y }
+    fs.writeFileSync(windowStatePath(), JSON.stringify(state))
+  } catch (_) { /* 保存失败不影响运行 */ }
+}
+
 function createWindow() {
+  // 窗口状态持久化：记住用户调整后的大小/位置，下次启动恢复。
+  const winState = loadWindowState()
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: winState.width,
+    height: winState.height,
+    x: winState.x,
+    y: winState.y,
     minWidth: 1024,
     minHeight: 640,
     title: 'xuan',
@@ -105,22 +140,38 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
     },
   })
+  // 关闭/退出前保存窗口状态（防崩溃丢失：resize/move 即时保存）。
+  const saveState = () => saveWindowState(mainWindow)
+  mainWindow.on('resize', saveState)
+  mainWindow.on('move', saveState)
+  mainWindow.on('close', saveState)
   mainWindow.loadURL(backendUrl + '/')
   mainWindow.once('ready-to-show', () => mainWindow.show())
   // 外部链接用系统浏览器打开，不在应用窗口内跳转。
   // setWindowOpenHandler 只拦截 window.open() 弹窗；will-navigate 拦截
   // 同窗口导航（链接点击、重定向、location.href），否则外部页面会在
   // 应用窗口内加载。
+  // 安全：用 URL origin 严格比较，不用字符串前缀（前缀可被绕过，
+  // 如 backendUrl=http://127.0.0.1:8000 时 http://127.0.0.1:8000.evil.com 也会通过）。
+  const backendOrigin = new URL(backendUrl).origin
+  const isInternalUrl = (url) => {
+    try {
+      return new URL(url).origin === backendOrigin
+    } catch (_) {
+      return false
+    }
+  }
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!url.startsWith(backendUrl)) {
+    if (!isInternalUrl(url)) {
       event.preventDefault()
       shell.openExternal(url)
     }
   })
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (!url.startsWith(backendUrl)) {
+    if (!isInternalUrl(url)) {
       shell.openExternal(url)
       return { action: 'deny' }
     }

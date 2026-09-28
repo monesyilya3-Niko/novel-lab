@@ -498,6 +498,33 @@ def backup_to(dst: Path) -> None:
         src = db_path()
         if src.is_file():
             shutil.copy2(src, dst)
+    # 验证备份可用：损坏的备份比没有备份更危险（恢复时才发现）。
+    _verify_backup(dst)
+
+
+def _verify_backup(dst: Path) -> None:
+    """校验备份文件可打开且完整；失败抛 RuntimeError。"""
+    if not dst.is_file():
+        raise RuntimeError(f"备份失败：{dst} 未生成")
+    try:
+        chk = sqlite3.connect(str(dst))
+    except sqlite3.Error as e:
+        raise RuntimeError(f"备份文件无法打开：{e}")
+    try:
+        try:
+            row = chk.execute("PRAGMA integrity_check").fetchone()
+        except sqlite3.Error as e:
+            raise RuntimeError(f"备份完整性校验失败：{e}")
+        if not row or row[0] != "ok":
+            raise RuntimeError(f"备份完整性校验失败：{row}")
+        # 关键表存在性抽查
+        tables = {r[0] for r in chk.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        for t in ("books", "assets", "reports"):
+            if t not in tables:
+                raise RuntimeError(f"备份缺关键表：{t}")
+    finally:
+        chk.close()
 
 
 def reset_all() -> None:

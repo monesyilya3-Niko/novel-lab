@@ -72,6 +72,22 @@ def _audit_file() -> Path:
     return config.STATE_ROOT / AUDIT_FILE_NAME
 
 
+# 审计日志轮转阈值：超过则归档为带时间戳文件，避免长期运行无界增长。
+# 归档文件保留全部历史（不删除），read_audit 会自动合并读取归档与当前文件。
+_AUDIT_ROTATE_BYTES = 10 * 1024 * 1024
+
+
+def _maybe_rotate_audit(fp: Path) -> None:
+    """审计日志超过阈值时归档轮转（带时间戳后缀，历史不丢失）。"""
+    try:
+        if fp.exists() and fp.stat().st_size >= _AUDIT_ROTATE_BYTES:
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            archived = fp.with_name(f"{fp.stem}-{ts}{fp.suffix}")
+            fp.rename(archived)
+    except OSError:
+        pass  # 轮转失败不阻断审计写入
+
+
 # ---------------------------------------------------------------------------
 # 密码
 # ---------------------------------------------------------------------------
@@ -298,6 +314,7 @@ def audit(username: str, ip: str, action: str, detail: str = "") -> None:
     try:
         fp = _audit_file()
         fp.parent.mkdir(parents=True, exist_ok=True)
+        _maybe_rotate_audit(fp)
         line = json.dumps({
             "ts": _utcnow_iso(), "username": username, "ip": ip,
             "action": action, "detail": detail,
@@ -384,34 +401,50 @@ def read_audit(limit: int = 100, action: str = "", username: str = "",
     limit = max(1, min(limit, 500))
     since_dt = _parse_time_bound(since)
     until_dt = _parse_time_bound(until)
+    # 审计文件列表：当前文件 + 轮转归档（按文件名倒序，最新的在前）。
+    # 归档命名 admin_audit-YYYYMMDD-HHMMSS.jsonl，字典序即时间序。
     fp = _audit_file()
-    if not fp.is_file():
-        return []
-    out: list[dict[str, Any]] = []
+    fps = [fp]
     try:
-        for raw in _iter_lines_reverse(fp):
-            if not raw.strip():
+        archived = sorted(fp.parent.glob(f"{fp.stem}-*.jsonl"), reverse=True)
+        fps.extend(archived)
+    except OSError:
+        pass
+    out: list[dict[str, Any]] = []
+    done = False
+    try:
+        for cur in fps:
+            if not cur.is_file():
                 continue
-            try:
-                entry = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
-            if not isinstance(entry, dict):
-                continue
-            if action and entry.get("action") != action:
-                continue
-            if username and entry.get("username") != username:
-                continue
-            if since_dt is not None or until_dt is not None:
-                ts = _parse_entry_ts(entry)
-                if ts is None:
+            for raw in _iter_lines_reverse(cur):
+                if not raw.strip():
                     continue
-                if until_dt is not None and ts > until_dt:
+                try:
+                    entry = json.loads(raw)
+                except json.JSONDecodeError:
                     continue
-                if since_dt is not None and ts < since_dt:
-                    break  # 越往前越旧：后续条目必定更早，可提前结束
-            out.append(entry)
-            if len(out) >= limit:
+                if not isinstance(entry, dict):
+                    continue
+                if action and entry.get("action") != action:
+                    continue
+                if username and entry.get("username") != username:
+                    continue
+                if since_dt is not None or until_dt is not None:
+                    ts = _parse_entry_ts(entry)
+                    if ts is None:
+                        continue
+                    if until_dt is not None and ts > until_dt:
+                        continue
+                    if since_dt is not None and ts < since_dt:
+                        # 越往前越旧：后续条目（含更旧的归档文件）必定更早，
+                        # 可提前结束全部扫描。
+                        done = True
+                        break
+                out.append(entry)
+                if len(out) >= limit:
+                    done = True
+                    break
+            if done:
                 break
     except OSError:
         return []
