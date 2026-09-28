@@ -70,9 +70,14 @@ class TestStartAnalysisGenreValidation(unittest.TestCase):
     def test_known_genre_passes_validation(self):
         # 题材校验通过后，会因缺少真实运行时状态而走其他分支，
         # 但绝不应是 400（题材错误）。
+        # 注意：必须 mock state_store，否则 start_analysis 会用真实
+        # config.STATE_JSON_DIR 写 gui_state_b.json，污染真实 gui/state/
+        #（2026-09-28 在干净安装复测中被 test_zz_state_dir_leak_guard 抓获）。
         from gui import services
         with mock.patch.object(services, "_get_book_or_raise", return_value={"book_id": "b"}), \
-             mock.patch.object(engine_adapter, "any_model_configured", return_value=True):
+             mock.patch.object(engine_adapter, "any_model_configured", return_value=True), \
+             mock.patch.object(services, "state_store") as mock_store:
+            mock_store.load_state.return_value = {}
             try:
                 services.start_analysis("b", "campus-redemption")
             except ServiceError as e:
