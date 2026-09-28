@@ -445,6 +445,8 @@ const get = <T>(path: string) => typedRequest<T>('GET', path)
 // 写作
 export const writingApi = {
   projects: () => get<import('../types').WritingProject[]>('/writing/projects'),
+  createProject: (name: string) =>
+    post<import('../types').WritingProject>('/writing/projects', { name }),
   inject: (body: Record<string, unknown>) => post<import('../types').InjectResult>('/writing/inject', body),
   generate: (body: Record<string, unknown>) => post<import('../types').WritingTaskState>('/writing/generate', body),
   taskState: (taskId: string) => get<import('../types').WritingTaskState>(`/writing/tasks/${taskId}`),
@@ -507,6 +509,11 @@ export const assetApi = {
     put<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`, { content }),
   delete: (kind: string, id: string) =>
     del<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`),
+}
+
+// 桥段库：只读，直读后端 assets/trope-library.json（32 条，见 /api/tropes）。
+export const tropeApi = {
+  list: () => get<import('../types').TropeListResult>('/tropes'),
 }
 
 // SSE：按 task_id 订阅（写作/质检长任务）

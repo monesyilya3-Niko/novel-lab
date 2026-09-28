@@ -268,3 +268,39 @@ export interface QcReportItem {
   totalScore: number | null
   createdAt: string | null
 }
+
+/** 桥段库条目（后端 /api/tropes，直读 assets/trope-library.json）。 */
+export interface TropeSkeleton {
+  setup: string
+  escalation: string[]
+  payoff: string
+  aftermath: string
+}
+
+export interface TropeParameter {
+  name: string
+  options: string[]
+}
+
+export interface Trope {
+  id: string
+  name: string
+  category: string
+  /** 后端 genre_scope，经 deepToCamel 转换 */
+  genreScope: string
+  /** 后端 applicable_genres，经 deepToCamel 转换 */
+  applicableGenres: string[]
+  skeleton: TropeSkeleton
+  /** 后端 abstraction_level，经 deepToCamel 转换 */
+  abstractionLevel: string
+  parameters: TropeParameter[]
+  effectiveness: string
+  variations: string[]
+  /** 后端 common_failures，经 deepToCamel 转换 */
+  commonFailures: string[]
+}
+
+export interface TropeListResult {
+  totalCount: number
+  tropes: Trope[]
+}

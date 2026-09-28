@@ -131,13 +131,23 @@ describe('注入面板 kind 边界', () => {
     expect(openSelectOptions('蒸馏规则（可选）')).toEqual(['无', 'distilled-A'])
   })
 
-  it('默认选中第一张 distilled 并随 body 一起注入', async () => {
+  it('distilled 默认不选中：用户明确选择后才随 body 注入', async () => {
+    // 2026-09-29 新策略：只有 voice 默认首张；distilled 默认空，避免凭空
+    // 携带资产制造题材不一致。
     render(<WritingWorkbench />)
     await screen.findByLabelText('蒸馏规则（可选）')
 
+    // 默认不自动选中
     fireEvent.click(screen.getByRole('button', { name: '生成 Prompt' }))
     await waitFor(() => expect(injectMock).toHaveBeenCalledTimes(1))
-    expect(injectMock.mock.calls[0][0]).toMatchObject({ voice: 'voice-a', distilled: 'distilled-a' })
+    expect(injectMock.mock.calls[0][0]).toMatchObject({ voice: 'voice-a', distilled: undefined })
+
+    // 用户明确选择后随 body 注入
+    fireEvent.mouseDown(screen.getByLabelText('蒸馏规则（可选）'))
+    fireEvent.click(screen.getByRole('option', { name: 'distilled-A' }))
+    fireEvent.click(screen.getByRole('button', { name: '生成 Prompt' }))
+    await waitFor(() => expect(injectMock).toHaveBeenCalledTimes(2))
+    expect(injectMock.mock.calls[1][0]).toMatchObject({ voice: 'voice-a', distilled: 'distilled-a' })
   })
 
   it('无 distilled 资产时 body 传 distilled: undefined', async () => {

@@ -765,6 +765,26 @@ def get_asset_detail(kind: str, asset_id: str) -> dict[str, Any]:
         raise ServiceError(str(exc), 404) from exc
 
 
+def list_tropes() -> dict[str, Any]:
+    """桥段库清单（只读）：直接读 ``config.ASSETS_ROOT/trope-library.json``。
+
+    不走 ``/api/assets?kind=trope`` 通道：该文件在目录扫描中不被归类为
+    trope kind（见 ``_SUFFIX_KIND``），且 SQLite 迁移状态因环境而异；
+    桥段库是内置只读数据，直读文件最可靠。
+    """
+    fp = config.ASSETS_ROOT / "trope-library.json"
+    if not fp.is_file():
+        raise ServiceError("桥段库文件不存在（assets/trope-library.json）", 404)
+    try:
+        data = json.loads(fp.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ServiceError(f"桥段库文件损坏: {exc}", 500) from exc
+    tropes = data.get("tropes") if isinstance(data, dict) else None
+    if not isinstance(tropes, list):
+        raise ServiceError("桥段库格式错误：缺少 tropes 数组", 500)
+    return {"total_count": len(tropes), "tropes": tropes}
+
+
 def list_reports() -> list[dict[str, Any]]:
     """报告清单（拆书报告 + 笔法分析），优先 SQLite，空则回退扫描。"""
     rows = db.list_reports()

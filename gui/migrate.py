@@ -785,7 +785,24 @@ def main(argv: list[str] | None = None) -> int:
                         help="配合 --prune：只统计将删除的行，不写库")
     parser.add_argument("--rollback", action="store_true", help="从最新备份恢复 index.db")
     parser.add_argument("--backup", action="store_true", help="仅备份现有 index.db")
+    parser.add_argument("--sync-builtins", action="store_true",
+                        help="增量同步随包内置资产到用户数据目录（只补缺失，永不覆盖）")
     args = parser.parse_args(argv)
+
+    if args.sync_builtins:
+        from gui import builtin_sync
+        result = builtin_sync.sync()
+        if result.get("noop"):
+            print("[migrate] 随包 assets 目录缺失，跳过同步")
+            return 0
+        print(f"[migrate] 内置资产同步：随包 {result['shipped_total']} / "
+              f"用户目录 {result['runtime_total']}")
+        print(f"  本次补齐: {result['copied'] or '无（已是最新）'}")
+        if result["modified"]:
+            print(f"  未覆盖（内容不同，需人工裁决）: {result['modified']}")
+        if result["extra"]:
+            print(f"  用户自有（不动）: {len(result['extra'])} 个")
+        return 0
 
     if args.backup:
         p = backup()

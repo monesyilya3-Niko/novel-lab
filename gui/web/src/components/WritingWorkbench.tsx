@@ -4,6 +4,7 @@ import Box from '@mui/material/Box'
 import ContextHelpButton from './ContextHelpButton'
 import InlineGuide from './InlineGuide'
 import ChapterEditor from './ChapterEditor'
+import TropePanel from './TropePanel'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -16,10 +17,15 @@ import { useApp } from '../state/AppContext'
 import CircularProgress from '@mui/material/CircularProgress'
 import LinearProgress from '@mui/material/LinearProgress'
 import Divider from '@mui/material/Divider'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
 import { writingApi, assetApi, subscribeTaskEvents } from '../api/client'
 import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
 import StylePanel from './StylePanel'
 import { friendlyError } from '../api/client'
+import { useWritingAssets, type WritingAssetSelection } from './useWritingAssets'
 
 // 写作任务状态中文化（后端返回英文 status，直接渲染会让用户困惑）
 const WRITING_STATUS_LABELS: Record<string, string> = {
@@ -34,6 +40,9 @@ const writingStatusLabel = (s: string | null | undefined) => (s ? WRITING_STATUS
 
 export default function WritingWorkbench() {
   const [tab, setTab] = useState(0)
+  // 注入 / 写作两页签共享同一份资产选择（单真相源）：「注入」页选好的
+  // voice / genre-pack，「写作」页签生成章节时会自动用上。
+  const sel = useWritingAssets()
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
@@ -47,8 +56,8 @@ export default function WritingWorkbench() {
         <ContextHelpButton guideKey="writing" />
       </Box>
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
-        {tab === 0 && <InjectPanel />}
-        {tab === 1 && <GeneratePanel />}
+        {tab === 0 && <InjectPanel sel={sel} />}
+        {tab === 1 && <GeneratePanel sel={sel} />}
         {tab === 2 && <ScorePanel />}
         {tab === 3 && <AssemblePanel />}
         {tab === 4 && <StylePanel />}
@@ -61,46 +70,22 @@ export default function WritingWorkbench() {
 // 注入面板
 // ---------------------------------------------------------------------------
 
-function InjectPanel() {
-  const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
-  const [distilledAssets, setDistilledAssets] = useState<{ id: string; name: string; kind: string }[]>([])
-  const [voice, setVoice] = useState('')
-  const [genrePack, setGenrePack] = useState('')
-  const [craft, setCraft] = useState('')
-  const [distilled, setDistilled] = useState('')
+function InjectPanel({ sel }: { sel: WritingAssetSelection }) {
+  const { assets, distilledAssets, byKind } = sel
+  const { voice, setVoice, genrePack, setGenrePack, craft, setCraft } = sel
+  const { distilled, setDistilled, proseCard, setProseCard } = sel
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    assetApi.list({ limit: 100 })
-      .then((j) => {
-        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
-        setAssets(items)
-        const vc = items.find((a) => a.kind === 'voice')
-        if (vc) setVoice(vc.id)
-        const gp = items.find((a) => a.kind === 'genre_pack')
-        if (gp) setGenrePack(gp.id)
-        const cc = items.find((a) => a.kind === 'craft')
-        if (cc) setCraft(cc.id)
-      })
-      .catch(() => setAssets([]))
-    // 蒸馏卡按 kind 单独拉取：混在首页列表里会在资产总数超 100 被分页截断时静默选不到。
-    assetApi.list({ kind: 'distilled', limit: 50 })
-      .then((j) => {
-        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
-        setDistilledAssets(items)
-        // distilled 独立成 kind：默认选中第一张蒸馏卡（不再冒充 voice 卡出现在 voice 下拉里）
-        if (items.length > 0) setDistilled(items[0].id)
-      })
-      .catch(() => setDistilledAssets([]))
-  }, [])
 
   const doInject = async () => {
     setLoading(true)
     setError('')
     try {
-      const r = await writingApi.inject({ voice, genre_pack: genrePack || undefined, craft: craft || undefined, distilled: distilled || undefined, save: true })
+      const r = await writingApi.inject({
+        voice, genre_pack: genrePack || undefined, craft: craft || undefined,
+        distilled: distilled || undefined, prose_card: proseCard || undefined, save: true,
+      })
       setPrompt(r.prompt)
     } catch (e) {
       setError(friendlyError(e))
@@ -109,8 +94,6 @@ function InjectPanel() {
     }
   }
 
-  const byKind = (k: string) => assets.filter((a) => a.kind === k)
-
   return (
     <Box>
       <Typography variant="h6" gutterBottom>资产注入</Typography>
@@ -118,17 +101,25 @@ function InjectPanel() {
         what="把拆书得到的资产卡拼成一段完整的写作 Prompt：决定「用谁的声音、按什么规则」写，后面生成章节都会按这套风格来。"
         steps={[
           'voice-card 必选：决定人物声线和叙事风格（来自你拆过的书）。',
-          '可选叠加：genre-pack（题材规则）、craft-card（笔法技巧）、蒸馏规则（多本书提炼出的通用规律）。',
+          '可选叠加：genre-pack（题材规则）、craft-card（笔法技巧）、蒸馏规则（多本书提炼出的通用规律）、prose-card（跨题材文风参照）。',
           '点「生成 Prompt」可以预览拼好的提示词，确认风格对不对。',
-          '「写作」页签生成章节时会自动用上这里选好的资产。',
+          '这里选好的 voice-card 与 genre-pack，「写作」页签生成章节时会自动用上（同一份选择）。',
         ]}
         tips={[
           '资产列表是空的？先去「分析」工作台导入一本书并完成拆书。',
           '蒸馏规则是离线统计生成的，不需要配置 AI 模型也能用。',
+          'voice 与其他资产题材不一致时，后端会按铁律一拒绝（400），请换成同题材资产。',
         ]}
       />
       {assets.length === 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>暂无可用资产，请先在「分析」工作台完成拆书</Alert>
+      )}
+      {sel.mismatches.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          题材不一致（铁律一：禁止跨题材污染）：voice 为「{sel.voiceGenre}」，{
+            sel.mismatches.map((m) => `${m.label}为「${m.genre}」`).join('、')
+          }。提交会被后端拒绝（400），请换成同题材资产，或将题材未知的一侧留空。
+        </Alert>
       )}
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
         <TextField select label="voice-card（必选）" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 220 }} size="small">
@@ -145,6 +136,10 @@ function InjectPanel() {
         <TextField select label="蒸馏规则（可选）" value={distilled} onChange={(e) => setDistilled(e.target.value)} sx={{ minWidth: 220 }} size="small">
           <MenuItem value="">无</MenuItem>
           {distilledAssets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+        </TextField>
+        <TextField select label="prose-card（文风参照，可选）" value={proseCard} onChange={(e) => setProseCard(e.target.value)} sx={{ minWidth: 220 }} size="small">
+          <MenuItem value="">无</MenuItem>
+          {byKind('prose_card').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <Button variant="contained" onClick={doInject} disabled={!voice || loading}>
           {loading ? <CircularProgress size={20} /> : '生成 Prompt'}
@@ -165,18 +160,16 @@ function InjectPanel() {
 // 写作面板
 // ---------------------------------------------------------------------------
 
-function GeneratePanel() {
+function GeneratePanel({ sel }: { sel: WritingAssetSelection }) {
   // P1-F4：写书目标分来自系统设置，不再硬编码 90。
   const { consistencyTarget } = useApp()
   const [projects, setProjects] = useState<WritingProject[]>([])
   const [project, setProject] = useState('')
   const [chapterNo, setChapterNo] = useState(1)
   const [task, setTask] = useState('')
-  const [voice, setVoice] = useState('')
-  const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
-  // genre-pack：后端 /writing/generate 与 /writing/chapters 均支持，之前前端没传导致选了也用不上。
-  const [genrePack, setGenrePack] = useState('')
-  const [genrePacks, setGenrePacks] = useState<{ id: string; name: string; kind: string }[]>([])
+  // voice / genre-pack 与「注入」页签共享同一份选择（useWritingAssets）：
+  // 注入页选好的资产，生成章节时会自动用上；此处可直接调整。
+  const { voice, setVoice, genrePack, setGenrePack, byKind } = sel
   const [running, setRunning] = useState(false)
   const [taskState, setTaskState] = useState<WritingTaskState | null>(null)
   const [error, setError] = useState('')
@@ -191,22 +184,40 @@ function GeneratePanel() {
   }, [])
 
   useEffect(() => {
-    writingApi.projects().then(setProjects).catch((e) => setError(`加载项目失败: ${e}`))
-    assetApi.list({ kind: 'voice', limit: 50 })
-      .then((j) => {
-        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
-        setAssets(items)
-        if (items.length > 0) setVoice(items[0].id)
-      })
-      .catch((e) => setError(`加载资产失败: ${e}`))
-    // genre-pack 可选：默认不选，保持与之前一致的行为（不传即不用题材包）。
-    assetApi.list({ kind: 'genre_pack', limit: 50 })
-      .then((j) => {
-        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
-        setGenrePacks(items)
-      })
-      .catch(() => setGenrePacks([]))
+    loadProjects()
   }, [])
+
+  const loadProjects = (selectId?: string) => {
+    writingApi
+      .projects()
+      .then((ps) => {
+        setProjects(ps)
+        if (selectId) setProject(selectId)
+      })
+      .catch((e) => setError(`加载项目失败: ${e}`))
+  }
+
+  // 新建项目对话框
+  const [newProjOpen, setNewProjOpen] = useState(false)
+  const [newProjName, setNewProjName] = useState('')
+  const [creatingProj, setCreatingProj] = useState(false)
+
+  const doCreateProject = async () => {
+    const name = newProjName.trim()
+    if (!name || creatingProj) return
+    setCreatingProj(true)
+    setError('')
+    try {
+      const created = await writingApi.createProject(name)
+      setNewProjOpen(false)
+      setNewProjName('')
+      loadProjects(created.id) // 刷新列表并自动选中新建项目
+    } catch (e) {
+      setError(`新建项目失败: ${friendlyError(e)}`)
+    } finally {
+      setCreatingProj(false)
+    }
+  }
 
   const doGenerate = async () => {
     setRunning(true)
@@ -266,8 +277,8 @@ function GeneratePanel() {
         what="按你的「写作要点」生成新章节：模型写出初稿后自动打分，不达标就自动改写，直到达标或用完改写次数。写好的章节会落盘保存。"
         steps={[
           '选项目：项目就是用户数据目录 novel/ 下的文件夹——在 novel/ 下新建一个文件夹，就是一个新写作项目。',
-          '选章节号、选 voice-card（决定本章的声线风格）。',
-          '写「写作要点」：交代本章发生什么、谁出场、情绪走向、字数和结尾要求，越具体越好。',
+          'voice-card 与 genre-pack 沿用「注入」页签的选择（同一份），这里可以直接调整。',
+          '选章节号、写「写作要点」：交代本章发生什么、谁出场、情绪走向、字数和结尾要求，越具体越好。',
           '点「开始写作」，进度实时显示；完成后会提示章节文件的保存位置。',
         ]}
         example={'第5章：深秋傍晚，温霜禾抱着一摞粉色包装的礼物盒走进澜州老街的奶茶店，点了七分糖的芋泥波波奶茶。江春屿跟在后面替她拎包。两人因为"谁请客"斗嘴，温霜禾说了句"随便吧"——其实是生气了。要求：2200字左右，对话占四成，结尾留钩子：温霜禾发现奶茶店落地窗外站着一个熟悉的身影。'}
@@ -277,17 +288,48 @@ function GeneratePanel() {
         ]}
         defaultOpen
       />
+      {sel.mismatches.length > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          题材不一致（铁律一：禁止跨题材污染）：voice 为「{sel.voiceGenre}」，{
+            sel.mismatches.map((m) => `${m.label}为「${m.genre}」`).join('、')
+          }。提交会被后端拒绝（400），请换成同题材资产。
+        </Alert>
+      )}
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
         <TextField select label="项目" value={project} onChange={(e) => setProject(e.target.value)} sx={{ minWidth: 180 }} size="small">
           {writableProjects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
         </TextField>
+        <Button variant="outlined" size="small" onClick={() => { setNewProjName(''); setNewProjOpen(true) }} sx={{ alignSelf: 'center' }}>
+          新建项目
+        </Button>
+        <Dialog open={newProjOpen} onClose={() => setNewProjOpen(false)} maxWidth="xs" fullWidth>
+          <DialogTitle>新建写作项目</DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              fullWidth
+              label="项目名"
+              value={newProjName}
+              onChange={(e) => setNewProjName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') doCreateProject() }}
+              helperText="会作为目录名使用：不能包含 / \，不能叫 default"
+              sx={{ mt: 1 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setNewProjOpen(false)}>取消</Button>
+            <Button variant="contained" onClick={doCreateProject} disabled={!newProjName.trim() || creatingProj}>
+              {creatingProj ? '创建中…' : '创建'}
+            </Button>
+          </DialogActions>
+        </Dialog>
         <TextField label="章节号" type="number" value={chapterNo} onChange={(e) => setChapterNo(Math.max(1, Math.round(Number(e.target.value) || 1)))} sx={{ width: 100 }} size="small" />
         <TextField select label="voice-card" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
-          {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+          {byKind('voice').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <TextField select label="genre-pack（可选）" value={genrePack} onChange={(e) => setGenrePack(e.target.value)} sx={{ minWidth: 200 }} size="small">
           <MenuItem value="">无</MenuItem>
-          {genrePacks.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+          {byKind('genre_pack').map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <TextField label="写作要点" value={task} onChange={(e) => setTask(e.target.value)} sx={{ minWidth: 250 }} size="small" />
         <Button variant="contained" onClick={doGenerate} disabled={!project || !voice || !task || running}>
@@ -324,6 +366,11 @@ function GeneratePanel() {
         </Paper>
       )}
 
+      <Divider sx={{ my: 2 }} />
+      <TropePanel
+        currentGenre={sel.voiceGenre}
+        onInsert={(text) => setTask((prev) => (prev ? `${prev}\n${text}` : text))}
+      />
       <Divider sx={{ my: 2 }} />
       <Typography variant="subtitle1" gutterBottom>手动入库（无模型时贴回正文）</Typography>
       <Box sx={{ mb: 1 }}>

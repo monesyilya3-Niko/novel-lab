@@ -772,6 +772,11 @@ class GuiServer:
         # 自动备份：启动时一次（每日备份由请求闸点触发，见 auto_backup）
         auto_backup.startup_backup()
 
+        # 内置资产增量同步（2026-09-29）：把随包新增的内置资产卡补进用户数据
+        # 目录（只补缺失、永不覆盖）。失败只记日志，不阻断启动。
+        from gui import builtin_sync
+        builtin_sync.sync_at_startup()
+
         # 管理员系统：首次启动生成随机初始密码（只打印一次）。
         # P1-2 修复（2026-09-29）：桌面端无控制台窗口（windowsHide），只写日志
         # 用户无从得知。首次生成时同步写入数据目录下的明文指引文件，

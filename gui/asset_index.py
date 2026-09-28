@@ -674,7 +674,35 @@ class AssetIndex:
             "size": st.st_size,
             "mtime": st.st_mtime,
             "book_id": self._book_id_from_name(kind, fp.stem),
+            # 题材标识：前端做题材一致性预检用（与
+            # writing_service._asset_genre 同规则：meta.genre，退回 meta.id 的
+            # genre- 前缀；未知为 None，后端不阻断，前端也不应警告）。
+            "genre": self._genre_from_file(fp),
         }
+
+    @staticmethod
+    def _genre_from_file(fp: Path) -> str | None:
+        """从资产文件提取题材标识（规则同 writing_service._asset_genre）。
+
+        独立实现而非 import：writing_service → services → asset_index，
+        反向 import 会形成循环。
+        """
+        try:
+            data = json.loads(fp.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        meta = data.get("meta")
+        if not isinstance(meta, dict):
+            return None
+        g = meta.get("genre")
+        if g:
+            return str(g)
+        aid = meta.get("id", "")
+        if isinstance(aid, str) and aid.startswith("genre-"):
+            return aid[len("genre-"):]
+        return None
 
     @staticmethod
     def _item_id(kind: str, fp: Path) -> str:

@@ -399,3 +399,68 @@ class TestAssetSummary(unittest.TestCase):
         self.assertEqual(asset_index._ZERO_MEANS_MISSING,
                          distill_render._ZERO_MEANS_MISSING,
                          "占位零值字段表漂移：摘要与注入将不一致")
+
+
+class TestGenreFromFile(unittest.TestCase):
+    """_genre_from_file / _make_item 的 genre 透出（2026-09-29 题材隔离 UI 预检配套）。
+
+    规则必须与 writing_service._asset_genre 一致：
+    meta.genre 优先，否则取 meta.id 的 ``genre-`` 前缀；文件损坏/结构异常 → None。
+    纯静态方法 + 临时文件，不碰 config 路径，无需隔离。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="genre_from_file_"))
+        self._n = 0
+
+    def tearDown(self):
+        for p in self._tmp.iterdir():
+            p.unlink()
+        self._tmp.rmdir()
+
+    def _f(self, content: str) -> Path:
+        self._n += 1
+        p = self._tmp / f"a{self._n}-voice-card.json"
+        p.write_text(content, encoding="utf-8")
+        return p
+
+    def test_meta_genre_preferred(self):
+        p = self._f('{"meta":{"genre":"xianxia","id":"genre-xianxia-abc"}}')
+        self.assertEqual(asset_index.AssetIndex._genre_from_file(p), "xianxia")
+
+    def test_falls_back_to_id_prefix(self):
+        p = self._f('{"meta":{"id":"genre-dushi-2026"}}')
+        self.assertEqual(asset_index.AssetIndex._genre_from_file(p), "dushi-2026")
+
+    def test_no_genre_no_prefix_returns_none(self):
+        p = self._f('{"meta":{"id":"bookA-voice"}}')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_broken_json_returns_none(self):
+        p = self._f('{"meta": {"genre": "xianxia"')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_non_dict_json_returns_none(self):
+        p = self._f('[1, 2, 3]')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_meta_not_dict_returns_none(self):
+        p = self._f('{"meta": "xianxia"}')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_missing_file_returns_none(self):
+        self.assertIsNone(
+            asset_index.AssetIndex._genre_from_file(self._tmp / "nope.json"))
+
+    def test_make_item_carries_genre(self):
+        """扫描回退路径的 item 必须带 genre，前端预检依赖该字段。"""
+        p = self._f('{"meta":{"genre":"xianxia"}}')
+        idx = asset_index.AssetIndex(ttl_seconds=5)
+        item = idx._make_item("voice", p, self._tmp)
+        self.assertEqual(item["genre"], "xianxia")
+
+    def test_make_item_genre_none_when_unknown(self):
+        p = self._f('{"meta":{}}')
+        idx = asset_index.AssetIndex(ttl_seconds=5)
+        item = idx._make_item("voice", p, self._tmp)
+        self.assertIsNone(item["genre"])

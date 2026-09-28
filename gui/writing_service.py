@@ -183,6 +183,53 @@ def list_projects() -> list[dict[str, Any]]:
     return projects
 
 
+_PROJECT_ID_RE = re.compile(r"^[^\s/\\]+$")
+
+
+def create_project(name: str) -> dict[str, Any]:
+    """新建写作项目：在 ``config.NOVEL_DIR`` 下建目录并写 ``state.json``。
+
+    安全规则：
+    - name 为空 / 超长（>60）→ 400。
+    - 目录 id 即 name 本身（首尾空白先去除）：禁止 ``/`` ``\\``、``.``/``..``，
+      防止路径穿越出 NOVEL_DIR；``default`` 为 CLI 只读保留 id，禁止占用。
+    - 同名目录已存在 → 409（不覆盖已有项目数据）。
+    - ``state.json`` 经 ``_atomic_write_json`` 原子写入。
+    """
+    clean = (name or "").strip()
+    if not clean:
+        raise ServiceError("项目名不能为空", 400)
+    if len(clean) > 60:
+        raise ServiceError("项目名过长（最多 60 个字符）", 400)
+    if clean in (".", "..") or not _PROJECT_ID_RE.match(clean):
+        raise ServiceError("项目名不能包含 / 或 \\", 400)
+    if clean == "default":
+        raise ServiceError("default 为 CLI 只读保留项目，不能新建", 400)
+
+    nd = config.NOVEL_DIR
+    try:
+        nd.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ServiceError(f"无法创建项目目录: {exc}", 500) from exc
+    target = nd / clean
+    # resolve 防御：即使上层校验有遗漏，解析后仍必须在 NOVEL_DIR 内。
+    try:
+        resolved = target.resolve()
+        if resolved.parent != nd.resolve():
+            raise ServiceError("非法项目名", 400)
+    except OSError as exc:
+        raise ServiceError(f"项目名非法: {exc}", 400) from exc
+    if target.exists():
+        raise ServiceError(f"项目已存在: {clean}", 409)
+    try:
+        target.mkdir()
+    except OSError as exc:
+        raise ServiceError(f"无法创建项目目录: {exc}", 500) from exc
+    _atomic_write_json(target / "state.json",
+                       {"name": clean, "created_at": time.time()})
+    return {"id": clean, "name": clean, "read_only": False}
+
+
 def inject(voice: str, structure: str | None = None, commercial: str | None = None,
            genre_pack: str | None = None, craft: str | None = None,
            distilled: str | None = None, prose_card: str | None = None,

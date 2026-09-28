@@ -230,6 +230,9 @@ def _h_list_assets(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, A
     return ok(services.list_assets(kind, genre, book_id, offset, limit))
 
 
+def _h_list_tropes(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.list_tropes())
+
 def _h_stats(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     return ok(services.get_stats())
 
@@ -281,6 +284,12 @@ def _h_genres(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
 def _h_writing_projects(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_service
     return ok(writing_service.list_projects())
+
+
+def _h_writing_project_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_service
+    b = body or {}
+    return ok(writing_service.create_project(b.get("name") or ""))
 
 
 def _h_writing_inject(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
@@ -710,6 +719,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     # 阶段一新增端点（概览/资产/报告/拆书结果/一键分析）。
     ("GET", re.compile(r"^/api/overview$"), _h_overview),
     ("GET", re.compile(r"^/api/assets$"), _h_list_assets),
+    ("GET", re.compile(r"^/api/tropes$"), _h_list_tropes),
     ("GET", re.compile(r"^/api/stats$"), _h_stats),
     ("GET", re.compile(r"^/api/assets/(?P<kind>[^/]+)/(?P<id>[^/]+)$"), _h_asset_detail),
     ("GET", re.compile(r"^/api/reports$"), _h_list_reports),
@@ -719,6 +729,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/analyze/full$"), _h_full_analysis),
     # W15 阶段二：写作（M2）
     ("GET", re.compile(r"^/api/writing/projects$"), _h_writing_projects),
+    ("POST", re.compile(r"^/api/writing/projects$"), _h_writing_project_create),
     ("POST", re.compile(r"^/api/writing/inject$"), _h_writing_inject),
     ("POST", re.compile(r"^/api/writing/generate$"), _h_writing_generate),
     ("GET", re.compile(r"^/api/writing/tasks/(?P<task_id>[^/]+)$"), _h_writing_task),
