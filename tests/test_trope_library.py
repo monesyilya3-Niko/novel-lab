@@ -82,7 +82,7 @@ class TestTropeLibrary(unittest.TestCase):
             meta["total_count"], len(tropes),
             f"meta.total_count({meta['total_count']}) != len(tropes)({len(tropes)})",
         )
-        self.assertEqual(meta["total_count"], 8, "首版 total_count 应为 8")
+        # 2026-09-29：桥段库由 8 扩充至 32，不再断言固定值，只要求 total_count 自洽
 
     # ------------------------------------------------------------------
     # 2. abstraction_level ∈ {structural, scenic}，且无 verbal

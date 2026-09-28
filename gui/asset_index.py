@@ -76,6 +76,467 @@ def _default_ttl() -> int:
     return 5
 
 
+# ---------------------------------------------------------------------------
+# 资产可读摘要（2026-09-29 用户反馈"资产库有很多内容不对"）
+#
+# 详情页此前只返回原始 JSON，前端被迫 JSON.stringify —— 用户看到的是英文
+# 键名和技术结构。现增加 describe_asset() 生成面向用户的中文 markdown 摘要：
+# 基本信息 / 用途 / 关键内容 / 禁止项 / 适用位置。
+# 原始 JSON 保留在详情 content 字段，前端收进"高级"折叠区。
+# 纯标准库；不 import scripts（规约：仅 gui/engine_adapter.py 可 import scripts）。
+# ---------------------------------------------------------------------------
+
+_KIND_LABELS: dict[str, str] = {
+    "voice": "声线卡",
+    "structure": "结构观测卡",
+    "commercial": "商业观测卡",
+    "craft": "技法卡",
+    "genre_pack": "题材包",
+    "prose_card": "题材文风卡",
+    "trope": "桥段库",
+    "distilled": "蒸馏卡",
+    "prose_card_index": "文风卡索引",
+}
+
+_KIND_PURPOSE: dict[str, str] = {
+    "voice": "记录一本书的叙述声线与语言风格：人称、句式节奏、对白特征、情绪处理、意象偏好与禁用词，供写作时注入同款文风。",
+    "structure": "记录一本书的章节结构规律：钩子间隔、高潮周期、伏笔跨度，供大纲规划与结构质检参考。",
+    "commercial": "记录一本书的商业节奏：爽点密度与类型、付费卡点、铺垫长度，供把控节奏与卡点参考。",
+    "craft": "记录一本书的写作技法：伏笔、节奏、转场、对白、感官描写等技法与可复用模式，供写作学习与注入。",
+    "genre_pack": "多本书聚合的题材级资产：结构规律、商业规律、质检阈值、语言规则与世界观约定，同题材新书自动匹配注入。",
+    "prose_card": "题材级语言风格卡：该题材整体的行文风格与语言规则，供题材级文风注入。",
+    "trope": "桥段模式库：跨书、跨题材的通用桥段，供构思情节、找灵感时检索调用。",
+    "distilled": "多本书聚合出的共性规则：必守（硬边界）、建议（高置信）与分歧，直接拼入写作 prompt，无需手动选择。",
+    "prose_card_index": "题材文风卡的寻址索引：按题材快速定位对应的文风卡，系统内部使用。",
+}
+
+_KIND_USAGE: dict[str, str] = {
+    "voice": "写作页 → 声线卡选择后注入，控制生成章节的人称、句式与语言风格。",
+    "structure": "写作页 → 大纲/结构规划时参考；质检页 → 结构维度对照。",
+    "commercial": "写作页 → 把控爽点节奏与卡点位置；质检页 → 商业维度对照。",
+    "craft": "写作页 → 注入技法参考；拆书学习时浏览。",
+    "genre_pack": "同题材新书 → 自动匹配注入；题材包管理 → 查看聚合口径。",
+    "prose_card": "写作页 → 题材级文风注入（prose 模式）。",
+    "trope": "写作页 → 情节构思时检索桥段；灵感枯竭时浏览找思路。",
+    "distilled": "写作时自动注入（拼入 prompt），无需手动操作。",
+    "prose_card_index": "系统内部寻址用，一般无需手动查看。",
+}
+
+# 各 kind 摘要优先展示的字段（点路径， 中文名）；不存在的字段自动跳过。
+_KIND_HIGHLIGHTS: dict[str, list[tuple[str, str]]] = {
+    "voice": [
+        ("narration.pov", "叙述人称"),
+        ("dialogue.dialogue_ratio", "对白占比"),
+        ("narration.sentence_rhythm.burst_pattern", "短句爆发模式"),
+        ("emotion_handling.mode", "情绪处理方式"),
+        ("imagery.signature_devices", "标志性意象手法"),
+    ],
+    "craft": [
+        ("craft_summary.top_3_strengths", "三大优势"),
+        ("craft_summary.unique_techniques", "独门技法"),
+        ("craft_summary.reusable_patterns", "可复用模式"),
+        ("craft_analysis.foreshadowing.technique", "伏笔技法"),
+        ("craft_analysis.rhythm_control.technique", "节奏控制技法"),
+    ],
+    "structure": [
+        ("aggregate.climax_cycle", "高潮周期"),
+        ("aggregate.hook_min_interval", "钩子最小间隔"),
+        ("aggregate.foreshadow_avg_span", "伏笔平均跨度"),
+        ("aggregate.hook_type_freq", "钩子类型分布"),
+    ],
+    "commercial": [
+        ("skeleton", "商业骨架"),
+        ("payoff_density.per_thousand_words", "爽点密度（每千字）"),
+        ("payoff_types", "爽点类型"),
+        ("paywall", "付费卡点"),
+        ("buildup_length", "铺垫长度"),
+        ("common_mistakes", "常见误区"),
+    ],
+    "genre_pack": [
+        ("meta.name", "题材名"),
+        ("meta.sub_tags", "子标签"),
+        ("meta.target_platform", "目标平台"),
+    ],
+    "prose_card": [
+        ("meta.name", "题材名"),
+        ("meta.sub_tags", "子标签"),
+        ("meta.target_platform", "目标平台"),
+    ],
+}
+
+# 蒸馏卡维度中文名（与 scripts/distill_render.py.DIMENSION_LABELS 一致）。
+_DISTILLED_DIM_LABELS: dict[str, str] = {
+    "voice-card": "声线风格",
+    "craft-card": "写作技法",
+    "structure-obs": "结构规律",
+    "commercial-obs": "商业节奏",
+}
+
+# 蒸馏卡规则字段中文标签：镜像 scripts/distill_render.py.FIELD_LABELS
+# （规约禁止 import scripts；tests/test_asset_index.py 有同步测试防漂移）。
+_DISTILLED_FIELD_LABELS: dict[str, str] = {
+    "narration.pov": "叙述人称",
+    "narration.tense_feel": "时态语感",
+    "narration.chapter_opening_patterns": "开篇模式",
+    "narration.sentence_rhythm.avg_length": "平均句长",
+    "narration.sentence_rhythm.short_ratio": "短句占比",
+    "narration.sentence_rhythm.long_ratio": "长句占比",
+    "narration.sentence_rhythm.burst_pattern": "短句爆发模式",
+    "dialogue.dialogue_ratio": "对白占比",
+    "dialogue.character_voices": "人物语言特征",
+    "dialogue.subtext_level": "潜台词风格",
+    "emotion_handling.mode": "情绪处理方式",
+    "emotion_handling.body_reaction_vocabulary": "身体反应词库",
+    "emotion_handling.examples": "情绪处理示例",
+    "imagery.high_freq_metaphor_domains": "高频隐喻域",
+    "imagery.signature_devices": "标志性意象手法",
+    "imagery.sensory_preference.visual": "视觉偏好",
+    "imagery.sensory_preference.auditory": "听觉偏好",
+    "imagery.sensory_preference.tactile": "触觉偏好",
+    "imagery.sensory_preference.olfactory": "嗅觉偏好",
+    "imagery.sensory_preference.gustatory": "味觉偏好",
+    "banned.never_used_words": "禁用词",
+    "craft_analysis.foreshadowing.technique": "伏笔技法",
+    "craft_analysis.narrative_engine.technique": "叙事引擎技法",
+    "craft_analysis.pov_control.technique": "视角控制技法",
+    "craft_analysis.rhythm_control.technique": "节奏控制技法",
+    "craft_analysis.scene_transition.technique": "转场技法",
+    "craft_analysis.dialogue_craft.technique": "对白技法",
+    "craft_analysis.sensory_craft.technique": "感官描写技法",
+    "craft_summary.top_3_strengths": "三大优势",
+    "craft_summary.unique_techniques": "独门技法",
+    "craft_summary.reusable_patterns": "可复用模式",
+    "aggregate.climax_cycle": "高潮周期",
+    "aggregate.foreshadow_avg_span": "伏笔平均跨度",
+    "aggregate.foreshadow_max_span": "伏笔最大跨度",
+    "aggregate.foreshadow_concurrent_open": "并发伏笔数",
+    "aggregate.hook_min_interval": "钩子最小间隔",
+    "aggregate.hook_type_freq": "钩子类型分布",
+    "skeleton": "商业骨架",
+    "buildup_length": "铺垫长度",
+    "payoff_density.per_thousand_words": "爽点密度（每千字）",
+    "payoff_types": "爽点类型",
+    "paywall": "付费卡点",
+    "common_mistakes": "常见误区",
+    "dry_spell_tolerance": "干情节容忍度",
+}
+
+# 占比字段：0~1 浮点在摘要里渲染为百分比（如对白占比 0.26 → 26%）。
+_RATIO_PATHS = frozenset({
+    "dialogue.dialogue_ratio",
+})
+
+# 占位零值字段镜像（与 scripts/distill_render.py._ZERO_MEANS_MISSING 一致；
+# tests/test_asset_index.py 有同步测试）。摘要与注入必须一致：这些 0 不展示。
+_ZERO_MEANS_MISSING = frozenset({
+    "narration.sentence_rhythm.avg_length",
+    "narration.sentence_rhythm.short_ratio",
+    "narration.sentence_rhythm.long_ratio",
+})
+
+_GENRE_PACK_SECTIONS: tuple[tuple[str, str], ...] = (
+    ("structure", "结构规律"),
+    ("commercial", "商业规律"),
+    ("quality_thresholds", "质检阈值"),
+    ("language_rules", "语言规则"),
+    ("world_conventions", "世界观约定"),
+)
+
+
+def _fmt_num(value: int | float) -> str:
+    if isinstance(value, float) and value.is_integer():
+        return str(int(value))
+    if isinstance(value, float):
+        return str(round(value, 2))
+    return str(value)
+
+
+def _lookup_path(data: Any, path: str) -> Any:
+    """按 'a.b.c' 点路径取值；缺失返回 None。"""
+    cur = data
+    for seg in path.split("."):
+        if isinstance(cur, dict) and seg in cur:
+            cur = cur[seg]
+        else:
+            return None
+    return cur
+
+
+def _try_parse_json(text: str) -> Any | None:
+    """解析值字符串里内嵌的 JSON（整体或"；"连接的多段）；解析不出返回 None。"""
+    s = text.strip()
+    if not s:
+        return None
+    # 先处理"；"连接的多段（整体以 { 开头也可能是多段，不能先整体解析）。
+    if "；" in s:
+        parts = [q.strip() for q in s.split("；") if q.strip()]
+        out: list[Any] = []
+        ok = False
+        for q in parts:
+            if q[:1] in "{[":
+                try:
+                    out.append(json.loads(q))
+                    ok = True
+                    continue
+                except json.JSONDecodeError:
+                    pass
+            out.append(q)
+        return out if ok else None
+    if s[0] in "{[":
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
+# 值内 dict 键的中文映射（最小集；蒸馏摘要里常见）。
+_VALUE_KEY_LABELS: dict[str, str] = {
+    "example_structure": "示例结构",
+    "frequency": "频次",
+    "pattern": "模式",
+}
+
+
+def _short_value(value: Any, limit: int = 100) -> str:
+    """值压缩为一句话摘要；复杂结构只取可读名，不展开技术细节。"""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "是" if value else "否"
+    if isinstance(value, (int, float)):
+        return _fmt_num(value)
+    if isinstance(value, str):
+        parsed = _try_parse_json(value)
+        if parsed is not None:
+            return _short_value(parsed, limit)
+        s = " ".join(value.split())
+        return s if len(s) <= limit else s[:limit] + "…"
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return "（空）"
+        names: list[str] = []
+        for item in value[:5]:
+            if isinstance(item, dict):
+                names.append(str(
+                    item.get("name") or item.get("title") or item.get("type")
+                    or item.get("technique") or item.get("pattern") or "…"))
+            elif isinstance(item, str):
+                s = " ".join(item.split())
+                names.append(s if len(s) <= 40 else s[:40] + "…")
+            elif isinstance(item, (int, float)):
+                names.append(_fmt_num(item))
+            else:
+                names.append(str(item))
+        tail = f"（共 {len(value)} 项）" if len(value) > 5 else ""
+        return "、".join(names) + tail
+    if isinstance(value, dict):
+        parts = []
+        for k, vv in value.items():
+            if vv is None or vv == {} or vv == [] or vv == "":
+                continue
+            label = _VALUE_KEY_LABELS.get(k, k)
+            parts.append(f"{label}：{_short_value(vv, 40)}")
+            if len(parts) >= 3:
+                break
+        return "；".join(parts) if parts else "（空）"
+    return str(value)
+
+
+def _source_names(meta: dict[str, Any]) -> list[str]:
+    """来源书籍名：兼容 str 列表与 {'title': …} 字典列表。"""
+    names: list[str] = []
+    books = meta.get("source_books")
+    if isinstance(books, list):
+        for b in books:
+            if isinstance(b, dict) and b.get("title"):
+                names.append(str(b["title"]))
+            elif isinstance(b, str):
+                names.append(b)
+    return names
+
+
+def _is_placeholder_zero(field: str, value: Any) -> bool:
+    return (
+        field in _ZERO_MEANS_MISSING
+        and isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and value == 0
+    )
+
+
+def _describe_distilled(data: dict[str, Any], meta: dict[str, Any]) -> list[str]:
+    rules = data.get("rules")
+    if not isinstance(rules, list):
+        rules = []
+    # 占位零值与注入保持一致：整条跳过，文末注明（不展示为有效规则）。
+    skipped = [r for r in rules if isinstance(r, dict)
+               and _is_placeholder_zero(r.get("field", ""), r.get("value"))]
+    rules = [r for r in rules if r not in skipped]
+    hard = [r for r in rules if isinstance(r, dict) and r.get("kind") == "hard"]
+    soft = [r for r in rules if isinstance(r, dict) and r.get("kind") == "soft"]
+    out = [f"共 {len(rules)} 条规则：必守 {len(hard)} 条，建议 {len(soft)} 条"]
+    if skipped:
+        out.append(f"（另有 {len(skipped)} 项数值从未被统计，已省略）")
+    dim = meta.get("dimension") or ""
+    out.append(f"覆盖维度：{_DISTILLED_DIM_LABELS.get(dim, dim or '—')}")
+    for r in hard[:6]:
+        field = r.get("field", "")
+        label = _DISTILLED_FIELD_LABELS.get(field, field)
+        rv = r.get("value")
+        if (field in _RATIO_PATHS and isinstance(rv, (int, float))
+                and 0 <= rv <= 1):
+            val = f"{rv:.0%}"
+        else:
+            val = _short_value(rv, 80)
+        out.append(f"必守 · {label}：{val}" if val else f"必守 · {label}")
+    if len(hard) > 6:
+        out.append(f"（另有 {len(hard) - 6} 条必守，见原始数据）")
+    return out
+
+
+def _describe_tropes(data: dict[str, Any]) -> list[str]:
+    tropes = data.get("tropes")
+    if not isinstance(tropes, list) or not tropes:
+        return []
+    out: list[str] = []
+    names = [t.get("name") for t in tropes
+             if isinstance(t, dict) and t.get("name")]
+    if names:
+        shown = "、".join(str(n) for n in names[:8])
+        tail = f"（共 {len(names)} 个）" if len(names) > 8 else ""
+        out.append(f"收录桥段{tail}：{shown}")
+    scopes = sorted({str(t.get("genre_scope")) for t in tropes
+                     if isinstance(t, dict) and t.get("genre_scope")})
+    if scopes:
+        out.append(f"适用范围：{'、'.join(scopes)}")
+    return out
+
+
+def _describe_prose_index(data: dict[str, Any]) -> list[str]:
+    cards = data.get("cards")
+    if isinstance(cards, dict) and cards:
+        keys = list(cards.keys())
+        shown = "、".join(str(k) for k in keys[:8])
+        tail = f"（共 {len(keys)} 张）" if len(keys) > 8 else ""
+        return [f"索引文风卡{tail}：{shown}"]
+    return []
+
+
+def _describe_genre_pack(data: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    for path, label in _KIND_HIGHLIGHTS.get("genre_pack", []):
+        value = _lookup_path(data, path)
+        if value is None or value == [] or value == {} or value == "":
+            continue
+        out.append(f"{label}：{_short_value(value)}")
+    present = [label for key, label in _GENRE_PACK_SECTIONS if key in data]
+    if present:
+        out.append(f"包含板块：{'、'.join(present)}")
+    return out
+
+
+def _describe_key_content(kind: str, data: dict[str, Any]) -> list[str]:
+    if kind == "distilled":
+        return _describe_distilled(data, data.get("meta") or {})
+    if kind == "trope":
+        return _describe_tropes(data)
+    if kind == "genre_pack":
+        return _describe_genre_pack(data)
+    if kind == "prose_card_index":
+        return _describe_prose_index(data)
+    out: list[str] = []
+    for path, label in _KIND_HIGHLIGHTS.get(kind, []):
+        value = _lookup_path(data, path)
+        if value is None or value == [] or value == {} or value == "":
+            continue
+        if path in _RATIO_PATHS and isinstance(value, (int, float)) and 0 <= value <= 1:
+            out.append(f"{label}：{value:.0%}")
+        else:
+            out.append(f"{label}：{_short_value(value)}")
+    if not out:
+        # 兜底：未知结构只列顶层键，不伪造解读。
+        for key, value in data.items():
+            if key == "meta" or len(out) >= 5:
+                break
+            s = _short_value(value)
+            if s:
+                out.append(f"{key}：{s}")
+    return out
+
+
+def _describe_banned(data: dict[str, Any]) -> list[str]:
+    never = _lookup_path(data, "banned.never_used_words")
+    if isinstance(never, list) and never:
+        shown = "、".join(str(w) for w in never[:10])
+        tail = f"（共 {len(never)} 个）" if len(never) > 10 else ""
+        return [f"禁用词{tail}：{shown}"]
+    if isinstance(never, str) and never.strip():
+        return [f"禁用词：{_short_value(never)}"]
+    return []
+
+
+def describe_asset(kind: str, name: str, data: Any) -> str:
+    """生成资产的中文可读摘要（markdown）。
+
+    栏目：基本信息 / 用途 / 关键内容 / 禁止项 / 适用位置。
+    不存在的字段自动跳过，不伪造；data 异常时降级为通用摘要。
+    """
+    if not isinstance(data, dict):
+        data = {}
+    meta = data.get("meta")
+    if not isinstance(meta, dict):
+        meta = {}
+
+    kind_label = _KIND_LABELS.get(kind, kind)
+    lines: list[str] = [f"# {name}", ""]
+
+    # 基本信息。
+    info: list[str] = [f"类型：{kind_label}"]
+    if meta.get("source_title"):
+        info.append(f"来源书籍：{meta['source_title']}")
+    else:
+        names = _source_names(meta)
+        if names:
+            info.append(f"来源书籍：{'、'.join(names[:6])}")
+    if meta.get("genre"):
+        info.append(f"题材：{meta['genre']}")
+    sub_tags = meta.get("sub_tags")
+    if isinstance(sub_tags, list) and sub_tags:
+        info.append(f"子标签：{'、'.join(str(t) for t in sub_tags[:6])}")
+    if meta.get("id"):
+        info.append(f"资产 ID：{meta['id']}")
+    lines.append("## 基本信息")
+    lines.extend(f"- {x}" for x in info)
+    lines.append("")
+
+    # 用途。
+    lines.append("## 用途")
+    lines.append(_KIND_PURPOSE.get(kind, "通用写作资产。"))
+    lines.append("")
+
+    # 关键内容。
+    lines.append("## 关键内容")
+    body = _describe_key_content(kind, data)
+    if body:
+        lines.extend(f"- {x}" for x in body)
+    else:
+        lines.append("- 暂无可展示的关键内容（见原始数据）。")
+    lines.append("")
+
+    # 禁止项。
+    banned = _describe_banned(data)
+    if banned:
+        lines.append("## 禁止项")
+        lines.extend(f"- {x}" for x in banned)
+        lines.append("")
+
+    # 适用位置。
+    lines.append("## 适用位置")
+    lines.append(_KIND_USAGE.get(kind, "资产库浏览。"))
+    return "\n".join(lines)
+
+
 class AssetIndex:
     """资产索引：SQLite 查询为主 + 目录扫描回退 + 短 TTL 只读缓存。
 
@@ -410,7 +871,8 @@ class AssetIndex:
         except (json.JSONDecodeError, OSError) as exc:
             _log.warning(f"资产详情加载失败，content 置空 {fp.name}: {exc}")
             data = {}
-        return {"kind": kind, "id": asset_id, "name": name, "content": data}
+        return {"kind": kind, "id": asset_id, "name": name, "content": data,
+                "summary": describe_asset(kind, name, data)}
 
     def _detail_from_scan(self, kind: str, name: str, asset_id: str) -> dict[str, Any]:
         if kind == "report":
@@ -434,7 +896,8 @@ class AssetIndex:
         except (json.JSONDecodeError, OSError) as exc:
             _log.warning(f"资产详情加载失败，content 置空 {fp.name}: {exc}")
             data = {}
-        return {"kind": kind, "id": asset_id, "name": name, "content": data}
+        return {"kind": kind, "id": asset_id, "name": name, "content": data,
+                "summary": describe_asset(kind, name, data)}
 
     def get_overview(self) -> dict[str, Any]:
         """首页概览聚合（SQL 聚合为主，空则回退扫描计数）。

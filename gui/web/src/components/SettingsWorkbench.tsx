@@ -189,7 +189,7 @@ export default function SettingsWorkbench() {
   if (error && !settings) return <Alert severity="error">{error}</Alert>
 
   return (
-    <Box sx={{ maxWidth: 600 }}>
+    <Box sx={{ maxWidth: 600, height: '100%', overflow: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'center' }}>
         <Typography variant="h6" gutterBottom sx={{ flex: 1 }}>系统设置</Typography>
         <ContextHelpButton guideKey="settings" />

@@ -560,7 +560,7 @@ export default function HelpWorkbench({ initialTab = 'start', initialAnchor = nu
   }, [initialTab])
 
   return (
-    <Box sx={{ maxWidth: 900, mx: 'auto', p: 3 }}>
+    <Box sx={{ maxWidth: 900, mx: 'auto', p: 3, height: '100%', overflow: 'auto' }}>
       <Typography variant="h5" sx={{ fontFamily: fontStack.serif, mb: 1, color: ink.ink }}>
         帮助中心
       </Typography>

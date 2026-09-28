@@ -217,7 +217,7 @@ function AdminPanels({ username, onLogout, forceChangePw, clearForceChangePw }: 
         <Chip label={username} size="small" sx={{ mr: 1 }} />
         <Button size="small" startIcon={<LogoutIcon />} onClick={logout}>退出</Button>
       </Box>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
         {tab === 0 && <DashboardPanel />}
         {tab === 1 && <BooksPanel />}
         {tab === 2 && <AssetsPanel />}

@@ -30,7 +30,7 @@ export default function AdvancedWorkbench() {
       </Tabs>
         <ContextHelpButton guideKey="advanced" />
       </Box>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
         {tab === 0 && <DistillPanel />}
         {tab === 1 && <BatchStatusPanel />}
         {tab === 2 && <AssetEditPanel />}

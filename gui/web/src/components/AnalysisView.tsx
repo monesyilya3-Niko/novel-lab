@@ -61,7 +61,7 @@ export default function AnalysisView() {
           {/* 一键分析：直接在当前工作台内触发，完成后切到结果页（由 SSE done 自动刷新） */}
           <AnalysisControlBar onGoResult={() => setSubTab('result')} />
         </Box>
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
           {subTab === 'import' && <ImportPanel />}
           {subTab === 'progress' && <ProgressPanel />}
           {subTab === 'result' && <AnalysisResultView />}

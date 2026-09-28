@@ -10,7 +10,7 @@
 
 | 上游项目 | 许可证 | 版权持有人 | 衍生资产 | 许可证副本 |
 | --- | --- | --- | --- | --- |
-| `zenstory-ai/oh-story-claudecode` | MIT | oh-story-claudecode (2025-2026) | genre-prose-card × 32 | `LICENSES/oh-story-claudecode/LICENSE` |
+| `zenstory-ai/oh-story-claudecode` | MIT | oh-story-claudecode (2025-2026) | genre-prose-card × 32 ＋ genre-pack（二次泛化）× 6 | `LICENSES/oh-story-claudecode/LICENSE` |
 
 ## 2. oh-story-claudecode
 
@@ -58,6 +58,21 @@
 | `assets/genre-prose-card-genre-youxi-tiyu.json` | `genre-youxi-tiyu` | 游戏体育 | 2026-09-09T06:21:51+00:00 |
 | `assets/genre-prose-card-genre-zhanshen-zhuixu.json` | `genre-zhanshen-zhuixu` | 战神赘婿 | 2026-09-09T06:21:51+00:00 |
 | `assets/genre-prose-card-genre-zhichang-hunlian.json` | `genre-zhichang-hunlian` | 职场婚恋 | 2026-09-09T06:21:51+00:00 |
+
+### 2.2 题材包二次泛化清单（genre-pack，由 2.1 的题材文风卡转述综合）
+
+以下 6 个通用题材包由仓库内 genre-prose-card 泛化综合而成，写法为转述综合、非复制原文；
+衍生链归因：上游 zenstory-ai/oh-story-claudecode（MIT，Copyright (c) 2025-2026 oh-story-claudecode），
+许可证副本见 `LICENSES/oh-story-claudecode/LICENSE`。scope 均为 genre-generalized，非单书蒸馏。
+
+| 资产文件 | meta.id | 题材 | 来源 prose-card | 生成时间 |
+| --- | --- | --- | --- | --- |
+| `assets/dushi-naodong-genre-pack.json` | `genre-dushi-naodong` | 都市脑洞 | `assets/genre-prose-card-genre-dushi-naodong.json` | 2026-09-29 |
+| `assets/dushi-xiuzhen-genre-pack.json` | `genre-dushi-xiuzhen` | 都市修真 | `assets/genre-prose-card-genre-dushi-xiuzhen.json` | 2026-09-29 |
+| `assets/guyan-naodong-genre-pack.json` | `genre-guyan-naodong` | 古言脑洞 | `assets/genre-prose-card-genre-guyan-naodong.json` | 2026-09-29 |
+| `assets/xianxia-genre-pack.json` | `genre-xianxia` | 东方仙侠 | `assets/genre-prose-card-genre-xianxia.json` | 2026-09-29 |
+| `assets/xuanyi-lingyi-genre-pack.json` | `genre-xuanyi-lingyi` | 悬疑灵异 | `assets/genre-prose-card-genre-xuanyi-lingyi.json` | 2026-09-29 |
+| `assets/zhanshen-zhuixu-genre-pack.json` | `genre-zhanshen-zhuixu` | 战神赘婿 | `assets/genre-prose-card-genre-zhanshen-zhuixu.json` | 2026-09-29 |
 
 ## 3. 修改说明
 

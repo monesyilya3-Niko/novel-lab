@@ -903,3 +903,123 @@ class TestInjectRegression(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRenderReadable(unittest.TestCase):
+    """可读性渲染回归（2026-09-29 用户反馈"注入像乱码"）：中文标签 / 占位0过滤 /
+    有效0保留 / 分歧按书分段 / 内嵌 JSON 中文键。"""
+
+    def _distilled(self, rules):
+        return {
+            "meta": {
+                "id": "x-voice-card-distilled",
+                "dimension": "voice-card",
+                "genre": "campus-redemption",
+                "source_books": ["a", "b"],
+                "books_count": 2,
+            },
+            "rules": rules,
+            "blindspots": [],
+            "stats": {},
+        }
+
+    def _rule(self, field, value, kind="hard", conflict=False, sources=None):
+        return {
+            "id": f"voice-card-{field}-0001",
+            "dimension": "voice-card",
+            "field": field,
+            "kind": kind,
+            "books_count": 2,
+            "value": value,
+            "sources": sources or [],
+            "confidence": 0.8,
+            "conflict": conflict,
+            "over_generalized": False,
+            "blindspot_books": [],
+        }
+
+    def test_chinese_field_label(self):
+        text = RENDER.render_distilled(
+            self._distilled([self._rule("narration.pov", "第三人称")])
+        )
+        self.assertIn("叙述人称", text)
+        self.assertNotIn("narration.pov", text)
+
+    def test_placeholder_zero_filtered(self):
+        text = RENDER.render_distilled(
+            self._distilled([
+                self._rule("narration.sentence_rhythm.avg_length", 0),
+                self._rule("narration.sentence_rhythm.short_ratio", 0.0),
+                self._rule("narration.pov", "第三人称"),
+            ])
+        )
+        # 占位 0 的两条整条消失（规则行不出现），文末有省略注说明。
+        self.assertNotIn("- 【必守】 平均句长", text)
+        self.assertNotIn("- 【必守】 短句占比", text)
+        self.assertIn("从未被统计", text)
+        # 正常规则不受影响。
+        self.assertIn("叙述人称", text)
+
+    def test_real_zero_kept(self):
+        # 不在占位表中的字段，值为 0 视为真实有效，予以保留。
+        text = RENDER.render_distilled(
+            self._distilled([self._rule("custom.counter", 0)])
+        )
+        self.assertIn("0", text)
+
+    def test_bool_zero_not_filtered(self):
+        # bool False == 0 的陷阱：占位字段值为 False 也不应被当成占位 0。
+        self.assertFalse(RENDER._is_placeholder_zero(
+            "narration.sentence_rhythm.avg_length", False))
+
+    def test_conflict_structured_per_book(self):
+        text = RENDER.render_distilled(
+            self._distilled([
+                self._rule(
+                    "emotion_handling.mode", "混合式", kind="soft", conflict=True,
+                    sources=[
+                        {"book": "a", "value": "混合式"},
+                        {"book": "b", "value": "直陈式"},
+                    ],
+                )
+            ])
+        )
+        self.assertIn("二选一/分歧", text)
+        self.assertIn("情绪处理方式", text)
+        self.assertIn("《a》", text)
+        self.assertIn("《b》", text)
+        self.assertIn("直陈式", text)
+
+    def test_embedded_json_chinese_keys(self):
+        value = '{"name": "孟诗蕊", "role": "主角", "verbal_tics": ["蕊姐"]}'
+        text = RENDER.render_distilled(
+            self._distilled([self._rule("dialogue.character_voices", value)])
+        )
+        self.assertIn("名字", text)
+        self.assertIn("孟诗蕊", text)
+        self.assertIn("口头禅", text)
+        self.assertNotIn('"name":', text)
+
+    def test_unknown_field_fallback_no_crash(self):
+        text = RENDER.render_distilled(
+            self._distilled([self._rule("foo.bar_baz", "x")])
+        )
+        self.assertIn("barbaz", text)
+
+    def test_ratio_field_as_percent(self):
+        text = RENDER.render_distilled(
+            self._distilled([self._rule("dialogue.dialogue_ratio", 0.20155)])
+        )
+        self.assertIn("对白占比", text)
+        self.assertIn("20%", text)
+
+    def test_field_label_map_covers_real_distilled_fields(self):
+        # 实测资产里的全部蒸馏字段都应有整路径中文标签（防回退英文）。
+        import json as _json
+        missing = []
+        for f in ROOT.glob("assets/*-distilled.json"):
+            d = _json.loads(f.read_text(encoding="utf-8"))
+            for r in d.get("rules", []):
+                if r.get("field") not in RENDER.FIELD_LABELS:
+                    missing.append(r["field"])
+        self.assertEqual(missing, [], f"缺中文标签的字段: {sorted(set(missing))}")

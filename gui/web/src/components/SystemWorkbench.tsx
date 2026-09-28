@@ -27,7 +27,7 @@ export default function SystemWorkbench() {
       </Tabs>
         <ContextHelpButton guideKey="system" />
       </Box>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
         {tab === 0 && <SystemStatusPanel />}
         {tab === 1 && <CompliancePanel />}
         {tab === 2 && <ModelManager />}

@@ -9,6 +9,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import { styleApi } from '../api/client'
 import { friendlyError } from '../api/client'
+import InlineGuide from './InlineGuide'
 
 interface StyleCard {
   name: string
@@ -94,6 +95,18 @@ export default function StylePanel() {
 
       {tab === 'analyze' && (
         <Box>
+          <InlineGuide
+            what="从一段样本文本里提取可量化的风格指标（句长、对话占比、情绪密度等），保存成风格卡，方便以后对照和复用。"
+            steps={[
+              '起一个风格名称，如：悬疑冷峻风。',
+              '粘贴至少 100 字的代表性文本（最好是你认可的成品段落）。',
+              '点「分析风格」，看平均句长、对话占比等指标。',
+              '确认指标符合预期后点「保存风格卡」，它会出现在「风格库」里。',
+            ]}
+            tips={[
+              '样本越有代表性，风格卡越准；拼凑的多段文字会拉平均值。',
+            ]}
+          />
           <TextField
             label="风格名称" fullWidth size="small" sx={{ mb: 1.5 }}
             value={styleName} onChange={(e) => setStyleName(e.target.value)}
