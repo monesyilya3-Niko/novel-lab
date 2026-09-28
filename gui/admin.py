@@ -19,6 +19,7 @@ import json
 import re
 import secrets
 import shutil
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -282,18 +283,20 @@ def audit(username: str, ip: str, action: str, detail: str = "") -> None:
         }, ensure_ascii=False)
         with fp.open("a", encoding="utf-8") as f:
             f.write(line + "\n")
-    except OSError:
-        pass  # 审计写失败不阻断业务
+    except Exception as e:
+        # 审计写失败不阻断业务，但必须可见：打到 stderr 进服务日志
+        print(f"[admin-audit] 写入失败 ({action}): {e}", file=sys.stderr)
 
 
 def read_audit(limit: int = 100, action: str = "", username: str = "") -> list[dict[str, Any]]:
-    """读取审计日志（最新的在前）。先过滤再截断，保证过滤结果完整。"""
+    """读取审计日志（最新的在前）。在最近 2000 条内先过滤再截断；
+    大文件时从尾部倒读，避免全量载入内存。"""
     limit = max(1, min(limit, 500))
     fp = _audit_file()
     if not fp.is_file():
         return []
     try:
-        lines = fp.read_text(encoding="utf-8").splitlines()
+        lines = _tail_lines(fp, 2000)
     except OSError:
         return []
     out = []
@@ -310,6 +313,24 @@ def read_audit(limit: int = 100, action: str = "", username: str = "") -> list[d
             continue
         out.append(entry)
     return list(reversed(out[-limit:]))
+
+
+def _tail_lines(fp: Path, n: int) -> list[str]:
+    """取文件最后 n 行（大文件友好：从尾部块倒读）。"""
+    with fp.open("rb") as f:
+        f.seek(0, 2)
+        size = f.tell()
+        # 每次向前读 8KB，直到凑够 n+1 行或到文件头
+        buf = b""
+        pos = size
+        while pos > 0 and buf.count(b"\n") <= n:
+            step = min(8192, pos)
+            pos -= step
+            f.seek(pos)
+            buf = f.read(step) + buf
+        text = buf.decode("utf-8", errors="replace")
+    lines = text.splitlines()
+    return lines[-n:]
 
 
 # ---------------------------------------------------------------------------

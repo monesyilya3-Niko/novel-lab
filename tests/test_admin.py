@@ -364,6 +364,32 @@ class TestAdminAuditFilter(unittest.TestCase):
         # 不存在的 action → 空
         self.assertEqual(admin.read_audit(100, action="no.such.action"), [])
 
+    def test_tail_lines(self):
+        import tempfile
+        from pathlib import Path
+        # 小文件：全量返回
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".log", delete=False, encoding="utf-8") as f:
+            f.write("a\nb\nc\n")
+            fp = Path(f.name)
+        try:
+            self.assertEqual(admin._tail_lines(fp, 10), ["a", "b", "c"])
+            self.assertEqual(admin._tail_lines(fp, 2), ["b", "c"])
+            # 大文件：只取尾部（构造超过 8KB 的文件验证块倒读）
+            with fp.open("w", encoding="utf-8") as f:
+                for i in range(3000):
+                    f.write(f"line-{i:05d}\n")
+            tail = admin._tail_lines(fp, 100)
+            self.assertEqual(len(tail), 100)
+            self.assertEqual(tail[0], "line-02900")
+            self.assertEqual(tail[-1], "line-02999")
+            # 坏字节不崩（errors=replace）
+            with fp.open("ab") as f:
+                f.write(b"\xff\xfe-bad\n")
+            tail2 = admin._tail_lines(fp, 3)
+            self.assertEqual(len(tail2), 3)
+        finally:
+            fp.unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     unittest.main()
