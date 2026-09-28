@@ -23,6 +23,7 @@ export default function StylePanel() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [styles, setStyles] = useState<StyleCard[]>([])
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -50,13 +51,16 @@ export default function StylePanel() {
   }
 
   const doSave = async () => {
-    if (!result || !styleName) return
+    if (!result || !styleName || saving) return
+    setSaving(true)
     try {
       await styleApi.save({ name: styleName, style_card: result })
       setMessage(`风格「${styleName}」已保存`)
       loadStyles()
     } catch (e) {
       setError(friendlyError(e))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -115,7 +119,7 @@ export default function StylePanel() {
                 <Typography variant="body2">短段占比：{(Number(metrics.shortParagraphRatio ?? metrics.short_paragraph_ratio ?? 0) * 100).toFixed(1)}%</Typography>
                 <Typography variant="body2">总字数：{String(metrics.totalChars ?? metrics.total_chars ?? '-')}</Typography>
               </Box>
-              <Button variant="outlined" size="small" sx={{ mt: 1.5 }} onClick={doSave} disabled={!styleName}>
+              <Button variant="outlined" size="small" sx={{ mt: 1.5 }} onClick={doSave} disabled={!styleName || saving}>
                 保存风格卡
               </Button>
             </Paper>

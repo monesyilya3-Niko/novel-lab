@@ -359,7 +359,11 @@ function BooksPanel() {
     setDeleting(true)
     try {
       const r = await adminApi.deleteBook(confirm.bookId)
-      setNotice(`已删除《${confirm.title}》，清理：${r.removed.join('、')}`)
+      if (r.status === 'partial') {
+        setError(`《${confirm.title}》删除不完全，残留需手动清理：${r.warnings.join('；')}`)
+      } else {
+        setNotice(`已删除《${confirm.title}》，清理：${r.removed.join('、')}`)
+      }
       setConfirm(null)
       load()
     } catch (e) {

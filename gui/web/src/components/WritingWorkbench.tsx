@@ -160,6 +160,7 @@ function GeneratePanel() {
   const [error, setError] = useState('')
   const [importContent, setImportContent] = useState('')
   const [importResult, setImportResult] = useState('')
+  const [importing, setImporting] = useState(false)
   const sseUnsubRef = useRef<(() => void) | null>(null)
 
   // 组件卸载时清理 SSE 订阅
@@ -211,7 +212,8 @@ function GeneratePanel() {
   }
 
   const doImport = async () => {
-    if (!importContent.trim() || !project) return
+    if (!importContent.trim() || !project || importing) return
+    setImporting(true)
     try {
       const r = await writingApi.importChapter({
         project, chapter_no: chapterNo, content: importContent, voice: voice || undefined,
@@ -219,6 +221,8 @@ function GeneratePanel() {
       setImportResult(JSON.stringify(r, null, 2))
     } catch (e) {
       setImportResult(friendlyError(e))
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -276,7 +280,7 @@ function GeneratePanel() {
         label="章节正文" multiline rows={6} fullWidth value={importContent}
         onChange={(e) => setImportContent(e.target.value)} sx={{ mb: 1 }} size="small"
       />
-      <Button variant="outlined" onClick={doImport} disabled={!importContent.trim() || !project}>
+      <Button variant="outlined" onClick={doImport} disabled={!importContent.trim() || !project || importing}>
         入库并打分
       </Button>
       {importResult && (
