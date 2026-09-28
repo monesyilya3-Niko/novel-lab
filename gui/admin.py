@@ -75,15 +75,28 @@ def _audit_file() -> Path:
 # 审计日志轮转阈值：超过则归档为带时间戳文件，避免长期运行无界增长。
 # 归档文件保留全部历史（不删除），read_audit 会自动合并读取归档与当前文件。
 _AUDIT_ROTATE_BYTES = 10 * 1024 * 1024
+# 归档审计日志最多保留份数（超出则删除最旧），防止磁盘无界增长。
+_AUDIT_KEEP_ARCHIVES = 10
 
 
 def _maybe_rotate_audit(fp: Path) -> None:
-    """审计日志超过阈值时归档轮转（带时间戳后缀，历史不丢失）。"""
+    """审计日志超过阈值时归档轮转（带时间戳后缀，历史不丢失）。
+
+    归档文件只保留最近 _AUDIT_KEEP_ARCHIVES 份，更旧的自动删除，
+    防止长期运行磁盘无界增长。
+    """
     try:
         if fp.exists() and fp.stat().st_size >= _AUDIT_ROTATE_BYTES:
             ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
             archived = fp.with_name(f"{fp.stem}-{ts}{fp.suffix}")
             fp.rename(archived)
+            # 清理超限归档：按时间倒序（字典序即时间序），只留最近 N 份。
+            olds = sorted(fp.parent.glob(f"{fp.stem}-*.jsonl"), reverse=True)
+            for stale in olds[_AUDIT_KEEP_ARCHIVES:]:
+                try:
+                    stale.unlink()
+                except OSError:
+                    pass
     except OSError:
         pass  # 轮转失败不阻断审计写入
 

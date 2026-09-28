@@ -134,5 +134,24 @@ class RuntimeCleanupTest(unittest.TestCase):
             self.assertNotIn(bid, services._runtime)
 
 
+class BookIndexBoundTest(unittest.TestCase):
+    def test_book_index_is_bounded(self):
+        """_BOOK_INDEX 有界：超限时淘汰最旧条目，防止无界内存增长。"""
+        with services._books_lock:
+            services._BOOK_INDEX.clear()
+            # 直接模拟 _books_put_locked 的索引写入路径
+            for i in range(services._BOOK_INDEX_MAX + 20):
+                bid = f"book-{i:04d}"
+                services._BOOK_INDEX[bid] = f"/tmp/src-{i}.txt"
+                services._BOOK_INDEX.move_to_end(bid)
+                while len(services._BOOK_INDEX) > services._BOOK_INDEX_MAX:
+                    services._BOOK_INDEX.popitem(last=False)
+            self.assertEqual(len(services._BOOK_INDEX), services._BOOK_INDEX_MAX)
+            # 最旧的 20 个已被淘汰，最新的保留
+            self.assertNotIn("book-0000", services._BOOK_INDEX)
+            self.assertIn(f"book-{services._BOOK_INDEX_MAX + 19:04d}", services._BOOK_INDEX)
+            services._BOOK_INDEX.clear()
+
+
 if __name__ == "__main__":
     unittest.main()

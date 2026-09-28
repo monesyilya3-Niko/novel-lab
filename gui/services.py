@@ -120,8 +120,10 @@ def assert_asset_kind(data: Any, expected: str, ref: str) -> None:
 # 被淘汰的书可通过 _BOOK_INDEX 从源文件透明重载。
 _BOOKS: OrderedDict[str, dict[str, Any]] = OrderedDict()
 _BOOKS_MAX = 3
-# 轻量索引：book_id -> source_path（淘汰后仍保留，用于透明重载）
-_BOOK_INDEX: dict[str, str] = {}
+# 轻量索引：book_id -> source_path（淘汰后仍保留，用于透明重载）。
+# 有界：防止长期导入导致无界增长；超限时淘汰最久未写入者。
+_BOOK_INDEX: OrderedDict[str, str] = OrderedDict()
+_BOOK_INDEX_MAX = 100
 _books_lock = threading.Lock()
 
 
@@ -161,6 +163,10 @@ def _books_put_locked(book_id: str, book: dict[str, Any]) -> None:
     _BOOKS[book_id] = book
     _BOOKS.move_to_end(book_id)
     _BOOK_INDEX[book_id] = book["source_path"]
+    _BOOK_INDEX.move_to_end(book_id)
+    # 有界：索引超限时淘汰最久未写入者（仅影响极旧书的透明重载，可重新导入）。
+    while len(_BOOK_INDEX) > _BOOK_INDEX_MAX:
+        _BOOK_INDEX.popitem(last=False)
     # 淘汰：从最久未用开始，跳过正在分析的
     with _runtime_lock:
         analyzing = set(_runtime.keys())

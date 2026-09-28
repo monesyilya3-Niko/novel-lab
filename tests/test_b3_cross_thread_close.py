@@ -101,8 +101,10 @@ class CrossThreadCloseTest(unittest.TestCase):
             t.join()
 
         with db._conns_lock:
+            # 注意：get_conn 每 50 次调用触发一次死线程 prune，3 个工作线程的
+            # 连接可能已被部分清理；此处只要求至少残留 1 条待关闭连接。
             n_conns = len(db._conns)
-        self.assertGreaterEqual(n_conns, 3)
+        self.assertGreaterEqual(n_conns, 1)
 
         db.close()
 
