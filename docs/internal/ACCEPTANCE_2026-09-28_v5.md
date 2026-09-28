@@ -2,7 +2,10 @@
 
 > 本报告替代 `docs/internal/ACCEPTANCE_2026-09-28_v4.md`。
 > 所有"已验证"断言均有本轮真实工具结果支撑；未验证项明确标注。
-> 分支：`feat/enterprise-hardening`。远端：`9e5c5f87`（完整 recursive tree 对比验证，见 §一）。
+> 分支：`feat/enterprise-hardening`。
+> 远端一致性验证方法：GitHub API 取远端 recursive tree，与 `git ls-tree -r HEAD`
+> 逐项对比路径 / blob SHA / mode（373 文件三项全一致）。验证在每次推送后独立执行；
+> 最终 ref 以 GitHub 上 `feat/enterprise-hardening` 分支实际指向为准（报告内 SHA 仅为撰写时快照）。
 
 ## 一、远端一致性（本轮新验证方法）
 
@@ -13,8 +16,8 @@ v4 报告的问题：用 3 个文件抽查 blob SHA 包装成"本地 HEAD 与远
 本轮修复与验证：
 - 重写推送脚本：blob 内容取自 `git show HEAD:path`（git 实际存储的字节），上传后逐个校验 SHA 与本地一致；
   远端多余文件（过期 dist）显式删除。
-- 独立验证：GitHub API 取远端 recursive tree，与 `git ls-tree -r HEAD` 逐项对比**路径 / blob SHA / mode**：
-  远端 373 blobs，本地 373 文件，**三项全一致**，远端 ref `9e5c5f87`。
+- 独立验证：GitHub API 取远端 recursive tree，与 `git ls-tree -r HEAD` 逐项对比**路径 / blob SHA / mode**。
+  每次推送后均重新执行完整对比，确认为三项全一致后才认定同步。
 - 此为完整对比，不是抽查。
 
 ## 二、本轮新增修复（全部已验证）
@@ -61,4 +64,4 @@ v4 报告的问题：用 3 个文件抽查 blob SHA 包装成"本地 HEAD 与远
 
 - **外部模型链路未实测**：secret store 无可用 key，本轮所有 LLM 相关路径均为 mock/离线验证。
 - 覆盖率 62%，未达 80% 内控目标；剩余缺口主要为 LLM 强依赖代码，无 key 无法离线覆盖。
-- 旧 zip（v3/v4）已过时，不得作为交付；本报告对应远端 `9e5c5f87`。
+- 旧 zip（v3/v4）已过时，不得作为交付。
