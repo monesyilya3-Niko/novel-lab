@@ -1,8 +1,10 @@
-// 饼图 / 环形图封装：资产类型分布等占比可视化。
+// 饼图 / 环形图封装：资产类型分布等占比可视化。「墨」v3.5 色板。
 import { useMemo } from 'react'
 import { useTheme } from '@mui/material/styles'
 import type { EChartsOption } from 'echarts'
 import BaseChart from './BaseChart'
+import { getInkPalette, inkTextStyle, inkTooltip } from '../../charts/inkPalette'
+import { useThemeMode } from '../../state/ThemeModeContext'
 
 export interface PieSlice {
   name: string
@@ -22,24 +24,47 @@ export interface PieChartProps {
 /** 饼图：切片 → ECharts pie option。 */
 export default function PieChart({ data, donut = true, height = 280, optionOverride }: PieChartProps) {
   const theme = useTheme()
+  const { isDark } = useThemeMode()
   const option = useMemo<EChartsOption>(() => {
     const base: EChartsOption = {
-      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-      legend: { bottom: 0, orient: 'horizontal' },
+      color: [...getInkPalette(isDark)],
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)', ...inkTooltip(isDark) },
+      legend: {
+        bottom: 0,
+        orient: 'horizontal',
+        textStyle: inkTextStyle(isDark),
+        icon: 'circle',
+        itemWidth: 8,
+        itemHeight: 8,
+      },
       series: [
         {
           type: 'pie',
-          radius: donut ? ['40%', '68%'] : '70%',
+          radius: donut ? ['42%', '68%'] : '70%',
           center: ['50%', '46%'],
           avoidLabelOverlap: true,
-          itemStyle: { borderRadius: 4, borderColor: theme.palette.background.paper, borderWidth: 1 },
-          label: { show: true, formatter: '{b}\n{d}%' },
+          itemStyle: {
+            borderRadius: 6,
+            borderColor: theme.palette.background.paper,
+            borderWidth: 2,
+          },
+          label: {
+            show: true,
+            formatter: '{b}\n{d}%',
+            ...inkTextStyle(isDark),
+          },
+          labelLine: { lineStyle: { color: isDark ? '#4a443c' : '#d8d0bf' } },
+          emphasis: {
+            scale: true,
+            scaleSize: 4,
+            itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.2)' },
+          },
           data,
         },
       ],
     }
     return { ...base, ...optionOverride }
-  }, [data, donut, optionOverride, theme])
+  }, [data, donut, optionOverride, theme, isDark])
 
   return <BaseChart option={option} height={height} ariaLabel="饼图" />
 }
