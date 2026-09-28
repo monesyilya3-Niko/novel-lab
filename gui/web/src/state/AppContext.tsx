@@ -51,6 +51,7 @@ interface AppState {
   // actions
   importBook: (path: string) => Promise<void>
   uploadBook: (file: File) => Promise<void>
+  importSampleBook: (name: string) => Promise<void>
   selectChapter: (idx: number) => Promise<void>
   refreshStatus: () => Promise<void>
   startAnalysis: (genre: string) => Promise<void>
@@ -167,6 +168,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await applyImportedBook(b)
   }, [applyImportedBook])
 
+  // 内置示例语料一键导入：走同一 applyImportedBook，保证切换当前书并给出成功反馈。
+  const importSampleBook = useCallback(async (name: string) => {
+    const b = await api.importSample(name)
+    await applyImportedBook(b)
+  }, [applyImportedBook])
+
   // 竞态守卫（与 loadBookResults 同模式）：A→B 快速切换时，A 的迟到响应
   // 不得覆盖 B。只让最后一次 selectChapter 的响应写入 currentChapter。
   const selectChapterSeq = useRef(0)
@@ -267,6 +274,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshBookResults,
       importBook,
       uploadBook,
+      importSampleBook,
       selectChapter,
       refreshStatus,
       startAnalysis,
@@ -279,7 +287,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       book, selectedChapter, currentChapter, status, lastEvent, batchStates,
       initError, qualityPassLine, consistencyTarget,
       workbench, overview, bookResults,
-      importBook, uploadBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
+      importBook, uploadBook, importSampleBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
       pauseAnalysis, resumeAnalysis, retryFailed, refreshThresholds, refreshOverview, loadBookResults, refreshBookResults,
       helpRequest, openHelp,
     ],

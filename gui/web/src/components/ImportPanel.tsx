@@ -9,7 +9,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import { useApp } from '../state/AppContext'
-import { listSamples, importSample, type SampleInfo } from '../api/client'
+import { listSamples, type SampleInfo } from '../api/client'
 
 interface Props {
   compact?: boolean
@@ -130,6 +130,7 @@ export default function ImportPanel({ compact }: Props) {
 
 /** 内置示例语料列表（一键导入）。 */
 function SampleList({ onImported }: { onImported: () => void }) {
+  const { importSampleBook } = useApp()
   const [samples, setSamples] = useState<SampleInfo[] | null>(null)
   const [importing, setImporting] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -146,7 +147,8 @@ function SampleList({ onImported }: { onImported: () => void }) {
     setImporting(name)
     setError(null)
     try {
-      await importSample(name)
+      // 走 AppContext：导入后切换当前书并触发成功提示（与文件上传同一路径）。
+      await importSampleBook(name)
       onImported()
     } catch (e) {
       setError((e as Error).message)
