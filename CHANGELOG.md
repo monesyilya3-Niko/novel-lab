@@ -2,6 +2,31 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-28（企业级整改第三轮：原子发布 + 竞态彻底关闭 + P2 polish）
+
+### Added
+- **`tests/test_p2_validation.py`**（7 例）：P2-B5/B6 非法 `chapter_num`/`batch_size` 返回 400 回归。
+- **`tests/test_atomic_publish.py`**（2 例）：P0-2 CLI 报告原子发布，部分失败回滚。
+- **`AnalysisControlBar.test.tsx`**（3 例）：题材必填（下拉加载/未选禁用/加载失败提示）。
+
+### Fixed
+- **P0-2 原子发布**：CLI 两份报告要么全进 `reports/`，要么全不进；中途失败自动回滚已搬入文件。
+- **P1-F5 彻底关闭**：`AppContext.loadBookResults` 加序列号守卫，旧请求无法覆盖全局 `bookResults`（此前 `latest` 只守组件本地态）。
+- **P0-4**：移除题材下拉自动选中首项，用户必须显式选择（必填本意）。
+- **P2-F9**：`ResultPanel` 章节切换移除过期闭包导致的双请求。
+- **P2-F12**：`AnalysisResultView` 错误态加重试按钮。
+- **P2-F13**：`StylePanel` 删除、`SettingsWorkbench` 重置加二次确认。
+- **P2-F15**：`ProgressPanel` 状态文案中文化（idle→空闲等）。
+- **P2-F16**：`PlatformPanel` 默认平台与异步列表校准。
+- **P2-F17**：`ScorePanel` 截断加剩余条数提示。
+- **P2-F18**：`MarkdownReport`/`ResultPanel`/`WritingWorkbench` 硬编码浅色背景改主题色，修复暗色可读性。
+- **P2-F10/F11**：`AnalysisView` 窄屏单列、`SettingsWorkbench` 表单 flexWrap。
+- **Ruff UP012**：移除 `test_import_upload.py` 多余的 utf-8 参数。
+
+### Changed
+- **测试基线 971 → 980**（新增 9 例），`AGENTS.md` 口径同步。
+- **Vitest 37 → 40**。
+
 ## [Unreleased] - 2026-09-28（企业级整改第二轮：P0-3/P0-4 + P1 全清 + 门禁）
 
 ### Added
