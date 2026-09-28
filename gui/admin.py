@@ -145,7 +145,8 @@ def authenticate(username: str, password: str, ip: str) -> dict[str, Any]:
         _check_rate_limit(ip)
         data = _load_admin()
         ok = False
-        if data and username == data.get("username"):
+        # 用户名也用常量时间比较，防时序攻击枚举账号名
+        if data and hmac.compare_digest(username, str(data.get("username", ""))):
             salt = bytes.fromhex(data["salt"])
             ok = hmac.compare_digest(
                 _hash_password(password, salt), data.get("password_hash", ""))
@@ -453,29 +454,9 @@ def delete_book(book_id: str, username: str, ip: str) -> dict[str, Any]:
     if isinstance(state, dict) and state.get("status") == "analyzing":
         raise ServiceError("书籍正在分析中，无法删除", 409)
 
-    # 2) corpus 原文：仅当解析后位于 CORPUS_DIR 内才删。
-    src = (state or {}).get("source_path", "")
-    if src:
-        if _safe_unlink(Path(src), config.CORPUS_DIR, "原文"):
-            removed.append("corpus")
-
-    # 3) 状态文件（新旧两处）。
-    for fp in (config.STATE_JSON_DIR / f"gui_state_{book_id}.json",
-               config.STATE_ROOT / f"gui_state_{book_id}.json"):
-        if fp.is_file():
-            fp.unlink()
-            removed.append(fp.name)
-
-    # 4) assets/{book_id}/ 整目录（book_id 已校验无分隔符）。
-    book_assets = config.ASSETS_ROOT / book_id
-    if book_assets.is_dir():
-        shutil.rmtree(book_assets)
-        removed.append(f"assets/{book_id}/")
-
-    # 5) 内存缓存。
-    services._BOOKS.pop(book_id, None)
-
-    # 6) SQLite：books / assets / reports / analysis_tasks 中 book_id 相关的行。
+    # 2) SQLite 先删（DB 是权威源；先清 DB 再删文件，
+    #    即使文件删除失败也不会留下"DB 有记录但文件没了"的坏状态，
+    #    残留文件可用孤儿扫描清理）。
     db_removed = 0
     try:
         from gui import db
@@ -490,6 +471,28 @@ def delete_book(book_id: str, username: str, ip: str) -> dict[str, Any]:
         removed.append(f"sqlite:{db_removed}行")
     except Exception:  # noqa: BLE001 - DB 不可用时不阻断删除
         pass
+
+    # 3) corpus 原文：仅当解析后位于 CORPUS_DIR 内才删。
+    src = (state or {}).get("source_path", "")
+    if src:
+        if _safe_unlink(Path(src), config.CORPUS_DIR, "原文"):
+            removed.append("corpus")
+
+    # 4) 状态文件（新旧两处）。
+    for fp in (config.STATE_JSON_DIR / f"gui_state_{book_id}.json",
+               config.STATE_ROOT / f"gui_state_{book_id}.json"):
+        if fp.is_file():
+            fp.unlink()
+            removed.append(fp.name)
+
+    # 5) assets/{book_id}/ 整目录（book_id 已校验无分隔符）。
+    book_assets = config.ASSETS_ROOT / book_id
+    if book_assets.is_dir():
+        shutil.rmtree(book_assets)
+        removed.append(f"assets/{book_id}/")
+
+    # 6) 内存缓存。
+    services._BOOKS.pop(book_id, None)
 
     audit(username, ip, "admin.book.delete", f"{book_id}（{removed}）")
     return {"bookId": book_id, "removed": removed}
