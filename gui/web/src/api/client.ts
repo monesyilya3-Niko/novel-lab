@@ -511,6 +511,7 @@ export const platformApi = {
 export interface AdminMe {
   loggedIn: boolean
   username: string
+  mustChangePassword?: boolean
 }
 export interface AdminDashboard {
   version: string
