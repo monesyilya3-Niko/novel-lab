@@ -259,15 +259,18 @@ def get_dashboard() -> dict[str, Any]:
     """系统概览：版本/运行/数据统计/磁盘占用。只读聚合，不触发重型计算。
 
     注意：不用 services.get_overview()，它会经 engine_adapter 触发 llm_client
-    导入（外部模型链路），管理仪表盘不应依赖它。
+    导入（外部模型链路），管理仪表盘不应依赖它。改为直调
+    asset_index.index.get_overview()（与首页同一口径，不经过模型链路）。
     """
     import sys
 
-    from gui import services, state_store  # 延迟导入，避免循环依赖
+    from gui import asset_index, services, state_store  # 延迟导入，避免循环依赖
 
     books = state_store.list_books_summary()
-    stats = services.get_stats()
-    totals = stats.get("totals", {}) if isinstance(stats, dict) else {}
+    try:
+        overview = asset_index.index.get_overview()
+    except Exception:  # noqa: BLE001
+        overview = {}
     items = []
     for b in books[:10]:
         try:
@@ -293,9 +296,9 @@ def get_dashboard() -> dict[str, Any]:
             "analyzing": sum(1 for b in books if b.get("status") == "analyzing"),
             "items": items,
         },
-        "assetsTotal": totals.get("assets", 0),
-        "reportsTotal": totals.get("reports", 0),
-        "assetsByKind": stats.get("by_kind", {}) if isinstance(stats, dict) else {},
+        "assetsTotal": overview.get("total_assets", 0),
+        "reportsTotal": overview.get("total_reports", 0),
+        "assetsByKind": overview.get("assets_by_kind", {}),
         "diskBytes": disk,
         "diskTotalBytes": sum(disk.values()),
     }
