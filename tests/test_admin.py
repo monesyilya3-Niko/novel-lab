@@ -242,6 +242,82 @@ class TestAdminSessions(unittest.TestCase):
         self.assertTrue(any(e["action"] == "admin.session.revoke" for e in entries))
 
 
+class TestAdminRateLimitCleanup(unittest.TestCase):
+    """失败登录记录过期清理：不足 5 次的 IP 不得永久堆积。"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._iso.__enter__()
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+
+    def tearDown(self):
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+        self._iso.__exit__(None, None, None)
+        self._tmp.cleanup()
+
+    def test_stale_entries_purged(self):
+        import time
+        pw = admin.ensure_initialized()
+        self.assertTrue(pw)
+        # 3 次失败（不足锁定阈值）
+        for _ in range(3):
+            try:
+                admin.authenticate("admin", "wrong", "10.0.0.1")
+            except ServiceError:
+                pass
+        self.assertIn("10.0.0.1", admin._failed_logins)
+        # 把记录推到过期
+        admin._failed_logins["10.0.0.1"]["updated_at"] = time.time() - 400
+        # 下一次任意登录尝试触发清理
+        try:
+            admin.authenticate("admin", "wrong", "10.0.0.2")
+        except ServiceError:
+            pass
+        self.assertNotIn("10.0.0.1", admin._failed_logins)
+
+
+class TestAdminResetPassword(unittest.TestCase):
+    """本地 CLI 重置密码。"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._iso.__enter__()
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+
+    def tearDown(self):
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+        self._iso.__exit__(None, None, None)
+        self._tmp.cleanup()
+
+    def test_reset_password(self):
+        old_pw = admin.ensure_initialized()
+        self.assertTrue(old_pw)
+        # 登录一次，建立会话
+        r = admin.authenticate("admin", old_pw, "127.0.0.1")
+        self.assertEqual(len(admin.list_sessions()), 1)
+        # 重置
+        new_pw = admin.reset_password()
+        self.assertTrue(new_pw)
+        self.assertNotEqual(new_pw, old_pw)
+        # 旧密码失效
+        with self.assertRaises(ServiceError):
+            admin.authenticate("admin", old_pw, "127.0.0.1")
+        # 新密码可用，且要求改密
+        r2 = admin.authenticate("admin", new_pw, "127.0.0.1")
+        self.assertTrue(r2["must_change_password"])
+        # 旧会话全部被吊销
+        self.assertIsNone(admin.get_session_user(r["session_id"]))
+        # 审计记录
+        entries = admin.read_audit(50)
+        self.assertTrue(any(e["action"] == "admin.password.reset" for e in entries))
+
+
 class TestAdminAuditFilter(unittest.TestCase):
     """审计日志过滤。"""
 

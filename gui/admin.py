@@ -117,9 +117,15 @@ def ensure_initialized() -> str | None:
 # ---------------------------------------------------------------------------
 
 def _check_rate_limit(ip: str) -> None:
+    now = time.time()
+    # 顺带清理过期条目：防止失败不足 5 次的 IP 记录永久堆积。
+    stale = [k for k, v in _failed_logins.items()
+             if now - v.get("updated_at", 0) > _LOGIN_LOCK_SECONDS]
+    for k in stale:
+        del _failed_logins[k]
     entry = _failed_logins.get(ip)
     if entry and entry["count"] >= _MAX_LOGIN_ATTEMPTS:
-        if time.time() < entry["locked_until"]:
+        if now < entry["locked_until"]:
             raise ServiceError("登录失败次数过多，请 5 分钟后再试", 429)
         del _failed_logins[ip]
 
@@ -127,6 +133,7 @@ def _check_rate_limit(ip: str) -> None:
 def _record_failed_login(ip: str) -> None:
     entry = _failed_logins.setdefault(ip, {"count": 0, "locked_until": 0.0})
     entry["count"] += 1
+    entry["updated_at"] = time.time()
     if entry["count"] >= _MAX_LOGIN_ATTEMPTS:
         entry["locked_until"] = time.time() + _LOGIN_LOCK_SECONDS
 
@@ -213,6 +220,28 @@ def revoke_session(id_prefix: str, by_user: str, ip: str) -> None:
         sess = _sessions.pop(matched[0])
     audit(by_user, ip, "admin.session.revoke",
           f"吊销会话 {matched[0][:8]}（用户 {sess['username']}，IP {sess['ip']}）")
+
+
+def reset_password() -> str:
+    """本地 CLI 紧急重置：生成新随机密码，吊销全部会话，强制下次登录改密。
+
+    只能通过本机 shell 调用（服务仅绑定 127.0.0.1），调用者即被信任。
+    返回新密码（明文，仅输出到本地终端一次）。
+    """
+    new_password = secrets.token_urlsafe(18)
+    with _lock:
+        data = _load_admin()
+        if not data:
+            raise ServiceError("管理员账号不存在，请先启动服务完成初始化", 404)
+        new_salt = secrets.token_bytes(16)
+        data["salt"] = new_salt.hex()
+        data["password_hash"] = _hash_password(new_password, new_salt)
+        data["must_change_password"] = True
+        _save_admin(data)
+        _sessions.clear()
+    audit(data.get("username", "admin"), "localhost",
+          "admin.password.reset", "经本地 CLI 重置密码，全部会话已吊销")
+    return new_password
 
 
 def change_password(username: str, old_password: str, new_password: str, ip: str) -> None:

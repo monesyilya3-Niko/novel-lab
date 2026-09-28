@@ -123,6 +123,21 @@ def resolve_book_src(book: str) -> Path:
     sys.exit(f"文件不存在: {p}")
 
 
+def cmd_reset_admin_password() -> int:
+    """本地重置管理员密码：生成随机新密码，输出到终端一次。"""
+    sys.path.insert(0, str(ROOT / "gui"))
+    from gui import admin
+    try:
+        new_pw = admin.reset_password()
+    except Exception as e:  # noqa: BLE001
+        print(f"✗ 重置失败: {e}")
+        return 1
+    print("✓ 管理员密码已重置，全部会话已吊销")
+    print(f"  新密码: {new_pw}")
+    print("  请妥善保存，下次登录后会被要求修改密码")
+    return 0
+
+
 def cmd_status():
     """项目概览：资产/章节/报告状态。"""
     print("=" * 50)
@@ -184,6 +199,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", help="子命令")
 
     p_check = sub.add_parser("检查", help="章节质量+一致性双维度检查")
+    sub.add_parser("重置管理员密码", help="本地紧急重置 admin 密码（吊销全部会话）")
     p_check.add_argument("chapter", help="章节文件路径")
     p_check.add_argument("--voice", help="voice-card 路径（一致性打分）")
     p_check.add_argument("--genre-pack", help="题材包路径（可选）")
@@ -607,6 +623,8 @@ def main():
         return run_script("model_config.py", ["list"])
     if args.cmd == "状态":
         return cmd_status()
+    if args.cmd == "重置管理员密码":
+        return cmd_reset_admin_password()
     ap.print_help()
     return 0
 
