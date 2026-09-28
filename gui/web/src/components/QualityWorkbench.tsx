@@ -24,6 +24,14 @@ const VERDICT_LABELS: Record<string, string> = {
 }
 const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: '等待中',
+  running: '运行中',
+  done: '已完成',
+  error: '失败',
+}
+const statusLabel = (s: string | null | undefined) => (s ? STATUS_LABELS[s] ?? s : s)
+
 // 全书质检面板「收起」时最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是
 // 同一个数：响应体可能在 50 条处截断，而面板收起时只渲染 20 行。只要「屏幕条数 < 声称的
 // 总数」就必须说明，且文案里的条数要按实际渲染条数给出，否则会出现「共 61 条，仅显示前
@@ -296,7 +304,7 @@ function QcPanel() {
       {taskState && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1">
-            状态：{taskState.status}
+            状态：{statusLabel(taskState.status)}
             {taskState.verdict && <> | 判定：<Chip label={verdictLabel(taskState.verdict)} size="small" color={taskState.verdict === 'PASS' ? 'success' : taskState.verdict === 'WARN' ? 'warning' : 'error'} /></>}
             {taskState.totalScore != null && <> | 总分 {taskState.totalScore.toFixed(1)}</>}
           </Typography>

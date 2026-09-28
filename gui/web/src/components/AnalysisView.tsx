@@ -44,7 +44,8 @@ export default function AnalysisView() {
           sx={{
             px: 2,
             pt: 1,
-            borderBottom: '1px solid #eee',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
             display: 'flex',
             alignItems: 'center',
           }}

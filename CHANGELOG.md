@@ -2,6 +2,26 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-28（企业出版级第六轮：上传内存治理 + 前端竞态收官 + 空库 Onboarding）
+
+### Fixed
+- **上传内存治理**：100MB 上传导入服务端 RSS 峰值从 3092MB 降至 431.5MB。
+  - `gui/router.py`：multipart 解析器重写为纯 bytes 边界扫描（替代 stdlib `email`，后者实测 10 倍瞬时放大）；缺 boundary/截断 body 返回 400（19 例回归）。
+  - `scripts/metrics.py`：`compute_metrics` 流式化——`char_ttr` 改唯一字符集+计数器（旧 33M 字符 list 约 1.6GB），句子统计改 `finditer` 单遍（旧 310 万句子 list），`bigram_freq` 改 zip 配对；与旧实现全量 JSON 数值一致性校验通过（7 例新回归锁定内存上界）。
+  - `gui/server.py` / `gui/services.py`：上传缓冲落盘后释放、metrics 算完后释放正文 str，避免导入期内存叠加。
+- **空库 Onboarding**：首访空库弹出三步引导向导（可跳过，刷新不再出现），`E2E_EMPTY_LIBRARY=1` 独立隔离 E2E 2/2；修复隔离脚本 rsync 非锚定 `--exclude='assets/'` 误伤 `gui/web/dist/assets/`。
+- **前端竞态收官**：`AppContext.selectChapter` sequence guard、`ResultPanel` 请求序列守卫与切章批次归零、`SettingsWorkbench` 即时校验/交叉阈值校验/保存重置刷新、Quality/Writing 状态中文化、ErrorBoundary 重试恢复（vitest 51/51）。
+- E2E 旅程新增真 UI 一键分析链路（导入→选合法题材→一键分析→`/api/analyze/full` 200 + task_id）。
+- CI：E2E 改用 `scripts/e2e_isolated.sh`（禁止在 checkout 上直接起服务），并新增空库 onboarding 第二次独立隔离调用。
+
+### Verified
+- Python 1116 例全绿（3 跳过），ruff 全清，coverage 62%（`--fail-under=60`）。
+- tsc 全清，ESLint 0 警告/错误，vitest 51/51，`npm run build` 成功。
+- Playwright：普通模式 12/12（2 onboarding 按设计跳过）+ 空库模式 2/2，均为隔离服务实测。
+- 性能（隔离复测，`docs/internal/perf_2026-09-28.json`）：100MB 上传 RSS 峰值 431.5MB（旧 3092MB）；20 并发读 p99 1035.6ms（nearest-rank）；10 并发上传 10 本全入库；超限 413；模型超时熔断正常。
+- npm audit 未完成（环境代理策略拒绝 `POST /-/npm/v1/security/audits/quick`，`policy_denied`），不记为通过。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
 ## [Unreleased] - 2026-09-28（企业出版级第五轮：测试直调生产函数 + 纵深防御 + 远端一致性）
 
 ### Fixed

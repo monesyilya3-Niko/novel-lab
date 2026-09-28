@@ -44,7 +44,8 @@ export default function ReaderPanel() {
         sx={{
           px: 2,
           py: 1,
-          borderBottom: '1px solid #e0e0e0',
+          borderBottom: '1px solid',
+          borderColor: 'divider',
           display: 'flex',
           alignItems: 'center',
           gap: 1,

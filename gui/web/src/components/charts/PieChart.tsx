@@ -1,5 +1,6 @@
 // 饼图 / 环形图封装：资产类型分布等占比可视化。
 import { useMemo } from 'react'
+import { useTheme } from '@mui/material/styles'
 import type { EChartsOption } from 'echarts'
 import BaseChart from './BaseChart'
 
@@ -20,6 +21,7 @@ export interface PieChartProps {
 
 /** 饼图：切片 → ECharts pie option。 */
 export default function PieChart({ data, donut = true, height = 280, optionOverride }: PieChartProps) {
+  const theme = useTheme()
   const option = useMemo<EChartsOption>(() => {
     const base: EChartsOption = {
       tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
@@ -30,14 +32,14 @@ export default function PieChart({ data, donut = true, height = 280, optionOverr
           radius: donut ? ['40%', '68%'] : '70%',
           center: ['50%', '46%'],
           avoidLabelOverlap: true,
-          itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 1 },
+          itemStyle: { borderRadius: 4, borderColor: theme.palette.background.paper, borderWidth: 1 },
           label: { show: true, formatter: '{b}\n{d}%' },
           data,
         },
       ],
     }
     return { ...base, ...optionOverride }
-  }, [data, donut, optionOverride])
+  }, [data, donut, optionOverride, theme])
 
   return <BaseChart option={option} height={height} ariaLabel="饼图" />
 }

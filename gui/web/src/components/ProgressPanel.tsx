@@ -5,17 +5,19 @@ import Typography from '@mui/material/Typography'
 import LinearProgress from '@mui/material/LinearProgress'
 import Tooltip from '@mui/material/Tooltip'
 import { useApp } from '../state/AppContext'
+import { palette } from '../theme'
 
 const STATUS_LABEL: Record<string, string> = {
   idle: '空闲', pending: '等待', running: '运行中',
   success: '成功', failed: '失败', skipped: '跳过',
 }
+// 批次状态语义色：取自 theme.ts 统一色板；pending 用中性灰（无主题角色，保留）。
 const CELL_COLOR: Record<string, string> = {
   pending: '#e0e0e0',
-  running: '#1976d2',
-  success: '#4caf50',
-  failed: '#f44336',
-  skipped: '#ff9800',
+  running: palette.primary,
+  success: palette.success,
+  failed: palette.error,
+  skipped: palette.warning,
 }
 
 export default function ProgressPanel() {
@@ -82,7 +84,7 @@ export default function ProgressPanel() {
                           width: 14,
                           height: 14,
                           borderRadius: '3px',
-                          bgcolor: CELL_COLOR[st] ?? '#e0e0e0',
+                          bgcolor: CELL_COLOR[st] ?? CELL_COLOR.pending,
                         }}
                       />
                     </Tooltip>

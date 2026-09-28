@@ -43,6 +43,7 @@ export default function HomeDashboard() {
 
   const kpis = overview ? [
     { label: '已拆书', value: overview.totalBooks, icon: <MenuBookIcon />, color: 'primary.main' },
+    // 题材包图标：装饰性分类色（与图表色板第 4 位同源），非主题角色，保留字面量。
     { label: '题材包', value: overview.totalGenrePacks, icon: <StyleIcon />, color: '#9c27b0' },
     { label: '报告', value: overview.totalReports, icon: <ArticleIcon />, color: 'success.main' },
     { label: '资产总数', value: overview.totalAssets, icon: <FolderIcon />, color: 'info.main' },

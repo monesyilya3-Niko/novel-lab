@@ -73,6 +73,87 @@ class TestParseMultipartUpload(unittest.TestCase):
             router.parse_multipart_upload(raw, ctype)
         self.assertEqual(ctx.exception.code, 400)
 
+    def test_rfc2231_chinese_filename(self):
+        """RFC2231 filename*=utf-8''%XX 形式中文文件名。"""
+        from urllib.parse import quote
+        enc = quote("暮冬念春.txt", encoding="utf-8")
+        raw = (
+            f"--{BOUNDARY}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename*=utf-8\'\'{enc}\r\n'
+            f"Content-Type: text/plain\r\n\r\n".encode("latin-1")
+            + BOOK_TXT + b"\r\n"
+            + f"--{BOUNDARY}--\r\n".encode("latin-1")
+        )
+        ctype = f"multipart/form-data; boundary={BOUNDARY}"
+        fn, data, _ = router.parse_multipart_upload(raw, ctype)
+        self.assertEqual(fn, "暮冬念春.txt")
+        self.assertEqual(data, BOOK_TXT)
+
+    def test_raw_utf8_quoted_chinese_filename(self):
+        """浏览器直发 raw UTF-8 中文文件名（非 RFC2231）也能恢复。"""
+        raw_name = "暮冬念春.txt".encode().decode("latin-1")
+        raw = (
+            f"--{BOUNDARY}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{raw_name}"\r\n'
+            f"Content-Type: text/plain\r\n\r\n".encode("latin-1")
+            + BOOK_TXT + b"\r\n"
+            + f"--{BOUNDARY}--\r\n".encode("latin-1")
+        )
+        ctype = f"multipart/form-data; boundary={BOUNDARY}"
+        fn, data, _ = router.parse_multipart_upload(raw, ctype)
+        self.assertEqual(fn, "暮冬念春.txt")
+        self.assertEqual(data, BOOK_TXT)
+
+    def test_file_part_not_first(self):
+        """文本字段在前、文件 part 在后时仍能正确解析。"""
+        parts = [
+            f"--{BOUNDARY}\r\n"
+            f'Content-Disposition: form-data; name="batch_size"\r\n\r\n'.encode("latin-1")
+            + b"4096" + b"\r\n",
+            f"--{BOUNDARY}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="b.txt"\r\n'
+            f"Content-Type: text/plain\r\n\r\n".encode("latin-1")
+            + BOOK_TXT + b"\r\n",
+            f"--{BOUNDARY}--\r\n".encode("latin-1"),
+        ]
+        raw = b"".join(parts)
+        ctype = f'multipart/form-data; boundary="{BOUNDARY}"'
+        fn, data, fields = router.parse_multipart_upload(raw, ctype)
+        self.assertEqual(fn, "b.txt")
+        self.assertEqual(data, BOOK_TXT)
+        self.assertEqual(fields.get("batch_size"), "4096")
+
+    def test_truncated_body_rejected(self):
+        raw, ctype = _multipart("b.txt", BOOK_TXT)
+        with self.assertRaises(ServiceError) as ctx:
+            router.parse_multipart_upload(raw[: len(raw) // 2], ctype)
+        self.assertEqual(ctx.exception.code, 400)
+
+    def test_missing_boundary_rejected(self):
+        raw, _ = _multipart("b.txt", BOOK_TXT)
+        with self.assertRaises(ServiceError) as ctx:
+            router.parse_multipart_upload(raw, "multipart/form-data")
+        self.assertEqual(ctx.exception.code, 400)
+
+    def test_memory_amplification_bounded(self):
+        """回归：解析 20MB body 时 tracemalloc 峰值不得超过 body 的 3 倍。
+
+        旧 stdlib email 实现实测约 10 倍瞬时放大（100MB 上传 RSS 峰值 ~3.1GB）；
+        手工扫描实现应为切片提取（~2 倍以内），此处取 3 倍为硬上限。
+        """
+        import tracemalloc
+        big = b"x" * (20 * 1024 * 1024)
+        raw, ctype = _multipart("big.txt", big)
+        tracemalloc.start()
+        try:
+            fn, data, _ = router.parse_multipart_upload(raw, ctype)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        self.assertEqual(fn, "big.txt")
+        self.assertEqual(len(data), len(big))
+        self.assertLess(peak, 3 * len(raw), f"peak={peak} body={len(raw)}")
+
 
 class TestUploadFilenameSafety(unittest.TestCase):
     def test_txt_ok(self):

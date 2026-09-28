@@ -179,6 +179,9 @@ def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
 
     # 整书量化指标（缓存复用，供单批分析）。
     metrics = engine_adapter.compute_metrics(text)
+    # 内存：text（约 1x 文件大小的 str）只用于算 metrics，
+    # 正文已在 chapters_raw 中保留，此处释放避免与后继流程叠加。
+    del text
 
     _BOOKS[book_id] = {
         "title": title,

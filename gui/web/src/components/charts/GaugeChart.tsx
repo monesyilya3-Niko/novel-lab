@@ -1,5 +1,6 @@
 // 仪表盘 / 进度环封装：单值进度（一致性总分 / 完成度 / 质检通过率）。
 import { useMemo } from 'react'
+import { useTheme } from '@mui/material/styles'
 import type { EChartsOption } from 'echarts'
 import BaseChart from './BaseChart'
 
@@ -26,6 +27,7 @@ export default function GaugeChart({
   height = 240,
   optionOverride,
 }: GaugeChartProps) {
+  const theme = useTheme()
   const option = useMemo<EChartsOption>(() => {
     const base: EChartsOption = {
       series: [
@@ -40,7 +42,7 @@ export default function GaugeChart({
           progress: { show: true, width: 12, roundCap: true },
           axisLine: { lineStyle: { width: 12 } },
           axisTick: { show: false },
-          splitLine: { length: 8, lineStyle: { width: 1, color: '#999' } },
+          splitLine: { length: 8, lineStyle: { width: 1, color: theme.palette.text.secondary } },
           axisLabel: { distance: 16, fontSize: 10 },
           pointer: { show: false },
           detail: {
@@ -56,7 +58,7 @@ export default function GaugeChart({
       ],
     }
     return { ...base, ...optionOverride }
-  }, [value, max, title, unit, optionOverride])
+  }, [value, max, title, unit, optionOverride, theme])
 
   return <BaseChart option={option} height={height} ariaLabel="仪表盘" />
 }

@@ -219,6 +219,9 @@ class _Handler(BaseHTTPRequestHandler):
             dest = _unique_corpus_path(safe_name)
             dest.write_bytes(file_bytes)
             batch_size = _parse_upload_batch_size(fields.get("batch_size"))
+            # 内存：上传缓冲（raw + file_bytes 约 2x 文件大小）已落盘，
+            # 先释放再跑导入，避免与导入期（text + chapters 约 2x）的峰值叠加。
+            del raw, file_bytes
             result = services.import_book(str(dest), batch_size)
             self._send_json(router.ok(result))
         except ServiceError as exc:

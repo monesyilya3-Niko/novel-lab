@@ -42,6 +42,8 @@ interface AppState {
   // 系统设置阈值（P1-F3/F4：QC 合格线/写书目标分统一口径，不再硬编码）
   qualityPassLine: number
   consistencyTarget: number
+  // 设置页保存后刷新阈值（避免 QC/写作面板沿用旧值直到整页刷新）
+  refreshThresholds: () => Promise<void>
 
   // actions
   importBook: (path: string) => Promise<void>
@@ -154,11 +156,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await applyImportedBook(b)
   }, [applyImportedBook])
 
+  // 竞态守卫（与 loadBookResults 同模式）：A→B 快速切换时，A 的迟到响应
+  // 不得覆盖 B。只让最后一次 selectChapter 的响应写入 currentChapter。
+  const selectChapterSeq = useRef(0)
   const selectChapter = useCallback(async (idx: number) => {
     if (!bookIdRef.current) return
+    const seq = ++selectChapterSeq.current
     setSelectedChapter(idx)
     const ch = await api.getChapter(bookIdRef.current, idx)
-    setCurrentChapter(ch)
+    if (seq === selectChapterSeq.current) setCurrentChapter(ch)
   }, [])
 
   const startAnalysis = useCallback(async (genre: string) => {
@@ -191,6 +197,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await refreshStatus()
   }, [refreshStatus])
 
+  // P1-F3/F4：加载系统阈值设置（失败则用默认值，不阻断初始化）。
+  // 抽出为独立回调：设置页保存阈值后可调用 refreshThresholds() 即时刷新，
+  // 否则 QC 合格线/写书目标分会沿用旧值直到整页刷新。
+  const refreshThresholds = useCallback(async () => {
+    try {
+      const d = await systemApi.settings()
+      const th = (d as Record<string, unknown>).thresholds as
+        | { qualityPassLine?: number; consistencyTarget?: number }
+        | undefined
+      if (typeof th?.qualityPassLine === 'number') setQualityPassLine(th.qualityPassLine)
+      if (typeof th?.consistencyTarget === 'number') setConsistencyTarget(th.consistencyTarget)
+    } catch {
+      /* 保持旧值 */
+    }
+  }, [])
+
   // 初始加载：恢复会话 + 加载概览（P1-F8：错误写入 initError，不再静默吞掉）。
   /* eslint-disable react-hooks/set-state-in-effect -- 本 effect 内所有 setState
      均在异步回调（.then/.catch）中触发，非 effect 同步体；这是标准的数据加载模式。 */
@@ -206,20 +228,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       })
       .catch(fail)
     refreshOverview().catch(fail)
-    // P1-F3/F4：加载系统阈值设置（失败则用默认值，不阻断初始化）
-    systemApi
-      .settings()
-      .then((d) => {
-        if (cancelled) return
-        const th = (d as Record<string, unknown>).thresholds as
-          | { qualityPassLine?: number; consistencyTarget?: number }
-          | undefined
-        if (typeof th?.qualityPassLine === 'number') setQualityPassLine(th.qualityPassLine)
-        if (typeof th?.consistencyTarget === 'number') setConsistencyTarget(th.consistencyTarget)
-      })
-      .catch(() => {})
+    refreshThresholds()
     return () => { cancelled = true }
-  }, [refreshStatus, refreshOverview])
+  }, [refreshStatus, refreshOverview, refreshThresholds])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const value = useMemo<AppState>(
@@ -228,6 +239,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       initError,
       qualityPassLine,
       consistencyTarget,
+      refreshThresholds,
       selectedChapter,
       currentChapter,
       status,
@@ -255,7 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       initError, qualityPassLine, consistencyTarget,
       workbench, overview, bookResults,
       importBook, uploadBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
-      pauseAnalysis, resumeAnalysis, retryFailed, refreshOverview, loadBookResults, refreshBookResults,
+      pauseAnalysis, resumeAnalysis, retryFailed, refreshThresholds, refreshOverview, loadBookResults, refreshBookResults,
     ],
   )
 

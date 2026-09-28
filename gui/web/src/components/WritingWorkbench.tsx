@@ -18,6 +18,17 @@ import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
 import StylePanel from './StylePanel'
 import { friendlyError } from '../api/client'
 
+// 写作任务状态中文化（后端返回英文 status，直接渲染会让用户困惑）
+const WRITING_STATUS_LABELS: Record<string, string> = {
+  pending: '等待中',
+  running: '写作中',
+  rewriting: '改写中',
+  scoring: '打分中',
+  done: '已完成',
+  error: '失败',
+}
+const writingStatusLabel = (s: string | null | undefined) => (s ? WRITING_STATUS_LABELS[s] ?? s : s)
+
 export default function WritingWorkbench() {
   const [tab, setTab] = useState(0)
   return (
@@ -234,7 +245,7 @@ function GeneratePanel() {
       {taskState && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2">
-            状态：{taskState.status} | 第{taskState.chapterNo}章
+            状态：{writingStatusLabel(taskState.status)} | 第{taskState.chapterNo}章
             {taskState.attempt ? ` | 第${taskState.attempt}稿` : ''}
           </Typography>
           {taskState.status === 'running' || taskState.status === 'rewriting' || taskState.status === 'scoring' ? (

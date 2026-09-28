@@ -44,27 +44,55 @@ def run_script(name: str, args: list) -> int:
 def publish_reports_atomically(srcs, reports_dir) -> list:
     """原子发布：多个报告文件要么全部搬入 reports_dir，要么一个都不进。
 
-    中途任一 move 失败时，已搬入的文件会被回滚删除（忽略回滚中的 OSError），
-    然后原异常继续向上传播。调用方负责清理 staging 目录。
+    同名旧报告会先被搬到 reports_dir 内的临时备份目录；中途任一 move 失败时，
+    已搬入的新文件被移除，被覆盖的旧报告从备份完整恢复。成功或失败后备份
+    目录都会被清理，不留残留。
+
+    注意：失败时已搬入 staging 的新文件会被移除（不恢复回 staging），调用方
+    负责清理 staging 目录（novel.py main 的 finally 即如此）。
 
     返回已搬入的目标路径列表。
     """
-    moved = []
+    reports_dir = Path(reports_dir)
+    staged = []  # [(目标路径, 备份路径或None)]
+    backup_root = None
     try:
         for src in srcs:
             src = Path(src)
-            if src.exists():
-                dst = Path(reports_dir) / src.name
-                shutil.move(str(src), str(dst))
-                moved.append(dst)
+            if not src.exists():
+                continue
+            dst = reports_dir / src.name
+            backup = None
+            if dst.exists() or dst.is_symlink():
+                if backup_root is None:
+                    # 备份目录建在 reports_dir 内：同文件系统，move 为原子 rename。
+                    backup_root = Path(tempfile.mkdtemp(prefix=".publish_backup_", dir=str(reports_dir)))
+                backup = backup_root / dst.name
+                if backup.exists():
+                    # 同一批次出现同名源：调用方 bug，先报出来而不是静默覆盖备份。
+                    raise ValueError(f"重复的报告文件名: {dst.name}")
+                shutil.move(str(dst), str(backup))
+            # 先登记再搬新文件：新文件搬运失败时，旧报告仍能从备份恢复。
+            staged.append((dst, backup))
+            shutil.move(str(src), str(dst))
     except Exception:
-        for dst in moved:
+        # 逆序回滚：先删新文件，再把旧报告从备份搬回来。
+        for dst, backup in reversed(staged):
             try:
-                dst.unlink()
+                if dst.exists() or dst.is_symlink():
+                    dst.unlink()
             except OSError:
                 pass
+            if backup is not None:
+                try:
+                    shutil.move(str(backup), str(dst))
+                except OSError:
+                    pass
         raise
-    return moved
+    finally:
+        if backup_root is not None:
+            shutil.rmtree(backup_root, ignore_errors=True)
+    return [dst for dst, _ in staged]
 
 
 def resolve_book_src(book: str) -> Path:
@@ -340,7 +368,8 @@ def main():
                 print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
                 sys.exit(1)
             print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
-            # 原子发布：两份报告要么全进 reports/，要么全不进；中途失败回滚已搬入的。
+            # 原子发布：两份报告要么全进 reports/，要么全不进；中途失败回滚，
+            # 同名旧报告从备份完整恢复（见 publish_reports_atomically）。
             publish_reports_atomically((book_out, craft_out), ROOT / "reports")
         finally:
             shutil.rmtree(staging, ignore_errors=True)

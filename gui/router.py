@@ -639,46 +639,111 @@ def read_body(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
 _MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB（长篇 txt 上传上限）
 
 
+def _parse_content_disposition(value: str) -> tuple[str, str]:
+    """解析 Content-Disposition，返回 (name, filename)。
+
+    支持 filename="..."（含转义引号）与 RFC2231 filename*=utf-8''%XX 形式
+    （中文文件名）。name 缺失时返回 ""。
+    """
+    from urllib.parse import unquote
+
+    name = ""
+    filename = ""
+    # RFC2231 优先（含百分号编码的中文文件名）
+    m = re.search(r"filename\*\s*=\s*([^;\s]+)", value, re.IGNORECASE)
+    if m:
+        raw_fn = m.group(1).strip().strip("\"'")
+        if raw_fn.count("'") >= 2:
+            _charset, _lang, raw_fn = raw_fn.split("'", 2)
+        try:
+            filename = unquote(raw_fn, encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            filename = raw_fn
+    else:
+        m = re.search(r'filename\s*=\s*"((?:[^"\\]|\\.)*)"', value)
+        if m:
+            filename = m.group(1).replace('\\"', '"').replace("\\\\", "\\")
+    m = re.search(r'name\s*=\s*"((?:[^"\\]|\\.)*)"', value)
+    if m:
+        name = m.group(1)
+    # 浏览器直发 raw UTF-8 中文文件名时（头按 latin-1 解码后为乱码），尝试恢复。
+    if filename:
+        try:
+            filename = filename.encode("latin-1").decode("utf-8")
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+    return name, filename
+
+
 def parse_multipart_upload(raw: bytes, content_type: str) -> tuple[str, bytes, dict[str, str]]:
     """解析 multipart/form-data，返回 (文件名, 文件字节, 文本字段)。
 
-    纯函数（只用 stdlib email 包），供 server 的 POST /api/import-upload 使用。
+    手工边界扫描实现（纯 bytes 操作），替代此前的 stdlib email 解析器：
+    实测 email 包解析 100MB 级 body 时产生约 10 倍瞬时内存放大（服务 RSS
+    峰值约 3.1GB）；此处改为切片提取，峰值约为 body 的 2 倍（raw + 文件切片）。
     只取第一个带文件名的 part 为上传文件；其余 form-data 文本 part 进 fields。
-    文件名按 RFC2231 解码（含中文文件名）。
     """
-    from email import policy
-    from email.parser import BytesParser
-
+    m = re.search(r"boundary=([^;]+)", content_type or "", re.IGNORECASE)
+    if not m:
+        raise ServiceError("Content-Type 缺少 boundary", 400)
+    boundary = m.group(1).strip().strip("\"'")
+    if not boundary or len(boundary) > 200:
+        raise ServiceError("boundary 非法", 400)
     try:
-        msg = BytesParser(policy=policy.HTTP).parsebytes(
-            b"Content-Type: " + content_type.encode("latin-1", errors="replace")
-            + b"\r\n\r\n" + raw
-        )
-    except Exception as exc:
-        raise ServiceError("multipart 解析失败", 400) from exc
-    if not msg.is_multipart():
-        raise ServiceError("Content-Type 不是 multipart/form-data", 400)
+        delim = b"--" + boundary.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise ServiceError("boundary 非法", 400) from exc
+
+    if not raw.startswith(delim):
+        raise ServiceError("multipart 解析失败", 400)
 
     filename = ""
     file_bytes = b""
     fields: dict[str, str] = {}
-    for part in msg.iter_parts():
-        part_filename = part.get_filename()
-        if part_filename and not filename:
-            # 第一个文件 part
-            filename = part_filename
-            payload = part.get_payload(decode=True)
-            file_bytes = payload if isinstance(payload, bytes) else b""
-        elif not part_filename and (part.get_content_disposition() or "") == "form-data":
-            pname = part.get_param("name", header="content-disposition") or ""
-            if pname:
-                payload = part.get_payload(decode=True)
-                if isinstance(payload, bytes):
-                    charset = part.get_content_charset() or "utf-8"
-                    try:
-                        fields[str(pname)] = payload.decode(charset, errors="replace")
-                    except LookupError:
-                        fields[str(pname)] = payload.decode("utf-8", errors="replace")
+    pos = len(delim)
+    while True:
+        if raw[pos:pos + 2] == b"--":
+            break  # 结束分隔符 --boundary--
+        if raw[pos:pos + 2] != b"\r\n":
+            raise ServiceError("multipart 解析失败", 400)
+        pos += 2
+
+        hdr_end = raw.find(b"\r\n\r\n", pos)
+        if hdr_end < 0:
+            raise ServiceError("multipart 解析失败", 400)
+        try:
+            headers = raw[pos:hdr_end].decode("latin-1")
+        except Exception as exc:  # noqa: BLE001
+            raise ServiceError("multipart 解析失败", 400) from exc
+        body_start = hdr_end + 4
+
+        next_d = raw.find(b"\r\n" + delim, body_start)
+        if next_d < 0:
+            raise ServiceError("multipart 解析失败", 400)
+        body = raw[body_start:next_d]
+        pos = next_d + 2 + len(delim)  # 越过 \r\n--boundary，回到循环头部
+
+        disp = ""
+        part_ctype = ""
+        for line in headers.split("\r\n"):
+            low = line.lower()
+            if low.startswith("content-disposition:"):
+                disp = line.split(":", 1)[1]
+            elif low.startswith("content-type:"):
+                part_ctype = line.split(":", 1)[1].strip()
+        pname, pfilename = _parse_content_disposition(disp)
+        if pfilename and not filename:
+            filename = pfilename
+            file_bytes = body
+        elif not pfilename and pname and "form-data" in disp.lower():
+            charset = "utf-8"
+            cm = re.search(r"charset=([^\s;]+)", part_ctype, re.IGNORECASE)
+            if cm:
+                charset = cm.group(1).strip().strip("\"'")
+            try:
+                fields[pname] = body.decode(charset, errors="replace")
+            except LookupError:
+                fields[pname] = body.decode("utf-8", errors="replace")
     if not filename:
         raise ServiceError("未找到上传文件（form 字段名应为 file）", 400)
     return filename, file_bytes, fields

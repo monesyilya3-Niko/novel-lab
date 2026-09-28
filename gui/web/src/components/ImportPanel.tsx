@@ -79,7 +79,7 @@ export default function ImportPanel({ compact }: Props) {
         onDrop={onDrop}
         sx={{
           border: '2px dashed',
-          borderColor: dragging ? 'primary.main' : '#ccc',
+          borderColor: dragging ? 'primary.main' : 'divider',
           borderRadius: 2,
           p: compact ? 2 : 4,
           textAlign: 'center',

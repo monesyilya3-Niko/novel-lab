@@ -89,7 +89,7 @@ export default function AssetLibrary() {
         {/* 分类树 + 列表 */}
         <Grid item xs={12} md={5} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <Card variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <Box sx={{ p: 1.5, borderBottom: '1px solid #eee', display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               <Chip
                 label="全部"
                 variant={kind === null ? 'filled' : 'outlined'}
@@ -137,7 +137,7 @@ export default function AssetLibrary() {
                 </List>
               )}
             </Box>
-            <Box sx={{ p: 1.5, borderTop: '1px solid #eee', display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ p: 1.5, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'center' }}>
               <Pagination
                 count={pageCount}
                 page={page}

@@ -9,13 +9,15 @@ import { lazy, Suspense, useMemo } from 'react'
 const BaseChart = lazy(() => import('./charts/BaseChart'))
 import { useApp } from '../state/AppContext'
 import type { QcIssue, QcLayer } from '../types'
+import { palette } from '../theme'
 
-// 四层固定配色（与 palette 图表色板一致）。
+// 四层固定配色：品牌色取自 theme.ts 统一色板（单一数据源）；
+// L3 橙是分类色（与图表色板第 3 位同源），无对应主题角色，保留字面量。
 const LAYER_COLORS: Record<string, string> = {
-  L1: '#1976d2',
-  L2: '#2e7d32',
+  L1: palette.primary,
+  L2: palette.success,
   L3: '#ed6c02',
-  L4: '#0288d1',
+  L4: palette.info,
 }
 
 // P1-F3：合格线来自系统设置（默认 75），不再硬编码 70。
@@ -57,14 +59,14 @@ export default function QcVisuals({
           barMaxWidth: 14,
           markLine: {
             symbol: 'none',
-            lineStyle: { color: '#d32f2f', type: 'dashed' },
+            lineStyle: { color: palette.error, type: 'dashed' },
             data: [{ xAxis: qualityPassLine }],
             label: { formatter: `合格线 ${qualityPassLine}`, fontSize: 10 },
           },
           data: dims
             .map((d) => ({
               value: d.score,
-              itemStyle: { color: d.score < qualityPassLine ? '#d32f2f' : (LAYER_COLORS[d.layer] ?? '#1976d2') },
+              itemStyle: { color: d.score < qualityPassLine ? palette.error : (LAYER_COLORS[d.layer] ?? palette.primary) },
             }))
             .reverse(),
         },
@@ -116,7 +118,8 @@ export default function QcVisuals({
         right: 0,
         top: 'center',
         text: ['得分率高', '低'],
-        inRange: { color: ['#d32f2f', '#ffecb3', '#2e7d32'] },
+        // 热力图渐变：两端取主题 error/success，中间浅琥珀为渐变过渡色（无主题对应，保留）。
+        inRange: { color: [palette.error, '#ffecb3', palette.success] },
       },
       series: [{ type: 'heatmap', data, label: { show: true, fontSize: 10, formatter: (p: unknown) => String((p as { data: [number, number, number] }).data[2]) } }],
     }
@@ -134,11 +137,12 @@ export default function QcVisuals({
     }
     if (!byChapter.size) return null
     const chapters = [...byChapter.keys()].sort((a, b) => a - b)
+    // 严重度配色：high/low 取主题 error/warning；critical/medium 为其深/浅变体（语义区分度需要）。
     const severities: Array<{ key: QcIssue['severity']; label: string; color: string }> = [
       { key: 'critical', label: '严重', color: '#b71c1c' },
-      { key: 'high', label: '高', color: '#d32f2f' },
+      { key: 'high', label: '高', color: palette.error },
       { key: 'medium', label: '中', color: '#ed6c02' },
-      { key: 'low', label: '低', color: '#b0a47a' },
+      { key: 'low', label: '低', color: palette.warning },
     ]
     return {
       tooltip: { trigger: 'axis' },

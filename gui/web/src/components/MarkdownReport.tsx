@@ -57,20 +57,22 @@ export default function MarkdownReport({ title, markdown }: MarkdownReportProps)
             fontSize: '0.9rem',
           },
           '& th, & td': {
-            border: '1px solid #e0e0e0',
+            border: '1px solid',
+            borderColor: 'divider',
             px: 1,
             py: 0.5,
             textAlign: 'left',
           },
           '& th': { bgcolor: 'background.paper', fontWeight: 600 },
           '& blockquote': {
-            borderLeft: '3px solid #1976d2',
+            borderLeft: '3px solid',
+            borderColor: 'primary.main',
             pl: 1.5,
             ml: 0,
             color: 'text.secondary',
             my: 1,
           },
-          '& hr': { border: 'none', borderTop: '1px solid #eee', my: 1.5 },
+          '& hr': { border: 'none', borderTop: '1px solid', borderColor: 'divider', my: 1.5 },
           '& a': { color: 'primary.main' },
         }}
       >

@@ -48,19 +48,30 @@ def cjk_runs(text):
 
 
 def char_ttr(text):
-    """字符级类型-记号比（近似词汇丰富度）。"""
-    chars = [c for run in cjk_runs(text) for c in run]
-    if not chars:
+    """字符级类型-记号比（近似词汇丰富度）。
+
+    流式实现：只维护唯一字符集 + 计数器，不物化字符列表。
+    （旧实现 ``[c for run in ... for c in run]`` 在 100MB 文本下产生约
+    3300 万元素的 list，峰值约 1.6GB，是 100MB 上传 RSS 冲高的主因之一。）
+    """
+    uniq: set[str] = set()
+    total = 0
+    for run in cjk_runs(text):
+        uniq.update(run)
+        total += len(run)
+    if not total:
         return 0.0
-    return round(len(set(chars)) / len(chars), 4)
+    return round(len(uniq) / total, 4)
 
 
 def bigram_freq(text, top=30):
     """CJK 连续串的 2-gram 高频（近似词频）。"""
     grams = Counter()
     for run in cjk_runs(text):
-        for i in range(len(run) - 1):
-            grams[run[i:i + 2]] += 1
+        # zip 配对代替 run[i:i+2] 切片：避免逐 bigram 分配 2-char 切片，
+        # 只产生一份 run[1:] 拷贝（str 切片拷贝一次，但仅一次）。
+        for a, b in zip(run, run[1:], strict=False):
+            grams[a + b] += 1
     return [{"gram": g, "count": c} for g, c in grams.most_common(top)]
 
 
@@ -144,24 +155,74 @@ def sentence_length_profile(sent_lens: list) -> dict:
     }
 
 
+def _sentence_len_stats(text):
+    """单遍流式统计句长：句数/总长/最大/最小/短句数/长句数。
+
+    与 ``sentences()`` 同一切分口径（SENT_RE 分隔、去空白、过滤空句），
+    但不物化句子列表。旧实现先 ``SENT_RE.split`` 出全量句子 list
+    （100MB 文本下约 310 万元素 + 逐句 strip 拷贝），是上传 RSS 冲高的主因之一。
+    """
+    n = 0
+    total = 0
+    max_len = 0
+    min_len = 0
+    short_n = 0
+    long_n = 0
+    start = 0
+    for m in SENT_RE.finditer(text):
+        s = text[start:m.start()]
+        start = m.end()
+        if not s.strip():
+            continue
+        L = len(re.sub(r'\s', '', s))
+        n += 1
+        total += L
+        if L > max_len:
+            max_len = L
+        if n == 1 or L < min_len:
+            min_len = L
+        if L <= SHORT_SENT_MAX:
+            short_n += 1
+        if L >= LONG_SENT_MIN:
+            long_n += 1
+    tail = text[start:]
+    if tail.strip():
+        L = len(re.sub(r'\s', '', tail))
+        n += 1
+        total += L
+        if L > max_len:
+            max_len = L
+        if n == 1 or L < min_len:
+            min_len = L
+        if L <= SHORT_SENT_MAX:
+            short_n += 1
+        if L >= LONG_SENT_MIN:
+            long_n += 1
+    return n, total, max_len, min_len, short_n, long_n
+
+
+def _paragraph_count(text):
+    """段落数（流式计数，不物化段落列表）。"""
+    return sum(1 for p in re.split(r'\n\s*\n', text) if p.strip())
+
+
 def compute(text):
-    sents = sentences(text)
-    sent_lens = [len(re.sub(r'\s', '', s)) for s in sents]
+    n, total_len, max_len, min_len, short_n, long_n = _sentence_len_stats(text)
     total_chars = len(re.sub(r'\s', '', text))
-    profile = sentence_length_profile(sent_lens)
     return {
         "total_chars": total_chars,
-        "sentence_count": len(sents),
-        "avg_sentence_len": round(sum(sent_lens) / len(sent_lens), 2) if sent_lens else 0,
-        "max_sentence_len": max(sent_lens) if sent_lens else 0,
-        "min_sentence_len": min(sent_lens) if sent_lens else 0,
-        **profile,
-        "paragraph_count": len(paragraphs(text)),
+        "sentence_count": n,
+        "avg_sentence_len": round(total_len / n, 2) if n else 0,
+        "max_sentence_len": max_len if n else 0,
+        "min_sentence_len": min_len if n else 0,
+        "short_ratio": round(short_n / n, 4) if n else 0.0,
+        "long_ratio": round(long_n / n, 4) if n else 0.0,
+        "paragraph_count": _paragraph_count(text),
         "dialogue_ratio": dialogue_ratio(text),
         "char_ttr": char_ttr(text),
         "top_bigrams": bigram_freq(text),
         "sensory": sensory_counts(text),
-        "exclaim_ratio": round(text.count('！') / max(1, len(sents)), 4),
+        "exclaim_ratio": round(text.count('！') / max(1, n), 4),
     }
 
 
