@@ -81,7 +81,9 @@ function startBackend() {
     const onData = (d) => {
       out += d.toString()
       const parsed = parseUrlFromOutput(out)
-      if (parsed) {
+      // 必须 URL 和 token 都到齐才继续：两行 print 可能分属不同管道
+      // 数据块，若只拿到 URL 就摘监听，token 会永远收不到导致 403。
+      if (parsed && parsed.url && parsed.token) {
         backendUrl = parsed.url
         handshakeToken = parsed.token
         backend.stdout.off('data', onData)

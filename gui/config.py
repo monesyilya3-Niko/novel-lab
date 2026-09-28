@@ -25,8 +25,6 @@ DEFAULT_PORT = 8000
 # 默认批次大小（字符数），单批文本不超过该值。
 DEFAULT_BATCH_SIZE = 4000
 
-# 状态/资产落盘目录（相对 novel-lab 根目录）。
-ASSETS_ROOT = ROOT_DIR / "assets"
 def _user_data_dir() -> Path:
     r"""平台用户数据目录（桌面端运行时数据归宿）。
 
@@ -47,17 +45,37 @@ def _user_data_dir() -> Path:
 
 
 def _migrate_legacy_state(target: Path) -> None:
-    """旧版数据迁移：ROOT_DIR/gui_state -> 用户数据目录（仅首次）。"""
-    legacy = ROOT_DIR / "gui_state"
-    if target.exists() or not legacy.is_dir():
-        return
-    try:
-        import shutil
-        target.parent.mkdir(parents=True, exist_ok=True)
-        # 排除 .lock（单实例锁含旧 PID，复制过去会误判）
-        shutil.copytree(legacy, target, ignore=shutil.ignore_patterns('.lock'))
-    except OSError:
-        pass  # 迁移失败不阻断启动，下次再试
+    """旧版数据迁移：ROOT_DIR 下的运行时数据 -> 用户数据目录（仅首次）。
+
+    迁移映射（旧 -> 新）：
+    - gui_state/ -> <user>/（STATE_ROOT 本体）
+    - assets/ -> <user>/assets/
+    - reports/ -> <user>/reports/
+    - corpus/ -> <user>/corpus/
+    - novel/ -> <user>/novel/
+    - prompts/generated/ -> <user>/prompts/generated/
+    - gui/state/ -> <user>/state_json/
+    目标已存在则跳过对应项；失败不阻断启动。
+    """
+    import shutil
+    migrations = [
+        (ROOT_DIR / "gui_state", target),
+        (ROOT_DIR / "assets", target / "assets"),
+        (ROOT_DIR / "reports", target / "reports"),
+        (ROOT_DIR / "corpus", target / "corpus"),
+        (ROOT_DIR / "novel", target / "novel"),
+        (ROOT_DIR / "prompts" / "generated", target / "prompts" / "generated"),
+        (ROOT_DIR / "gui" / "state", target / "state_json"),
+    ]
+    for legacy, dest in migrations:
+        if dest.exists() or not legacy.is_dir():
+            continue
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            # 排除 .lock（单实例锁含旧 PID，复制过去会误判）
+            shutil.copytree(legacy, dest, ignore=shutil.ignore_patterns('.lock'))
+        except OSError:
+            pass  # 迁移失败不阻断启动，下次再试
 
 
 # 运行时状态目录：只放**运行时产物**（SQLite 库 / WAL / SHM、单实例锁、备份）。
@@ -67,28 +85,33 @@ _USER_DATA_DIR = _user_data_dir()
 _migrate_legacy_state(_USER_DATA_DIR)
 STATE_ROOT = _USER_DATA_DIR
 
+# 状态/资产落盘目录（用户数据目录，桌面端可写）。
+# Windows Program Files 安装后程序目录只读，所有运行时写入必须走这里。
+ASSETS_ROOT = _USER_DATA_DIR / "assets"
+
 # 状态 JSON 副本目录：state_store 的 `gui_state_*.json` 降级副本落这里。
+# 已迁移到用户数据目录（原 ROOT_DIR/gui/state 只读安装下不可写）。
 #
 # 【不入库】该目录被 .gitignore 整目录忽略（见 .gitignore「状态 JSON 副本目录」段）。
 # 它是 SQLite（gui_state/index.db）的**派生镜像**，SQLite 才是任务状态的唯一权威来源；
 # 跟踪派生数据会造成双真相源漂移与提交噪声，与「长期稳定可维护」相悖。
 # 【机制保留】与 STATE_ROOT 分离，仅用于保留运行时 JSON 降级写入能力（库不可用/未初始化
 # 时仍能落盘与读取），不改变任何代码逻辑；备份由 gui_state/*.bak-* 与 migrate backup 承担。
-STATE_JSON_DIR = ROOT_DIR / "gui" / "state"
+STATE_JSON_DIR = _USER_DATA_DIR / "state_json"
 
 # SQLite 持久化库路径（Q1：gui_state/index.db）。
 DB_PATH = STATE_ROOT / "index.db"
 # 单实例锁文件（W09，P1）。
 LOCK_PATH = STATE_ROOT / ".lock"
 
-# 资产索引扫描范围（阶段一）。
-REPORTS_DIR = ROOT_DIR / "reports"      # 拆书报告 / 笔法分析 Markdown
-CORPUS_DIR = ROOT_DIR / "corpus"        # 已导入语料（*.txt）
-CONFIG_DIR = ROOT_DIR / "config"        # 模型配置 models.json 等
+# 资产索引扫描范围（阶段一），全部位于用户数据目录（运行时可写）。
+REPORTS_DIR = _USER_DATA_DIR / "reports"      # 拆书报告 / 笔法分析 Markdown
+CORPUS_DIR = _USER_DATA_DIR / "corpus"        # 已导入语料（*.txt）
+CONFIG_DIR = ROOT_DIR / "config"        # 模型配置 models.json 等（只读，随包发布）
 # 阶段二写作产出目录（预留，阶段一不扫描）。
-NOVEL_DIR = ROOT_DIR / "novel"
+NOVEL_DIR = _USER_DATA_DIR / "novel"
 # 注入 prompt 可选落盘目录（W11）。
-PROMPTS_DIR = ROOT_DIR / "prompts" / "generated"
+PROMPTS_DIR = _USER_DATA_DIR / "prompts" / "generated"
 
 # 可选的端口环境变量覆盖（便于自动化测试 / 部署）。
 _ENV_PORT = os.environ.get("NOVEL_LAB_GUI_PORT", "").strip()

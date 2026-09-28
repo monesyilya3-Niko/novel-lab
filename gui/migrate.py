@@ -282,12 +282,25 @@ def rollback() -> Path | None:
     # B1：先校验备份，坏备份拒绝恢复。
     db._verify_backup(latest)
     db.close()  # 先关闭连接，避免 Windows 文件锁。
-    # 若当前库存在，先移除（连同 WAL/SHM）。
-    for suffix in ("", "-wal", "-shm"):
-        p = Path(str(src) + suffix)
-        if p.is_file():
-            p.unlink(missing_ok=True)
-    shutil.copy2(latest, src)
+    # B1 原子恢复：先复制到临时文件并校验，通过后再原子替换。
+    # 若复制中途失败（磁盘满/权限），原库仍在，不会丢数据。
+    tmp = src.parent / f".{src.name}.tmp-restore"
+    try:
+        shutil.copy2(latest, tmp)
+        db._verify_backup(tmp)
+        # 原子替换：先清旧库（含 WAL/SHM），再 rename（同文件系统原子）。
+        for suffix in ("", "-wal", "-shm"):
+            p = Path(str(src) + suffix)
+            if p.is_file():
+                p.unlink(missing_ok=True)
+        tmp.rename(src)
+    finally:
+        # 清理残留临时文件（成功时已被 rename，失败时删掉半成品）
+        if tmp.exists():
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
     # B1：恢复后校验线上库。
     db._verify_backup(src)
     # 重建连接指向恢复后的库（下次 get_conn 会因 _conn_path 已清空而重连）。

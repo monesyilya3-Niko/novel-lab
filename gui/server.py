@@ -97,9 +97,14 @@ class _Handler(BaseHTTPRequestHandler):
             return True
         # 身份握手（Electron 模式）：/api/* 必须携带正确的握手 token。
         # 静态文件（/）豁免，前端 HTML 加载不需要 token。
+        # EventSource（SSE）发不了自定义头，/api/events 允许经 ?handshake_token=
+        # 查询参数传递（与 X-Handshake-Token 头等效，hmac 常量时间比对）。
         handshake = getattr(self.server, "handshake_token", None)
         if handshake and (path == "/api" or path.startswith("/api/")):
             supplied = self.headers.get("X-Handshake-Token", "")
+            if not supplied and path == "/api/events":
+                qs = parse_qs(urlparse(self.path).query)
+                supplied = (qs.get("handshake_token") or [""])[0]
             if not supplied or not hmac.compare_digest(supplied, handshake):
                 self._send_json(router.err(403, "握手失败：非法客户端"), 403)
                 return False

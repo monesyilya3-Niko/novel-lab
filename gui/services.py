@@ -185,10 +185,8 @@ def _load_book_from_disk(book_id: str, src_path: str) -> dict[str, Any]:
     src = Path(src_path)
     if not src.exists():
         raise ServiceError(f"源文件已丢失: {src_path}", 404)
-    try:
-        text = src.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        text = src.read_text(encoding="gbk")
+    # 经 _secure_read_text：防符号链接、FIFO、超大文件（与 import 同一路防线）。
+    text = _secure_read_text(str(src))
     chapters_raw = engine_adapter.split_chapters(text)
     if not chapters_raw:
         raise ServiceError("源文件无法解析", 400)
@@ -220,6 +218,8 @@ def _secure_read_text(path: str) -> str:
     - O_NOFOLLOW：符号链接直接拒绝（errno.ELOOP），不跟随；
     - fstat 验证为常规文件（防 FIFO/设备文件）；
     - 打开后所有检查基于 fd，不再重解析路径，消除检查-使用竞态。
+    - Windows 无 O_NOFOLLOW/O_NONBLOCK：降级为打开后 islink 尽力检查
+      （Windows 建符号链接需提权，实际风险低；不崩溃优先）。
     """
     import errno
     import os
@@ -227,13 +227,30 @@ def _secure_read_text(path: str) -> str:
 
     if Path(path).suffix.lower() != ".txt":
         raise ServiceError("首版仅支持 .txt 导入", 400)
-    try:
+    flags = os.O_RDONLY
+    has_nofollow = hasattr(os, "O_NOFOLLOW")
+    if has_nofollow:
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_NONBLOCK"):
         # O_NONBLOCK：防 FIFO 打开时阻塞；后续 fstat 会拒绝非常规文件
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        flags |= os.O_NONBLOCK
+    try:
+        fd = os.open(path, flags)
     except OSError as exc:
         if exc.errno == errno.ELOOP:
             raise ServiceError("不允许导入符号链接", 403) from exc
         raise ServiceError(f"文件无法打开: {path}", 404) from exc
+    # 无 O_NOFOLLOW 平台（Windows）的尽力而为检查：打开后仍是链接则拒绝。
+    # 有 TOCTOU 窗口，但在该平台上无更好原语；建链接需提权，风险可接受。
+    if not has_nofollow:
+        try:
+            if os.path.islink(path):
+                os.close(fd)
+                raise ServiceError("不允许导入符号链接", 403)
+        except ServiceError:
+            raise
+        except OSError:
+            pass
     try:
         st = os.fstat(fd)
         if not stat.S_ISREG(st.st_mode):
@@ -466,15 +483,17 @@ def start_analysis(book_id: str, genre: str, model_id: str | None = None,
 
 def _run_analysis(book_id: str, genre: str, model_id: str | None, batch_size: int, ctx: dict[str, Any]) -> None:
     """后台串行分析主循环。"""
-    book = _books_get(book_id)
-    if book is None:
-        return
-    chapters = book["chapters"]
-    metrics = book["metrics"]
-    total_batches = _count_total_batches(chapters, batch_size)
-    done = 0
-
     try:
+        book = _books_get(book_id)
+        if book is None:
+            # B7：书在线程启动后被 LRU 淘汰（_books_get 会尝试重载，仍为 None
+            # 说明源文件也丢了），直接返回；finally 仍清理 _runtime 防泄漏。
+            return
+        chapters = book["chapters"]
+        metrics = book["metrics"]
+        total_batches = _count_total_batches(chapters, batch_size)
+        done = 0
+
         for ci, (ctitle, cbody) in enumerate(chapters, start=1):
             batches = engine_adapter.split_batches(cbody, batch_size)
             for b in batches:

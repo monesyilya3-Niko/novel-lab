@@ -389,7 +389,11 @@ export async function runFullAnalysis(
 // ---------------------------------------------------------------------------
 
 export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEvent) => void): () => void {
-  const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
+  const params = new URLSearchParams()
+  if (bookId) params.set('book_id', bookId)
+  // Electron 模式：EventSource 发不了自定义头，token 走查询参数（后端同样校验）。
+  if (HANDSHAKE_TOKEN) params.set('handshake_token', HANDSHAKE_TOKEN)
+  const q = params.toString() ? `?${params.toString()}` : ''
   const es = new EventSource(`${BASE}/events${q}`)
   es.onmessage = (msg) => {
     try {
@@ -488,7 +492,9 @@ export const assetApi = {
 
 // SSE：按 task_id 订阅（写作/质检长任务）
 export function subscribeTaskEvents(taskId: string, onEvent: (e: Record<string, unknown>) => void): () => void {
-  const es = new EventSource(`${BASE}/events?task_id=${encodeURIComponent(taskId)}`)
+  const params = new URLSearchParams({ task_id: taskId })
+  if (HANDSHAKE_TOKEN) params.set('handshake_token', HANDSHAKE_TOKEN)
+  const es = new EventSource(`${BASE}/events?${params.toString()}`)
   es.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data) as Record<string, unknown>
