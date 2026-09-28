@@ -25,6 +25,8 @@ import OnboardingWizard, { isOnboarded } from './components/OnboardingWizard'
 import CommandPalette, { CommandPaletteTrigger } from './components/CommandPalette'
 import WorkbenchTransition from './components/WorkbenchTransition'
 import { DashboardSkeleton } from './components/SkeletonBlocks'
+import Fab from '@mui/material/Fab'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
 // 4B：页面级组件 lazy 加载，主包只含框架 + 导航 + 主题
 const HomeDashboard = lazy(() => import('./components/HomeDashboard'))
@@ -36,6 +38,7 @@ const SystemWorkbench = lazy(() => import('./components/SystemWorkbench'))
 const AdvancedWorkbench = lazy(() => import('./components/AdvancedWorkbench'))
 const SettingsWorkbench = lazy(() => import('./components/SettingsWorkbench'))
 const AdminWorkbench = lazy(() => import('./components/AdminWorkbench'))
+const HelpWorkbench = lazy(() => import('./components/HelpWorkbench'))
 
 const SIDEBAR_WIDTH = 220
 
@@ -81,7 +84,7 @@ export default function App() {
 }
 
 const WORKBENCH_ORDER: WorkbenchKey[] = [
-  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings', 'admin',
+  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings', 'admin', 'help',
 ]
 
 function AppShell() {
@@ -199,6 +202,7 @@ function AppShell() {
                 {workbench === 'system' && <SystemWorkbench />}
                 {workbench === 'settings' && <SettingsWorkbench />}
                 {workbench === 'admin' && <AdminWorkbench />}
+                {workbench === 'help' && <HelpWorkbench />}
                 </WorkbenchTransition>
               </Suspense>
             </ErrorBoundary>
@@ -206,6 +210,27 @@ function AppShell() {
         </Box>
       </Box>
       <CommandPalette />
+      {/* 全局悬浮帮助按钮：任何页面一键进入帮助中心 */}
+      {workbench !== 'help' && (
+        <Tooltip title="帮助中心：术语、指南、工作流" placement="left">
+          <Fab
+            size="medium"
+            onClick={() => setWorkbench('help')}
+            aria-label="打开帮助中心"
+            sx={{
+              position: 'fixed',
+              bottom: 24,
+              right: 24,
+              bgcolor: ink.primary,
+              color: '#fff',
+              '&:hover': { bgcolor: ink.primaryDeep },
+              zIndex: 1200,
+            }}
+          >
+            <HelpOutlineIcon />
+          </Fab>
+        </Tooltip>
+      )}
     </Box>
   )
 }

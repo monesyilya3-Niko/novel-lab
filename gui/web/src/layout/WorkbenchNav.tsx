@@ -16,6 +16,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import SettingsIcon from '@mui/icons-material/Settings'
 import TuneIcon from '@mui/icons-material/Tune'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import { ink } from '../ink'
 
 export type WorkbenchKey =
@@ -28,6 +29,7 @@ export type WorkbenchKey =
   | 'system'
   | 'settings'
   | 'admin'
+  | 'help'
 
 export interface WorkbenchNavItem {
   key: WorkbenchKey
@@ -55,6 +57,12 @@ const NAV_GROUPS: { title: string; items: WorkbenchNavItem[] }[] = [
       { key: 'system', label: '系统', icon: <TuneIcon /> },
       { key: 'settings', label: '设置', icon: <SettingsIcon /> },
       { key: 'admin', label: '管理后台', icon: <AdminPanelSettingsIcon /> },
+    ],
+  },
+  {
+    title: '帮助',
+    items: [
+      { key: 'help', label: '帮助中心', icon: <HelpOutlineIcon /> },
     ],
   },
 ]
