@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -48,6 +49,74 @@ def _h_import(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
         raise ServiceError("导入路径必须在项目目录内", 403)
     batch_size = _safe_batch_size((body or {}).get("batch_size"))
     return ok(services.import_book(path, batch_size))
+
+
+def _samples_dir() -> Path:
+    """内置示例语料目录：与 gui/ 同级的 corpus/（随安装包发布）。"""
+    from gui import config as _config
+    # GUI_DIR = <install>/gui → samples 在 <install>/corpus
+    d = Path(_config.GUI_DIR).resolve().parent / "corpus"
+    return d
+
+
+def _h_list_samples(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    """GET /api/samples：列出内置示例语料（供新手一键导入试手）。"""
+    d = _samples_dir()
+    items = []
+    if d.is_dir():
+        for fp in sorted(d.glob("示例-*.txt")):
+            try:
+                size = fp.stat().st_size
+                # 快速数章节数
+                chapters = 0
+                with fp.open("r", encoding="utf-8", errors="ignore") as f:
+                    for line in f:
+                        if line.startswith("第") and "章" in line[:12]:
+                            chapters += 1
+                            if chapters > 999:
+                                break
+            except OSError:
+                continue
+            # 从文件名提取题材名：示例-校园救赎.txt → 校园救赎
+            genre = fp.stem.replace("示例-", "")
+            items.append({
+                "name": fp.name,
+                "genre": genre,
+                "size": size,
+                "chapters": chapters,
+            })
+    return ok({"samples": items})
+
+
+def _h_import_sample(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    """POST /api/samples/import：一键导入内置示例语料。
+
+    body: {"name": "示例-校园救赎.txt"}。安全：name 必须严格匹配
+    示例文件名白名单（示例-*.txt），不接受路径分隔符，防止目录遍历。
+    """
+    from gui import config as _config
+    name = (body or {}).get("name", "")
+    if not name or not isinstance(name, str):
+        raise ServiceError("缺少 name 参数", 400)
+    # 白名单校验：只允许 示例-<题材>.txt，且不含路径分隔符
+    import re as _re
+    if not _re.fullmatch(r"示例-[^/\\]+\.txt", name):
+        raise ServiceError("非法示例文件名", 400)
+    src = _samples_dir() / name
+    # 解析后必须仍在 samples 目录内（纵深防御）
+    try:
+        resolved = src.resolve()
+    except OSError as exc:
+        raise ServiceError("示例文件不存在", 404) from exc
+    if not resolved.is_relative_to(_samples_dir().resolve()) or not resolved.is_file():
+        raise ServiceError("示例文件不存在", 404)
+    # 复制到用户语料目录（防重名），再走标准导入流程
+    from gui.server import _unique_corpus_path  # noqa: PLC0415
+    _config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
+    dest = _unique_corpus_path(name)
+    shutil.copy2(resolved, dest)
+    batch_size = _safe_batch_size((body or {}).get("batch_size"))
+    return ok(services.import_book(str(dest), batch_size))
 
 
 def _h_get_book(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
@@ -614,6 +683,8 @@ def _h_admin_session_revoke(params: dict[str, Any], _body: dict[str, Any]) -> di
 # (method, 正则, handler)。命名捕获组通过正则分组名传入 params。
 ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/import$"), _h_import),
+    ("GET", re.compile(r"^/api/samples$"), _h_list_samples),
+    ("POST", re.compile(r"^/api/samples/import$"), _h_import_sample),
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)$"), _h_get_book),
     ("GET", re.compile(r"^/api/book/(?P<book_id>[^/]+)/chapter/(?P<idx>\d+)$"), _h_get_chapter),
     ("POST", re.compile(r"^/api/book/(?P<book_id>[^/]+)/chapter/(?P<idx>\d+)/batch$"), _h_split_batch),

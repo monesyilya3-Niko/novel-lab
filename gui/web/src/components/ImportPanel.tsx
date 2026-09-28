@@ -1,11 +1,14 @@
 // 导入面板：拖拽 / 选文件（txt），经 multipart 上传到后端。
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
+import Chip from '@mui/material/Chip'
+import Divider from '@mui/material/Divider'
 import { useApp } from '../state/AppContext'
+import { listSamples, importSample, type SampleInfo } from '../api/client'
 
 interface Props {
   compact?: boolean
@@ -116,6 +119,66 @@ export default function ImportPanel({ compact }: Props) {
       {book && (
         <Alert severity="success" sx={{ mt: 1.5 }}>
           已导入《{book.title}》 · {book.totalChapters} 章
+        </Alert>
+      )}
+      {/* 内置示例语料：一键导入试手 */}
+      <SampleList onImported={() => setError(null)} />
+    </Box>
+  )
+}
+
+/** 内置示例语料列表（一键导入）。 */
+function SampleList({ onImported }: { onImported: () => void }) {
+  const [samples, setSamples] = useState<SampleInfo[] | null>(null)
+  const [importing, setImporting] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    listSamples()
+      .then(list => { if (!cancelled) setSamples(list) })
+      .catch(() => { if (!cancelled) setSamples([]) })
+    return () => { cancelled = true }
+  }, [])
+
+  const doImportSample = async (name: string) => {
+    setImporting(name)
+    setError(null)
+    try {
+      await importSample(name)
+      onImported()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  if (!samples || samples.length === 0) return null
+
+  return (
+    <Box sx={{ mt: 3 }}>
+      <Divider sx={{ mb: 2 }} />
+      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+        📦 内置示例语料 <Typography component="span" variant="caption" color="text.secondary">（新手试手，一键导入）</Typography>
+      </Typography>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+        {samples.map(s => (
+          <Chip
+            key={s.name}
+            label={`${s.genre} · ${s.chapters}章`}
+            clickable
+            disabled={importing !== null}
+            onClick={() => void doImportSample(s.name)}
+            icon={importing === s.name ? <CircularProgress size={14} /> : undefined}
+            variant="outlined"
+            sx={{ '&:hover': { borderColor: 'primary.main' } }}
+          />
+        ))}
+      </Box>
+      {error && (
+        <Alert severity="error" sx={{ mt: 1 }} onClose={() => setError(null)}>
+          {error}
         </Alert>
       )}
     </Box>

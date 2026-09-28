@@ -203,6 +203,25 @@ export async function uploadBook(file: File, batchSize?: number): Promise<Book> 
   return bookFromSnake(data)
 }
 
+export interface SampleInfo {
+  name: string
+  genre: string
+  size: number
+  chapters: number
+}
+
+/** 获取内置示例语料列表。 */
+export async function listSamples(): Promise<SampleInfo[]> {
+  const data = await request<{ samples: SampleInfo[] }>('GET', '/samples')
+  return data.samples
+}
+
+/** 一键导入内置示例语料。 */
+export async function importSample(name: string): Promise<Book> {
+  const data = await request<Record<string, unknown>>('POST', '/samples/import', { name })
+  return bookFromSnake(data)
+}
+
 export async function getBook(bookId: string): Promise<Book> {
   const data = await request<Record<string, unknown>>('GET', `/book/${bookId}`)
   return bookFromSnake(data)
