@@ -2,23 +2,30 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
-## [Unreleased] - 2026-09-28（管理员系统）
+## [2.0.0] - 2026-09-28（企业级加固 + 管理员系统 + 单文件安装器）
+
+第一版正式发布。相比 1.1.2 的主要变化：
 
 ### Added
 - **管理员系统**：单管理员账号（PBKDF2-HMAC-SHA256 200k 轮 + 随机盐），首次启动生成随机初始密码（服务端日志一次性显示）。
-- 管理员会话：`HttpOnly; SameSite=Lax` Cookie（`nl_admin_session`），服务端内存表，12 小时有效期；同 IP 连续 5 次失败锁定 5 分钟。
-- 管理后台前端（`Alt+9`）：仪表盘、书库管理、资产管理、审计日志、修改密码、退出登录。
+- 管理员会话：`HttpOnly; SameSite=Lax` Cookie（`nl_admin_session`），服务端内存表，12 小时有效期；同 IP 连续 5 次失败锁定 5 分钟；失败记录 5 分钟过期自动清理。
+- 管理后台前端（`Alt+9`）：仪表盘（含最近操作）、书库管理、资产管理、审计日志（含 action/username 过滤）、会话管理（查看/吊销）、修改密码、退出登录。
+- CSRF 防护：管理员写操作校验 Origin/Referer（本机来源）。
+- CLI 紧急重置：`novel 重置管理员密码`（随机新密码 + 吊销全部会话 + 强制下次改密 + 审计）。
+- **单文件自解压安装器**：`novel-lab-installer-*.sh`（3.1MB），payload SHA-256 防篡改，`--prefix`/`--bin-dir` 可配，装后自动自检，`--uninstall` 安全卸载。
+- 安装器覆盖升级：检测已安装版本 → 自动备份旧代码 → 数据目录原位保留。
 - 管理员删书：仅限 corpus 内原文、状态文件、资产目录、SQLite 相关行；analyzing 状态 409 拒绝；非法 book_id 400；corpus 外 source_path 跳过不删。
-- 审计日志（JSONL）：登录/登出/删书/改密等关键操作全记录。
-- API：`POST /api/admin/login|logout`、`GET /api/admin/me|dashboard|books|assets|reports|audit`、`DELETE /api/admin/books/{id}`、`DELETE /api/admin/assets/{kind}/{id}`、`POST /api/admin/change-password`（前后端统一驼峰命名）。
+- 审计日志（JSONL）：登录/登出/删书/改密/会话吊销/密码重置等关键操作全记录。
+- API：77 个端点（含 11 个 `/api/admin/*` 管理员路由）。
 
 ### Verified
-- Python 1129 例全绿（3 跳过，含新增 `tests/test_admin.py` 12 例），ruff 全清，coverage 62%（`--fail-under=60`）。
-- tsc 全清，ESLint 0 警告/错误，`npm run build` 成功。
-- 真机 HTTP 冒烟 23/23：未登录 401、登录/限流/Cookie、仪表盘、书库/资产/报告/审计、导入→删除→磁盘验证、改密吊销旧会话、新密码登录、退出、审计链完整。
+- Python 1133 例全绿（3 跳过，含 `tests/test_admin.py` 16 例），ruff 全清，coverage 62%（`--fail-under=60`）。
+- tsc 全清，ESLint 0 警告/错误，vitest 51/51，`npm run build` 成功。
+- 管理员流程 HTTP 真机 18/18：登录/限流/Cookie、首次改密、仪表盘、书库/会话/审计、未登录 401、退出吊销。
+- 干净安装→自检→服务→中文上传→全量测试→卸载零残留→篡改拦截，全链路实测。
 - **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
 
-## [Unreleased] - 2026-09-28（企业出版级第六轮：上传内存治理 + 前端竞态收官 + 空库 Onboarding）
+## [Unreleased]
 
 ### Fixed
 - **上传内存治理**：100MB 上传导入服务端 RSS 峰值从 3092MB 降至 431.5MB。
