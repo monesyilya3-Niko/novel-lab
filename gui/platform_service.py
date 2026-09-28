@@ -112,6 +112,12 @@ def check_chapter_compliance(platform_id: str, chapter_text: str,
     """检查章节是否符合平台要求。"""
     if platform_id not in PLATFORMS:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
+    if not isinstance(chapter_text, str):
+        raise ServiceError("chapter_text 必须为字符串", 400)
+    if chapter_title is None:
+        chapter_title = ""
+    if not isinstance(chapter_title, str):
+        raise ServiceError("chapter_title 必须为字符串", 400)
     p = PLATFORMS[platform_id]
 
     char_count = len(chapter_text)
@@ -180,6 +186,10 @@ def format_chapter(platform_id: str, chapter_num: int, title: str,
     """按平台格式化章节。"""
     if platform_id not in PLATFORMS:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
+    if not isinstance(title, str):
+        raise ServiceError("title 必须为字符串", 400)
+    if not isinstance(content, str):
+        raise ServiceError("content 必须为字符串", 400)
     p = PLATFORMS[platform_id]
 
     # 格式化标题
@@ -207,11 +217,14 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> dict[str, Any]:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
     p = PLATFORMS[platform_id]
 
-    # 安全：book_dir 直接 glob 读取，必须约束在项目根内（防任意目录读取）。
+    # 安全：book_dir 直接 glob 读取，约束在允许根内（防任意目录读取）。
+    # 允许根 = 项目根 + 用户数据目录下的书籍/语料目录（NOVEL_DIR、CORPUS_DIR
+    # 位于用户数据目录，不在 ROOT_DIR 内，旧检查会误伤合法目录）。
     from gui import config as _config
     book_path = Path(book_dir).resolve()
-    if not book_path.is_relative_to(_config.ROOT_DIR.resolve()):
-        raise ServiceError("书籍目录必须在项目目录内", 403)
+    _allowed = {_config.ROOT_DIR.resolve(), _config.NOVEL_DIR.resolve(), _config.CORPUS_DIR.resolve()}
+    if not any(book_path.is_relative_to(r) for r in _allowed):
+        raise ServiceError("书籍目录必须在项目目录或用户数据目录内", 403)
     if not book_path.is_dir():
         raise ServiceError(f"章节目录不存在: {book_dir}", 404)
 

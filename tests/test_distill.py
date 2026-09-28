@@ -1014,12 +1014,29 @@ class TestRenderReadable(unittest.TestCase):
         self.assertIn("20%", text)
 
     def test_field_label_map_covers_real_distilled_fields(self):
-        # 实测资产里的全部蒸馏字段都应有整路径中文标签（防回退英文）。
+        # 实测资产里的全部蒸馏字段（含 blindspots）都应有整路径中文标签（防回退英文）。
+        # 2026-09-29 补：此前只查 rules，漏掉了 blindspots 里的 payoff_density.per_chapter。
         import json as _json
         missing = []
         for f in ROOT.glob("assets/*-distilled.json"):
             d = _json.loads(f.read_text(encoding="utf-8"))
             for r in d.get("rules", []):
                 if r.get("field") not in RENDER.FIELD_LABELS:
-                    missing.append(r["field"])
+                    missing.append(("rules", r["field"]))
+            for b in d.get("blindspots", []):
+                if b.get("field") not in RENDER.FIELD_LABELS:
+                    missing.append(("blindspots", b["field"]))
         self.assertEqual(missing, [], f"缺中文标签的字段: {sorted(set(missing))}")
+
+    def test_blindspot_uses_chinese_label(self):
+        # blindspot 渲染必须用中文标签，不得裸露英文字段路径。
+        distilled = self._distilled([])
+        distilled["blindspots"] = [
+            {"book": "a", "dimension": "commercial-obs",
+             "field": "payoff_density.per_chapter", "note": "x"}
+        ]
+        text = RENDER.render_distilled(distilled)
+        bline = [l for l in text.split("\n") if "缺「" in l]
+        self.assertEqual(len(bline), 1)
+        self.assertIn("缺「爽点密度（每章）」", bline[0])
+        self.assertNotIn("payoff_density", bline[0])

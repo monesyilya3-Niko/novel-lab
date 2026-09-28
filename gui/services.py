@@ -209,6 +209,9 @@ def _load_book_from_disk(book_id: str, src_path: str) -> dict[str, Any]:
 # 分析运行时：book_id -> 分析上下文（线程 + 控制标志）
 _runtime: dict[str, dict[str, Any]] = {}
 _runtime_lock = threading.Lock()
+# 报告生成互斥：两个 _watch 线程（前后两轮一键分析）可能同时观察到 done
+# 并发写同一报告文件；write_text 非原子，会交错损坏。串行化生成。
+_report_gen_lock = threading.Lock()
 
 
 def _books_dir() -> Path:
@@ -1013,6 +1016,16 @@ def _schedule_report_generation(book_id: str, book: dict[str, Any]) -> None:
 def _generate_reports(book_id: str, book: dict[str, Any]) -> None:
     """组装拆书报告 + 笔法报告，**校验通过后**写 reports/{book_id}-*.md，并 invalidate 资产索引。
 
+    报告生成串行化：前后两轮一键分析的 _watch 线程可能同时观察到 done，
+    并发写同一报告文件（write_text 非原子，会交错损坏）；此处持锁串行。
+    """
+    with _report_gen_lock:
+        _generate_reports_inner(book_id, book)
+
+
+def _generate_reports_inner(book_id: str, book: dict[str, Any]) -> None:
+    """_generate_reports 的实际实现（调用方已持 _report_gen_lock）。
+
     尽力而为（DESIGN §8 D3）：craft-card 缺失时笔法报告留空并在结果提示，不阻断。
 
     2026-09-23（总工排查）改为**先校验、后落盘**：原实现是「先写盘 → 再校验」，
@@ -1058,11 +1071,19 @@ def _generate_reports(book_id: str, book: dict[str, Any]) -> None:
         return
 
     # 3. 校验通过才落盘（此时两份报告都已确定合格）。
+    #    原子写（tmp + os.replace）：崩溃不留半份文件；与 _report_gen_lock
+    #    配合，并发 _watch 也只会完整覆盖，不会交错。
+    def _atomic_write_text(fp: Path, text: str) -> None:
+        # tmp 名唯一：即使未来有锁外并发写，也不互相抢占 tmp。
+        tmp = fp.with_name(f"{fp.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, fp)
+
     reports_dir.mkdir(parents=True, exist_ok=True)
     if book_md:
-        (reports_dir / f"{book_id}-拆书报告.md").write_text(book_md, encoding="utf-8")
+        _atomic_write_text(reports_dir / f"{book_id}-拆书报告.md", book_md)
     if craft_md:
-        (reports_dir / f"{book_id}-笔法分析.md").write_text(craft_md, encoding="utf-8")
+        _atomic_write_text(reports_dir / f"{book_id}-笔法分析.md", craft_md)
 
     # 刷新资产索引。
     asset_index.index.invalidate()

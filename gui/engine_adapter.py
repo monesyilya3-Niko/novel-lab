@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -511,8 +512,40 @@ def model_presets() -> dict[str, Any]:
 
 
 def distill_run(genre: str, book_names: list[str] | None = None) -> dict[str, Any]:
-    """题材蒸馏（复用 distill.run_distill）。供 advanced_service。"""
-    return _get_distill().run_distill(genre, book_names=book_names)
+    """题材蒸馏（复用 distill.run_distill）。供 advanced_service。
+
+    scripts/distill.run_distill 把产物写进仓库 ``novel-lab/assets/``（硬编码），
+    而 GUI 数据面（扫描/状态/详情/索引）一律走 ``config.ASSETS_ROOT``（用户数据
+    目录）。这里把写出的文件搬运到 ASSETS_ROOT 再返回，保证 distill_status()
+    可见、migrate.sync_asset() 索引的路径可被 resolve_rel_path 逆解析。
+    （采集侧 distill_core.collect_assets 同样硬编码仓库目录，需 scripts 侧接受
+    assets_dir 参数才能根治——本层在不改 scripts 的前提下无法修正。）
+    """
+    result = _get_distill().run_distill(genre, book_names=book_names)
+    relocated: list[str] = []
+    try:
+        dest_root = config.ASSETS_ROOT
+        dest_root.mkdir(parents=True, exist_ok=True)
+        for fp_str in result.get("written", []):
+            src = Path(fp_str)
+            dst = dest_root / src.name
+            try:
+                if src.resolve() == dst.resolve():
+                    relocated.append(str(dst))
+                    continue
+                # 原子搬运：先写临时文件再 rename，避免半成品；成功后删源。
+                tmp = dst.with_name(dst.name + ".reloc-tmp")
+                tmp.write_bytes(src.read_bytes())
+                os.replace(tmp, dst)
+                src.unlink()
+                relocated.append(str(dst))
+            except OSError:
+                # 搬运失败则保留原路径（至少不丢产物）。
+                relocated.append(fp_str)
+    except OSError:
+        relocated = [str(p) for p in result.get("written", [])]
+    result["written"] = relocated
+    return result
 
 
 def compliance_scan_asset(asset: dict[str, Any], ngram: set) -> tuple:

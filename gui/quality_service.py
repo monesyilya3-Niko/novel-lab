@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -47,7 +48,10 @@ def _prune_terminal_tasks() -> None:
         terminal = {k: v for k, v in _QUALITY_TASKS.items()
                     if v.get("status") not in _ACTIVE_STATUSES}
         if len(terminal) > _MAX_TERMINAL_TASKS:
-            to_remove = sorted(terminal.keys())[:len(terminal) - _MAX_TERMINAL_TASKS]
+            # 按创建时间删除最旧的（task_id 是 uuid4 hex，无时间成分，不能按它排序）。
+            to_remove = sorted(terminal.keys(),
+                               key=lambda k: terminal[k].get("created_at", 0)
+                               )[:len(terminal) - _MAX_TERMINAL_TASKS]
             for k in to_remove:
                 del _QUALITY_TASKS[k]
 
@@ -359,7 +363,7 @@ def qc(target: str | None = None, text: str | None = None,
         if not ref:
             return None
         name = ref.split(':')[-1]
-        if not name or any(ch in name for ch in ("/", "\\", "..")):
+        if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
             return None
         p = (config.ASSETS_ROOT / f"{name}.json").resolve()
         if not p.is_relative_to(config.ASSETS_ROOT.resolve()):
@@ -380,6 +384,7 @@ def qc(target: str | None = None, text: str | None = None,
             raise ServiceError(f"质检任务已达上限 {_MAX_CONCURRENT_QUALITY}，请等待当前任务完成", 429)
         _QUALITY_TASKS[task_id] = {
             "task_id": task_id, "status": "running", "phase": "qc",
+            "created_at": time.time(),
             "target": display_target, "verdict": None, "total_score": None,
             "layers": [], "issues": [], "meta": {},
             "report_json": None, "report_md": None, "error": None,

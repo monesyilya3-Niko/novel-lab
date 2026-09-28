@@ -26,7 +26,7 @@ def _model_has_key(secrets: dict[str, Any], model_id: str, model: dict[str, Any]
 
 def _validate_model_id(model_id: str) -> str:
     """校验模型 ID：非空、无路径分隔符。"""
-    if not model_id or not model_id.strip():
+    if not isinstance(model_id, str) or not model_id.strip():
         raise ServiceError("模型 ID 不能为空", 400)
     mid = model_id.strip()
     if any(ch in mid for ch in ("/", "\\", "..", "\x00", "\n", "\r", " ")):
@@ -46,12 +46,25 @@ def _validate_protocol(protocol: str) -> str:
 
 def _validate_base_url(url: str) -> str:
     """校验 base_url。"""
-    if not url or not url.strip():
+    if not isinstance(url, str) or not url.strip():
         raise ServiceError("base_url 不能为空", 400)
     url = url.strip()
     if not url.startswith(("http://", "https://")):
         raise ServiceError("base_url 必须以 http:// 或 https:// 开头", 400)
     return url.rstrip("/")
+
+
+def _validate_timeout(value):
+    """校验超时秒数：1–3600 的整数（bool/非整数/越界一律 400）。"""
+    if isinstance(value, bool):
+        raise ServiceError("timeout 必须为 1–3600 的整数（秒）", 400)
+    if isinstance(value, float):
+        if not value.is_integer():
+            raise ServiceError("timeout 必须为 1–3600 的整数（秒）", 400)
+        value = int(value)
+    if not isinstance(value, int) or not 1 <= value <= 3600:
+        raise ServiceError("timeout 必须为 1–3600 的整数（秒）", 400)
+    return value
 
 
 def list_models() -> dict[str, Any]:
@@ -118,9 +131,10 @@ def add_model(body: dict[str, Any]) -> dict[str, Any]:
     mid = _validate_model_id(body.get("id", ""))
     protocol = _validate_protocol(body.get("protocol", "openai"))
     base_url = _validate_base_url(body.get("base_url", ""))
-    model_name = body.get("model_name", "").strip()
-    if not model_name:
+    model_name = body.get("model_name", "")
+    if not isinstance(model_name, str) or not model_name.strip():
         raise ServiceError("model_name 不能为空", 400)
+    model_name = model_name.strip()
 
     cfg = engine_adapter.models_load()
 
@@ -134,7 +148,7 @@ def add_model(body: dict[str, Any]) -> dict[str, Any]:
         "model_name": model_name,
         "roles": body.get("roles", []),
         "json_mode": bool(body.get("json_mode", False)),
-        "timeout": int(body.get("timeout", 180)),
+        "timeout": _validate_timeout(body.get("timeout", 180)),
     }
 
     # 可选字段
@@ -187,7 +201,7 @@ def update_model(model_id: str, body: dict[str, Any]) -> dict[str, Any]:
     if "json_mode" in body:
         m["json_mode"] = bool(body["json_mode"])
     if "timeout" in body:
-        m["timeout"] = int(body["timeout"])
+        m["timeout"] = _validate_timeout(body["timeout"])
     for opt in ("api_key_env", "context_window", "note", "anthropic_version"):
         if opt in body:
             if body[opt]:

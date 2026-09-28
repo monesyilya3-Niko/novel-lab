@@ -19,6 +19,15 @@ interface ChapterEditorProps {
   targetChars?: number
 }
 
+/** 纯文本 → 编辑器初始 HTML（转义 + 换行分段）。 */
+function textToHtml(text: string): string {
+  return `<p>${text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '</p><p>')}</p>`
+}
+
 export default function ChapterEditor({
   value,
   onChange,
@@ -47,7 +56,7 @@ export default function ChapterEditor({
       CharacterCount,
       Placeholder.configure({ placeholder }),
     ],
-    content: value ? `<p>${value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '</p><p>')}</p>` : '',
+    content: value ? textToHtml(value) : '',
     editorProps: {
       attributes: {
         style: `min-height: ${minHeight}px; outline: none; font-size: 14px; line-height: 1.9; color: ${ink.text};`,
@@ -58,10 +67,14 @@ export default function ChapterEditor({
     },
   })
 
-  // 外部 value 变化（如清空）时同步回编辑器
+  // 外部 value 变化时同步回编辑器（清空或载入新文本都同步；getText 对比防循环）。
   useEffect(() => {
-    if (editor && editor.getText() !== value && value === '') {
-      editor.commands.clearContent()
+    if (editor && editor.getText() !== value) {
+      if (value === '') {
+        editor.commands.clearContent()
+      } else {
+        editor.commands.setContent(textToHtml(value))
+      }
     }
   }, [value, editor])
 

@@ -288,7 +288,8 @@ export default function AssetLibrary() {
                   ) : detail && detail.summary ? (
                     <>
                       <SummaryView text={String(detail.summary)} />
-                      <Accordion sx={{ mt: 2 }} disableGutters>
+                      {/* key 按资产隔离：切换资产时折叠状态重置，不会把上一个资产的展开态带过来 */}
+                      <Accordion key={selected.id} sx={{ mt: 2 }} disableGutters>
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                           <Typography variant="body2" color="text.secondary">
                             高级 · 查看原始数据

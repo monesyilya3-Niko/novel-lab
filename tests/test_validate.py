@@ -449,5 +449,41 @@ class TestDispatchRegistration(unittest.TestCase):
             self.assertIn(kind, validate.DISPATCH, f"{kind} 不得从 DISPATCH 移除")
 
 
+# --------------------------------------------------------------------------
+# 6. check_strength 整数语义（2026-09-29）
+# --------------------------------------------------------------------------
+
+class TestCheckStrengthInteger(unittest.TestCase):
+    """payoff_strength 的 schema 约定为 integer：小数必须拒收。
+
+    历史 bug：check_strength 用 is_num() 实现，7.5 能通过，但错误消息
+    与 schema 都写的是"整数"——校验比自己的消息还松。
+    """
+
+    def _errors(self, v):
+        validate.reset()
+        validate.check_strength(v, "test")
+        return validate.ERRORS
+
+    def test_valid_int_passes(self):
+        for v in (1, 5, 10):
+            self.assertEqual(self._errors(v), [], f"{v} 应通过")
+
+    def test_float_rejected(self):
+        self.assertTrue(self._errors(7.5), "7.5 应被拒收")
+
+    def test_bool_rejected(self):
+        # bool 是 int 子类，必须显式排除。
+        self.assertTrue(self._errors(True), "True 应被拒收")
+
+    def test_out_of_range_rejected(self):
+        self.assertTrue(self._errors(0))
+        self.assertTrue(self._errors(11))
+
+    def test_non_number_rejected(self):
+        self.assertTrue(self._errors("8"))
+        self.assertTrue(self._errors(None))
+
+
 if __name__ == "__main__":
     unittest.main()

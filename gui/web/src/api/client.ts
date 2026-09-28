@@ -47,7 +47,7 @@ export function onAdminUnauthorized(fn: (() => void) | null) {
 export function friendlyError(e: unknown): string {
   if (e instanceof ApiError) return e.message
   if (e instanceof DOMException && e.name === 'AbortError') return '请求超时，请重试'
-  if (e instanceof TypeError) return '无法连接服务——请确认 novel-lab 正在运行'
+  if (e instanceof TypeError) return '无法连接服务——请确认暮冬念春正在运行'
   if (e instanceof Error && e.message) return e.message
   return '发生未知错误，请重试'
 }

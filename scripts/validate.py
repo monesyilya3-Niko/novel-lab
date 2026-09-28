@@ -115,7 +115,8 @@ def check_probability(v, path):
 
 
 def check_strength(v, path):
-    if not is_num(v) or not (1 <= v <= 10):
+    # schema 约定为 integer：小数（如 7.5）必须拒收；bool 是 int 子类，需显式排除。
+    if isinstance(v, bool) or not isinstance(v, int) or not (1 <= v <= 10):
         err(f"强度应为 1-10 整数，实际 {v!r}", path)
 
 
@@ -271,7 +272,7 @@ def validate_voice_card(d):
             for i, domain in enumerate(hfm):
                 if not isinstance(domain, str):
                     err(f"比喻领域应为字符串，实际 {type(domain).__name__}", f"imagery.high_freq_metaphor_domains[{i}]")
-                elif len(domain) > 10:
+                elif len(domain) > 6:
                     warn(f"比喻领域 '{domain[:15]}...' 过长（{len(domain)}字），应为简短标签（≤6字）", f"imagery.high_freq_metaphor_domains[{i}]")
         sp = img.get("sensory_preference")
         if isinstance(sp, dict) and sp:

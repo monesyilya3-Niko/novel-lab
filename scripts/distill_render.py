@@ -86,6 +86,7 @@ FIELD_LABELS: dict[str, str] = {
     "skeleton": "商业骨架",
     "buildup_length": "铺垫长度",
     "payoff_density.per_thousand_words": "爽点密度（每千字）",
+    "payoff_density.per_chapter": "爽点密度（每章）",
     "payoff_types": "爽点类型",
     "paywall": "付费卡点",
     "common_mistakes": "常见误区",
@@ -330,7 +331,7 @@ def render_distilled(distilled: dict | None) -> str:
             if key in seen:
                 continue
             seen.add(key)
-            lines.append(f"- 《{b.get('book')}》缺「{b.get('field')}」：{b.get('note', '')}")
+            lines.append(f"- 《{b.get('book')}》缺「{_field_label(b.get('field', ''))}」：{b.get('note', '')}")
 
     return "\n".join(lines)
 

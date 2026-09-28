@@ -71,6 +71,9 @@ function CheckPanel() {
   const [text, setText] = useState('')
   const [voice, setVoice] = useState('')
   const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
+  // genre-pack：后端 /quality/check 支持，之前前端没传导致选了也用不上。
+  const [genrePack, setGenrePack] = useState('')
+  const [genrePacks, setGenrePacks] = useState<{ id: string; name: string; kind: string }[]>([])
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -83,6 +86,13 @@ function CheckPanel() {
         if (items.length > 0) setVoice(items[0].id)
       })
       .catch((e) => setError(`加载资产失败: ${e}`))
+    // genre-pack 可选：默认不选，保持与之前一致的行为（不传即不用题材包）。
+    assetApi.list({ kind: 'genre_pack', limit: 50 })
+      .then((j) => {
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
+        setGenrePacks(items)
+      })
+      .catch(() => setGenrePacks([]))
   }, [])
 
   const doCheck = async () => {
@@ -93,6 +103,7 @@ function CheckPanel() {
       if (target.trim()) body.target = target.trim()
       else if (text.trim()) body.text = text
       if (voice) body.voice = voice
+      if (genrePack) body.genre_pack = genrePack
       const r = await qualityApi.check(body)
       setResult(r)
     } catch (e) {
@@ -113,6 +124,10 @@ function CheckPanel() {
         <TextField select label="voice-card（可选）" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
           <MenuItem value="">无</MenuItem>
           {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+        </TextField>
+        <TextField select label="genre-pack（可选）" value={genrePack} onChange={(e) => setGenrePack(e.target.value)} sx={{ minWidth: 200 }} size="small">
+          <MenuItem value="">无</MenuItem>
+          {genrePacks.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <Button variant="contained" onClick={doCheck} disabled={loading || (!target.trim() && !text.trim())}>
           {loading ? <CircularProgress size={20} /> : '检查'}

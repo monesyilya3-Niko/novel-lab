@@ -6,8 +6,10 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -22,7 +24,9 @@ _log = get_logger("writing_service")
 # 任务注册表（进程内，不落库）
 # ---------------------------------------------------------------------------
 _WRITING_TASKS: dict[str, dict[str, Any]] = {}
-_WRITING_LOCK = threading.Lock()
+# RLock：generate() 提交路径在外层持锁后还会调 _active_writing_count()（同样拿锁），
+# 非重入 Lock 会自死锁（与 quality_service._QUALITY_LOCK 同一事故口径）。
+_WRITING_LOCK = threading.RLock()
 
 _ACTIVE_STATUSES = frozenset({"pending", "running", "scoring", "rewriting"})
 _MAX_CONCURRENT_WRITING = 2
@@ -35,8 +39,11 @@ def _prune_terminal_tasks() -> None:
         terminal = {k: v for k, v in _WRITING_TASKS.items()
                     if v.get("status") not in _ACTIVE_STATUSES}
         if len(terminal) > _MAX_TERMINAL_TASKS:
-            # 按 task_id 排序（含时间戳），删除最旧的
-            to_remove = sorted(terminal.keys())[:len(terminal) - _MAX_TERMINAL_TASKS]
+            # 按创建时间删除最旧的（task_id 是 uuid4 hex，无时间成分，不能按它排序）。
+            # 历史任务可能缺 created_at（旧版本注册表），缺省按 0（最旧）处理。
+            to_remove = sorted(terminal.keys(),
+                               key=lambda k: terminal[k].get("created_at", 0)
+                               )[:len(terminal) - _MAX_TERMINAL_TASKS]
             for k in to_remove:
                 del _WRITING_TASKS[k]
 
@@ -91,6 +98,59 @@ def _load_asset_of_kind(ref: str, expected: str) -> dict[str, Any]:
     return data
 
 
+def _asset_genre(data: dict) -> str | None:
+    """提取资产的题材标识。
+
+    书资产（voice/structure/commercial/craft/distilled）用 ``meta.genre``；
+    题材包/文风卡的题材在 ``meta.id`` 里（``genre-<slug>``），``meta.genre``
+    为空。未知返回 None（历史资产缺字段时不阻断，避免误伤）。
+    """
+    meta = data.get("meta", {}) or {}
+    g = meta.get("genre")
+    if g:
+        return str(g)
+    aid = meta.get("id", "")
+    if isinstance(aid, str) and aid.startswith("genre-"):
+        return aid[len("genre-"):]
+    return None
+
+
+def _require_genre_match(voice_data: dict, assets: dict[str, dict | None]) -> None:
+    """铁律一：注入时按题材匹配，禁止跨题材污染。
+
+    voice 题材已知、且某可选资产题材已知、两者不一致 → 400。
+    任一侧题材未知时不阻断（历史资产缺字段，避免误伤正常注入）。
+    tracking_state / context_intent 是写作现场状态，无题材语义，不参与校验；
+    prose_card（文风卡）是风格参照物，允许跨题材选用（"通用文风卡"定位，
+    tests/test_writing_service.py::test_real_prose_card_accepted 为证），
+    调用方不要把 prose_card 传进来。
+    """
+    voice_genre = _asset_genre(voice_data)
+    if not voice_genre:
+        return
+    for label, data in assets.items():
+        if not data:
+            continue
+        g = _asset_genre(data)
+        if g and g != voice_genre:
+            raise ServiceError(
+                f"题材不一致（铁律一：禁止跨题材污染）：voice 为 {voice_genre!r}，"
+                f"{label} 为 {g!r}", 400)
+
+
+def _atomic_write_json(fp: Path, data: dict) -> None:
+    """原子写 JSON：先写临时文件再 os.replace，避免并发同目标 torn-write。
+
+    assemble() 的 4 类资产卡可能被并发组装同一本书；直接 write_text 是截断写，
+    并发写会产生损坏的 JSON（读方 500"资产文件损坏"）。与 services 报告写盘同口径。
+    """
+    # tmp 名必须唯一：并发写同一目标时固定 tmp 名会互相抢占（一方 replace 掉
+    # 另一方的 tmp，导致 FileNotFoundError）。
+    tmp = fp.with_name(f"{fp.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, fp)
+
+
 # ---------------------------------------------------------------------------
 # 同步能力
 # ---------------------------------------------------------------------------
@@ -135,16 +195,29 @@ def inject(voice: str, structure: str | None = None, commercial: str | None = No
     而非题材索引；错配由 ``_load_asset_of_kind`` 同步拒绝为 400。
     """
     voice_data = _load_asset_of_kind(voice, "voice")
+    structure_data = _load_asset_of_kind(structure, "structure") if structure else None
+    commercial_data = _load_asset_of_kind(commercial, "commercial") if commercial else None
+    genre_pack_data = _load_asset_json(genre_pack) if genre_pack else None
+    craft_data = _load_asset_of_kind(craft, "craft") if craft else None
+    distilled_data = _load_asset_of_kind(distilled, "distilled") if distilled else None
+    prose_card_data = _load_asset_of_kind(prose_card, "prose_card") if prose_card else None
+    # 铁律一：注入时按题材匹配，禁止跨题材污染（kind 校验只防错配，不防跨题材）。
+    # prose_card 豁免：文风卡是风格参照，允许跨题材选用。
+    _require_genre_match(voice_data, {
+        "structure": structure_data, "commercial": commercial_data,
+        "genre_pack": genre_pack_data, "craft": craft_data,
+        "distilled": distilled_data,
+    })
     prompt = engine_adapter.build_writing_prompt(
         voice_data,
-        structure=_load_asset_of_kind(structure, "structure") if structure else None,
-        commercial=_load_asset_of_kind(commercial, "commercial") if commercial else None,
-        genre_pack=_load_asset_json(genre_pack) if genre_pack else None,
-        craft_card=_load_asset_of_kind(craft, "craft") if craft else None,
-        distilled=_load_asset_of_kind(distilled, "distilled") if distilled else None,
+        structure=structure_data,
+        commercial=commercial_data,
+        genre_pack=genre_pack_data,
+        craft_card=craft_data,
+        distilled=distilled_data,
         context_intent=context_intent,
         tracking_state=_load_asset_json(tracking_state) if tracking_state else None,
-        genre_prose_card=_load_asset_of_kind(prose_card, "prose_card") if prose_card else None,
+        genre_prose_card=prose_card_data,
     )
     injected_kinds = ["voice"]
     if structure:
@@ -285,7 +358,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
             name, genre, {"title": name}, metrics, voices,
             narration, dialogue, emotion, imagery, banned)
         vc_fp = config.ASSETS_ROOT / f"{name}-voice-card.json"
-        vc_fp.write_text(json.dumps(vc, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(vc_fp, vc)
         migrate.sync_asset(vc_fp)
         written.append(str(vc_fp.name))
 
@@ -293,7 +366,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
     if pass1:
         so = engine_adapter.assemble_asset_obs("structure", name, genre, pass1)
         so_fp = config.ASSETS_ROOT / f"{name}-structure-obs.json"
-        so_fp.write_text(json.dumps(so, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(so_fp, so)
         migrate.sync_asset(so_fp)
         written.append(str(so_fp.name))
 
@@ -301,7 +374,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
     if pass4:
         co = engine_adapter.assemble_asset_obs("commercial", name, genre, pass4)
         co_fp = config.ASSETS_ROOT / f"{name}-commercial-obs.json"
-        co_fp.write_text(json.dumps(co, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(co_fp, co)
         migrate.sync_asset(co_fp)
         written.append(str(co_fp.name))
 
@@ -309,7 +382,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
     if pass5 and not skip_craft:
         cc = engine_adapter.assemble_asset_craft_card(name, genre, {"title": name}, metrics, pass5)
         cc_fp = config.ASSETS_ROOT / f"{name}-craft-card.json"
-        cc_fp.write_text(json.dumps(cc, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(cc_fp, cc)
         migrate.sync_asset(cc_fp)
         written.append(str(cc_fp.name))
 
@@ -347,8 +420,10 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
 
     # 构建 system prompt
+    gp_data = _load_asset_json(genre_pack) if genre_pack else None
+    # 铁律一：注入时按题材匹配，禁止跨题材污染。
+    _require_genre_match(voice_data, {"genre_pack": gp_data})
     if not prompt:
-        gp_data = _load_asset_json(genre_pack) if genre_pack else None
         system = engine_adapter.build_writing_prompt(voice_data, genre_pack=gp_data)
     else:
         system = prompt
@@ -370,6 +445,7 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id] = {
                 "task_id": task_id, "status": "degraded", "mode": "no_model",
+                "created_at": time.time(),
                 "chapter_no": chapter_no, "target_score": target_score,
                 "pass_line": pass_line, "prompt": system,
                 "guide_markdown": guide,
@@ -395,6 +471,7 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
         }
         _WRITING_TASKS[task_id] = {
             "task_id": task_id, "status": "running", "mode": "llm",
+            "created_at": time.time(),
             "chapter_no": chapter_no, "attempt": 0, "score": None,
             "quality_score": None, "target_score": target_score,
             "pass_line": pass_line, "chapter_path": None,

@@ -108,12 +108,15 @@ def compliance_scan(voice: str | None = None,
         except (json.JSONDecodeError, OSError) as exc:
             raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
-        # HIGH：book_path 也必须在项目根内
+        # HIGH：book_path 约束在允许根内（防任意文件读取）。
+        # 允许根 = 项目根 + 用户数据目录下的书籍/语料目录（CORPUS_DIR、NOVEL_DIR
+        # 位于用户数据目录，不在 ROOT_DIR 内，旧检查会误伤合法文件）。
         book_text = ""
         if book_path:
             bp = Path(book_path).resolve()
-            if not bp.is_relative_to(config.ROOT_DIR.resolve()):
-                raise ServiceError("book_path 必须在项目目录内", 400)
+            _allowed = {config.ROOT_DIR.resolve(), config.CORPUS_DIR.resolve(), config.NOVEL_DIR.resolve()}
+            if not any(bp.is_relative_to(r) for r in _allowed):
+                raise ServiceError("book_path 必须在项目目录或用户数据目录内", 400)
             if not bp.is_file():
                 raise ServiceError(f"原文不存在: {book_path}", 404)
             try:
@@ -279,7 +282,7 @@ def update_settings(updates: dict[str, Any]) -> dict[str, Any]:
         for key in ("consistency_target", "quality_pass_line", "quality_warn_line"):
             if key in th:
                 val = th[key]
-                if not isinstance(val, (int, float)) or not (0 <= val <= 100):
+                if isinstance(val, bool) or not isinstance(val, (int, float)) or not (0 <= val <= 100):
                     raise ServiceError(f"{key} 必须为 0-100 的数值", 400)
                 saved["thresholds"][key] = int(val)
         # 校验 pass_line >= warn_line
@@ -294,24 +297,24 @@ def update_settings(updates: dict[str, Any]) -> dict[str, Any]:
         saved.setdefault("writing", {})
         if "default_words" in wr:
             val = wr["default_words"]
-            if not isinstance(val, int) or not (100 <= val <= 20000):
+            if isinstance(val, bool) or not isinstance(val, int) or not (100 <= val <= 20000):
                 raise ServiceError("default_words 必须为 100-20000 的整数", 400)
             saved["writing"]["default_words"] = val
         if "max_attempts" in wr:
             val = wr["max_attempts"]
-            if not isinstance(val, int) or not (1 <= val <= 10):
+            if isinstance(val, bool) or not isinstance(val, int) or not (1 <= val <= 10):
                 raise ServiceError("max_attempts 必须为 1-10 的整数", 400)
             saved["writing"]["max_attempts"] = val
 
     # 端口/批次大小（需重启生效，仅记录）
     if "port" in updates:
         val = updates["port"]
-        if not isinstance(val, int) or not (1 <= val <= 65535):
+        if isinstance(val, bool) or not isinstance(val, int) or not (1 <= val <= 65535):
             raise ServiceError("port 必须为 1-65535 的整数", 400)
         saved["port"] = val
     if "batch_size" in updates:
         val = updates["batch_size"]
-        if not isinstance(val, int) or not (100 <= val <= 100000):
+        if isinstance(val, bool) or not isinstance(val, int) or not (100 <= val <= 100000):
             raise ServiceError("batch_size 必须为 100-100000 的整数", 400)
         saved["batch_size"] = val
 

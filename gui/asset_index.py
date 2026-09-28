@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from gui import config, db
+from gui import config, db, migrate
 from gui.logging_setup import get_logger
 
 _log = get_logger("asset_index")
@@ -765,7 +765,7 @@ class AssetIndex:
         mtime = row.get("mtime")
         if path:
             try:
-                st = Path(path).stat()
+                st = migrate.resolve_rel_path(path).stat()
                 size, mtime = st.st_size, st.st_mtime
             except OSError:
                 pass
@@ -852,7 +852,7 @@ class AssetIndex:
             rows = db.list_reports()
             for r in rows:
                 if Path(r.get("path", "")).stem == name:
-                    fp = config.ROOT_DIR / r["path"]
+                    fp = migrate.resolve_rel_path(r["path"])
                     if fp.is_file():
                         return {"kind": "report", "id": asset_id, "name": name,
                                 "markdown": fp.read_text(encoding="utf-8")}
@@ -863,7 +863,7 @@ class AssetIndex:
         row = db.get_asset_by_key(f"{kind}:{name}")
         if row is None:
             return None
-        fp = config.ROOT_DIR / row["path"]
+        fp = migrate.resolve_rel_path(row["path"])
         if not fp.is_file():
             return None
         try:
@@ -885,9 +885,16 @@ class AssetIndex:
             fp = config.CORPUS_DIR / f"{name}.txt"
             if not fp.is_file():
                 raise KeyError(f"语料不存在: {name}")
+            # 只读前 2000 字符做预览：文本模式 read(n) 按字符计数，与
+            # read_text()[:2000] 输出一致，但内存占用恒定（不随文件大小增长）。
+            try:
+                with fp.open("r", encoding="utf-8") as fh:
+                    preview = fh.read(2000)
+            except (OSError, UnicodeDecodeError):
+                preview = ""
             return {"kind": "book", "id": asset_id, "name": name,
                     "size": fp.stat().st_size,
-                    "preview": fp.read_text(encoding="utf-8")[:2000]}
+                    "preview": preview}
         fp = config.ASSETS_ROOT / f"{name}.json"
         if not fp.is_file():
             raise KeyError(f"资产不存在: {name}")

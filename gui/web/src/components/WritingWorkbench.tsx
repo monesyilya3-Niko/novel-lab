@@ -174,6 +174,9 @@ function GeneratePanel() {
   const [task, setTask] = useState('')
   const [voice, setVoice] = useState('')
   const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
+  // genre-pack：后端 /writing/generate 与 /writing/chapters 均支持，之前前端没传导致选了也用不上。
+  const [genrePack, setGenrePack] = useState('')
+  const [genrePacks, setGenrePacks] = useState<{ id: string; name: string; kind: string }[]>([])
   const [running, setRunning] = useState(false)
   const [taskState, setTaskState] = useState<WritingTaskState | null>(null)
   const [error, setError] = useState('')
@@ -196,6 +199,13 @@ function GeneratePanel() {
         if (items.length > 0) setVoice(items[0].id)
       })
       .catch((e) => setError(`加载资产失败: ${e}`))
+    // genre-pack 可选：默认不选，保持与之前一致的行为（不传即不用题材包）。
+    assetApi.list({ kind: 'genre_pack', limit: 50 })
+      .then((j) => {
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
+        setGenrePacks(items)
+      })
+      .catch(() => setGenrePacks([]))
   }, [])
 
   const doGenerate = async () => {
@@ -206,6 +216,7 @@ function GeneratePanel() {
     try {
       const r = await writingApi.generate({
         voice, project, chapter_no: chapterNo, task, target_score: consistencyTarget,
+        genre_pack: genrePack || undefined,
       })
       setTaskState(r)
       if (r.status === 'running' && r.taskId) {
@@ -236,6 +247,7 @@ function GeneratePanel() {
     try {
       const r = await writingApi.importChapter({
         project, chapter_no: chapterNo, content: importContent, voice: voice || undefined,
+        genre_pack: genrePack || undefined,
       })
       setImportResult(JSON.stringify(r, null, 2))
     } catch (e) {
@@ -269,9 +281,13 @@ function GeneratePanel() {
         <TextField select label="项目" value={project} onChange={(e) => setProject(e.target.value)} sx={{ minWidth: 180 }} size="small">
           {writableProjects.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
         </TextField>
-        <TextField label="章节号" type="number" value={chapterNo} onChange={(e) => setChapterNo(Number(e.target.value))} sx={{ width: 100 }} size="small" />
+        <TextField label="章节号" type="number" value={chapterNo} onChange={(e) => setChapterNo(Math.max(1, Math.round(Number(e.target.value) || 1)))} sx={{ width: 100 }} size="small" />
         <TextField select label="voice-card" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
           {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+        </TextField>
+        <TextField select label="genre-pack（可选）" value={genrePack} onChange={(e) => setGenrePack(e.target.value)} sx={{ minWidth: 200 }} size="small">
+          <MenuItem value="">无</MenuItem>
+          {genrePacks.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <TextField label="写作要点" value={task} onChange={(e) => setTask(e.target.value)} sx={{ minWidth: 250 }} size="small" />
         <Button variant="contained" onClick={doGenerate} disabled={!project || !voice || !task || running}>

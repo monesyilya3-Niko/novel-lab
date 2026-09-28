@@ -346,6 +346,25 @@ def rel_path(fp: Path) -> str:
         return f"{fp.parent.name}/{fp.name}"
 
 
+def resolve_rel_path(rel: str) -> Path:
+    """rel_path 的逆操作：把库里存的相对路径还原为真实文件位置。
+
+    rel_path 对 ROOT_DIR 之外（用户数据目录下）的 assets/reports/corpus
+    存的是 ``<目录名>/<文件名>`` 回退形式；若调用方直接 ``ROOT_DIR / rel``
+    解析，会读到仓库副本（可能过期）甚至不存在的文件。这里按目录名前缀
+    映射回真实根目录（ASSETS_ROOT / REPORTS_DIR / CORPUS_DIR）。
+    不以三者开头的真相对路径仍按 ROOT_DIR 解析，保持向后兼容。
+    """
+    parts = Path(rel).parts
+    if len(parts) >= 2:
+        base = {"assets": config.ASSETS_ROOT,
+                "reports": config.REPORTS_DIR,
+                "corpus": config.CORPUS_DIR}.get(parts[0])
+        if base is not None:
+            return base.joinpath(*parts[1:])
+    return config.ROOT_DIR / rel
+
+
 # 兼容旧名
 _rel_path = rel_path
 
