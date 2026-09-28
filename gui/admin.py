@@ -24,6 +24,18 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+from gui.logging_setup import get_logger
+
+_log = get_logger("admin")
+
+
+class AdminCorruptError(RuntimeError):
+    """admin.json 存在但内容非法（JSON 损坏/非 dict/字段缺失或 salt 非法）。"""
+
+
+class AdminReadError(RuntimeError):
+    """admin.json 读取持续失败（瞬时 OSError 重试后仍失败）。"""
 from typing import Any
 
 from gui import config
@@ -110,15 +122,47 @@ def _hash_password(password: str, salt: bytes) -> str:
     return dk.hex()
 
 
+def _valid_admin_data(data: Any) -> bool:
+    """校验 admin.json 内容：P1-3 修复——salt 非法/缺失曾导致登录/改密 500。"""
+    if not isinstance(data, dict):
+        return False
+    if not isinstance(data.get("username"), str) or not data["username"]:
+        return False
+    try:
+        salt = bytes.fromhex(data["salt"])
+    except (KeyError, TypeError, ValueError):
+        return False
+    if len(salt) != 16:
+        return False
+    return isinstance(data.get("password_hash"), str) and bool(data["password_hash"])
+
+
 def _load_admin() -> dict[str, Any] | None:
+    """读取管理员凭证。
+
+    返回 None 仅表示文件不存在。P1-4 修复：文件存在但损坏不再伪装成
+    “未初始化”（旧行为会导致 ensure_initialized 静默覆盖并轮转密码），
+    而是抛 AdminCorruptError；瞬时 OSError 重试 3 次仍失败则抛 AdminReadError，
+    不把一次读失败当成“从未初始化”。
+    """
     fp = _admin_file()
     if not fp.is_file():
         return None
-    try:
-        data = json.loads(fp.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
-    return data if isinstance(data, dict) else None
+    last_err: OSError | None = None
+    for _ in range(3):
+        try:
+            data = json.loads(fp.read_text(encoding="utf-8"))
+            break
+        except json.JSONDecodeError as exc:
+            raise AdminCorruptError(f"{fp} JSON 解析失败: {exc}") from exc
+        except OSError as exc:
+            last_err = exc
+            time.sleep(0.3)
+    else:
+        raise AdminReadError(f"{fp} 读取失败（已重试 3 次）: {last_err}")
+    if not _valid_admin_data(data):
+        raise AdminCorruptError(f"{fp} 内容非法（非对象或缺少合法 username/salt/password_hash）")
+    return data
 
 
 def _save_admin(data: dict[str, Any]) -> None:
@@ -130,10 +174,29 @@ def _save_admin(data: dict[str, Any]) -> None:
 
 
 def ensure_initialized() -> str | None:
-    """确保管理员账号存在。首次创建时返回随机初始密码（调用方负责告知用户），否则返回 None。"""
+    """确保管理员账号存在。首次创建时返回随机初始密码（调用方负责告知用户），否则返回 None。
+
+    P1-4 修复：凭证文件损坏时不再静默覆盖——先备份损坏文件（admin.json.corrupt-<时间戳>），
+    再重新初始化，并在日志/audit 中明确记录备份位置与原因。
+    """
     with _lock:
-        if _load_admin() is not None:
-            return None
+        try:
+            if _load_admin() is not None:
+                return None
+        except AdminCorruptError as exc:
+            fp = _admin_file()
+            backup = fp.with_name(f"admin.json.corrupt-{time.strftime('%Y%m%d-%H%M%S')}")
+            try:
+                shutil.copy2(fp, backup)
+            except OSError:
+                backup = None
+            _log.critical("管理员凭证文件已损坏: %s；已备份至 %s，将重新初始化并生成新密码",
+                          exc, backup)
+            audit("system", "-", "admin.corrupt",
+                  f"凭证文件损坏，已备份至 {backup}，重新初始化")
+        except AdminReadError as exc:
+            # 瞬时 I/O 失败：不猜、不轮转凭证，直接阻断启动并明确报错。
+            raise RuntimeError(f"管理员凭证文件读取失败，拒绝静默重置: {exc}") from exc
         initial_password = secrets.token_urlsafe(12)
         salt = secrets.token_bytes(16)
         _save_admin({
@@ -154,7 +217,12 @@ def ensure_initialized() -> str | None:
 def needs_password_change(username: str) -> bool:
     """该用户是否处于强制改密状态（首次登录/密码被重置后）。"""
     with _lock:
-        data = _load_admin()
+        try:
+            data = _load_admin()
+        except AdminCorruptError as exc:
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+        except AdminReadError as exc:
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
     return bool(data) and data.get("username") == username and bool(data.get("must_change_password"))
 
 def _check_rate_limit(ip: str) -> None:
@@ -183,7 +251,12 @@ def authenticate(username: str, password: str, ip: str) -> dict[str, Any]:
     """校验账号密码，成功返回 {"session_id", "username"}，失败抛 ServiceError(401)。"""
     with _lock:
         _check_rate_limit(ip)
-        data = _load_admin()
+        try:
+            data = _load_admin()
+        except AdminCorruptError as exc:
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+        except AdminReadError as exc:
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
         # 用户名用 UTF-8 bytes 常量时间比较（str 版 compare_digest 遇非 ASCII 会抛异常）。
         # 无论用户名是否存在都执行同等成本的 PBKDF2：不存在时用固定 dummy salt/hash，
         # 消除"用户存在 vs 不存在"的时序差异，防账号枚举。
@@ -283,7 +356,12 @@ def reset_password() -> str:
     """
     new_password = secrets.token_urlsafe(18)
     with _lock:
-        data = _load_admin()
+        try:
+            data = _load_admin()
+        except AdminCorruptError as exc:
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+        except AdminReadError as exc:
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
         if not data:
             raise ServiceError("管理员账号不存在，请先启动服务完成初始化", 404)
         new_salt = secrets.token_bytes(16)
@@ -301,7 +379,12 @@ def change_password(username: str, old_password: str, new_password: str, ip: str
     if not new_password or len(new_password) < _MIN_PASSWORD_LEN:
         raise ServiceError(f"新密码至少 {_MIN_PASSWORD_LEN} 位", 400)
     with _lock:
-        data = _load_admin()
+        try:
+            data = _load_admin()
+        except AdminCorruptError as exc:
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+        except AdminReadError as exc:
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
         if not data or username != data.get("username"):
             raise ServiceError("账号不存在", 404)
         salt = bytes.fromhex(data["salt"])
@@ -313,6 +396,11 @@ def change_password(username: str, old_password: str, new_password: str, ip: str
         data["password_hash"] = _hash_password(new_password, new_salt)
         data["must_change_password"] = False
         _save_admin(data)
+        # P1-2：改密成功后删除初始密码指引明文文件（若存在）。
+        try:
+            _admin_file().parent.joinpath("admin-初始密码.txt").unlink(missing_ok=True)
+        except OSError:
+            pass
         # 密码变更后吊销该用户全部会话（防旧会话残留）。
         for sid in [s for s, v in _sessions.items() if v["username"] == username]:
             _sessions.pop(sid, None)

@@ -52,6 +52,32 @@ def _prune_terminal_tasks() -> None:
                 del _QUALITY_TASKS[k]
 
 
+_EXTERNAL_SCRATCH_PREFIX = "qc-external-"
+
+
+def _is_external_scratch_copy(p: Path) -> bool:
+    """判断是否为 resolve_chapter_target 产生的外部隔离副本。"""
+    d = p if p.is_dir() else p.parent
+    return (d.name.startswith(_EXTERNAL_SCRATCH_PREFIX)
+            and d.parent == (config.STATE_ROOT / "scratch"))
+
+
+def _cleanup_external_copy(p: Path | str | None) -> None:
+    """删除外部隔离副本。
+
+    P1-5 修复：旧实现只在启动时清 scratch，桌面端常驻会话中多次外部文件
+    质检（单文件上限 50MB）可累积至 GB 级磁盘占用，会话内无回收。
+    """
+    if not p:
+        return
+    import shutil
+    d = Path(p)
+    if not _is_external_scratch_copy(d):
+        return
+    target_dir = d if d.is_dir() else d.parent
+    shutil.rmtree(target_dir, ignore_errors=True)
+
+
 def _active_quality_count() -> int:
     with _QUALITY_LOCK:
         return sum(1 for t in _QUALITY_TASKS.values() if t.get("status") in _ACTIVE_STATUSES)
@@ -115,20 +141,22 @@ def _materialize_text(text: str, task_id: str) -> Path:
 
 
 def clean_stale_scratch() -> int:
-    """删除 STATE_ROOT/scratch/ 下全部残留任务目录/文件（进程启动时调用一次）。"""
+    """删除 STATE_ROOT/scratch/ 下全部残留任务目录/文件（进程启动时调用一次）。
+
+    P2-9 修复：旧实现只清一层嵌套，二级以上残留会导致 rmdir 失败被吞掉而永久残留。
+    """
+    import shutil
     scratch_dir = config.STATE_ROOT / "scratch"
     if not scratch_dir.is_dir():
         return 0
     count = 0
     for item in scratch_dir.iterdir():
         try:
-            if item.is_file():
+            if item.is_file() or item.is_symlink():
                 item.unlink()
                 count += 1
             elif item.is_dir():
-                for fp in item.iterdir():
-                    fp.unlink()
-                item.rmdir()
+                shutil.rmtree(item, ignore_errors=True)
                 count += 1
         except OSError:
             pass
@@ -179,10 +207,19 @@ def check(target: str | None = None, text: str | None = None,
         fp = resolve_chapter_target(target)
         if fp.is_dir():
             raise ServiceError("check 需要单章文件，不是目录", 400)
+        # P2-8：corpus/novel 内文件此前无大小限制，大文件会 read_text 到 MemoryError。
+        # 与外部文件分支统一 50MB 上限。
+        try:
+            if fp.stat().st_size > 50 * 1024 * 1024:
+                raise ServiceError("文件超过 50MB 上限", 400)
+        except OSError as exc:
+            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
         try:
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:
             raise ServiceError(f"读取章节失败: {exc}", 400) from exc
+        finally:
+            _cleanup_external_copy(fp)  # P1-5：外部隔离副本用后即删
 
     gp_data = None
     if genre_pack:
@@ -233,8 +270,11 @@ def book(target: str | None = None, text: str | None = None,
 
     chapter_dir: str | None = None
     scratch_fp: Path | None = None
+    external_fp: Path | None = None
     if target:
         fp = resolve_chapter_target(target)
+        if _is_external_scratch_copy(fp):
+            external_fp = fp
         if fp.is_file():
             chapter_dir = str(fp.parent)
         else:
@@ -255,6 +295,7 @@ def book(target: str | None = None, text: str | None = None,
                 scratch_fp.parent.rmdir()
             except OSError:
                 pass
+        _cleanup_external_copy(external_fp)  # P1-5：外部隔离副本用后即删
 
 
 def list_qc_reports() -> list[dict[str, Any]]:
@@ -298,8 +339,11 @@ def qc(target: str | None = None, text: str | None = None,
             voice_path = str(vfp)
 
     # 解析章节目录
+    external_copy: str | None = None
     if target:
         fp = resolve_chapter_target(target)
+        if _is_external_scratch_copy(fp):
+            external_copy = str(fp)
         chapter_dir = str(fp if fp.is_dir() else fp)
         display_target = target
     elif text:
@@ -343,7 +387,7 @@ def qc(target: str | None = None, text: str | None = None,
 
     thread = threading.Thread(
         target=_run_qc_task,
-        args=(task_id, chapter_dir, voice_path, gp_path, asset_path, book_path, nd, llm_hook, display_target),
+        args=(task_id, chapter_dir, voice_path, gp_path, asset_path, book_path, nd, llm_hook, display_target, external_copy),
         daemon=True, name=f"qc-{task_id}")
     try:
         thread.start()
@@ -369,7 +413,8 @@ def qc_task_state(task_id: str) -> dict[str, Any]:
 def _run_qc_task(task_id: str, chapter_dir: str, voice_path: str | None,
                  gp_path: str | None, asset_path: str | None,
                  book_path: str | None, novel_dir: str | None,
-                 llm_hook: bool, display_target: str) -> None:
+                 llm_hook: bool, display_target: str,
+                 external_copy: str | None = None) -> None:
     """后台线程：跑 qc 并落盘报告。"""
     from gui import sse
 
@@ -432,3 +477,4 @@ def _run_qc_task(task_id: str, chapter_dir: str, voice_path: str | None,
                 task_scratch.rmdir()
             except OSError:
                 pass
+        _cleanup_external_copy(external_copy)  # P1-5：外部隔离副本用后即删

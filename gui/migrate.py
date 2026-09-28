@@ -288,12 +288,34 @@ def rollback() -> Path | None:
     try:
         shutil.copy2(latest, tmp)
         db._verify_backup(tmp)
-        # 原子替换：先清旧库（含 WAL/SHM），再 rename（同文件系统原子）。
+        # P0-2 修复（2026-09-29）：旧实现"先删旧库再 rename"不是原子的——
+        # unlink 成功后若 rename 失败（如 Windows 杀毒软件占用），当前库已消失
+        # 且 finally 还会删掉 tmp，只剩旧备份，备份后产生的数据永久丢失。
+        # 新顺序：当前库（含 WAL/SHM）先改名到废弃名，再把 tmp 改名为 src；
+        # 任何一步失败都能从废弃名恢复，成功后才删废弃名。
+        import uuid
+        tag = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
+        old_files: list[tuple[Path, Path]] = []
         for suffix in ("", "-wal", "-shm"):
             p = Path(str(src) + suffix)
             if p.is_file():
-                p.unlink(missing_ok=True)
-        tmp.rename(src)
+                dep = Path(str(p) + f".deprecated-{tag}")
+                p.rename(dep)
+                old_files.append((p, dep))
+        try:
+            tmp.rename(src)
+        except OSError:
+            for p, dep in old_files:
+                try:
+                    dep.rename(p)
+                except OSError:
+                    pass
+            raise
+        for _, dep in old_files:
+            try:
+                dep.unlink(missing_ok=True)
+            except OSError:
+                pass
     finally:
         # 清理残留临时文件（成功时已被 rename，失败时删掉半成品）
         if tmp.exists():

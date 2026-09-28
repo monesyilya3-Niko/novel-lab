@@ -45,6 +45,37 @@ def _user_data_dir() -> Path:
     return Path.home() / ".local" / "share" / "暮冬念春"
 
 
+def _migrate_one(legacy: Path, dest: Path) -> None:
+    """单项 legacy 迁移：合并补拷，永不删除目标已有文件。
+
+    P0-1 修复（2026-09-29）：旧实现 ``dest 存在但无 marker → shutil.rmtree(dest)``
+    在以下真实场景删用户数据——首次迁移中断后用户继续使用 App（新资产/报告写入
+    dest），或 ``.migration-complete`` 丢失（dotfile 被清理工具误删），下次启动
+    会把整个用户数据目录删掉再从陈旧 legacy 重拷。且第一项 ``(gui_state, target)``
+    的 dest 就是用户数据根目录，一删全没。
+
+    新语义：目标已存在的文件一律保留（用户新数据优先），只补拷缺失文件；
+    中断/丢 marker 后重跑也是幂等合并，不删任何东西。
+    """
+    import shutil
+
+    marker = dest / ".migration-complete"
+    if marker.exists():
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    for src in legacy.rglob("*"):
+        rel = src.relative_to(legacy)
+        if rel.name == ".lock":
+            continue  # 单实例锁含旧 PID，不迁移
+        dst = dest / rel
+        if src.is_dir():
+            dst.mkdir(parents=True, exist_ok=True)
+        elif not dst.exists():
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+    marker.touch()
+
+
 def _migrate_legacy_state(target: Path) -> None:
     """旧版数据迁移：ROOT_DIR 下的运行时数据 -> 用户数据目录（仅首次）。
 
@@ -58,8 +89,8 @@ def _migrate_legacy_state(target: Path) -> None:
     - gui/state/ -> <user>/state_json/
     - 旧版 xuan 用户目录 -> 暮冬念春用户目录（改名迁移）
     目标已存在且标记完整则跳过对应项；失败不阻断启动，下次重试。
-    标记机制：copytree 成功后在 dest 内写 `.migration-complete`；若 dest 存在
-    但无标记（上次部分失败），先删不完整 dest 再重拷，避免用户拿到半截数据。
+    标记机制：迁移成功后在 dest 内写 `.migration-complete`；迁移为幂等合并，
+    中断或 marker 丢失后重跑只会补拷缺失文件，永不删除目标已有数据。
     """
     import shutil
     # 旧版 xuan 用户目录 -> 暮冬念春（品牌改名迁移）
@@ -89,18 +120,8 @@ def _migrate_legacy_state(target: Path) -> None:
     for legacy, dest in migrations:
         if not legacy.is_dir():
             continue
-        marker = dest / ".migration-complete"
-        if marker.exists():
-            continue
         try:
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            # dest 存在但无标记 = 上次部分失败，删掉重来。
-            # 例外：xuan 改名迁移时目标不应存在，此分支不会触发。
-            if dest.exists():
-                shutil.rmtree(dest)
-            # 排除 .lock（单实例锁含旧 PID，复制过去会误判）
-            shutil.copytree(legacy, dest, ignore=shutil.ignore_patterns('.lock'))
-            marker.touch()
+            _migrate_one(legacy, dest)
         except OSError:
             pass  # 迁移失败不阻断启动，下次再试
 

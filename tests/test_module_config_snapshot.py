@@ -145,5 +145,49 @@ class TestNoModuleLevelConfigSnapshot(unittest.TestCase):
         self.assertEqual(len(hits), 2, f"探测器漏报，实际命中 {hits}")
 
 
+# P2-5：config.py 自身的导入期 I/O 盲区。2026-09-29 P0-1 事故：
+# _migrate_legacy_state() 在 import 期执行，内含 shutil.rmtree(dest)，
+# 中断/丢 marker 后删掉整个用户数据目录，而本文件的守卫只扫描"其他模块"
+# 的 config 路径快照，对 config.py 自身的破坏性操作完全无感。
+_DESTRUCTIVE_CALLS = {"rmtree", "remove", "unlink", "rmdir"}
+
+
+def find_destructive_calls_in_config() -> list[tuple[int, str]]:
+    """扫描 gui/config.py 全文的破坏性文件删除调用（rmtree/remove/unlink/rmdir）。
+
+    config.py 是路径常量模块：它的职责是计算路径，不应删除任何文件。
+    迁移逻辑只允许复制/创建（幂等合并），删除操作一律禁止——P0-1 的教训。
+    """
+    path = ROOT / "gui" / "config.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    hits: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if node.func.attr in _DESTRUCTIVE_CALLS:
+                hits.append((node.lineno, ast.unparse(node)))
+    return hits
+
+
+class TestConfigPyNoDestructiveOps(unittest.TestCase):
+    """gui/config.py 禁止任何破坏性文件删除调用（P0-1 回归守卫）。"""
+
+    def test_no_destructive_calls(self):
+        hits = find_destructive_calls_in_config()
+        self.assertEqual(
+            hits, [],
+            "gui/config.py 出现破坏性文件删除调用。config.py 只允许计算路径与"
+            "幂等合并迁移，禁止 rmtree/remove/unlink/rmdir（P0-1 曾因此删用户数据）。"
+            f"违规点：{hits}",
+        )
+
+    def test_detector_actually_detects(self):
+        """反向验证：探测器对 rmtree 必须报出。"""
+        sample = ast.parse("import shutil\nshutil.rmtree('/x')\n")
+        hits = [n for n in ast.walk(sample)
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr in _DESTRUCTIVE_CALLS]
+        self.assertEqual(len(hits), 1, "探测器漏报 rmtree")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

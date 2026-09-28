@@ -22,6 +22,11 @@ from gui import config
 # ---------------------------------------------------------------------------
 if str(config.SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(config.SCRIPTS_DIR))
+# P2-6：`from scripts import genre_registry` 走包路径，需要项目根也在 sys.path；
+# 只靠 cwd 不可靠（异常 cwd 拉起的启动器）。与 SCRIPTS_DIR 共存：扁平 import 走
+# SCRIPTS_DIR，包 import 走 ROOT_DIR，互不冲突。
+if str(config.ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(config.ROOT_DIR))
 
 # 延迟 import，避免模块级副作用在 self-check 前就触发。
 _sampler = None

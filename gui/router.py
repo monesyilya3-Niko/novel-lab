@@ -119,7 +119,15 @@ def _h_import_sample(params: dict[str, Any], body: dict[str, Any]) -> dict[str, 
     dest = services.unique_corpus_path(name)
     shutil.copy2(resolved, dest)
     batch_size = _safe_batch_size((body or {}).get("batch_size"))
-    return ok(services.import_book(str(dest), batch_size))
+    try:
+        return ok(services.import_book(str(dest), batch_size))
+    except Exception:
+        # P2-2：导入失败删掉已复制的副本，不在 corpus 留垃圾文件。
+        try:
+            dest.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 def _h_get_book(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
@@ -820,9 +828,13 @@ def read_body(handler: BaseHTTPRequestHandler) -> dict[str, Any]:
     if not raw:
         return {}
     try:
-        return json.loads(raw.decode("utf-8"))
+        data = json.loads(raw.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise ServiceError("请求体不是合法 JSON", 400) from exc
+    # P2-1 修复：JSON 数组/字符串等非对象会导致调用方 .get() 抛 AttributeError 转 500。
+    if not isinstance(data, dict):
+        raise ServiceError("请求体必须是 JSON 对象", 400)
+    return data
 
 _MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB（长篇 txt 上传上限）
 

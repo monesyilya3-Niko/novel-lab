@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from collections import OrderedDict
@@ -215,17 +216,23 @@ def _books_dir() -> Path:
 
 
 def unique_corpus_path(name: str) -> Path:
-    """corpus/ 下防重名：已存在则追加 -1/-2…。"""
-    dest = config.CORPUS_DIR / name
-    if not dest.exists():
-        return dest
+    """corpus/ 下防重名：已存在则追加 -1/-2…。
+
+    P2-3 修复：用 O_CREAT|O_EXCL 原子占位，避免并发同名上传的 check-then-act
+    竞态（旧实现双线程可返回同一路径，后写覆盖前写）。占位产生空文件，
+    调用方随后覆盖写入（write_bytes/copy2 均可）；导入失败时由 P2-2 清理删掉。
+    """
+    config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
     stem, suffix = Path(name).stem, Path(name).suffix
-    i = 1
+    i = 0
     while True:
-        cand = config.CORPUS_DIR / f"{stem}-{i}{suffix}"
-        if not cand.exists():
+        cand = config.CORPUS_DIR / (name if i == 0 else f"{stem}-{i}{suffix}")
+        try:
+            fd = os.open(cand, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
             return cand
-        i += 1
+        except FileExistsError:
+            i += 1
 
 
 # ---------------------------------------------------------------------------

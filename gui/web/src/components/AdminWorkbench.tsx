@@ -156,7 +156,7 @@ function LoginForm({ onDone }: { onDone: (mustChange: boolean) => void }) {
         </Box>
         <Box sx={{ p: 4 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3, lineHeight: 1.7 }}>
-            后台管理仅限本机访问。首次启动的初始密码见服务端控制台日志。
+            后台管理仅限本机访问。首次启动的初始密码见数据目录下的 admin-初始密码.txt（改密后自动删除）。
           </Typography>
           {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
           <TextField

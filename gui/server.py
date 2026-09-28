@@ -343,7 +343,15 @@ class _Handler(BaseHTTPRequestHandler):
             # 内存：上传缓冲（raw + file_bytes 约 2x 文件大小）已落盘，
             # 先释放再跑导入，避免与导入期（text + chapters 约 2x）的峰值叠加。
             del raw, file_bytes
-            result = services.import_book(str(dest), batch_size)
+            try:
+                result = services.import_book(str(dest), batch_size)
+            except Exception:
+                # P2-2：导入失败删掉已落盘的副本，不在 corpus 留垃圾文件。
+                try:
+                    dest.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
             self._send_json(router.ok(result))
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
@@ -744,6 +752,15 @@ class GuiServer:
         # 单实例锁：已有实例则拒绝二次启动。
         if not self._acquire_lock():
             raise RuntimeError("novel-lab GUI 已在运行中（单实例锁 gui_state/.lock 存在）")
+        # P2-4 修复：获锁后任一步抛异常都必须释放锁，否则锁文件残留。
+        # （_acquire_lock 有 stale 自愈可覆盖进程退出场景；这里覆盖同进程内重复 start 的测试/嵌入场景。）
+        try:
+            return self._start_inner()
+        except Exception:
+            self._release_lock()
+            raise
+
+    def _start_inner(self) -> tuple[str, int]:
 
         # 初始化持久化层 + 迁移（幂等），保证 analysis_tasks 表就绪。
         try:
@@ -756,12 +773,29 @@ class GuiServer:
         auto_backup.startup_backup()
 
         # 管理员系统：首次启动生成随机初始密码（只打印一次）。
+        # P1-2 修复（2026-09-29）：桌面端无控制台窗口（windowsHide），只写日志
+        # 用户无从得知。首次生成时同步写入数据目录下的明文指引文件，
+        # 改密成功后自动删除。
         initial_pw = admin.ensure_initialized()
         if initial_pw:
             _log.warning("=" * 60)
             _log.warning("管理员初始账号已创建：用户名 admin / 初始密码 %s", initial_pw)
             _log.warning("请立即登录管理后台修改密码（该密码仅显示一次）。")
             _log.warning("=" * 60)
+            try:
+                hint_fp = config.STATE_ROOT / "admin-初始密码.txt"
+                hint_fp.write_text(
+                    "管理员初始账号\n"
+                    "================\n"
+                    f"用户名：admin\n初始密码：{initial_pw}\n"
+                    "（该密码仅生成一次）\n\n"
+                    "操作：用上面的账号密码登录管理后台，立即修改密码。\n"
+                    "修改成功后本文件会被自动删除；也可手动删除。\n"
+                    f"数据目录：{config.STATE_ROOT}\n",
+                    encoding="utf-8",
+                )
+            except OSError as exc:
+                _log.warning("写入初始密码指引文件失败: %s", exc)
 
         # W15/D3：启动自清理 scratch 残留
         try:
