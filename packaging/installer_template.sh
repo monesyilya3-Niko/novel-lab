@@ -78,6 +78,18 @@ fi
 
 # ---- 安装文件 ----
 mkdir -p "$PREFIX"
+# 升级检测：已存在安装标记则先备份旧版本（代码部分），数据目录不受影响
+if [ -f "$MARKER" ]; then
+    OLD_VERSION=$(cat "$MARKER" 2>/dev/null || echo "未知")
+    BACKUP_DIR="${PREFIX}.bak-$(date +%Y%m%d-%H%M%S)"
+    echo "[novel-lab] 检测到已安装版本 $OLD_VERSION，正在备份到 $BACKUP_DIR ..."
+    # 只备份代码文件，数据目录（gui_state/corpus/reports/config/novel）太大且无需回滚
+    mkdir -p "$BACKUP_DIR"
+    for d in gui scripts tests packaging novel.py run_tests.py; do
+        [ -e "$PREFIX/$d" ] && cp -a "$PREFIX/$d" "$BACKUP_DIR/" 2>/dev/null || true
+    done
+    echo "[novel-lab] 升级：$OLD_VERSION -> $VERSION（旧代码已备份，数据目录原位保留）"
+fi
 unzip -q -o "$TMP_ZIP" -d "$PREFIX"
 # 数据目录（不随 zip 分发，安装时创建）
 mkdir -p "$PREFIX/gui_state" "$PREFIX/corpus" "$PREFIX/reports"
