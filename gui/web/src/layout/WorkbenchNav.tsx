@@ -100,10 +100,10 @@ export default function WorkbenchNav({ active, onChange }: WorkbenchNavProps) {
                     position: 'relative',
                     '&.Mui-selected': {
                       bgcolor: (theme) => theme.palette.mode === 'dark' ? `${ink.cinnabar}26` : ink.cinnabarSoft,
-                      color: (theme) => theme.palette.mode === 'dark' ? '#F0A09A' : ink.cinnabarDeep,
+                      color: (theme) => theme.palette.mode === 'dark' ? '#93B4FD' : ink.cinnabarDeep,
                       '& .MuiListItemIcon-root': { color: 'inherit' },
                       '&:hover': {
-                        bgcolor: (theme) => theme.palette.mode === 'dark' ? `${ink.cinnabar}33` : '#F6D5D3',
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? `${ink.cinnabar}33` : '#E4EBFD',
                       },
                       '&::before': {
                         content: '""',

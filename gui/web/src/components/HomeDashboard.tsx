@@ -26,7 +26,7 @@ const PieChart = lazy(() => import('./charts/PieChart'))
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
 import { friendlyError } from '../api/client'
 import { kindLabel } from '../assetKindLabels'
-import { ink, fontStack, cardHover, stagger } from '../ink'
+import { ink, cardHover, stagger } from '../ink'
 import { useThemeMode } from '../state/ThemeModeContext'
 
 export default function HomeDashboard() {
@@ -80,18 +80,18 @@ export default function HomeDashboard() {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
           <Box sx={{
             width: 40, height: 40, borderRadius: 3,
-            background: `linear-gradient(135deg, ${ink.cinnabar}, ${ink.cinnabarDeep})`,
+            background: ink.primary,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(199,62,58,0.3)',
+            boxShadow: '0 4px 12px rgba(16,16,20,0.18)',
           }}>
             <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 22 }} />
           </Box>
           <Box>
-            <Typography variant="h5" sx={{ fontFamily: fontStack.serif, fontWeight: 700, letterSpacing: '0.05em' }}>
-              墨 韵 工 作 台
+            <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '0.05em' }}>
+              暮冬念春工作台
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '0.2em' }}>
-              NOVEL-LAB · 网文创作辅助系统
+              中文书籍创作辅助系统
             </Typography>
           </Box>
           <Box sx={{ flex: 1 }} />
@@ -123,7 +123,7 @@ export default function HomeDashboard() {
             <Card sx={{ ...cardHover, overflow: 'hidden', position: 'relative' }}>
               <Box sx={{
                 position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-                background: `linear-gradient(90deg, ${k.accent}, transparent)`,
+                background: k.accent,
               }} />
               <CardContent sx={{ py: 2.5, px: 2.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
@@ -137,7 +137,7 @@ export default function HomeDashboard() {
                 </Box>
                 <Typography
                   variant="h3"
-                  sx={{ fontFamily: fontStack.serif, fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
+                  sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
                 >
                   {k.value}
                 </Typography>
@@ -156,7 +156,7 @@ export default function HomeDashboard() {
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="h6" sx={{ fontFamily: fontStack.serif, fontWeight: 600 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   资产类型分布
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -186,7 +186,7 @@ export default function HomeDashboard() {
         <Grid item xs={12} md={7} sx={stagger(6)}>
           <Card sx={{ height: '100%' }}>
             <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ fontFamily: fontStack.serif, fontWeight: 600, mb: 1 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                 开始创作
               </Typography>
               <Divider sx={{ mb: 2.5 }} />

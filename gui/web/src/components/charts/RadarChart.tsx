@@ -51,8 +51,8 @@ export default function RadarChart({
         splitLine: { lineStyle: { color: axisColor } },
         splitArea: {
           areaStyle: {
-            // 朱砂淡晕：交替透明度
-            color: ['rgba(199,62,58,0.04)', 'rgba(199,62,58,0.08)'],
+            // 淡蓝晕：交替透明度
+            color: ['rgba(37,99,235,0.04)', 'rgba(37,99,235,0.08)'],
           },
         },
         axisLine: { lineStyle: { color: axisColor } },

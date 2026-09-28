@@ -39,7 +39,7 @@ import {
   type AdminAuditEntry,
   type AdminSession,
 } from '../api/client'
-import { ink, fontStack, fadeUp } from '../ink'
+import { ink, fadeUp } from '../ink'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 
 function fmtSize(bytes: number): string {
@@ -126,30 +126,27 @@ function LoginForm({ onDone }: { onDone: (mustChange: boolean) => void }) {
     <Box sx={{
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       minHeight: '100%', p: 3,
-      background: (theme) => theme.palette.mode === 'dark'
-        ? `radial-gradient(ellipse 80% 60% at 50% 0%, ${ink.cinnabar}12, transparent)`
-        : `radial-gradient(ellipse 80% 60% at 50% 0%, ${ink.cinnabarSoft}, transparent)`,
+      background: (theme) => theme.palette.mode === 'dark' ? ink.night : ink.bg,
     }}>
       <Paper sx={{ p: 0, width: 400, overflow: 'hidden', ...fadeUp }}>
         {/* 顶部装饰条 */}
         <Box sx={{
           height: 96,
-          background: `linear-gradient(135deg, ${ink.cinnabar} 0%, ${ink.cinnabarDeep} 100%)`,
+          background: ink.primary,
           display: 'flex', alignItems: 'center', px: 4, gap: 2,
         }}>
           <Box sx={{
             width: 48, height: 48, borderRadius: 3,
-            background: 'rgba(255,255,255,0.18)',
+            background: 'rgba(255,255,255,0.14)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backdropFilter: 'blur(4px)',
           }}>
             <LockOutlinedIcon sx={{ color: '#fff', fontSize: 26 }} />
           </Box>
           <Box>
-            <Typography variant="h6" sx={{ color: '#fff', fontFamily: fontStack.serif, fontWeight: 700, letterSpacing: '0.1em' }}>
+            <Typography variant="h6" sx={{ color: '#fff', fontWeight: 700, letterSpacing: '0.1em' }}>
               管理后台
             </Typography>
-            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.2em' }}>
+            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.65)', letterSpacing: '0.2em' }}>
               ADMIN CONSOLE
             </Typography>
           </Box>
