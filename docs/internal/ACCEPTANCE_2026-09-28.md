@@ -110,15 +110,15 @@
 | 3. 第 7 节门禁全部落地且通过 | Python 1117 全绿 / ruff 全清 / coverage 62%（fail-under=60）/ ESLint 0 警告 / tsc 全清 / build 成功 / E2E 通过 / 提交前 §4 复核执行——**全部通过** |
 | 4. UI 达到高级感/企业级水准 | 本轮涉及前端竞态、中文化、Onboarding 向导；最终视觉验收由总负责人确认 |
 | 5. 交付总验收报告 | 本报告即是（唯一一份） |
-| 6. 最终代码同步到 GitHub | 已推送 `feat/enterprise-hardening`；远端 384 文件经路径/blob SHA/mode 完整 recursive tree 对比，与本地 HEAD **全一致**（验证方法见推送脚本 `push_v*.py`，报告内不硬编码追逐 SHA）；分支策略见 §6 |
+| 6. 最终代码同步到 GitHub | 已推送 `feat/enterprise-hardening`；远端 386 文件经路径/blob SHA/mode 完整 recursive tree 对比，与本地 HEAD **全一致**（验证方法见推送脚本 `push_v*.py`，报告内不硬编码追逐 SHA）；分支策略见 §6 |
 | 7. zip 成品包 + 仓库说明交付 | `novel-lab-enterprise-hardening-20260928-v7.zip`（由最终 Git HEAD 经 `git archive` 生成，解压复验通过，无压缩错误；SHA-256 见交付时的 `SHA256SUMS.txt` 与交付记录，不在版本化报告内硬编码追逐） |
 
 ---
 
 ## 8. 交付物
 
-- GitHub：`monesyilya3-Niko/novel-lab` / `feat/enterprise-hardening`（384 文件与本地 HEAD 全一致，已复验）
-- zip：`~/workspace/your_files/novel-lab-enterprise-hardening-20260928-v7.zip`（由最终 Git HEAD 经 `git archive` 生成）
+- GitHub：`monesyilya3-Niko/novel-lab` / `feat/enterprise-hardening`（386 文件与本地 HEAD 全一致，已复验）
+- zip：`~/workspace/your_files/novel-lab-enterprise-hardening-20260928-v7.zip`（由最终 Git HEAD 经 `git archive` 生成；安装器 `novel-lab-installer-20260928-v7.sh` 内嵌同一 zip，经 SHA-256 校验）
 - SHA-256：见同目录 `SHA256SUMS.txt`（交付时生成）
 - 原始备份（禁止修改/删除，未动）：`~/workspace/user/files/novel-lab-backup-2026-09-27_2_37wf.zip`
 
@@ -137,3 +137,5 @@
 修复后：工作树全量 **1117 例 OK（3 跳过）**；远端重新推送并 384 文件完整 recursive tree 复验一致；v7 zip（`git archive`）重新打包，`unzip -t` 通过；**从 v7 zip 干净安装再跑全量：1117 例 OK，`gui/state/` 与 `gui_state/` 零新增文件**；另从干净安装起真实服务冒烟：`GET /` 200、`/api/overview` 200、`POST /api/import-upload`（中文文件名 multipart）200 并正确入库 1 本书。
 
 本轮未发现生产代码缺陷；P0 仍为零。测试基线 `AGENTS.md §7` 已同步 1116→1117。
+
+**后续（同日）：** 新增 `packaging/`（单文件自解压安装器模板 + 构建脚本），用户指令"搞成安装包，然后安装测试一下"。安装器经完整实测：全新安装→`novel-lab --check` 自检通过→真实服务中文文件名上传入库→安装版全量 1117 通过→`--uninstall` 干净卸载→篡改 payload 被 SHA-256 拦截。远端文件数 384→386（新增 2 个 packaging 文件），已重新推送并完整 recursive tree 复验一致；v7 zip 与安装器均从最新 HEAD 重建。
