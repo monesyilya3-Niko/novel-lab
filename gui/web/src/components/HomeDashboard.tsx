@@ -7,6 +7,7 @@ import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
 import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import StyleIcon from '@mui/icons-material/Style'
@@ -14,7 +15,8 @@ import ArticleIcon from '@mui/icons-material/Article'
 import FolderIcon from '@mui/icons-material/Folder'
 import AsyncBoundary from './common/AsyncBoundary'
 import { useApp } from '../state/AppContext'
-import PieChart from './charts/PieChart'
+import { lazy, Suspense } from 'react'
+const PieChart = lazy(() => import('./charts/PieChart'))
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
 import { friendlyError } from '../api/client'
 import { kindLabel } from '../assetKindLabels'
@@ -108,7 +110,9 @@ export default function HomeDashboard() {
                 资产类型分布
               </Typography>
               {pieData.length > 0 ? (
+                <Suspense fallback={<Box sx={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress size={24} /></Box>}>
                 <PieChart data={pieData} height={300} />
+              </Suspense>
               ) : (
                 <Typography variant="body2" color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>
                   暂无资产数据

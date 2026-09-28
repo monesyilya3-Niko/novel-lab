@@ -1,11 +1,12 @@
 // QC 报告可视化：12 维总览条形图 + 章节×维度热力图 + 章节问题分布。
 // 数据来自 qc 长任务的 taskState.layers（含各维度 raw.perChapter 原始小分）。
-import { useMemo } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
+import CircularProgress from '@mui/material/CircularProgress'
 import type { EChartsOption } from 'echarts'
-import BaseChart from './charts/BaseChart'
+import { lazy, Suspense, useMemo } from 'react'
+const BaseChart = lazy(() => import('./charts/BaseChart'))
 import { useApp } from '../state/AppContext'
 import type { QcIssue, QcLayer } from '../types'
 
@@ -18,6 +19,14 @@ const LAYER_COLORS: Record<string, string> = {
 }
 
 // P1-F3：合格线来自系统设置（默认 75），不再硬编码 70。
+
+function ChartFallback() {
+  return (
+    <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <CircularProgress size={24} />
+    </Box>
+  )
+}
 
 export default function QcVisuals({
   layers = [],
@@ -155,7 +164,7 @@ export default function QcVisuals({
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
           十二维得分总览（红 = 低于合格线 {qualityPassLine}）
         </Typography>
-        <BaseChart option={barOption} height={Math.max(200, 26 * (layers.reduce((n, l) => n + l.dimensions.length, 0) + 2))} ariaLabel="十二维得分总览条形图" notMerge={false} />
+        <Suspense fallback={<ChartFallback />}><BaseChart option={barOption} height={Math.max(200, 26 * (layers.reduce((n, l) => n + l.dimensions.length, 0) + 2))} ariaLabel="十二维得分总览条形图" notMerge={false} /></Suspense>
       </Paper>
 
       {heat && (
@@ -166,7 +175,7 @@ export default function QcVisuals({
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
             仅含提供章节粒度的 {heat.dimCount} 个维度；得分为维度内归一（相对该维度各章最高分）。
           </Typography>
-          <BaseChart option={heat.option} height={Math.max(180, 34 * heat.dimCount + 70)} ariaLabel="章节维度得分率热力图" notMerge={false} />
+          <Suspense fallback={<ChartFallback />}><BaseChart option={heat.option} height={Math.max(180, 34 * heat.dimCount + 70)} ariaLabel="章节维度得分率热力图" notMerge={false} /></Suspense>
         </Paper>
       )}
 
@@ -175,7 +184,7 @@ export default function QcVisuals({
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
             章节问题分布（按严重度）
           </Typography>
-          <BaseChart option={issueOption} height={240} ariaLabel="章节问题分布柱状图" notMerge={false} />
+          <Suspense fallback={<ChartFallback />}><BaseChart option={issueOption} height={240} ariaLabel="章节问题分布柱状图" notMerge={false} /></Suspense>
         </Paper>
       )}
     </Box>

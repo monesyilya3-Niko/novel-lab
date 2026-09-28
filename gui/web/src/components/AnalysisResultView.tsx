@@ -1,5 +1,5 @@
 // 分析结果视图（M1/M3）：拆书完成后结果面板 —— 资产卡（非裸 JSON）+ 章节打分图 + 报告 Markdown。
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
@@ -17,8 +17,8 @@ import CircularProgress from '@mui/material/CircularProgress'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useApp } from '../state/AppContext'
 import * as api from '../api/client'
-import BarChart from './charts/BarChart'
-import RadarChart from './charts/RadarChart'
+const BarChart = lazy(() => import('./charts/BarChart'))
+const RadarChart = lazy(() => import('./charts/RadarChart'))
 import MarkdownReport from './MarkdownReport'
 import { chartSeries, palette } from '../theme'
 import { useThemeMode } from '../state/ThemeModeContext'
@@ -111,6 +111,14 @@ function ReportSection({ reportId }: { reportId: string }) {
     )
   }
   return <MarkdownReport title={report.name} markdown={report.markdown} />
+}
+
+function ChartSkeleton({ height }: { height: number }) {
+  return (
+    <Box sx={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <CircularProgress size={24} />
+    </Box>
+  )
 }
 
 function AlertBox({ severity, children }: { severity: 'error' | 'info' | 'warning'; children: ReactNode }) {
@@ -280,7 +288,9 @@ export default function AnalysisResultView() {
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
                       章节打分对比
                     </Typography>
-                    <BarChart categories={scoreCategories} series={barSeries} height={320} />
+                    <Suspense fallback={<ChartSkeleton height={320} />}>
+                      <BarChart categories={scoreCategories} series={barSeries} height={320} />
+                    </Suspense>
                   </CardContent>
                 </Card>
               </Grid>
@@ -290,7 +300,9 @@ export default function AnalysisResultView() {
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
                       综合能力雷达
                     </Typography>
-                    <RadarChart indicators={radarIndicators} series={radarSeries} height={320} />
+                    <Suspense fallback={<ChartSkeleton height={320} />}>
+                      <RadarChart indicators={radarIndicators} series={radarSeries} height={320} />
+                    </Suspense>
                   </CardContent>
                 </Card>
               </Grid>
