@@ -2,6 +2,21 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-28（企业出版级第五轮：测试直调生产函数 + 纵深防御 + 远端一致性）
+
+### Fixed
+- P0-2 原子发布逻辑提取为 `novel.publish_reports_atomically`，测试直调生产函数（4 例）。
+- `TestSecretStorePerms` 直调生产函数 `save_secrets` 验证 0o600（此前只重复 os.open）。
+- 服务层 batch_size 纵深防御：`_require_positive_batch_size`，内部调用传非法值直接 400（3 例回归）。
+- `BaseChart` 注册 `HeatmapChart`：QcVisuals 热力图此前因未注册静默空白。
+- 远端一致性：修正推送脚本 CRLF/LF 字节偏差（约 100 文件 blob SHA 不一致）与 8 个过期 dist 残留；
+  远端 `eb46ff05` 经完整 recursive tree 对比验证（373 文件，路径/blob SHA/mode 全一致）。
+
+### Verified
+- Python 1074 例全绿（3 跳过），ruff 全清，coverage 62%。
+- tsc 全清，ESLint 0 警告，vitest 40/40，`npm run build` 成功。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
 ## [Unreleased] - 2026-09-28（企业出版级第四轮：安全审计 + 测试补强 + 性能）
 
 ### Security
