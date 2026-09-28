@@ -309,31 +309,113 @@ def audit(username: str, ip: str, action: str, detail: str = "") -> None:
         print(f"[admin-audit] 写入失败 ({action}): {e}", file=sys.stderr)
 
 
-def read_audit(limit: int = 100, action: str = "", username: str = "") -> list[dict[str, Any]]:
-    """读取审计日志（最新的在前）。在最近 2000 条内先过滤再截断；
-    大文件时从尾部倒读，避免全量载入内存。"""
+def _iter_lines_reverse(fp: Path, block_size: int = 8192):
+    """从文件尾部向前逐行迭代（内存有界）。
+
+    每次向前读一个块，块内按行切分后倒序产出；仅保留一个块 + 行首残片，
+    内存占用与文件总大小无关。调用方凑够需要的行数即可提前 ``break``，
+    不会触发后续块读取。
+    """
+    with fp.open("rb") as f:
+        f.seek(0, 2)
+        pos = f.tell()
+        carry = b""
+        while pos > 0:
+            step = min(block_size, pos)
+            pos -= step
+            f.seek(pos)
+            chunk = f.read(step) + carry
+            lines = chunk.split(b"\n")
+            carry = lines[0]
+            for raw in reversed(lines[1:]):
+                yield raw.decode("utf-8", errors="replace")
+        # 文件首行（末尾无换行时也在 carry 里；空文件时为空串，调用方跳过）
+        yield carry.decode("utf-8", errors="replace")
+
+
+def _parse_time_bound(value: str | datetime | None) -> datetime | None:
+    """解析审计时间范围参数：ISO 字符串或 datetime；naive 视为 UTC。非法 → 400。"""
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value)
+        except ValueError:
+            raise ServiceError(f"非法时间参数: {value!r}", 400)
+    else:
+        raise ServiceError(f"非法时间参数类型: {type(value).__name__}", 400)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _parse_entry_ts(entry: dict[str, Any]) -> datetime | None:
+    """解析审计条目的 ts 字段；不可解析 → None（调用方在按时间过滤时跳过该条）。"""
+    ts = entry.get("ts")
+    if not isinstance(ts, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(ts)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def read_audit(limit: int = 100, action: str = "", username: str = "",
+               since: str | datetime | None = None,
+               until: str | datetime | None = None) -> list[dict[str, Any]]:
+    """读取审计日志（最新的在前）。
+
+    反向流式扫描：从尾部向前逐块读取，边读边做 action/username/时间过滤，
+    凑够 ``limit`` 条即停。内存占用有界（一个读块 + 至多 ``limit`` 条结果），
+    与日志文件总大小无关。
+
+    修正旧实现“只取最近 2000 行再过滤”的缺陷：按 action/username 过滤的稀有
+    条目若落在窗口之外会被漏掉；新实现全量向前扫描直到凑够 ``limit``。
+    时间范围过滤（``since``/``until``，ISO 字符串或 datetime，naive 视为 UTC）
+    依赖“审计日志按时间追加写入”的不变量：扫描到早于 ``since`` 的条目时可
+    提前终止（audit() 始终用 UTC wall clock 追加写入；若外部篡改导致乱序，
+    极端情况下可能漏掉乱序条目，属可接受的权衡）。
+    """
     limit = max(1, min(limit, 500))
+    since_dt = _parse_time_bound(since)
+    until_dt = _parse_time_bound(until)
     fp = _audit_file()
     if not fp.is_file():
         return []
+    out: list[dict[str, Any]] = []
     try:
-        lines = _tail_lines(fp, 2000)
+        for raw in _iter_lines_reverse(fp):
+            if not raw.strip():
+                continue
+            try:
+                entry = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(entry, dict):
+                continue
+            if action and entry.get("action") != action:
+                continue
+            if username and entry.get("username") != username:
+                continue
+            if since_dt is not None or until_dt is not None:
+                ts = _parse_entry_ts(entry)
+                if ts is None:
+                    continue
+                if until_dt is not None and ts > until_dt:
+                    continue
+                if since_dt is not None and ts < since_dt:
+                    break  # 越往前越旧：后续条目必定更早，可提前结束
+            out.append(entry)
+            if len(out) >= limit:
+                break
     except OSError:
         return []
-    out = []
-    for line in lines:
-        try:
-            entry = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(entry, dict):
-            continue
-        if action and entry.get("action") != action:
-            continue
-        if username and entry.get("username") != username:
-            continue
-        out.append(entry)
-    return list(reversed(out[-limit:]))
+    return out
 
 
 def _tail_lines(fp: Path, n: int) -> list[str]:
@@ -431,42 +513,97 @@ def _validate_book_id(book_id: str) -> str:
     return book_id
 
 
-def _safe_unlink(path: Path, base: Path, label: str) -> bool:
-    """仅当 path 解析后位于 base 内时删除，返回是否删除。
+# book_id -> 删书互斥锁：串行化同一本书的并发删除请求。
+# 条目有意常驻（不做清理）：book_id 数量级极小，避免“删锁”与“取锁”之间的
+# 竞态（A 释放后删锁、B 已取到旧锁对象、C 取到新锁 → B/C 并发进入临界区）。
+_delete_locks: dict[str, threading.Lock] = {}
 
-    越界时返回 False（跳过）而不抛错：调用方（如删书）应继续清理
-    其余部分，不能因一个外部文件导致整个删除中断。
+
+def _book_delete_lock(book_id: str) -> threading.Lock:
+    with _lock:
+        lk = _delete_locks.get(book_id)
+        if lk is None:
+            lk = threading.Lock()
+            _delete_locks[book_id] = lk
+        return lk
+
+
+def _remove_guarded(path: Path, base: Path) -> tuple[str, str]:
+    """在 base 目录约束下删除单个文件，返回 (状态, 说明)，永不静默。
+
+    状态：
+    - "removed"：已删除
+    - "missing"：文件已不存在（视为已达成，不算失败）
+    - "outside"：解析后位于 base 之外——为防误删外部文件而跳过
+    - "not_file"：存在但不是普通文件/符号链接，跳过
+    - "failed"：删除失败（说明中携带原因）
     """
     try:
         resolved = path.resolve()
+    except OSError as e:
+        return "failed", f"路径解析失败: {e}"
+    try:
+        base_resolved = base.resolve()
     except OSError:
-        return False
-    if not resolved.is_relative_to(base.resolve()):
-        return False
-    if resolved.is_file():
+        return "failed", "基准目录不可解析"
+    if not resolved.is_relative_to(base_resolved):
+        return "outside", "位于 corpus 目录之外，已保留未删"
+    if not resolved.exists() and not resolved.is_symlink():
+        return "missing", "文件已不存在"
+    if not (resolved.is_file() or resolved.is_symlink()):
+        return "not_file", "不是普通文件，跳过"
+    try:
         resolved.unlink()
-        return True
-    return False
+    except OSError as e:
+        return "failed", f"删除失败: {e}"
+    return "removed", ""
 
 
 def delete_book(book_id: str, username: str, ip: str) -> dict[str, Any]:
-    """删除书籍：状态文件（新旧位置）、corpus 原文（仅限 corpus 目录内）、
-    assets/{book_id}/、内存缓存、SQLite 相关行。返回删除清单。"""
-    from gui import services  # 延迟导入，避免循环依赖
+    """删除书籍（并发安全、失败可审计）。
 
+    同一 book_id 的并发删除被 book 级锁串行化：先完成的删干净，后到的
+    读不到状态文件会报 404（书已不存在，语义真实），不会出现“两边都删
+    一半”的交错。
+    """
     book_id = _validate_book_id(book_id)
-    removed: list[str] = []
+    with _book_delete_lock(book_id):
+        return _delete_book_locked(book_id, username, ip)
+
+
+def _delete_book_locked(book_id: str, username: str, ip: str) -> dict[str, Any]:
+    """持有 book 级锁的删除实现。
+
+    阶段划分（DB 与文件之间无法真正原子，顺序即策略）：
+    1. 读状态（新旧两处 JSON）→ 404；analyzing → 409。只读，无副作用。
+    2. SQLite 四表在 ``db.tx()`` 事务内删除：提交或整体回滚。DB 是权威源，
+       先落库再删文件——若文件阶段失败，残留文件是可恢复的（见 warnings），
+       而“DB 有记录但文件没了”是不可恢复的坏状态，必须避免。
+    3. 文件逐项删除：corpus 原文（仅限 corpus 内）、状态文件、assets 目录。
+       每项结果记入 removed / skipped / warnings，失败转 ServiceError，
+       永不抛裸 OSError、不静默丢失。
+    4. 清内存缓存，写审计。
+
+    返回 {"bookId", "status", "removed", "skipped", "warnings"}：
+    - status "ok"：全部清除；
+    - status "partial"：DB 已清但部分文件残留。warnings 逐项给出残留路径、
+      原因与清理方式（手动删除对应路径即可；再次调用本接口会 404，
+      因为状态文件已删——这是有意的，避免把“残留文件”误认作“书还在”）。
+    """
+    from gui import services  # 延迟导入，避免循环依赖
 
     # 1) 读状态拿 source_path（先读后删）。
     state = None
+    state_files: list[Path] = []
     for fp in (config.STATE_JSON_DIR / f"gui_state_{book_id}.json",
                config.STATE_ROOT / f"gui_state_{book_id}.json"):
         if fp.is_file():
-            try:
-                state = json.loads(fp.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                state = {}
-            break
+            state_files.append(fp)
+            if state is None:
+                try:
+                    state = json.loads(fp.read_text(encoding="utf-8"))
+                except (json.JSONDecodeError, OSError):
+                    state = {}
     if state is None:
         raise ServiceError(f"书籍不存在: {book_id}", 404)
 
@@ -474,9 +611,11 @@ def delete_book(book_id: str, username: str, ip: str) -> dict[str, Any]:
     if isinstance(state, dict) and state.get("status") == "analyzing":
         raise ServiceError("书籍正在分析中，无法删除", 409)
 
-    # 2) SQLite 先删（DB 是权威源；先清 DB 再删文件，
-    #    即使文件删除失败也不会留下"DB 有记录但文件没了"的坏状态，
-    #    残留文件可用孤儿扫描清理）。
+    removed: list[str] = []
+    skipped: list[str] = []
+    warnings: list[str] = []
+
+    # 2) SQLite 先删（事务：异常整体回滚并转为 500，文件原样不动）。
     db_removed = 0
     try:
         from gui import db
@@ -488,31 +627,58 @@ def delete_book(book_id: str, username: str, ip: str) -> dict[str, Any]:
                         db_removed += cur.rowcount or 0
                     except Exception:  # noqa: BLE001 - 表结构差异时跳过
                         continue
-        removed.append(f"sqlite:{db_removed}行")
-    except Exception:  # noqa: BLE001 - DB 不可用时不阻断删除
-        pass
+            removed.append(f"sqlite:{db_removed}行")
+        else:
+            skipped.append("SQLite 未就绪：库中无该书记录可删")
+    except Exception as e:  # noqa: BLE001 - db.tx() 已回滚，此处只负责上报
+        raise ServiceError(f"删除数据库记录失败（事务已回滚，文件未动）: {e}", 500)
 
     # 3) corpus 原文：仅当解析后位于 CORPUS_DIR 内才删。
     src = (state or {}).get("source_path", "")
     if src:
-        if _safe_unlink(Path(src), config.CORPUS_DIR, "原文"):
+        rm_status, note = _remove_guarded(Path(src), config.CORPUS_DIR)
+        if rm_status == "removed":
             removed.append("corpus")
+        elif rm_status == "missing":
+            skipped.append("corpus 原文已不存在")
+        elif rm_status == "outside":
+            skipped.append(f"corpus 原文在目录外，已保留: {src}")
+        else:
+            warnings.append(f"corpus 原文未删（{note}）: {src} —— 请手动删除该文件")
 
-    # 4) 状态文件（新旧两处）。
-    for fp in (config.STATE_JSON_DIR / f"gui_state_{book_id}.json",
-               config.STATE_ROOT / f"gui_state_{book_id}.json"):
-        if fp.is_file():
+    # 4) 状态文件（新旧两处；逐个 try，避免一个失败阻断其余）。
+    for fp in state_files:
+        try:
             fp.unlink()
             removed.append(fp.name)
+        except FileNotFoundError:
+            skipped.append(f"{fp.name} 已不存在")
+        except OSError as e:
+            warnings.append(f"状态文件未删（{e}）: {fp.name} —— 请手动删除该文件")
 
-    # 5) assets/{book_id}/ 整目录（book_id 已校验无分隔符）。
+    # 5) assets/{book_id}/ 整目录（book_id 已校验无分隔符，不会逃逸；
+    #    若为符号链接则只断链，不跟随删除目标）。
     book_assets = config.ASSETS_ROOT / book_id
-    if book_assets.is_dir():
-        shutil.rmtree(book_assets)
-        removed.append(f"assets/{book_id}/")
+    try:
+        if book_assets.is_symlink():
+            book_assets.unlink()
+            removed.append(f"assets/{book_id}/")
+        elif book_assets.is_dir():
+            shutil.rmtree(book_assets)
+            removed.append(f"assets/{book_id}/")
+        # 不存在 → 无事可做，不记 skipped（assets 目录本就可选）
+    except OSError as e:
+        warnings.append(f"资产目录未删（{e}）: assets/{book_id}/ —— 请手动删除该目录")
 
     # 6) 内存缓存。
     services._BOOKS.pop(book_id, None)
 
-    audit(username, ip, "admin.book.delete", f"{book_id}（{removed}）")
-    return {"bookId": book_id, "removed": removed}
+    status = "ok" if not warnings else "partial"
+    detail = f"{book_id}（{removed}）"
+    if skipped:
+        detail += f"；跳过：{skipped}"
+    if warnings:
+        detail += f"；警告[{status}]：{warnings}"
+    audit(username, ip, "admin.book.delete", detail)
+    return {"bookId": book_id, "status": status, "removed": removed,
+            "skipped": skipped, "warnings": warnings}

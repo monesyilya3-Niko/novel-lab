@@ -580,7 +580,9 @@ def _h_admin_audit(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, A
         limit = 100
     return ok(admin.read_audit(limit,
                               action=str(params.get("action", "") or ""),
-                              username=str(params.get("username", "") or "")))
+                              username=str(params.get("username", "") or ""),
+                              since=params.get("since") or None,
+                              until=params.get("until") or None))
 
 
 def _h_admin_change_password(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
