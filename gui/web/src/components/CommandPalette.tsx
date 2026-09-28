@@ -138,6 +138,9 @@ export default function CommandPalette() {
         e.preventDefault()
         const it = filtered[activeIndex]
         if (it) runItem(it)
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        setOpen(false)
       }
     }
     window.addEventListener('keydown', onKey)
