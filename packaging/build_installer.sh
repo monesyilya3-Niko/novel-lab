@@ -24,6 +24,16 @@ fi
 
 SHA=$(sha256sum "$PAYLOAD_ZIP" | cut -d' ' -f1)
 
+# 版本漂移守卫：传入版本应与 gui/__init__.py 的 canonical 版本一致，不一致仅警告
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+CANON_VER=""
+if [ -f "$REPO_ROOT/gui/__init__.py" ]; then
+    CANON_VER=$(sed -n 's/^__version__[[:space:]]*=[[:space:]]*["'"'"']\([^"'"'"']*\)["'"'"'].*/\1/p' "$REPO_ROOT/gui/__init__.py")
+fi
+if [ -n "$CANON_VER" ] && [ "$CANON_VER" != "$VERSION" ]; then
+    echo "警告: 传入版本 $VERSION 与 gui/__init__.py ($CANON_VER) 不一致，安装包版本可能漂移。" >&2
+fi
+
 # 替换占位符（保留模板末尾的 __PAYLOAD__ 标记行）
 sed -e "s/__VERSION__/$VERSION/" -e "s/__PAYLOAD_SHA256__/$SHA/" "$TEMPLATE" > "$OUTPUT"
 base64 "$PAYLOAD_ZIP" >> "$OUTPUT"

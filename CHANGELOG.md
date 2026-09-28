@@ -36,9 +36,17 @@
 - **前端竞态收官**：`AppContext.selectChapter` sequence guard、`ResultPanel` 请求序列守卫与切章批次归零、`SettingsWorkbench` 即时校验/交叉阈值校验/保存重置刷新、Quality/Writing 状态中文化、ErrorBoundary 重试恢复（vitest 51/51）。
 - E2E 旅程新增真 UI 一键分析链路（导入→选合法题材→一键分析→`/api/analyze/full` 200 + task_id）。
 - CI：E2E 改用 `scripts/e2e_isolated.sh`（禁止在 checkout 上直接起服务），并新增空库 onboarding 第二次独立隔离调用。
+- **安装器原子升级与自动回滚**（`packaging/installer_template.sh` 重写安装/升级/卸载流程）：
+  - 覆盖升级：payload SHA-256 校验 → staging 目录解压 → 旧安装整体 `mv` 到带时间戳备份（`${PREFIX}.bak-YYYYmmdd-HHMMSS`）→ staging 原子 `mv` 切换（同文件系统 rename）→ 用户数据目录（`gui_state`、`gui/state`、`corpus`、`reports`、`config`、`novel`、`prompts/generated`）从备份搬回，原样保留；
+  - 任一步失败或装后自检失败 → 自动回滚到备份并以非零退出码退出（数据目录先搬回备份再整体搬回，不丢数据）；
+  - 卸载：残留检查——升级备份默认保留并报告、中断安装遗留的 staging 孤儿目录自动清理、启动器残留复核；`--uninstall --clean-backups` 可一并清理备份；
+  - `/tmp` 隔离实测：全新安装→升级（8 类数据哨兵全保留）→自检失败自动回滚（代码/标记/数据还原）→篡改 payload 被 SHA-256 拦截（exit=1，旧安装 untouched）→卸载残留报告→`--clean-backups` 零残留。
+- **版本统一到 2.0.1**：`gui/__init__.py`（canonical 单一真相源）、前端顶栏显示、前端 `package.json`、Windows 安装器 `build/installer.iss`、AGENTS.md §7 实测口径、前端 `dist/` 重建（含新版号）；新增 `tests/test_version_consistency.py` 锁定各处版本号一致，防漂移（`gui/admin.py::VERSION` 为管理员子系统独立版本，有意排除在外，不统一）。
+- `packaging/build_installer.sh`：传入版本与 `gui/__init__.py` 不一致时打印警告。
+- `.githooks/pre-commit`：工作区补可执行位（此前工作区为 644 导致 hook 实际无法运行；提交索引中已为 100755，保持不变）。
 
 ### Verified
-- Python 1116 例全绿（3 跳过），ruff 全清，coverage 62%（`--fail-under=60`）。
+- Python 1155 例全绿（3 跳过）。ruff 与 coverage 本轮未重跑（环境无 ruff），不沿用旧断言。
 - tsc 全清，ESLint 0 警告/错误，vitest 51/51，`npm run build` 成功。
 - Playwright：普通模式 12/12（2 onboarding 按设计跳过）+ 空库模式 2/2，均为隔离服务实测。
 - 性能（隔离复测，`docs/internal/perf_2026-09-28.json`）：100MB 上传 RSS 峰值 431.5MB（旧 3092MB）；20 并发读 p99 1035.6ms（nearest-rank）；10 并发上传 10 本全入库；超限 413；模型超时熔断正常。
