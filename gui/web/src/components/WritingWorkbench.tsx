@@ -1,6 +1,7 @@
 // M2 写作工作台：三步向导（注入 → 写作 → 打分）+ 组装 Tab。
 import { useState, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -33,13 +34,16 @@ export default function WritingWorkbench() {
   const [tab, setTab] = useState(0)
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
         <Tab label="注入" />
         <Tab label="写作" />
         <Tab label="打分" />
         <Tab label="组装" />
         <Tab label="文风" />
       </Tabs>
+        <ContextHelpButton guideKey="writing" />
+      </Box>
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {tab === 0 && <InjectPanel />}
         {tab === 1 && <GeneratePanel />}

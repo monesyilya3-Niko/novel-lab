@@ -1,6 +1,7 @@
 // 管理员系统工作台：登录门禁 / 仪表盘 / 书库管理 / 资产管理 / 操作日志 / 安全设置。
 import { useState, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -270,6 +271,7 @@ function DashboardPanel() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">系统仪表盘</Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <ContextHelpButton guideKey="admin" title="查看管理后台指南" />
           <Chip size="small" label={`v${data.version}`} />
           <Chip size="small" label={`Python ${data.python}`} />
           <Button variant="outlined" size="small" onClick={load}>刷新</Button>

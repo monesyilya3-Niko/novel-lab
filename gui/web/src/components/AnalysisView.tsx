@@ -2,6 +2,7 @@
 // 左侧章节导航，右侧内容区（导入/进度/结果切换），底部控制栏。
 import { useState } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import ImportPanel from './ImportPanel'
@@ -56,6 +57,7 @@ export default function AnalysisView() {
             <Tab value="result" label="结果" sx={{ minHeight: 40 }} />
           </Tabs>
           <Box sx={{ flex: 1 }} />
+          <ContextHelpButton guideKey="analysis" title="查看拆书指南" />
           {/* 一键分析：直接在当前工作台内触发，完成后切到结果页（由 SSE done 自动刷新） */}
           <AnalysisControlBar onGoResult={() => setSubTab('result')} />
         </Box>

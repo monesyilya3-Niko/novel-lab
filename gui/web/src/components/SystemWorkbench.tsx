@@ -1,6 +1,7 @@
 // M5 系统与合规工作台：系统状态 / 版权合规 / 模型配置 / 设置。
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -17,12 +18,15 @@ export default function SystemWorkbench() {
   const [tab, setTab] = useState(0)
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
         <Tab label="系统状态" />
         <Tab label="版权合规" />
         <Tab label="模型配置" />
         <Tab label="设置" />
       </Tabs>
+        <ContextHelpButton guideKey="system" />
+      </Box>
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {tab === 0 && <SystemStatusPanel />}
         {tab === 1 && <CompliancePanel />}

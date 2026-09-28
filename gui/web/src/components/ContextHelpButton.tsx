@@ -2,7 +2,7 @@
 import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
-import { useApp } from '../state/AppContext'
+import { useAppOptional } from '../state/AppContext'
 
 interface ContextHelpButtonProps {
   /** 对应功能指南的 key（见 HelpWorkbench GUIDES），如 'analysis' */
@@ -11,13 +11,13 @@ interface ContextHelpButtonProps {
   title?: string
 }
 
-export default function ContextHelpButton({ title }: ContextHelpButtonProps) {
-  const { setWorkbench } = useApp()
+export default function ContextHelpButton({ guideKey, title }: ContextHelpButtonProps) {
+  // 单元测试中面板可能脱离 AppProvider 独立渲染，此时按钮静默不跳转。
+  const app = useAppOptional()
 
   const handleClick = () => {
-    // 跳转到帮助中心。HelpWorkbench 通过 initialAnchor 展开对应指南。
-    // 由于 AppContext 暂不支持传参，这里先跳转到帮助中心的功能指南页。
-    setWorkbench('help')
+    // 跳转到帮助中心「功能指南」页签，并直接展开对应指南。
+    app?.openHelp('guides', guideKey)
   }
 
   return (

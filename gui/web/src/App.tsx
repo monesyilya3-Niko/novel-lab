@@ -88,7 +88,7 @@ const WORKBENCH_ORDER: WorkbenchKey[] = [
 ]
 
 function AppShell() {
-  const { workbench, setWorkbench, overview, initError } = useApp()
+  const { workbench, setWorkbench, overview, initError, helpRequest, openHelp } = useApp()
   const wide = useMediaQuery('(min-width: 961px)')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [onboarded, setOnboarded] = useState(isOnboarded)
@@ -202,7 +202,13 @@ function AppShell() {
                 {workbench === 'system' && <SystemWorkbench />}
                 {workbench === 'settings' && <SettingsWorkbench />}
                 {workbench === 'admin' && <AdminWorkbench />}
-                {workbench === 'help' && <HelpWorkbench />}
+                {workbench === 'help' && (
+                  <HelpWorkbench
+                    key={helpRequest ? `help-${helpRequest.nonce}` : 'help-default'}
+                    initialTab={helpRequest?.tab ?? 'start'}
+                    initialAnchor={helpRequest?.anchor ?? null}
+                  />
+                )}
                 </WorkbenchTransition>
               </Suspense>
             </ErrorBoundary>
@@ -215,7 +221,7 @@ function AppShell() {
         <Tooltip title="帮助中心：术语、指南、工作流" placement="left">
           <Fab
             size="medium"
-            onClick={() => setWorkbench('help')}
+            onClick={() => openHelp('start', null)}
             aria-label="打开帮助中心"
             sx={{
               position: 'fixed',

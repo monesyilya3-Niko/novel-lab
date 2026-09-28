@@ -1,6 +1,7 @@
 // 导入面板：拖拽 / 选文件（txt），经 multipart 上传到后端。
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
@@ -159,9 +160,12 @@ function SampleList({ onImported }: { onImported: () => void }) {
   return (
     <Box sx={{ mt: 3 }}>
       <Divider sx={{ mb: 2 }} />
-      <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-        📦 内置示例语料 <Typography component="span" variant="caption" color="text.secondary">（新手试手，一键导入）</Typography>
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1 }}>
+          📦 内置示例语料 <Typography component="span" variant="caption" color="text.secondary">（新手试手，一键导入）</Typography>
+        </Typography>
+        <ContextHelpButton guideKey="analysis" title="查看导入与拆书指南" />
+      </Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {samples.map(s => (
           <Chip

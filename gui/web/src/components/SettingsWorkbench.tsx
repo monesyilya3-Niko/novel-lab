@@ -3,6 +3,7 @@
 // 保存成功后调用 refreshThresholds()，让 QC/写作面板即时用上新阈值。
 import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
@@ -189,7 +190,10 @@ export default function SettingsWorkbench() {
 
   return (
     <Box sx={{ maxWidth: 600 }}>
-      <Typography variant="h6" gutterBottom>系统设置</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Typography variant="h6" gutterBottom sx={{ flex: 1 }}>系统设置</Typography>
+        <ContextHelpButton guideKey="settings" />
+      </Box>
       {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 

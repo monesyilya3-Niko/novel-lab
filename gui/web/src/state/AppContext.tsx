@@ -30,6 +30,9 @@ interface AppState {
   // 阶段一：工作台 + 概览 + 拆书结果缓存
   workbench: WorkbenchKey
   setWorkbench: (k: WorkbenchKey) => void
+  // 帮助中心定向跳转：openHelp 直接打开帮助中心并定位到指定页签/指南
+  helpRequest: { tab: 'start' | 'glossary' | 'guides' | 'faq', anchor: string | null, nonce: number } | null
+  openHelp: (tab: 'start' | 'glossary' | 'guides' | 'faq', anchor?: string | null) => void
   overview: Overview | null
   refreshOverview: () => Promise<void>
   bookResults: BookResults | null
@@ -74,6 +77,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [workbench, setWorkbench] = useState<WorkbenchKey>('home')
   const [overview, setOverview] = useState<Overview | null>(null)
   const [bookResults, setBookResults] = useState<BookResults | null>(null)
+  // 帮助中心定向跳转（nonce 保证重复打开同一指南也能触发重新定位）。
+  const [helpRequest, setHelpRequest] = useState<{ tab: 'start' | 'glossary' | 'guides' | 'faq', anchor: string | null, nonce: number } | null>(null)
+  const helpNonce = useRef(0)
+  const openHelp = useCallback((tab: 'start' | 'glossary' | 'guides' | 'faq', anchor?: string | null) => {
+    helpNonce.current += 1
+    setHelpRequest({ tab, anchor: anchor ?? null, nonce: helpNonce.current })
+    setWorkbench('help')
+  }, [])
 
   const bookIdRef = useRef<string | null>(null)
 
@@ -247,6 +258,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       batchStates,
       workbench,
       setWorkbench,
+      helpRequest,
+      openHelp,
       overview,
       refreshOverview,
       bookResults,
@@ -268,6 +281,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       workbench, overview, bookResults,
       importBook, uploadBook, selectChapter, refreshStatus, startAnalysis, runFullAnalysis,
       pauseAnalysis, resumeAnalysis, retryFailed, refreshThresholds, refreshOverview, loadBookResults, refreshBookResults,
+      helpRequest, openHelp,
     ],
   )
 
@@ -278,4 +292,9 @@ export function useApp(): AppState {
   const ctx = useContext(AppContext)
   if (!ctx) throw new Error('useApp 必须在 AppProvider 内使用')
   return ctx
+}
+
+/** 可选版本：在 Provider 之外返回 null（供 ContextHelpButton 等在单元测试中独立渲染的组件使用）。 */
+export function useAppOptional(): AppState | null {
+  return useContext(AppContext)
 }

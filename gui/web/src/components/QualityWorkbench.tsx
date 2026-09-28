@@ -1,6 +1,7 @@
 // M3 质检工作台：检查 / 全书质检 / qc 三 Tab。
 import { useState, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -44,11 +45,14 @@ export default function QualityWorkbench() {
   const [tab, setTab] = useState(0)
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
         <Tab label="单章检查" />
         <Tab label="全书质检" />
         <Tab label="QC 综合" />
       </Tabs>
+        <ContextHelpButton guideKey="quality" />
+      </Box>
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {tab === 0 && <CheckPanel />}
         {tab === 1 && <BookQualityPanel />}

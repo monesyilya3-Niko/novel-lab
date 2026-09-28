@@ -1,6 +1,7 @@
 // 资产库（M4）：只读浏览 —— 分类树 + 详情 + 计数 + 分页。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -90,9 +91,12 @@ export default function AssetLibrary() {
 
   return (
     <Box sx={{ p: 3, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-        资产库
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+          资产库
+        </Typography>
+        <ContextHelpButton guideKey="assets" />
+      </Box>
 
       <Grid container spacing={2} sx={{ flex: 1, minHeight: 0 }}>
         {/* 分类树 + 列表 */}

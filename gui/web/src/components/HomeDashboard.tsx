@@ -2,6 +2,9 @@
 // 纸墨质感 + 衬线标题 + 交错入场动画 + 悬浮卡片。
 import { useState, useEffect, useMemo } from 'react'
 import Box from '@mui/material/Box'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -27,7 +30,7 @@ import { ink, fontStack, cardHover, stagger } from '../ink'
 import { useThemeMode } from '../state/ThemeModeContext'
 
 export default function HomeDashboard() {
-  const { overview, refreshOverview, setWorkbench } = useApp()
+  const { overview, refreshOverview, setWorkbench, openHelp } = useApp()
   const [loadError, setLoadError] = useState<unknown>(null)
   const { isDark } = useThemeMode()
 
@@ -92,6 +95,11 @@ export default function HomeDashboard() {
             </Typography>
           </Box>
           <Box sx={{ flex: 1 }} />
+          <Tooltip title="新手上路：从这里开始">
+            <IconButton size="small" onClick={() => openHelp('start', null)} aria-label="新手上路">
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Chip
             label={overview.modelConfigured ? '模型已配置' : '模型未配置'}
             color={overview.modelConfigured ? 'success' : 'warning'}
