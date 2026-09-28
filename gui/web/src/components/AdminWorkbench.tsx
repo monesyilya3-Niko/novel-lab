@@ -65,8 +65,11 @@ export default function AdminWorkbench() {
     try {
       const r = await adminApi.me()
       setMe({ username: r.username })
+      // 刷新页面后恢复强制改密状态（后端 /api/admin/me 返回 mustChangePassword）
+      setForceChangePw(!!r.mustChangePassword)
     } catch {
       setMe(null)
+      setForceChangePw(false)
     } finally {
       setChecking(false)
     }

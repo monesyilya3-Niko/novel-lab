@@ -38,6 +38,11 @@ SESSION_TTL_SECONDS = 12 * 3600
 _PBKDF2_ITERATIONS = 200_000
 _MAX_LOGIN_ATTEMPTS = 5
 _LOGIN_LOCK_SECONDS = 5 * 60
+# 防时序枚举的固定 dummy 值：用户名不存在/不匹配时仍执行同等成本 PBKDF2。
+# salt 固定 16 字节 0，hash 为固定 32 字节 0 的 hex（长度与真实 SHA-256 hex 一致，
+# 使 compare_digest 比较长度恒定）。
+_DUMMY_SALT = bytes(16)
+_DUMMY_HASH = bytes(32).hex()
 _MIN_PASSWORD_LEN = 8
 
 _STARTED_AT = time.time()
@@ -117,6 +122,12 @@ def ensure_initialized() -> str | None:
 # 会话
 # ---------------------------------------------------------------------------
 
+def needs_password_change(username: str) -> bool:
+    """该用户是否处于强制改密状态（首次登录/密码被重置后）。"""
+    with _lock:
+        data = _load_admin()
+    return bool(data) and data.get("username") == username and bool(data.get("must_change_password"))
+
 def _check_rate_limit(ip: str) -> None:
     now = time.time()
     # 顺带清理过期条目：防止失败不足 5 次的 IP 记录永久堆积。
@@ -144,12 +155,21 @@ def authenticate(username: str, password: str, ip: str) -> dict[str, Any]:
     with _lock:
         _check_rate_limit(ip)
         data = _load_admin()
-        ok = False
-        # 用户名也用常量时间比较，防时序攻击枚举账号名
-        if data and hmac.compare_digest(username, str(data.get("username", ""))):
-            salt = bytes.fromhex(data["salt"])
-            ok = hmac.compare_digest(
-                _hash_password(password, salt), data.get("password_hash", ""))
+        # 用户名用 UTF-8 bytes 常量时间比较（str 版 compare_digest 遇非 ASCII 会抛异常）。
+        # 无论用户名是否存在都执行同等成本的 PBKDF2：不存在时用固定 dummy salt/hash，
+        # 消除"用户存在 vs 不存在"的时序差异，防账号枚举。
+        if data:
+            username_ok = hmac.compare_digest(
+                username.encode("utf-8"), str(data.get("username", "")).encode("utf-8"))
+            salt = bytes.fromhex(data["salt"]) if username_ok else _DUMMY_SALT
+            expect_hash = data.get("password_hash", "") if username_ok else _DUMMY_HASH
+        else:
+            username_ok = False
+            salt, expect_hash = _DUMMY_SALT, _DUMMY_HASH
+        # 先算密码哈希（无论用户名对错都执行，避免短路跳过 PBKDF2），
+        # 再与用户名比较结果相与。
+        password_ok = hmac.compare_digest(_hash_password(password, salt), expect_hash)
+        ok = username_ok and password_ok
         if not ok:
             _record_failed_login(ip)
             audit(username or "-", ip, "admin.login.failed", "用户名或密码错误")

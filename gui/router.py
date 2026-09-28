@@ -516,8 +516,10 @@ def _admin_ctx(params: dict[str, Any]) -> tuple[str, str]:
 
 
 def _h_admin_me(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
     user, _ = _admin_ctx(params)
-    return ok({"loggedIn": True, "username": user})
+    return ok({"loggedIn": True, "username": user,
+               "mustChangePassword": admin.needs_password_change(user)})
 
 
 def _h_admin_dashboard(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:

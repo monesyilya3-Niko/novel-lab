@@ -393,3 +393,43 @@ class TestAdminAuditFilter(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMustChangePasswordGate(_AdminBase):
+    """强制改密状态机：needs_password_change + 改密后解除。"""
+
+    def test_needs_password_change_lifecycle(self):
+        pw = self._init()
+        # 首次初始化要求改密
+        self.assertTrue(admin.needs_password_change("admin"))
+        self.assertFalse(admin.needs_password_change("someone-else"))
+        # 登录返回改密标记
+        r = admin.authenticate("admin", pw, "127.0.0.1")
+        self.assertTrue(r["must_change_password"])
+        # 改密后解除
+        admin.change_password("admin", pw, "NewPass12345678", "127.0.0.1")
+        self.assertFalse(admin.needs_password_change("admin"))
+        r2 = admin.authenticate("admin", "NewPass12345678", "127.0.0.1")
+        self.assertFalse(r2["must_change_password"])
+
+
+class TestAuthenticateTimingAndUnicode(_AdminBase):
+    """登录时序与 Unicode：错误用户名也执行 PBKDF2；非 ASCII 用户名不抛异常。"""
+
+    def test_unicode_username_no_crash(self):
+        self._init()
+        # 非 ASCII 用户名不得抛 TypeError，一律 401
+        for bad_user in ("管理员", "admin\u00e9", "a" * 500, ""):
+            with self.assertRaises(ServiceError, msg=f"user={bad_user!r}"):
+                admin.authenticate(bad_user, "whatever", "127.0.0.1")
+
+    def test_wrong_username_still_costly(self):
+        """错误用户名也应执行完整 PBKDF2（用时间下界粗验，不做精确等值断言）。"""
+        import time
+        self._init()
+        t0 = time.monotonic()
+        with self.assertRaises(ServiceError):
+            admin.authenticate("nonexistent-user", "whatever", "127.0.0.1")
+        dt = time.monotonic() - t0
+        # 200k 轮 PBKDF2-SHA256 通常 > 50ms；若实现退化为直接返回会远小于此
+        self.assertGreater(dt, 0.05, f"错误用户名登录过快({dt:.3f}s)，疑似跳过 PBKDF2")

@@ -96,6 +96,16 @@ class _Handler(BaseHTTPRequestHandler):
                 self._admin_user = user
                 self._admin_sid = sid or ""
                 self._admin_ip = self.client_address[0]
+                # 强制改密网关：处于 must_change_password 状态时，只允许
+                # me（查询状态）/ logout（退出）/ change-password（改密），
+                # 其余管理接口一律 403，防止绕过改密直接调用管理 API。
+                if admin.needs_password_change(user) and path not in (
+                    "/api/admin/me",
+                    "/api/admin/logout",
+                    "/api/admin/change-password",
+                ):
+                    self._send_json(router.err(403, "请先修改初始密码"), 403)
+                    return False
                 # CSRF 防护：管理端写操作（POST/PUT/DELETE，登录除外）要求
                 # Origin/Referer 来自本机。浏览器 fetch 一定带 Origin；
                 # 无 Origin 的视为非浏览器客户端（curl 等），不受 CSRF 影响。
