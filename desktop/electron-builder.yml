@@ -13,7 +13,7 @@ extraResources:
       - "**/*"
 win:
   target:
-    - target: zip
+    - target: nsis
       arch: [x64]
   icon: build/icon.ico
   artifactName: 暮冬念春-Setup-${version}-win64.${ext}
@@ -27,4 +27,5 @@ nsis:
   shortcutName: 暮冬念春
   uninstallDisplayName: 暮冬念春
   # 未签名：Windows SmartScreen 会提示，属预期行为（个人分发无证书）。
-  # 注：Linux 下打 NSIS 安装器需 wine，本机构建改用 zip 便携版；要 NSIS 请在 Windows 上跑 npm run dist。
+  # 正式交付为 NSIS .exe 安装器（用户要求，禁用 zip 冒充安装器）。
+  # 注意：Linux 下打 NSIS 包需 wine；本机无 wine，安装器须在 Windows 上跑 npm run dist 构建。

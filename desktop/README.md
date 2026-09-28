@@ -7,7 +7,7 @@ Windows 桌面应用：Electron 原生窗口 + 内嵌 Python 后端（Windows em
 
 - `main.js` — 主进程：启动后端 → 解析服务 URL → 打开窗口 → 退出时回收后端
 - `package.json` — electron + electron-builder 依赖
-- `electron-builder.yml` — 打包配置（win zip 便携版；NSIS 需在 Windows 上构建，见下）
+- `electron-builder.yml` — 打包配置（win NSIS 安装器；须在 Windows 上构建，见下）
 - `build/` — 图标（icon.ico/png）、Python embeddable 原始包
 - `backend/` — 打包用的后端资源：`gui/`（含 web/dist）、`scripts/`、`python-win/`
 
@@ -19,8 +19,9 @@ npm install
 npm run dist        # 产物在 release/
 ```
 
-- Linux 上只能打 `zip` 便携版（NSIS/makensis 需 wine）。
-- 要 NSIS 安装器：在 Windows 机器上把 `electron-builder.yml` 的 `win.target` 改回 `nsis` 后跑 `npm run dist`。
+- 正式交付为 NSIS `.exe` 安装器（用户要求，禁用 zip 冒充安装器）。
+- 须在 Windows 机器上构建：Linux 下打 NSIS 包需 wine，本机无 wine。
+  在 Windows 上 `cd desktop && npm install && npm run dist`，产物在 `release/`。
 
 ## 运行逻辑
 
