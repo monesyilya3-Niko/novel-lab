@@ -39,6 +39,7 @@ from gui import config
 _conns: dict[int, sqlite3.Connection] = {}   # threading.get_ident() -> Connection
 _conns_lock = threading.Lock()
 _conn_path: Path | None = None             # 当前所有连接绑定的库路径
+_get_conn_calls: list[int] = [0]            # B3：死线程清理节流计数器
 
 
 def db_path() -> Path:
@@ -92,6 +93,10 @@ def get_conn() -> sqlite3.Connection:
         if _conn_path is not None and _conn_path != path:
             # STATE_ROOT 被切换（测试隔离场景）→ 丢弃全部旧连接
             _close_all_locked()
+        # B3：清理死线程的残留连接（每 50 次调用检查一次，避免每次枚举开销）。
+        _get_conn_calls[0] += 1
+        if _get_conn_calls[0] % 50 == 0:
+            _prune_dead_threads_locked()
         conn = _conns.get(tid)
         if conn is None:
             conn = _new_conn(path)
@@ -99,6 +104,22 @@ def get_conn() -> sqlite3.Connection:
             if _conn_path is None:
                 _conn_path = path
     return conn
+
+
+def _prune_dead_threads_locked() -> None:
+    """关闭已死亡线程的残留连接（B3：防止 fd/内存单调泄漏）。
+
+    调用方必须持有 _conns_lock。
+    """
+    live_idents = {t.ident for t in threading.enumerate() if t.ident is not None}
+    # 主线程的 ident 恒为 alive；当前线程也在 enumerate 内。
+    dead = [tid for tid in _conns if tid not in live_idents]
+    for tid in dead:
+        try:
+            _conns[tid].close()
+        except sqlite3.Error:
+            pass
+        del _conns[tid]
 
 
 def _reset_conn() -> None:

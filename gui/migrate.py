@@ -248,13 +248,39 @@ def backup() -> Path | None:
     return dst
 
 
+def _server_is_running() -> bool:
+    """检查 GUI server 是否正在运行（B2：防止 rollback 脑裂）。
+
+    读 config.LOCK_PATH 的 pid，用 gui.server 的存活判定；
+    锁存在且 pid 存活 → True。
+    """
+    from gui.server import _pid_is_alive, _read_lock_pid
+
+    lock_path = config.LOCK_PATH
+    if not lock_path.is_file():
+        return False
+    pid = _read_lock_pid(lock_path)
+    return pid is not None and _pid_is_alive(pid)
+
+
 def rollback() -> Path | None:
-    """从最新备份恢复 index.db（覆盖当前库），返回恢复的备份路径或 None。"""
+    """从最新备份恢复 index.db（覆盖当前库），返回恢复的备份路径或 None。
+
+    B1：恢复前校验备份完整性，恢复后校验线上库；任一步失败拒绝覆盖。
+    B2：server 运行时拒绝执行，防止跨进程脑裂。
+    """
+    if _server_is_running():
+        raise RuntimeError(
+            "GUI 服务正在运行，拒绝执行 rollback（会导致数据脑裂）。"
+            "请先停止服务后再试。"
+        )
     src = db.db_path()
     backups = sorted(src.parent.glob("index.db.bak-*"))
     if not backups:
         return None
     latest = backups[-1]
+    # B1：先校验备份，坏备份拒绝恢复。
+    db._verify_backup(latest)
     db.close()  # 先关闭连接，避免 Windows 文件锁。
     # 若当前库存在，先移除（连同 WAL/SHM）。
     for suffix in ("", "-wal", "-shm"):
@@ -262,6 +288,8 @@ def rollback() -> Path | None:
         if p.is_file():
             p.unlink(missing_ok=True)
     shutil.copy2(latest, src)
+    # B1：恢复后校验线上库。
+    db._verify_backup(src)
     # 重建连接指向恢复后的库（下次 get_conn 会因 _conn_path 已清空而重连）。
     db._reset_conn()
     return latest

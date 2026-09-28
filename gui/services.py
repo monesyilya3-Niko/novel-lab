@@ -427,6 +427,10 @@ def _run_analysis(book_id: str, genre: str, model_id: str | None, batch_size: in
         state["status"] = "error"
         state["last_error"] = str(exc)[:500]
         state_store.save_state(state)
+    finally:
+        # B7：任务结束清理 _runtime 条目，避免内存缓慢增长。
+        with _runtime_lock:
+            _runtime.pop(book_id, None)
 
 
 def _wait_if_paused(ctx: dict[str, Any]) -> None:

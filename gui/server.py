@@ -34,6 +34,10 @@ def _safe_upload_filename(name: str) -> str:
         raise ServiceError("文件名非法", 400)
     if not base.lower().endswith(".txt"):
         raise ServiceError("首版仅支持 .txt 导入", 400)
+    # B8：限制文件名长度（200 字符），超长时 400 拒绝，避免 book_id 过长
+    # 导致 gui_state 文件名超限（ext4 255 字节 / Windows MAX_PATH）。
+    if len(base) > 200:
+        raise ServiceError("文件名过长（最多 200 字符）", 400)
     return base
 
 

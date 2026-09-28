@@ -1,5 +1,5 @@
 // 资产库（M4）：只读浏览 —— 分类树 + 详情 + 计数 + 分页。
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
@@ -43,18 +43,24 @@ export default function AssetLibrary() {
   const [detail, setDetail] = useState<Record<string, unknown> | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
+  // B10/B11：序列守卫，防止旧响应覆盖新状态。
+  const loadSeq = useRef(0)
+  const detailSeq = useRef(0)
 
   const load = useCallback(async (k: AssetKind | null, p: number) => {
+    const seq = ++loadSeq.current
     setLoading(true)
     setError('')
     try {
       const res = await api.listAssets(k ?? undefined, (p - 1) * PAGE_SIZE, PAGE_SIZE)
+      if (seq !== loadSeq.current) return // 旧响应丢弃
       setItems(res.items)
       setTotal(res.total)
     } catch (e) {
+      if (seq !== loadSeq.current) return
       setError(friendlyError(e))
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
   }, [])
 
@@ -64,16 +70,19 @@ export default function AssetLibrary() {
   }, [kind, load])
 
   const onSelect = useCallback(async (item: AssetItem) => {
+    const seq = ++detailSeq.current
     setSelected(item)
     setDetailLoading(true)
     setDetail(null)
     try {
       const d = await api.getAssetDetail(item.kind, item.id)
+      if (seq !== detailSeq.current) return // 旧响应丢弃
       setDetail(d)
     } catch (e) {
+      if (seq !== detailSeq.current) return
       setDetail({ error: friendlyError(e) })
     } finally {
-      setDetailLoading(false)
+      if (seq === detailSeq.current) setDetailLoading(false)
     }
   }, [])
 

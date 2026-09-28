@@ -181,10 +181,13 @@ function createWindow() {
 }
 
 function stopBackend() {
+  app.quitting = true
   if (backend && !backend.killed) {
     try {
       if (process.platform === 'win32') {
-        spawn('taskkill', ['/pid', String(backend.pid), '/T', '/F'])
+        // B5：同步等待 taskkill 完成，避免后端变孤儿导致下次启动报"已在运行"。
+        const { spawnSync } = require('child_process')
+        spawnSync('taskkill', ['/pid', String(backend.pid), '/T', '/F'])
       } else {
         backend.kill('SIGTERM')
       }
@@ -204,6 +207,14 @@ app.whenReady().then(async () => {
   try {
     await startBackend()
     createWindow()
+    // B4：窗口创建后监听后端退出，崩溃时弹窗提示而非白屏卡死。
+    backend.on('exit', (code) => {
+      if (app.quitting) return
+      dialog.showErrorBox(
+        'xuan 后端已停止',
+        `后端服务意外退出（退出码 ${code}）。\n\n请重启应用恢复。如频繁出现，请联系开发者。`
+      )
+    })
   } catch (e) {
     dialog.showErrorBox(
       'xuan 启动失败',
