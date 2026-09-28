@@ -14,7 +14,6 @@ import DarkModeIcon from '@mui/icons-material/DarkMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import CircularProgress from '@mui/material/CircularProgress'
 import { AppProvider, useApp } from './state/AppContext'
 import { useThemeMode } from './state/ThemeModeContext'
 import { buildMuiTheme } from './theme'
@@ -23,6 +22,9 @@ import WorkbenchNav from './layout/WorkbenchNav'
 import type { WorkbenchKey } from './layout/WorkbenchNav'
 import ErrorBoundary from './components/ErrorBoundary'
 import OnboardingWizard, { isOnboarded } from './components/OnboardingWizard'
+import CommandPalette, { CommandPaletteTrigger } from './components/CommandPalette'
+import WorkbenchTransition from './components/WorkbenchTransition'
+import { DashboardSkeleton } from './components/SkeletonBlocks'
 
 // 4B：页面级组件 lazy 加载，主包只含框架 + 导航 + 主题
 const HomeDashboard = lazy(() => import('./components/HomeDashboard'))
@@ -39,8 +41,8 @@ const SIDEBAR_WIDTH = 220
 
 function LoadingFallback() {
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-      <CircularProgress />
+    <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+      <DashboardSkeleton />
     </Box>
   )
 }
@@ -157,6 +159,7 @@ function AppShell() {
           <Box sx={{ color: '#fff' }}>
             <ModeToggle />
           </Box>
+          <CommandPaletteTrigger />
         </Toolbar>
       </AppBar>
 
@@ -186,6 +189,7 @@ function AppShell() {
           <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback />}>
+                <WorkbenchTransition key={workbench}>
                 {workbench === 'home' && <HomeDashboard />}
                 {workbench === 'analysis' && <AnalysisView />}
                 {workbench === 'assets' && <AssetLibrary />}
@@ -195,11 +199,13 @@ function AppShell() {
                 {workbench === 'system' && <SystemWorkbench />}
                 {workbench === 'settings' && <SettingsWorkbench />}
                 {workbench === 'admin' && <AdminWorkbench />}
+                </WorkbenchTransition>
               </Suspense>
             </ErrorBoundary>
           </Box>
         </Box>
       </Box>
+      <CommandPalette />
     </Box>
   )
 }
