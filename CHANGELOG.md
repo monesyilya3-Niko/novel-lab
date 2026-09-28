@@ -2,6 +2,26 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-28（企业出版级第四轮：安全审计 + 测试补强 + 性能）
+
+### Security
+- 修复 `get_book_results` book_id 未校验（路径穿越/文件探测）。
+- 修复 `export_book_for_platform` book_dir 未约束在项目根。
+- 修复 CORS 放行 `Origin: null`。
+- 修复 `distill_status` genre 拼入 glob（加白名单）。
+- 修复 secrets 文件先写后 chmod 的 TOCTOU 窗口（改用 os.open 0o600 原子创建）。
+
+### Added
+- **ECharts 懒加载**：BarChart/RadarChart/PieChart/BaseChart 改 React.lazy，echarts 604KB 拆为独立 chunk 按需加载。
+- **E2E 用户旅程**（2 例，隔离服务实测）：分析页上传导入→书入库；未选题材时一键分析禁用。
+- **纯函数测试补强**（89 例）：batch/normalize/report/assemble/inject/model_service 校验。
+
+### Verified
+- Python 1069 例全绿（3 跳过），ruff 全清，coverage 61%。
+- tsc 全清，ESLint 0 警告，vitest 40/40，Playwright 冒烟 4/4 + 旅程 2/2。
+- 性能：20 并发平均 10-115ms；3.6MB 文件上传导入 1.5s。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
 ## [Unreleased] - 2026-09-28（企业级整改第三轮：原子发布 + 竞态彻底关闭 + P2 polish）
 
 ### Added
