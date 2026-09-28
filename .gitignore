@@ -69,3 +69,4 @@ build/dist/
 
 # 第三方参考技能（上游无 LICENSE 文件，不入 MIT 仓库；本地留存自用）
 reference/oh-story-claudecode/
+.coverage
