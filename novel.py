@@ -41,6 +41,32 @@ def run_script(name: str, args: list) -> int:
     return subprocess.call(cmd)
 
 
+def publish_reports_atomically(srcs, reports_dir) -> list:
+    """原子发布：多个报告文件要么全部搬入 reports_dir，要么一个都不进。
+
+    中途任一 move 失败时，已搬入的文件会被回滚删除（忽略回滚中的 OSError），
+    然后原异常继续向上传播。调用方负责清理 staging 目录。
+
+    返回已搬入的目标路径列表。
+    """
+    moved = []
+    try:
+        for src in srcs:
+            src = Path(src)
+            if src.exists():
+                dst = Path(reports_dir) / src.name
+                shutil.move(str(src), str(dst))
+                moved.append(dst)
+    except Exception:
+        for dst in moved:
+            try:
+                dst.unlink()
+            except OSError:
+                pass
+        raise
+    return moved
+
+
 def resolve_book_src(book: str) -> Path:
     """把「书名」或路径解析为语料文件。
 
@@ -315,20 +341,7 @@ def main():
                 sys.exit(1)
             print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
             # 原子发布：两份报告要么全进 reports/，要么全不进；中途失败回滚已搬入的。
-            _moved: list[Path] = []
-            try:
-                for _src in (book_out, craft_out):
-                    if _src.exists():
-                        _dst = ROOT / "reports" / _src.name
-                        shutil.move(str(_src), str(_dst))
-                        _moved.append(_dst)
-            except Exception:
-                for _dst in _moved:
-                    try:
-                        _dst.unlink()
-                    except OSError:
-                        pass
-                raise
+            publish_reports_atomically((book_out, craft_out), ROOT / "reports")
         finally:
             shutil.rmtree(staging, ignore_errors=True)
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）

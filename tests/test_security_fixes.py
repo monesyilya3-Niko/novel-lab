@@ -85,16 +85,19 @@ class TestDistillStatusWhitelist(unittest.TestCase):
 class TestSecretStorePerms(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_file_created_0600(self):
+        """调用生产函数 save_secrets，落盘文件必须为 0o600（无先写后chmod窗口）。"""
+        import sys
         import tempfile
 
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+        from secret_store import save_secrets, load_secrets
+
         with tempfile.TemporaryDirectory() as td:
-            # 直接测底层写入逻辑：用 os.open 建文件应为 0o600
-            p = Path(td) / "s.json"
-            fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-            with os.fdopen(fd, "w") as f:
-                f.write("{}")
+            p = save_secrets({"k": "v"}, Path(td))
             mode = oct(p.stat().st_mode & 0o777)
             self.assertEqual(mode, "0o600")
+            # 回读一致，证明写入路径就是被测的生产路径
+            self.assertEqual(load_secrets(Path(td)), {"k": "v"})
 
 
 if __name__ == "__main__":
