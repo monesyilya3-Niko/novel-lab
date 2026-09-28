@@ -14,6 +14,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import SettingsIcon from '@mui/icons-material/Settings'
 import TuneIcon from '@mui/icons-material/Tune'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
 export type WorkbenchKey =
   | 'home'
@@ -24,6 +25,7 @@ export type WorkbenchKey =
   | 'advanced'
   | 'system'
   | 'settings'
+  | 'admin'
 
 export interface WorkbenchNavItem {
   key: WorkbenchKey
@@ -42,6 +44,7 @@ const NAV_ITEMS: WorkbenchNavItem[] = [
   { key: 'advanced', label: '高级', icon: <AutoAwesomeIcon /> },
   { key: 'system', label: '系统', icon: <TuneIcon /> },
   { key: 'settings', label: '设置', icon: <SettingsIcon /> },
+  { key: 'admin', label: '管理后台', icon: <AdminPanelSettingsIcon /> },
 ]
 
 export interface WorkbenchNavProps {

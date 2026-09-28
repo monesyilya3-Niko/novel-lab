@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
-from gui import auto_backup, config, db, router, services
+from gui import admin, auto_backup, config, db, router, services
 from gui.logging_setup import get_logger, setup_logging
 from gui.services import ServiceError
 from gui.sse import broker
@@ -68,18 +68,39 @@ class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     # ------------------------------------------------------------------
-    def _check_auth(self) -> bool:
-        """NOVEL_LAB_TOKEN 启用时校验 /api/* 的访问令牌；拒绝时已回 401。
+    def _get_cookie(self, name: str) -> str | None:
+        """从 Cookie 请求头解析单个 cookie 值。"""
+        raw = self.headers.get("Cookie", "")
+        for part in raw.split(";"):
+            part = part.strip()
+            if not part or "=" not in part:
+                continue
+            k, v = part.split("=", 1)
+            if k.strip() == name:
+                return unquote(v.strip())
+        return None
 
-        支持两种凭证：X-Auth-Token 请求头（常规 fetch）；?auth= 查询参数
-        （仅 EventSource 场景需要）。比较用 hmac.compare_digest 防时序侧信道。
-        静态壳（index.html/assets）不设防——数据全部经 /api/* 流动。
+    def _check_auth(self) -> bool:
+        """鉴权总闸。
+
+        /api/admin/* 走管理员会话（Cookie），其中 /api/admin/login 豁免
+        （有独立的登录频率限制）；其余 /api/* 走既有的 NOVEL_LAB_TOKEN 机制。
         """
+        path = unquote(urlparse(self.path).path)
+        if path == "/api/admin/login":
+            return True
+        if path == "/api/admin" or path.startswith("/api/admin/"):
+            user = admin.get_session_user(self._get_cookie(admin.SESSION_COOKIE))
+            if user:
+                self._admin_user = user
+                self._admin_ip = self.client_address[0]
+                return True
+            self._send_json(router.err(401, "管理员未登录"), 401)
+            return False
         token = config.API_TOKEN
         if not token:
             auto_backup.daily_backup_if_due()
             return True
-        path = unquote(urlparse(self.path).path)
         if not (path == "/api" or path.startswith("/api/")):
             return True
         supplied = self.headers.get("X-Auth-Token", "")
@@ -98,6 +119,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
 
         # SSE 长连接
         if path == "/api/events":
@@ -131,7 +153,14 @@ class _Handler(BaseHTTPRequestHandler):
             # P0-3：浏览器文件上传导入（multipart），不走 JSON body。
             self._handle_import_upload()
             return
+        if path == "/api/admin/login":
+            self._handle_admin_login()
+            return
+        if path == "/api/admin/logout":
+            self._handle_admin_logout()
+            return
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
 
         try:
             body = router.read_body(self)
@@ -152,6 +181,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
         try:
             body = router.read_body(self)
             payload, _ = router.dispatch("PUT", path, body, query)
@@ -171,6 +201,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
         try:
             payload, _ = router.dispatch("DELETE", path, {}, query)
             if payload is not None:
@@ -181,6 +212,46 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
             self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+
+    # ------------------------------------------------------------------
+    # 管理员登录 / 登出（Cookie 会话，需在 router 分发前处理 Set-Cookie）
+    # ------------------------------------------------------------------
+    def _session_cookie_header(self, session_id: str | None) -> dict[str, str]:
+        if session_id is None:
+            value = f"{admin.SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+        else:
+            value = (f"{admin.SESSION_COOKIE}={session_id}; Path=/; HttpOnly; "
+                     f"SameSite=Lax; Max-Age={admin.SESSION_TTL_SECONDS}")
+        return {"Set-Cookie": value}
+
+    def _handle_admin_login(self) -> None:
+        ip = self.client_address[0]
+        try:
+            body = router.read_body(self)
+            username = str((body or {}).get("username", "")).strip()
+            password = str((body or {}).get("password", ""))
+            result = admin.authenticate(username, password, ip)
+        except ServiceError as exc:
+            self._send_json(router.err(exc.code, exc.message), exc.code)
+            return
+        except Exception as exc:  # noqa: BLE001
+            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            return
+        self._send_json(
+            router.ok({"username": result["username"],
+                       "mustChangePassword": result["must_change_password"]}),
+            200, self._session_cookie_header(result["session_id"]))
+
+    def _handle_admin_logout(self) -> None:
+        admin.logout(self._get_cookie(admin.SESSION_COOKIE), self.client_address[0])
+        self._send_json(router.ok({"loggedOut": True}), 200,
+                        self._session_cookie_header(None))
+
+    def _inject_admin_ctx(self, path: str, query: dict[str, Any]) -> None:
+        """给 /api/admin/* 路由注入管理员上下文（用户名/IP），供 handler 审计用。"""
+        if path == "/api/admin" or path.startswith("/api/admin/"):
+            query["_admin_user"] = getattr(self, "_admin_user", "")
+            query["_admin_ip"] = getattr(self, "_admin_ip", "")
 
     # ------------------------------------------------------------------
     def _is_same_host_origin(self, origin: str) -> bool:
@@ -229,11 +300,14 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc:  # noqa: BLE001
             self._send_json(router.err(500, f"内部错误: {exc}"), 500)
 
-    def _send_json(self, payload: dict, status: int = 200) -> None:
+    def _send_json(self, payload: dict, status: int = 200,
+                   extra_headers: dict[str, str] | None = None) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
         # 【修复 M8】不再无条件返回 `Access-Control-Allow-Origin: *`。
         # 本服务绑定 127.0.0.1 且无任何鉴权；通配 CORS 会让任意网站在用户浏览器里
         # 读取本服务响应（/api/import 会回吐整书正文），构成**本地文件外泄**。
@@ -624,6 +698,14 @@ class GuiServer:
 
         # 自动备份：启动时一次（每日备份由请求闸点触发，见 auto_backup）
         auto_backup.startup_backup()
+
+        # 管理员系统：首次启动生成随机初始密码（只打印一次）。
+        initial_pw = admin.ensure_initialized()
+        if initial_pw:
+            _log.warning("=" * 60)
+            _log.warning("管理员初始账号已创建：用户名 admin / 初始密码 %s", initial_pw)
+            _log.warning("请立即登录管理后台修改密码（该密码仅显示一次）。")
+            _log.warning("=" * 60)
 
         # W15/D3：启动自清理 scratch 残留
         try:

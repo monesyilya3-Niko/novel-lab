@@ -32,6 +32,7 @@ const QualityWorkbench = lazy(() => import('./components/QualityWorkbench'))
 const SystemWorkbench = lazy(() => import('./components/SystemWorkbench'))
 const AdvancedWorkbench = lazy(() => import('./components/AdvancedWorkbench'))
 const SettingsWorkbench = lazy(() => import('./components/SettingsWorkbench'))
+const AdminWorkbench = lazy(() => import('./components/AdminWorkbench'))
 
 const SIDEBAR_WIDTH = 220
 
@@ -77,7 +78,7 @@ export default function App() {
 }
 
 const WORKBENCH_ORDER: WorkbenchKey[] = [
-  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings',
+  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings', 'admin',
 ]
 
 function AppShell() {
@@ -86,7 +87,7 @@ function AppShell() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [onboarded, setOnboarded] = useState(isOnboarded)
 
-  // 键盘快捷键：Alt+1..8 切换工作台（输入框聚焦时不劫持）
+  // 键盘快捷键：Alt+1..9 切换工作台（输入框聚焦时不劫持）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey) return
@@ -172,6 +173,7 @@ function AppShell() {
                 {workbench === 'quality' && <QualityWorkbench />}
                 {workbench === 'system' && <SystemWorkbench />}
                 {workbench === 'settings' && <SettingsWorkbench />}
+                {workbench === 'admin' && <AdminWorkbench />}
               </Suspense>
             </ErrorBoundary>
           </Box>

@@ -506,6 +506,89 @@ def _h_asset_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, 
 
 
 # ---------------------------------------------------------------------------
+# 管理员系统（/api/admin/*）：会话鉴权由 server 层完成，此处只做业务分发。
+# 上下文经 query 注入：_admin_user / _admin_ip。
+# ---------------------------------------------------------------------------
+
+def _admin_ctx(params: dict[str, Any]) -> tuple[str, str]:
+    return (str(params.get("_admin_user", "") or ""),
+            str(params.get("_admin_ip", "") or "-"))
+
+
+def _h_admin_me(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    user, _ = _admin_ctx(params)
+    return ok({"loggedIn": True, "username": user})
+
+
+def _h_admin_dashboard(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
+    return ok(admin.get_dashboard())
+
+
+def _h_admin_books(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import state_store
+    out = []
+    for b in state_store.list_books_summary():
+        book_id = b.get("book_id", "")
+        try:
+            detail = services.get_book(book_id)
+            total = detail.get("totalChapters", 0)
+        except Exception:  # noqa: BLE001
+            total = 0
+        out.append({
+            "bookId": book_id,
+            "title": b.get("title", ""),
+            "status": b.get("status", "idle"),
+            "totalChapters": total,
+            "doneBatches": b.get("done", 0),
+        })
+    return ok(out)
+
+
+def _h_admin_book_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
+    user, ip = _admin_ctx(params)
+    return ok(admin.delete_book(params["book_id"], user, ip))
+
+
+def _h_admin_assets(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    kind = params.get("kind") or None
+    genre = params.get("genre") or None
+    return ok(services.list_assets(kind=kind, genre=genre))
+
+
+def _h_admin_asset_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin, advanced_service
+    user, ip = _admin_ctx(params)
+    result = advanced_service.delete_asset(params["kind"], params["asset_id"])
+    admin.audit(user, ip, "admin.asset.delete",
+                f"{params['kind']}:{params['asset_id']}")
+    return ok(result)
+
+
+def _h_admin_reports(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.list_reports())
+
+
+def _h_admin_audit(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
+    try:
+        limit = int(params.get("limit", 100))
+    except (TypeError, ValueError):
+        limit = 100
+    return ok(admin.read_audit(limit))
+
+
+def _h_admin_change_password(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
+    user, ip = _admin_ctx(params)
+    b = body or {}
+    admin.change_password(user, str(b.get("oldPassword", "")),
+                          str(b.get("newPassword", "")), ip)
+    return ok({"changed": True})
+
+
+# ---------------------------------------------------------------------------
 # 路由表
 # ---------------------------------------------------------------------------
 
@@ -586,6 +669,16 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/platform/check$"), _h_check_compliance),
     ("POST", re.compile(r"^/api/platform/format$"), _h_format_chapter),
     ("POST", re.compile(r"^/api/platform/export$"), _h_export_book),
+    # 管理员系统（会话鉴权由 server 层 _check_auth 完成；login 由 server 直接处理）
+    ("GET", re.compile(r"^/api/admin/me$"), _h_admin_me),
+    ("GET", re.compile(r"^/api/admin/dashboard$"), _h_admin_dashboard),
+    ("GET", re.compile(r"^/api/admin/books$"), _h_admin_books),
+    ("DELETE", re.compile(r"^/api/admin/books/(?P<book_id>[^/]+)$"), _h_admin_book_delete),
+    ("GET", re.compile(r"^/api/admin/assets$"), _h_admin_assets),
+    ("DELETE", re.compile(r"^/api/admin/assets/(?P<kind>[^/]+)/(?P<asset_id>[^/]+)$"), _h_admin_asset_delete),
+    ("GET", re.compile(r"^/api/admin/reports$"), _h_admin_reports),
+    ("GET", re.compile(r"^/api/admin/audit$"), _h_admin_audit),
+    ("POST", re.compile(r"^/api/admin/change-password$"), _h_admin_change_password),
 ]
 
 

@@ -493,3 +493,58 @@ export const platformApi = {
   export: (body: { platform_id: string; book_dir: string }) =>
     post<Record<string, unknown>>('/platform/export', body),
 }
+
+// 管理员系统
+export interface AdminMe {
+  loggedIn: boolean
+  username: string
+}
+export interface AdminDashboard {
+  version: string
+  python: string
+  startedAt: string
+  uptimeSeconds: number
+  books: {
+    total: number
+    analyzing: number
+    items: { bookId: string; title: string; status: string; totalChapters: number }[]
+  }
+  assetsTotal: number
+  reportsTotal: number
+  assetsByKind: Record<string, number>
+  diskBytes: Record<string, number>
+  diskTotalBytes: number
+}
+export interface AdminBookSummary {
+  bookId: string
+  title: string
+  status: string
+  totalChapters: number
+  doneBatches?: number
+  totalBatches?: number
+}
+export interface AdminAuditEntry {
+  ts: string
+  username: string
+  ip: string
+  action: string
+  detail: string
+}
+
+export const adminApi = {
+  me: () => get<AdminMe>('/admin/me'),
+  login: (username: string, password: string) =>
+    post<{ username: string; mustChangePassword: boolean }>('/admin/login', { username, password }),
+  logout: () => post<{ loggedOut: boolean }>('/admin/logout', {}),
+  dashboard: () => get<AdminDashboard>('/admin/dashboard'),
+  books: () => get<AdminBookSummary[]>('/admin/books'),
+  deleteBook: (bookId: string) => del<{ bookId: string; removed: string[] }>(`/admin/books/${encodeURIComponent(bookId)}`),
+  assets: (kind?: string) =>
+    get<AssetListResult>(`/admin/assets${kind ? `?kind=${encodeURIComponent(kind)}` : ''}`),
+  deleteAsset: (kind: string, id: string) =>
+    del<Record<string, unknown>>(`/admin/assets/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`),
+  reports: () => get<ReportItem[]>('/admin/reports'),
+  audit: (limit = 100) => get<AdminAuditEntry[]>(`/admin/audit?limit=${limit}`),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    post<{ changed: boolean }>('/admin/change-password', { oldPassword, newPassword }),
+}

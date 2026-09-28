@@ -2,6 +2,22 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [Unreleased] - 2026-09-28（管理员系统）
+
+### Added
+- **管理员系统**：单管理员账号（PBKDF2-HMAC-SHA256 200k 轮 + 随机盐），首次启动生成随机初始密码（服务端日志一次性显示）。
+- 管理员会话：`HttpOnly; SameSite=Lax` Cookie（`nl_admin_session`），服务端内存表，12 小时有效期；同 IP 连续 5 次失败锁定 5 分钟。
+- 管理后台前端（`Alt+9`）：仪表盘、书库管理、资产管理、审计日志、修改密码、退出登录。
+- 管理员删书：仅限 corpus 内原文、状态文件、资产目录、SQLite 相关行；analyzing 状态 409 拒绝；非法 book_id 400；corpus 外 source_path 跳过不删。
+- 审计日志（JSONL）：登录/登出/删书/改密等关键操作全记录。
+- API：`POST /api/admin/login|logout`、`GET /api/admin/me|dashboard|books|assets|reports|audit`、`DELETE /api/admin/books/{id}`、`DELETE /api/admin/assets/{kind}/{id}`、`POST /api/admin/change-password`（前后端统一驼峰命名）。
+
+### Verified
+- Python 1129 例全绿（3 跳过，含新增 `tests/test_admin.py` 12 例），ruff 全清，coverage 62%（`--fail-under=60`）。
+- tsc 全清，ESLint 0 警告/错误，`npm run build` 成功。
+- 真机 HTTP 冒烟 23/23：未登录 401、登录/限流/Cookie、仪表盘、书库/资产/报告/审计、导入→删除→磁盘验证、改密吊销旧会话、新密码登录、退出、审计链完整。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
 ## [Unreleased] - 2026-09-28（企业出版级第六轮：上传内存治理 + 前端竞态收官 + 空库 Onboarding）
 
 ### Fixed
