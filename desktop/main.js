@@ -34,7 +34,7 @@ if (!gotLock) {
 }
 
 function parseUrlFromOutput(text) {
-  const m = /\[GUI\] novel-lab 书籍分析服务已启动:\s*(http:\/\/[^\s]+)/.exec(text)
+  const m = /\[GUI\] xuan 服务已启动:\s*(http:\/\/[^\s]+)/.exec(text)
   return m ? m[1].replace(/\/$/, '') : null
 }
 
@@ -62,10 +62,12 @@ function startBackend() {
   return new Promise((resolve, reject) => {
     let out = ''
     try {
-      backend = spawn(PYTHON_EXE, ['gui/launch.py', '--no-browser'], {
+      backend = spawn(PYTHON_EXE, ['-u', 'gui/launch.py', '--no-browser'], {
         cwd: BACKEND_DIR,
         windowsHide: true,
-        env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+        // PYTHONUNBUFFERED=1：Windows 管道下 stdout 块缓冲会导致启动 URL
+        // 长时间刷不出来，-u 与环境变量双保险。
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUNBUFFERED: '1' },
       })
     } catch (e) {
       return reject(e)
@@ -108,6 +110,15 @@ function createWindow() {
   mainWindow.loadURL(backendUrl + '/')
   mainWindow.once('ready-to-show', () => mainWindow.show())
   // 外部链接用系统浏览器打开，不在应用窗口内跳转。
+  // setWindowOpenHandler 只拦截 window.open() 弹窗；will-navigate 拦截
+  // 同窗口导航（链接点击、重定向、location.href），否则外部页面会在
+  // 应用窗口内加载。
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith(backendUrl)) {
+      event.preventDefault()
+      shell.openExternal(url)
+    }
+  })
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (!url.startsWith(backendUrl)) {
       shell.openExternal(url)
@@ -144,7 +155,7 @@ app.whenReady().then(async () => {
     createWindow()
   } catch (e) {
     dialog.showErrorBox(
-      'novel-lab 启动失败',
+      'xuan 启动失败',
       `后端服务未能启动：\n${e.message}\n\n请尝试重新安装，或联系开发者。`
     )
     stopBackend()
