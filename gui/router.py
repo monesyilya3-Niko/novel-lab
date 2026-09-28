@@ -592,7 +592,8 @@ def _h_admin_change_password(params: dict[str, Any], body: dict[str, Any]) -> di
 
 def _h_admin_sessions(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import admin
-    return ok(admin.list_sessions())
+    current_sid = str(params.get("_admin_sid", "") or "")
+    return ok(admin.list_sessions(current_sid))
 
 
 def _h_admin_session_revoke(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:

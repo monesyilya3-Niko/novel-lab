@@ -90,9 +90,11 @@ class _Handler(BaseHTTPRequestHandler):
         if path == "/api/admin/login":
             return True
         if path == "/api/admin" or path.startswith("/api/admin/"):
-            user = admin.get_session_user(self._get_cookie(admin.SESSION_COOKIE))
+            sid = self._get_cookie(admin.SESSION_COOKIE)
+            user = admin.get_session_user(sid)
             if user:
                 self._admin_user = user
+                self._admin_sid = sid or ""
                 self._admin_ip = self.client_address[0]
                 # CSRF 防护：管理端写操作（POST/PUT/DELETE，登录除外）要求
                 # Origin/Referer 来自本机。浏览器 fetch 一定带 Origin；
@@ -256,9 +258,10 @@ class _Handler(BaseHTTPRequestHandler):
                         self._session_cookie_header(None))
 
     def _inject_admin_ctx(self, path: str, query: dict[str, Any]) -> None:
-        """给 /api/admin/* 路由注入管理员上下文（用户名/IP），供 handler 审计用。"""
+        """给 /api/admin/* 路由注入管理员上下文（用户名/会话ID/IP），供 handler 审计用。"""
         if path == "/api/admin" or path.startswith("/api/admin/"):
             query["_admin_user"] = getattr(self, "_admin_user", "")
+            query["_admin_sid"] = getattr(self, "_admin_sid", "")
             query["_admin_ip"] = getattr(self, "_admin_ip", "")
 
     # ------------------------------------------------------------------

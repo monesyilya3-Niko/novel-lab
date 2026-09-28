@@ -187,8 +187,9 @@ def logout(session_id: str | None, ip: str = "-") -> None:
         audit(sess["username"], ip, "admin.logout", "退出登录")
 
 
-def list_sessions() -> list[dict[str, Any]]:
-    """列出当前有效会话（token 只展示前 8 位前缀，不可用于鉴权）。"""
+def list_sessions(current_sid: str = "") -> list[dict[str, Any]]:
+    """列出当前有效会话（token 只展示前 8 位前缀，不可用于鉴权）。
+    current_sid 匹配的会话标记 current=True，前端用于标识"当前会话"。"""
     now = time.time()
     out = []
     with _lock:
@@ -198,6 +199,7 @@ def list_sessions() -> list[dict[str, Any]]:
         for sid, s in _sessions.items():
             out.append({
                 "id": sid[:8],
+                "current": bool(current_sid and sid == current_sid),
                 "username": s["username"],
                 "ip": s["ip"],
                 "createdAt": datetime.fromtimestamp(s["created_at"], tz=timezone.utc).isoformat(timespec="seconds"),

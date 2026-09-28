@@ -226,6 +226,14 @@ class TestAdminSessions(unittest.TestCase):
             self.assertEqual(len(s["id"]), 8)
             self.assertNotIn(r1["session_id"], s["id"])
             self.assertIn("createdAt", s)
+        # current 标记：传入当前会话 ID 则对应条目标记 True，其余 False
+        marked = admin.list_sessions(current_sid=r1["session_id"])
+        by_id = {s["id"]: s for s in marked}
+        self.assertTrue(by_id[r1["session_id"][:8]]["current"])
+        self.assertFalse(by_id[r2["session_id"][:8]]["current"])
+        # 不传 current_sid 则全部 False（向后兼容）
+        for s in admin.list_sessions():
+            self.assertFalse(s["current"])
         # 吊销其中一个
         admin.revoke_session(sessions[0]["id"], "admin", "127.0.0.1")
         self.assertEqual(len(admin.list_sessions()), 1)

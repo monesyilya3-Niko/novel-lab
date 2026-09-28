@@ -31,6 +31,7 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import {
   adminApi,
   friendlyError,
+  onAdminUnauthorized,
   ApiError,
   type AdminDashboard,
   type AdminBookSummary,
@@ -55,6 +56,7 @@ function fmtUptime(seconds: number): string {
 export default function AdminWorkbench() {
   const [me, setMe] = useState<{ username: string } | null>(null)
   const [checking, setChecking] = useState(true)
+  const [forceChangePw, setForceChangePw] = useState(false)
 
   const checkMe = useCallback(async () => {
     setChecking(true)
@@ -70,6 +72,15 @@ export default function AdminWorkbench() {
 
   useEffect(() => { checkMe() }, [checkMe])
 
+  // 会话失效（401）自动回登录页
+  useEffect(() => {
+    onAdminUnauthorized(() => {
+      setMe(null)
+      setForceChangePw(false)
+    })
+    return () => onAdminUnauthorized(null)
+  }, [])
+
   if (checking) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
@@ -78,28 +89,26 @@ export default function AdminWorkbench() {
     )
   }
 
-  if (!me) return <LoginForm onDone={checkMe} />
-  return <AdminPanels username={me.username} onLogout={() => setMe(null)} />
+  if (!me) return <LoginForm onDone={(mustChange) => { checkMe(); if (mustChange) setForceChangePw(true) }} />
+  return <AdminPanels username={me.username} onLogout={() => setMe(null)} forceChangePw={forceChangePw} clearForceChangePw={() => setForceChangePw(false)} />
 }
 
 // ---------------------------------------------------------------------------
 // 登录
 // ---------------------------------------------------------------------------
 
-function LoginForm({ onDone }: { onDone: () => void }) {
+function LoginForm({ onDone }: { onDone: (mustChange: boolean) => void }) {
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [mustChange, setMustChange] = useState(false)
 
   const submit = async () => {
     setError('')
     setBusy(true)
     try {
       const r = await adminApi.login(username.trim(), password)
-      if (r.mustChangePassword) setMustChange(true)
-      onDone()
+      onDone(!!r.mustChangePassword)
     } catch (e) {
       setError(friendlyError(e))
     } finally {
@@ -114,7 +123,6 @@ function LoginForm({ onDone }: { onDone: () => void }) {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           后台管理仅限本机访问。首次启动的初始密码见服务端控制台日志。
         </Typography>
-        {mustChange && <Alert severity="warning" sx={{ mb: 2 }}>请登录后立即修改初始密码。</Alert>}
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <TextField
           fullWidth label="用户名" value={username} disabled={busy}
@@ -137,8 +145,15 @@ function LoginForm({ onDone }: { onDone: () => void }) {
 // 管理面板
 // ---------------------------------------------------------------------------
 
-function AdminPanels({ username, onLogout }: { username: string; onLogout: () => void }) {
-  const [tab, setTab] = useState(0)
+function AdminPanels({ username, onLogout, forceChangePw, clearForceChangePw }: {
+  username: string
+  onLogout: () => void
+  forceChangePw: boolean
+  clearForceChangePw: () => void
+}) {
+  // 首次登录强制改密：锁定在安全设置页，其他 Tab 禁用
+  const [tab, setTab] = useState(forceChangePw ? 5 : 0)
+  useEffect(() => { if (forceChangePw) setTab(5) }, [forceChangePw])
 
   const logout = async () => {
     try { await adminApi.logout() } finally { onLogout() }
@@ -146,13 +161,18 @@ function AdminPanels({ username, onLogout }: { username: string; onLogout: () =>
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {forceChangePw && (
+        <Alert severity="warning" sx={{ borderRadius: 0 }}>
+          首次登录请立即修改初始密码，修改完成前其他功能不可用。
+        </Alert>
+      )}
       <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2, flex: 1 }}>
-          <Tab label="仪表盘" />
-          <Tab label="书库管理" />
-          <Tab label="资产管理" />
-          <Tab label="操作日志" />
-          <Tab label="会话管理" />
+        <Tabs value={tab} onChange={(_, v) => { if (!forceChangePw) setTab(v) }} sx={{ px: 2, flex: 1 }}>
+          <Tab label="仪表盘" disabled={forceChangePw} />
+          <Tab label="书库管理" disabled={forceChangePw} />
+          <Tab label="资产管理" disabled={forceChangePw} />
+          <Tab label="操作日志" disabled={forceChangePw} />
+          <Tab label="会话管理" disabled={forceChangePw} />
           <Tab label="安全设置" />
         </Tabs>
         <Chip label={username} size="small" sx={{ mr: 1 }} />
@@ -164,7 +184,7 @@ function AdminPanels({ username, onLogout }: { username: string; onLogout: () =>
         {tab === 2 && <AssetsPanel />}
         {tab === 3 && <AuditPanel />}
         {tab === 4 && <SessionsPanel />}
-        {tab === 5 && <SecurityPanel onLogout={onLogout} />}
+        {tab === 5 && <SecurityPanel onLogout={onLogout} onPasswordChanged={clearForceChangePw} />}
       </Box>
     </Box>
   )
@@ -489,20 +509,28 @@ function AuditPanel() {
   const [error, setError] = useState('')
   const [filterAction, setFilterAction] = useState('')
   const [filterUser, setFilterUser] = useState('')
+  // 已应用的过滤条件（避免每敲一个字母就发请求）
+  const [applied, setApplied] = useState({ action: '', user: '' })
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      setEntries(await adminApi.audit(200, filterAction.trim(), filterUser.trim()))
+      setEntries(await adminApi.audit(200, applied.action.trim(), applied.user.trim()))
     } catch (e) {
       setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
-  }, [filterAction, filterUser])
+  }, [applied])
 
   useEffect(() => { load() }, [load])
+
+  const applyFilter = () => setApplied({ action: filterAction, user: filterUser })
+  const clearFilter = () => {
+    setFilterAction(''); setFilterUser('')
+    setApplied({ action: '', user: '' })
+  }
 
   return (
     <Box>
@@ -513,13 +541,13 @@ function AuditPanel() {
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField size="small" label="按动作过滤" placeholder="如 admin.login"
           value={filterAction} onChange={e => setFilterAction(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') load() }} sx={{ width: 220 }} />
+          onKeyDown={e => { if (e.key === 'Enter') applyFilter() }} sx={{ width: 220 }} />
         <TextField size="small" label="按用户过滤" placeholder="如 admin"
           value={filterUser} onChange={e => setFilterUser(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') load() }} sx={{ width: 180 }} />
-        <Button variant="outlined" size="small" onClick={load}>筛选</Button>
-        {(filterAction || filterUser) && (
-          <Button size="small" onClick={() => { setFilterAction(''); setFilterUser('') }}>清除</Button>
+          onKeyDown={e => { if (e.key === 'Enter') applyFilter() }} sx={{ width: 180 }} />
+        <Button variant="outlined" size="small" onClick={applyFilter}>筛选</Button>
+        {(applied.action || applied.user) && (
+          <Button size="small" onClick={clearFilter}>清除</Button>
         )}
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -582,8 +610,12 @@ function SessionsPanel() {
 
   useEffect(() => { load() }, [load])
 
-  const revoke = async (id: string) => {
-    if (!window.confirm(`确定吊销会话 ${id}？该会话将立即失效。`)) return
+  const revoke = async (id: string, isCurrent: boolean) => {
+    if (isCurrent) {
+      if (!window.confirm(`这是你当前正在使用的会话！吊销后你将立即被登出。确定继续吗？`)) return
+    } else if (!window.confirm(`确定吊销会话 ${id}？该会话将立即失效。`)) {
+      return
+    }
     try {
       await adminApi.revokeSession(id)
       load()
@@ -614,14 +646,17 @@ function SessionsPanel() {
             </TableHead>
             <TableBody>
               {sessions.map(s => (
-                <TableRow key={s.id}>
-                  <TableCell sx={{ fontFamily: 'monospace' }}>{s.id}</TableCell>
+                <TableRow key={s.id} sx={s.current ? { backgroundColor: 'action.selected' } : undefined}>
+                  <TableCell sx={{ fontFamily: 'monospace' }}>
+                    {s.id}
+                    {s.current && <Chip size="small" label="当前" color="primary" sx={{ ml: 1 }} />}
+                  </TableCell>
                   <TableCell>{s.username}</TableCell>
                   <TableCell>{s.ip}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{s.createdAt}</TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>{s.expiresAt}</TableCell>
                   <TableCell>
-                    <Button size="small" color="warning" onClick={() => revoke(s.id)}>吊销</Button>
+                    <Button size="small" color="warning" onClick={() => revoke(s.id, !!s.current)}>吊销</Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -642,7 +677,10 @@ function SessionsPanel() {
 // 安全设置
 // ---------------------------------------------------------------------------
 
-function SecurityPanel({ onLogout }: { onLogout: () => void }) {
+function SecurityPanel({ onLogout, onPasswordChanged }: {
+  onLogout: () => void
+  onPasswordChanged?: () => void
+}) {
   const [oldPw, setOldPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [newPw2, setNewPw2] = useState('')
@@ -660,6 +698,7 @@ function SecurityPanel({ onLogout }: { onLogout: () => void }) {
       await adminApi.changePassword(oldPw, newPw)
       setOk('密码已修改，历史会话已吊销，请重新登录。')
       setOldPw(''); setNewPw(''); setNewPw2('')
+      onPasswordChanged?.()
       setTimeout(onLogout, 1500)
     } catch (e) {
       if (e instanceof ApiError && e.code === 401) {

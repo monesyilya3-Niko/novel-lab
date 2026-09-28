@@ -34,6 +34,15 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * 管理员会话失效（401）全局回调。
+ * AdminWorkbench 注册后，任何 /api/admin/* 请求返回 401 即自动回登录页。
+ */
+let adminUnauthorizedHandler: (() => void) | null = null
+export function onAdminUnauthorized(fn: (() => void) | null) {
+  adminUnauthorizedHandler = fn
+}
+
 /** 把底层异常翻译为用户可读中文（AsyncBoundary/告警条统一展示）。 */
 export function friendlyError(e: unknown): string {
   if (e instanceof ApiError) return e.message
@@ -115,11 +124,11 @@ async function typedRequest<T>(
     clearTimeout(timer)
   }
 
-  return parseApiResponse<T>(res)
+  return parseApiResponse<T>(res, path)
 }
 
 /** 解析统一响应体：非 JSON / 业务 code 非零都抛 ApiError。 */
-async function parseApiResponse<T>(res: Response): Promise<T> {
+async function parseApiResponse<T>(res: Response, path: string): Promise<T> {
   let json: ApiResponse<unknown>
   try {
     json = (await res.json()) as ApiResponse<unknown>
@@ -128,6 +137,10 @@ async function parseApiResponse<T>(res: Response): Promise<T> {
     throw new ApiError(`服务返回异常响应 (HTTP ${res.status})`, res.status)
   }
   if (json.code !== 0) {
+    // 管理员接口 401 → 会话失效，通知全局回调自动回登录页
+    if (json.code === 401 && path.startsWith('/admin/') && adminUnauthorizedHandler) {
+      adminUnauthorizedHandler()
+    }
     throw new ApiError(json.message || `请求失败 (code=${json.code})`, json.code)
   }
   return deepToCamel<T>(json.data)
@@ -146,7 +159,7 @@ async function uploadRequest<T>(path: string, form: FormData): Promise<T> {
   } finally {
     clearTimeout(timer)
   }
-  return parseApiResponse<T>(res)
+  return parseApiResponse<T>(res, path)
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -537,6 +550,7 @@ export interface AdminSession {
   ip: string
   createdAt: string
   expiresAt: string
+  current?: boolean
 }
 
 export const adminApi = {
