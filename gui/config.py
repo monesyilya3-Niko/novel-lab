@@ -28,20 +28,21 @@ DEFAULT_BATCH_SIZE = 4000
 def _user_data_dir() -> Path:
     r"""平台用户数据目录（桌面端运行时数据归宿）。
 
-    - Windows: %LOCALAPPDATA%\xuan
-    - macOS: ~/Library/Application Support/xuan
-    - Linux: ~/.local/share/xuan
-    可经 XUAN_DATA_DIR 环境变量覆盖（测试/便携模式）。
+    - Windows: %LOCALAPPDATA%\暮冬念春
+    - macOS: ~/Library/Application Support/暮冬念春
+    - Linux: ~/.local/share/暮冬念春
+    可经 XUAN_DATA_DIR 环境变量覆盖（测试/便携模式，变量名保留兼容）。
+    旧版 xuan 目录数据自动迁移（见 _migrate_legacy_state）。
     """
     override = os.environ.get("XUAN_DATA_DIR")
     if override:
         return Path(override).expanduser()
     if sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-        return Path(base) / "xuan"
+        return Path(base) / "暮冬念春"
     if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "xuan"
-    return Path.home() / ".local" / "share" / "xuan"
+        return Path.home() / "Library" / "Application Support" / "暮冬念春"
+    return Path.home() / ".local" / "share" / "暮冬念春"
 
 
 def _migrate_legacy_state(target: Path) -> None:
@@ -55,11 +56,21 @@ def _migrate_legacy_state(target: Path) -> None:
     - novel/ -> <user>/novel/
     - prompts/generated/ -> <user>/prompts/generated/
     - gui/state/ -> <user>/state_json/
+    - 旧版 xuan 用户目录 -> 暮冬念春用户目录（改名迁移）
     目标已存在且标记完整则跳过对应项；失败不阻断启动，下次重试。
     标记机制：copytree 成功后在 dest 内写 `.migration-complete`；若 dest 存在
     但无标记（上次部分失败），先删不完整 dest 再重拷，避免用户拿到半截数据。
     """
     import shutil
+    # 旧版 xuan 用户目录 -> 暮冬念春（品牌改名迁移）
+    _old_xuan_dir = None
+    if sys.platform == "win32":
+        _base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        _old_xuan_dir = Path(_base) / "xuan"
+    elif sys.platform == "darwin":
+        _old_xuan_dir = Path.home() / "Library" / "Application Support" / "xuan"
+    else:
+        _old_xuan_dir = Path.home() / ".local" / "share" / "xuan"
     migrations = [
         (ROOT_DIR / "gui_state", target),
         (ROOT_DIR / "assets", target / "assets"),
@@ -69,6 +80,12 @@ def _migrate_legacy_state(target: Path) -> None:
         (ROOT_DIR / "prompts" / "generated", target / "prompts" / "generated"),
         (ROOT_DIR / "gui" / "state", target / "state_json"),
     ]
+    # xuan -> 暮冬念春：仅当旧目录存在、目标不存在时迁移（避免覆盖新数据）
+    _xuan_rename = False
+    if _old_xuan_dir and _old_xuan_dir.is_dir() and _old_xuan_dir != target:
+        if not target.exists():
+            migrations.append((_old_xuan_dir, target))
+            _xuan_rename = True
     for legacy, dest in migrations:
         if not legacy.is_dir():
             continue
@@ -78,6 +95,7 @@ def _migrate_legacy_state(target: Path) -> None:
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             # dest 存在但无标记 = 上次部分失败，删掉重来。
+            # 例外：xuan 改名迁移时目标不应存在，此分支不会触发。
             if dest.exists():
                 shutil.rmtree(dest)
             # 排除 .lock（单实例锁含旧 PID，复制过去会误判）
@@ -88,8 +106,8 @@ def _migrate_legacy_state(target: Path) -> None:
 
 
 # 运行时状态目录：只放**运行时产物**（SQLite 库 / WAL / SHM、单实例锁、备份）。
-# 桌面端：%LOCALAPPDATA%\xuan（Win）/ ~/Library/Application Support/xuan（macOS）
-#        / ~/.local/share/xuan（Linux）；旧版 ROOT_DIR/gui_state 自动迁移。
+# 桌面端：%LOCALAPPDATA%\暮冬念春（Win）/ ~/Library/Application Support/暮冬念春（macOS）
+#        / ~/.local/share/暮冬念春（Linux）；旧版 ROOT_DIR/gui_state 及旧版 xuan 目录自动迁移。
 _USER_DATA_DIR = _user_data_dir()
 _migrate_legacy_state(_USER_DATA_DIR)
 STATE_ROOT = _USER_DATA_DIR

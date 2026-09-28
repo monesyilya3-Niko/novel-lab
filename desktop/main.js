@@ -35,7 +35,7 @@ if (!gotLock) {
 }
 
 function parseUrlFromOutput(text) {
-  const m = /\[GUI\] xuan 服务已启动:\s*(http:\/\/[^\s]+)/.exec(text)
+  const m = /\[GUI\] 暮冬念春 服务已启动:\s*(http:\/\/[^\s]+)/.exec(text)
   if (!m) return null
   const url = m[1].replace(/\/$/, '')
   const tm = /\[GUI\] 握手令牌:\s*([A-Za-z0-9_-]+)/.exec(text)
@@ -141,7 +141,7 @@ function createWindow() {
     y: winState.y,
     minWidth: 1024,
     minHeight: 640,
-    title: 'xuan',
+    title: '暮冬念春',
     autoHideMenuBar: true,
     backgroundColor: '#FAF7F0',
     show: false,
@@ -230,13 +230,13 @@ app.whenReady().then(async () => {
     backend.on('exit', (code) => {
       if (app.quitting) return
       dialog.showErrorBox(
-        'xuan 后端已停止',
+        '暮冬念春 后端已停止',
         `后端服务意外退出（退出码 ${code}）。\n\n请重启应用恢复。如频繁出现，请联系开发者。`
       )
     })
   } catch (e) {
     dialog.showErrorBox(
-      'xuan 启动失败',
+      '暮冬念春 启动失败',
       `后端服务未能启动：\n${e.message}\n\n请尝试重新安装，或联系开发者。`
     )
     stopBackend()

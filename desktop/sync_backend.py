@@ -49,6 +49,11 @@ def main() -> int:
     total = 0
     total += sync_dir(ROOT / "gui", BACKEND / "gui", "gui/")
     total += sync_dir(ROOT / "scripts", BACKEND / "scripts", "scripts/")
+    # 内置数据资产：repo 根 assets/ -> backend/assets/（首次启动迁移到用户目录）
+    total += sync_dir(ROOT / "assets", BACKEND / "assets", "assets/")
+    # 语料与报告：corpus/、reports/ 同理
+    total += sync_dir(ROOT / "corpus", BACKEND / "corpus", "corpus/")
+    total += sync_dir(ROOT / "reports", BACKEND / "reports", "reports/")
     # dist 已在 gui/ 同步中包含，单独确认
     dist = BACKEND / "gui" / "web" / "dist" / "index.html"
     if not dist.exists():

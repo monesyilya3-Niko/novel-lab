@@ -1,5 +1,5 @@
-appId: com.xuan.desktop
-productName: xuan
+appId: com.mudongnianchun.desktop
+productName: 暮冬念春
 directories:
   output: release
   buildResources: build
@@ -16,7 +16,7 @@ win:
     - target: zip
       arch: [x64]
   icon: build/icon.ico
-  artifactName: xuan-Setup-${version}-win64.${ext}
+  artifactName: 暮冬念春-Setup-${version}-win64.${ext}
   signAndEditExecutable: false
 nsis:
   oneClick: false
@@ -24,7 +24,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: xuan
-  uninstallDisplayName: xuan
+  shortcutName: 暮冬念春
+  uninstallDisplayName: 暮冬念春
   # 未签名：Windows SmartScreen 会提示，属预期行为（个人分发无证书）。
   # 注：Linux 下打 NSIS 安装器需 wine，本机构建改用 zip 便携版；要 NSIS 请在 Windows 上跑 npm run dist。

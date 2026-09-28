@@ -26,7 +26,7 @@ export const palette = {
     '#8A8478',
   ] as const,
   chartSeriesDark: [
-    '#E57373',
+    '#5A9A8E',
     '#4DB6AC',
     ink.goldBright,
     '#64B5F6',
@@ -44,7 +44,7 @@ export const chartSeries = (isDark: boolean) =>
 export const buildMuiTheme = (isDark: boolean) => ({
   palette: {
     mode: (isDark ? 'dark' : 'light') as 'dark' | 'light',
-    primary: { main: palette.primary, dark: ink.cinnabarDeep, light: '#E57373' },
+    primary: { main: palette.primary, dark: ink.cinnabarDeep, light: '#5A9A8E' },
     success: { main: palette.success },
     info: { main: palette.info },
     error: { main: palette.error },

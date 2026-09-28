@@ -72,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
     server = GuiServer(preferred_port=args.port, handshake_token=handshake_token)
     host, port = server.start()
     url = f"http://{host}:{port}/"
-    print(f"[GUI] xuan 服务已启动: {url}")
+    print(f"[GUI] 暮冬念春 服务已启动: {url}")
     if handshake_token:
         print(f"[GUI] 握手令牌: {handshake_token}")
     print("[GUI] 按 Ctrl+C 停止。")
