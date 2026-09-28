@@ -52,9 +52,15 @@ def db_path() -> Path:
 
 
 def _new_conn(path: Path) -> sqlite3.Connection:
-    """建立并配置一条新连接（PRAGMA 统一在此处设置）。"""
+    """建立并配置一条新连接（PRAGMA 统一在此处设置）。
+
+    B3：check_same_thread=False —— 允许任意线程关闭连接。
+    事务隔离仍由「每线程独立连接」（_conns 按 tid 分池）保证，此处仅放行
+    跨线程 close()，否则 _prune_dead_threads_locked() 会因 ProgrammingError
+    静默失败导致 FD 泄漏。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -81,8 +87,9 @@ def get_conn() -> sqlite3.Connection:
     ``foreign_keys=ON``、``busy_timeout=5000``。
 
     **每线程独立连接**：事务的 commit/rollback 是连接级操作，共享连接会让并发
-    线程互相污染事务边界（详见文件头注释）。这里不再使用 ``check_same_thread=False``，
-    每条连接只由其创建线程使用，天然安全。
+    线程互相污染事务边界（详见文件头注释）。每条连接仍只由其创建线程**使用**，
+    但创建时设 ``check_same_thread=False`` 以允许任意线程执行 ``close()``
+    （B3：否则跨线程关闭抛 ProgrammingError 被吞掉，FD 泄漏）。
 
     库路径变化时（测试 monkeypatch ``config.STATE_ROOT``）自动关闭旧连接重建。
     """

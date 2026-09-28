@@ -210,6 +210,16 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
+// B6：macOS 点击 Dock 图标时重建窗口（window-all-closed 后 app 未退出）。
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    // 后端已随窗口关闭而停止，需重启
+    startBackend().then(createWindow).catch((e) => {
+      dialog.showErrorBox('启动失败', `后端重启失败：${e.message}`)
+    })
+  }
+})
+
 app.on('before-quit', stopBackend)
 
 app.whenReady().then(async () => {
