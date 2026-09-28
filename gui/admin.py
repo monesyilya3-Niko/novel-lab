@@ -180,6 +180,41 @@ def logout(session_id: str | None, ip: str = "-") -> None:
         audit(sess["username"], ip, "admin.logout", "退出登录")
 
 
+def list_sessions() -> list[dict[str, Any]]:
+    """列出当前有效会话（token 只展示前 8 位前缀，不可用于鉴权）。"""
+    now = time.time()
+    out = []
+    with _lock:
+        expired = [sid for sid, s in _sessions.items() if now > s["expires_at"]]
+        for sid in expired:
+            _sessions.pop(sid, None)
+        for sid, s in _sessions.items():
+            out.append({
+                "id": sid[:8],
+                "username": s["username"],
+                "ip": s["ip"],
+                "createdAt": datetime.fromtimestamp(s["created_at"], tz=timezone.utc).isoformat(timespec="seconds"),
+                "expiresAt": datetime.fromtimestamp(s["expires_at"], tz=timezone.utc).isoformat(timespec="seconds"),
+            })
+    out.sort(key=lambda x: x["createdAt"], reverse=True)
+    return out
+
+
+def revoke_session(id_prefix: str, by_user: str, ip: str) -> None:
+    """按 ID 前缀吊销一个会话（前缀需唯一匹配）。"""
+    if not id_prefix or len(id_prefix) < 4:
+        raise ServiceError("会话 ID 前缀太短", 400)
+    with _lock:
+        matched = [sid for sid in _sessions if sid.startswith(id_prefix)]
+        if not matched:
+            raise ServiceError("会话不存在或已过期", 404)
+        if len(matched) > 1:
+            raise ServiceError("前缀匹配多个会话，请提供更长的前缀", 400)
+        sess = _sessions.pop(matched[0])
+    audit(by_user, ip, "admin.session.revoke",
+          f"吊销会话 {matched[0][:8]}（用户 {sess['username']}，IP {sess['ip']}）")
+
+
 def change_password(username: str, old_password: str, new_password: str, ip: str) -> None:
     if not new_password or len(new_password) < _MIN_PASSWORD_LEN:
         raise ServiceError(f"新密码至少 {_MIN_PASSWORD_LEN} 位", 400)
@@ -220,7 +255,8 @@ def audit(username: str, ip: str, action: str, detail: str = "") -> None:
         pass  # 审计写失败不阻断业务
 
 
-def read_audit(limit: int = 100) -> list[dict[str, Any]]:
+def read_audit(limit: int = 100, action: str = "", username: str = "") -> list[dict[str, Any]]:
+    """读取审计日志（最新的在前）。先过滤再截断，保证过滤结果完整。"""
     limit = max(1, min(limit, 500))
     fp = _audit_file()
     if not fp.is_file():
@@ -230,12 +266,19 @@ def read_audit(limit: int = 100) -> list[dict[str, Any]]:
     except OSError:
         return []
     out = []
-    for line in lines[-limit:]:
+    for line in lines:
         try:
-            out.append(json.loads(line))
+            entry = json.loads(line)
         except json.JSONDecodeError:
             continue
-    return list(reversed(out))
+        if not isinstance(entry, dict):
+            continue
+        if action and entry.get("action") != action:
+            continue
+        if username and entry.get("username") != username:
+            continue
+        out.append(entry)
+    return list(reversed(out[-limit:]))
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +344,7 @@ def get_dashboard() -> dict[str, Any]:
         "assetsByKind": overview.get("assets_by_kind", {}),
         "diskBytes": disk,
         "diskTotalBytes": sum(disk.values()),
+        "recentAudit": read_audit(10),
     }
 
 

@@ -192,5 +192,94 @@ class TestAdminDeleteBook(_AdminBase):
         self.assertTrue(outside.is_file(), "corpus 外文件必须保留")
 
 
+class TestAdminSessions(unittest.TestCase):
+    """会话管理：列表与吊销。"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._iso.__enter__()
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+
+    def tearDown(self):
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+        self._iso.__exit__(None, None, None)
+        self._tmp.cleanup()
+
+    def _init(self):
+        pw = admin.ensure_initialized()
+        self.assertTrue(pw, "首次初始化必须返回初始密码")
+        return pw
+
+    def test_list_and_revoke_session(self):
+        pw = self._init()
+        r1 = admin.authenticate("admin", pw, "127.0.0.1")
+        r2 = admin.authenticate("admin", pw, "127.0.0.2")
+        sessions = admin.list_sessions()
+        self.assertEqual(len(sessions), 2)
+        ids = {s["id"] for s in sessions}
+        self.assertEqual(len(ids), 2)
+        # token 全文不出现在列表中（只给前缀）
+        for s in sessions:
+            self.assertEqual(len(s["id"]), 8)
+            self.assertNotIn(r1["session_id"], s["id"])
+            self.assertIn("createdAt", s)
+        # 吊销其中一个
+        admin.revoke_session(sessions[0]["id"], "admin", "127.0.0.1")
+        self.assertEqual(len(admin.list_sessions()), 1)
+        # 吊销不存在的 → 404
+        with self.assertRaises(ServiceError) as cm:
+            admin.revoke_session("deadbeef", "admin", "127.0.0.1")
+        self.assertEqual(cm.exception.code, 404)
+        # 前缀太短 → 400
+        with self.assertRaises(ServiceError) as cm:
+            admin.revoke_session("abc", "admin", "127.0.0.1")
+        self.assertEqual(cm.exception.code, 400)
+        # 审计记录了吊销
+        entries = admin.read_audit(50)
+        self.assertTrue(any(e["action"] == "admin.session.revoke" for e in entries))
+
+
+class TestAdminAuditFilter(unittest.TestCase):
+    """审计日志过滤。"""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._iso.__enter__()
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+
+    def tearDown(self):
+        admin._sessions.clear()
+        admin._failed_logins.clear()
+        self._iso.__exit__(None, None, None)
+        self._tmp.cleanup()
+
+    def test_audit_filter(self):
+        pw = admin.ensure_initialized()
+        admin.authenticate("admin", pw, "127.0.0.1")
+        try:
+            admin.authenticate("admin", "wrong", "127.0.0.1")
+        except ServiceError:
+            pass
+        # 按 action 过滤
+        logins = admin.read_audit(100, action="admin.login")
+        self.assertTrue(len(logins) >= 1)
+        self.assertTrue(all(e["action"] == "admin.login" for e in logins))
+        failed = admin.read_audit(100, action="admin.login.failed")
+        self.assertTrue(len(failed) >= 1)
+        # 按用户过滤
+        by_user = admin.read_audit(100, username="admin")
+        self.assertTrue(len(by_user) >= 2)
+        # 组合过滤
+        combo = admin.read_audit(100, action="admin.login", username="admin")
+        self.assertTrue(len(combo) >= 1)
+        # 不存在的 action → 空
+        self.assertEqual(admin.read_audit(100, action="no.such.action"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

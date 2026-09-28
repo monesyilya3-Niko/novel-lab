@@ -35,6 +35,7 @@ import {
   type AdminDashboard,
   type AdminBookSummary,
   type AdminAuditEntry,
+  type AdminSession,
 } from '../api/client'
 
 function fmtSize(bytes: number): string {
@@ -151,6 +152,7 @@ function AdminPanels({ username, onLogout }: { username: string; onLogout: () =>
           <Tab label="书库管理" />
           <Tab label="资产管理" />
           <Tab label="操作日志" />
+          <Tab label="会话管理" />
           <Tab label="安全设置" />
         </Tabs>
         <Chip label={username} size="small" sx={{ mr: 1 }} />
@@ -161,7 +163,8 @@ function AdminPanels({ username, onLogout }: { username: string; onLogout: () =>
         {tab === 1 && <BooksPanel />}
         {tab === 2 && <AssetsPanel />}
         {tab === 3 && <AuditPanel />}
-        {tab === 4 && <SecurityPanel onLogout={onLogout} />}
+        {tab === 4 && <SessionsPanel />}
+        {tab === 5 && <SecurityPanel onLogout={onLogout} />}
       </Box>
     </Box>
   )
@@ -234,7 +237,7 @@ function DashboardPanel() {
         ))}
       </Paper>
       {data.books.items.length > 0 && (
-        <Paper sx={{ p: 2 }}>
+        <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle2" gutterBottom>最近书籍</Typography>
           {data.books.items.map((b) => (
             <Box key={b.bookId} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
@@ -242,6 +245,20 @@ function DashboardPanel() {
               <Typography variant="body2" color="text.secondary">
                 {b.totalChapters} 章 · {b.status}
               </Typography>
+            </Box>
+          ))}
+        </Paper>
+      )}
+      {data.recentAudit && data.recentAudit.length > 0 && (
+        <Paper sx={{ p: 2 }}>
+          <Typography variant="subtitle2" gutterBottom>最近操作</Typography>
+          {data.recentAudit.map((e, i) => (
+            <Box key={i} sx={{ display: 'flex', gap: 1, py: 0.5, alignItems: 'center' }}>
+              <Chip size="small" label={e.action} sx={{ maxWidth: 180 }} />
+              <Typography variant="body2" color="text.secondary" noWrap sx={{ flex: 1 }} title={e.detail}>
+                {e.username} · {e.detail}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{e.ts}</Typography>
             </Box>
           ))}
         </Paper>
@@ -470,18 +487,20 @@ function AuditPanel() {
   const [entries, setEntries] = useState<AdminAuditEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [filterAction, setFilterAction] = useState('')
+  const [filterUser, setFilterUser] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      setEntries(await adminApi.audit(200))
+      setEntries(await adminApi.audit(200, filterAction.trim(), filterUser.trim()))
     } catch (e) {
       setError(friendlyError(e))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filterAction, filterUser])
 
   useEffect(() => { load() }, [load])
 
@@ -490,6 +509,18 @@ function AuditPanel() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">操作日志（最近 200 条）</Typography>
         <Button variant="outlined" size="small" onClick={load}>刷新</Button>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <TextField size="small" label="按动作过滤" placeholder="如 admin.login"
+          value={filterAction} onChange={e => setFilterAction(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') load() }} sx={{ width: 220 }} />
+        <TextField size="small" label="按用户过滤" placeholder="如 admin"
+          value={filterUser} onChange={e => setFilterUser(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') load() }} sx={{ width: 180 }} />
+        <Button variant="outlined" size="small" onClick={load}>筛选</Button>
+        {(filterAction || filterUser) && (
+          <Button size="small" onClick={() => { setFilterAction(''); setFilterUser('') }}>清除</Button>
+        )}
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading ? <CircularProgress /> : (
@@ -518,6 +549,85 @@ function AuditPanel() {
               {entries.length === 0 && (
                 <TableRow><TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 3 }}>
                   暂无日志
+                </TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
+    </Box>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 会话管理
+// ---------------------------------------------------------------------------
+
+function SessionsPanel() {
+  const [sessions, setSessions] = useState<AdminSession[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      setSessions(await adminApi.sessions())
+    } catch (e) {
+      setError(friendlyError(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const revoke = async (id: string) => {
+    if (!window.confirm(`确定吊销会话 ${id}？该会话将立即失效。`)) return
+    try {
+      await adminApi.revokeSession(id)
+      load()
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h6">在线会话（{sessions.length}）</Typography>
+        <Button variant="outlined" size="small" onClick={load}>刷新</Button>
+      </Box>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {loading ? <CircularProgress /> : (
+        <Paper>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>会话 ID（前缀）</TableCell>
+                <TableCell>用户</TableCell>
+                <TableCell>IP</TableCell>
+                <TableCell>创建时间</TableCell>
+                <TableCell>过期时间</TableCell>
+                <TableCell>操作</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {sessions.map(s => (
+                <TableRow key={s.id}>
+                  <TableCell sx={{ fontFamily: 'monospace' }}>{s.id}</TableCell>
+                  <TableCell>{s.username}</TableCell>
+                  <TableCell>{s.ip}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{s.createdAt}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{s.expiresAt}</TableCell>
+                  <TableCell>
+                    <Button size="small" color="warning" onClick={() => revoke(s.id)}>吊销</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {sessions.length === 0 && (
+                <TableRow><TableCell colSpan={6} align="center" sx={{ color: 'text.secondary', py: 3 }}>
+                  无在线会话
                 </TableCell></TableRow>
               )}
             </TableBody>

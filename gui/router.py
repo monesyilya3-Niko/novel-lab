@@ -576,7 +576,9 @@ def _h_admin_audit(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, A
         limit = int(params.get("limit", 100))
     except (TypeError, ValueError):
         limit = 100
-    return ok(admin.read_audit(limit))
+    return ok(admin.read_audit(limit,
+                              action=str(params.get("action", "") or ""),
+                              username=str(params.get("username", "") or "")))
 
 
 def _h_admin_change_password(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
@@ -586,6 +588,18 @@ def _h_admin_change_password(params: dict[str, Any], body: dict[str, Any]) -> di
     admin.change_password(user, str(b.get("oldPassword", "")),
                           str(b.get("newPassword", "")), ip)
     return ok({"changed": True})
+
+
+def _h_admin_sessions(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
+    return ok(admin.list_sessions())
+
+
+def _h_admin_session_revoke(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import admin
+    user, ip = _admin_ctx(params)
+    admin.revoke_session(params["sid"], user, ip)
+    return ok({"revoked": True})
 
 
 # ---------------------------------------------------------------------------
@@ -679,6 +693,8 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/admin/reports$"), _h_admin_reports),
     ("GET", re.compile(r"^/api/admin/audit$"), _h_admin_audit),
     ("POST", re.compile(r"^/api/admin/change-password$"), _h_admin_change_password),
+    ("GET", re.compile(r"^/api/admin/sessions$"), _h_admin_sessions),
+    ("DELETE", re.compile(r"^/api/admin/sessions/(?P<sid>[^/]+)$"), _h_admin_session_revoke),
 ]
 
 

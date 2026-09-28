@@ -514,6 +514,7 @@ export interface AdminDashboard {
   assetsByKind: Record<string, number>
   diskBytes: Record<string, number>
   diskTotalBytes: number
+  recentAudit: AdminAuditEntry[]
 }
 export interface AdminBookSummary {
   bookId: string
@@ -530,6 +531,13 @@ export interface AdminAuditEntry {
   action: string
   detail: string
 }
+export interface AdminSession {
+  id: string
+  username: string
+  ip: string
+  createdAt: string
+  expiresAt: string
+}
 
 export const adminApi = {
   me: () => get<AdminMe>('/admin/me'),
@@ -544,7 +552,14 @@ export const adminApi = {
   deleteAsset: (kind: string, id: string) =>
     del<Record<string, unknown>>(`/admin/assets/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`),
   reports: () => get<ReportItem[]>('/admin/reports'),
-  audit: (limit = 100) => get<AdminAuditEntry[]>(`/admin/audit?limit=${limit}`),
+  audit: (limit = 100, action = '', username = '') => {
+    const q = new URLSearchParams({ limit: String(limit) })
+    if (action) q.set('action', action)
+    if (username) q.set('username', username)
+    return get<AdminAuditEntry[]>(`/admin/audit?${q}`)
+  },
   changePassword: (oldPassword: string, newPassword: string) =>
     post<{ changed: boolean }>('/admin/change-password', { oldPassword, newPassword }),
+  sessions: () => get<AdminSession[]>('/admin/sessions'),
+  revokeSession: (id: string) => del<{ revoked: boolean }>(`/admin/sessions/${encodeURIComponent(id)}`),
 }

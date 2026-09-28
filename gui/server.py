@@ -94,6 +94,14 @@ class _Handler(BaseHTTPRequestHandler):
             if user:
                 self._admin_user = user
                 self._admin_ip = self.client_address[0]
+                # CSRF 防护：管理端写操作（POST/PUT/DELETE，登录除外）要求
+                # Origin/Referer 来自本机。浏览器 fetch 一定带 Origin；
+                # 无 Origin 的视为非浏览器客户端（curl 等），不受 CSRF 影响。
+                if self.command in ("POST", "PUT", "DELETE"):
+                    origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
+                    if origin and not self._is_same_host_origin(origin):
+                        self._send_json(router.err(403, "跨站请求被拒绝"), 403)
+                        return False
                 return True
             self._send_json(router.err(401, "管理员未登录"), 401)
             return False
