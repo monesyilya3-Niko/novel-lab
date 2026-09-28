@@ -90,7 +90,7 @@ class TestSecretStorePerms(unittest.TestCase):
         import tempfile
 
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-        from secret_store import save_secrets, load_secrets
+        from secret_store import load_secrets, save_secrets
 
         with tempfile.TemporaryDirectory() as td:
             p = save_secrets({"k": "v"}, Path(td))
