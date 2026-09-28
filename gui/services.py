@@ -30,6 +30,16 @@ class ServiceError(Exception):
         self.code = code
 
 
+def _require_positive_batch_size(batch_size: int | None) -> None:
+    """纵深防御：服务层不信任调用方已做校验，非法 batch_size 直接 400。
+
+    路由层已有 _safe_batch_size，但内部调用可绕过路由；负数 batch_size
+    会透过 `batch_size or default`（负数 truthy）进入后台线程导致异常。
+    """
+    if batch_size is not None and batch_size <= 0:
+        raise ServiceError("batch_size 必须为正整数", 400)
+
+
 # ---------------------------------------------------------------------------
 # 资产内容契约（不接触磁盘）
 #
@@ -145,6 +155,7 @@ def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     if not chapters_raw:
         raise ServiceError("未解析到任何章节（请确认文件为章节体 txt）", 400)
 
+    _require_positive_batch_size(batch_size)
     bs = batch_size or config.batch_size_from_env()
     title = src.stem
     book_id = state_store.book_id_from_title(title, str(src))
@@ -227,6 +238,7 @@ def split_chapter_batches(book_id: str, idx: int, batch_size: int | None = None)
     if idx < 1 or idx > len(chapters):
         raise ServiceError(f"章节 {idx} 不存在", 404)
     _, cbody = chapters[idx - 1]
+    _require_positive_batch_size(batch_size)
     bs = batch_size or config.batch_size_from_env()
     batches = engine_adapter.split_batches(cbody, bs)
     return [{
@@ -290,6 +302,7 @@ def start_analysis(book_id: str, genre: str, model_id: str | None = None,
         raise ServiceError(
             f"未知题材 {genre!r}，请从题材列表中选择（GET /api/genres）", 400)
 
+    _require_positive_batch_size(batch_size)
     bs = batch_size or config.batch_size_from_env()
 
     # 【修复 M6】「检查 + 建 ctx + 建线程 + 登记 + 启动」必须在一个临界区内完成。

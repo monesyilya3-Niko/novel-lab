@@ -312,6 +312,37 @@ class TestServicesImport(unittest.TestCase):
             self.assertEqual(cm.exception.code, 400)
         finally:
             engine_adapter.any_model_configured = orig
+class TestServiceBatchSizeGuard(unittest.TestCase):
+    """纵深防御：服务层 batch_size 非法值直接 400，不依赖路由层校验。"""
+
+    def setUp(self):
+        self.tmp_txt = Path(_TMP) / "sample_book.txt"
+        self.tmp_txt.write_text(SAMPLE_TXT, encoding="utf-8")
+
+    def tearDown(self):
+        services._BOOKS.clear()
+        services._runtime.clear()
+
+    def test_guard_rejects_non_positive(self):
+        for bad in (0, -1, -100):
+            with self.assertRaises(services.ServiceError) as cm:
+                services._require_positive_batch_size(bad)
+            self.assertEqual(cm.exception.code, 400)
+        # None 与正整数放行
+        services._require_positive_batch_size(None)
+        services._require_positive_batch_size(5)
+
+    def test_import_book_negative_batch_size_400(self):
+        """内部直接调用 import_book(batch_size=-1) 应 400，而非透传进切分。"""
+        with self.assertRaises(services.ServiceError) as cm:
+            services.import_book(str(self.tmp_txt), batch_size=-1)
+        self.assertEqual(cm.exception.code, 400)
+
+    def test_split_negative_batch_size_400(self):
+        book_id = services.import_book(str(self.tmp_txt))["book_id"]
+        with self.assertRaises(services.ServiceError) as cm:
+            services.split_chapter_batches(book_id, 1, batch_size=0)
+        self.assertEqual(cm.exception.code, 400)
 
 
 class TestResumeSkipsSuccess(unittest.TestCase):
