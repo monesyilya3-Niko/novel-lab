@@ -52,10 +52,14 @@ def _h_import(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
 
 
 def _samples_dir() -> Path:
-    """内置示例语料目录：与 gui/ 同级的 corpus/（随安装包发布）。"""
+    """内置示例语料目录：与 gui/ 同级的 samples/（原创内容，随安装包发布）。
+
+    注意：corpus/ 是 gitignore 的版权语料区，示例必须放在 samples/ 才能
+    随 git archive 进入安装包，且不触发打包安全自检的 corpus 泄漏告警。
+    """
     from gui import config as _config
-    # GUI_DIR = <install>/gui → samples 在 <install>/corpus
-    d = Path(_config.GUI_DIR).resolve().parent / "corpus"
+    # GUI_DIR = <install>/gui → samples 在 <install>/samples
+    d = Path(_config.GUI_DIR).resolve().parent / "samples"
     return d
 
 

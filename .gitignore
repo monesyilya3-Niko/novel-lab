@@ -7,6 +7,8 @@ config/.secrets.bin
 # 范文原文（版权材料，只在本地留存）
 corpus/
 *.txt
+# 原创示例语料例外：samples/示例-*.txt 为项目原创，随安装包发布
+!samples/示例-*.txt
 
 # 拆书中间产物
 .cache/
