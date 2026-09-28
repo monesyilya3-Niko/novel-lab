@@ -51,7 +51,7 @@ function DistillPanel() {
     try {
       const data = await advancedApi.distillStatus(genre)
       setStatus(data as Record<string, unknown>)
-    } catch { /* ignore */ }
+    } catch { /* P2-F12：后台轮询静默失败是预期的（避免错误刷屏），状态区保持旧值 */ }
   }, [genre])
 
   useEffect(() => { loadStatus() }, [loadStatus])

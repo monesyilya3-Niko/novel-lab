@@ -7,6 +7,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
+import Button from '@mui/material/Button'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Accordion from '@mui/material/Accordion'
@@ -206,7 +207,10 @@ export default function AnalysisResultView() {
   if (error) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error">加载失败：{error}</Typography>
+        <Typography color="error" sx={{ mb: 2 }}>加载失败：{error}</Typography>
+        <Button variant="outlined" onClick={() => { setError(''); setLoading(true); loadBookResults(bookId).catch((e) => setError(friendlyError(e))).finally(() => setLoading(false)) }}>
+          重试
+        </Button>
       </Box>
     )
   }
