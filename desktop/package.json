@@ -1,0 +1,1 @@
+{"author":"monesy","description":"novel-lab 网文创作辅助系统 · 桌面版","devDependencies":{"electron":"^34.0.0","electron-builder":"^25.1.8"},"license":"MIT","main":"main.js","name":"novel-lab-desktop","productName":"novel-lab 墨韵工作台","scripts":{"dist":"electron-builder --win","start":"electron ."},"version":"2.0.1"}

@@ -70,3 +70,11 @@ build/dist/
 # 第三方参考技能（上游无 LICENSE 文件，不入 MIT 仓库；本地留存自用）
 reference/oh-story-claudecode/
 .coverage
+
+# desktop 构建产物（可由脚本/构建流程再生）
+desktop/backend/
+desktop/build/python-embed.zip
+desktop/build/python-win/
+desktop/node_modules/
+desktop/release/
+desktop/package-lock.json
