@@ -707,7 +707,10 @@ def get_book_results(book_id: str) -> dict[str, Any]:
 
     阶段一：voice-card/structure/commercial 缺失时降级返回批级 pass 原始 JSON 聚合
     （见 DESIGN §8 D1）；章节打分为空列表（打分属阶段二 consistency，见 D2）。
+
+    安全：book_id 直接拼文件路径，必须先校验存在性（防 ../ 路径穿越）。
     """
+    _get_book_or_raise(book_id)
     voice = _load_assembled_card(book_id, "voice")
     structure = _load_assembled_card(book_id, "structure")
     commercial = _load_assembled_card(book_id, "commercial")

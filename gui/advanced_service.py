@@ -82,6 +82,10 @@ def distill_status(genre: str) -> dict[str, Any]:
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
     genre = genre.strip()
+    # 安全：genre 用于拼 glob 路径，必须白名单校验（与 distill_genre 一致）。
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", genre):
+        raise ServiceError(f"非法 genre 名: {genre!r}", 400)
 
     # 已有 distilled 资产
     distilled = []

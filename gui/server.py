@@ -190,7 +190,8 @@ class _Handler(BaseHTTPRequestHandler):
             host = (urlparse(origin).hostname or "").lower()
         except Exception:  # noqa: BLE001
             return False
-        return host in ("localhost", "127.0.0.1", "::1", "[::1]", "")
+        # 安全：空 hostname（Origin: null，如 sandboxed iframe）不放行。
+        return host in ("localhost", "127.0.0.1", "::1", "[::1]")
 
     def _handle_import_upload(self) -> None:
         """POST /api/import-upload：multipart 文件上传导入。

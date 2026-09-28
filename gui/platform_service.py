@@ -207,7 +207,11 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> dict[str, Any]:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
     p = PLATFORMS[platform_id]
 
-    book_path = Path(book_dir)
+    # 安全：book_dir 直接 glob 读取，必须约束在项目根内（防任意目录读取）。
+    from gui import config as _config
+    book_path = Path(book_dir).resolve()
+    if not book_path.is_relative_to(_config.ROOT_DIR.resolve()):
+        raise ServiceError("书籍目录必须在项目目录内", 403)
     if not book_path.is_dir():
         raise ServiceError(f"章节目录不存在: {book_dir}", 404)
 

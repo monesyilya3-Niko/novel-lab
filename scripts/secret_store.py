@@ -143,11 +143,18 @@ def save_secrets(secrets: dict, directory: Path = CONFIG_DIR) -> Path:
             pass
         return bin_path
     json_path = directory / SECRETS_JSON.name
-    json_path.write_text(payload.decode("utf-8"), encoding="utf-8")
+    # 安全：用 os.open 建文件时直接指定 0o600，避免"先写后 chmod"的 TOCTOU 窗口。
+    fd = os.open(json_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
-        os.chmod(json_path, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(payload.decode("utf-8"))
     except OSError:
-        pass
+        # Windows 等不支持 mode 语义时回退到 chmod
+        json_path.write_text(payload.decode("utf-8"), encoding="utf-8")
+        try:
+            os.chmod(json_path, 0o600)
+        except OSError:
+            pass
     return json_path
 
 
