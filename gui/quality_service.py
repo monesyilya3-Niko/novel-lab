@@ -53,8 +53,13 @@ def _active_quality_count() -> int:
 def resolve_chapter_target(target: str, *, novel_dir: str | None = None) -> Path:
     """把前端 target 解析为磁盘上真实存在的章节文件/目录（防路径穿越）。
 
-    只允许解析到 NOVEL_DIR / CORPUS_DIR 之内；越界 → 400。
+    - 相对路径：在 NOVEL_DIR / CORPUS_DIR 内查找。
+    - 绝对路径在 novel/corpus 内：直接使用。
+    - 绝对路径在外但文件存在：复制到 scratch 隔离目录后使用
+      （桌面端用户指定任意位置文件的场景；复制隔离防 TOCTOU）。
     """
+    import shutil
+    import uuid
     if not target:
         raise ServiceError("target 不能为空", 400)
     p = Path(target)
@@ -70,11 +75,23 @@ def resolve_chapter_target(target: str, *, novel_dir: str | None = None) -> Path
 
     resolved = p.resolve()
     allowed_roots = [config.NOVEL_DIR.resolve(), config.CORPUS_DIR.resolve()]
-    if not any(resolved.is_relative_to(r) for r in allowed_roots):
-        raise ServiceError("target 必须在 novel/ 或 corpus/ 目录内", 400)
+    if any(resolved.is_relative_to(r) for r in allowed_roots):
+        if not resolved.exists():
+            raise ServiceError(f"target 不存在: {target}", 404)
+        return resolved
+
+    # 绝对路径但不在 novel/corpus 内：复制到 scratch 隔离目录
     if not resolved.exists():
         raise ServiceError(f"target 不存在: {target}", 404)
-    return resolved
+    if not resolved.is_file():
+        raise ServiceError("外部路径仅支持单文件（目录请先放入 novel/ 或 corpus/）", 400)
+    if resolved.stat().st_size > 50 * 1024 * 1024:
+        raise ServiceError("文件超过 50MB 上限", 400)
+    scratch_dir = config.STATE_ROOT / "scratch" / f"qc-external-{uuid.uuid4().hex[:8]}"
+    scratch_dir.mkdir(parents=True, exist_ok=True)
+    dest = scratch_dir / resolved.name
+    shutil.copy2(resolved, dest)
+    return dest
 
 
 def _materialize_text(text: str, task_id: str) -> Path:
