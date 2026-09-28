@@ -10,8 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import report as report_mod
 import assemble as assemble_mod
+import report as report_mod
 
 
 class TestCombinedReportOk(unittest.TestCase):
@@ -81,7 +81,7 @@ class TestSampleWords(unittest.TestCase):
 
 class TestLoadJson(unittest.TestCase):
     def test_missing(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(OSError):
             assemble_mod.load_json(Path("/nonexistent/x.json"))
 
 

@@ -46,10 +46,10 @@ vi.mock('./charts/PieChart', () => ({
 }))
 
 describe('HomeDashboard 资产类型分布标签', () => {
-  it('camelCase 键渲染为共享表中的中文标签', () => {
+  it('camelCase 键渲染为共享表中的中文标签', async () => {
     render(<HomeDashboard />)
 
-    const slices = screen.getByTestId('pie-slices').textContent ?? ''
+    const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
     expect(slices).toContain(`${KIND_LABELS.prose_card}=1`)
     expect(slices).toContain(`${KIND_LABELS.genre_pack}=1`)
     expect(slices).toContain(`${KIND_LABELS.distilled}=2`)
@@ -57,20 +57,20 @@ describe('HomeDashboard 资产类型分布标签', () => {
     expect(slices).toContain(`${KIND_LABELS.voice}=2`)
   })
 
-  it('不得把原始英文 kind 或 undefined 渲染进图例', () => {
+  it('不得把原始英文 kind 或 undefined 渲染进图例', async () => {
     render(<HomeDashboard />)
 
-    const slices = screen.getByTestId('pie-slices').textContent ?? ''
+    const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
     expect(slices).not.toContain('undefined')
     for (const raw of ['distilled', 'proseCardIndex', 'proseCard', 'genrePack']) {
       expect(slices).not.toContain(`${raw}=`)
     }
   })
 
-  it('与共享 kindLabel 对同一批键给出完全一致的标签', () => {
+  it('与共享 kindLabel 对同一批键给出完全一致的标签', async () => {
     render(<HomeDashboard />)
 
-    const slices = screen.getByTestId('pie-slices').textContent ?? ''
+    const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
     for (const [camelKey, value] of Object.entries(OVERVIEW.assetsByKind)) {
       if (camelKey === 'report' || camelKey === 'book') continue
       expect(slices).toContain(`${kindLabel(camelKey)}=${value}`)

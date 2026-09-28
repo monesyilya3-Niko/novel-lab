@@ -12,7 +12,6 @@ import os
 import sys
 import unittest
 from pathlib import Path
-from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -43,8 +42,7 @@ class TestExportBookDirContainment(unittest.TestCase):
         self.assertEqual(cm.exception.code, 403)
 
     def test_parent_escape_403(self):
-        from gui import platform_service
-        from gui import config
+        from gui import config, platform_service
         evil = str(config.ROOT_DIR.parent / "etc")
         with self.assertRaises(ServiceError) as cm:
             platform_service.export_book_for_platform("qidian", evil)
@@ -88,7 +86,7 @@ class TestSecretStorePerms(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_file_created_0600(self):
         import tempfile
-        from scripts import secret_store
+
         with tempfile.TemporaryDirectory() as td:
             # 直接测底层写入逻辑：用 os.open 建文件应为 0o600
             p = Path(td) / "s.json"
