@@ -85,7 +85,11 @@ def discover_data_path_constants() -> dict[str, Path]:
     for name, value in namespace.items():
         if name.startswith("_") or name in INFRASTRUCTURE_CONSTANTS:
             continue
-        if isinstance(value, Path) and value.is_relative_to(root):
+        if not isinstance(value, Path):
+            continue
+        # 数据路径：项目根内，或已登记的用户数据目录（如 STATE_ROOT 已迁至
+        # %LOCALAPPDATA%/xuan，不在项目根内但仍需隔离）。
+        if value.is_relative_to(root) or name in DATA_PATH_CONSTANTS:
             found[name] = value
     return found
 

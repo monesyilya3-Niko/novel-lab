@@ -11,6 +11,7 @@ const http = require('http')
 let backend = null
 let mainWindow = null
 let backendUrl = null
+let handshakeToken = null
 
 const isPackaged = app.isPackaged
 // 打包后：resources/backend/{gui,scripts,python-win}；开发时：项目根目录。
@@ -35,14 +36,18 @@ if (!gotLock) {
 
 function parseUrlFromOutput(text) {
   const m = /\[GUI\] xuan 服务已启动:\s*(http:\/\/[^\s]+)/.exec(text)
-  return m ? m[1].replace(/\/$/, '') : null
+  if (!m) return null
+  const url = m[1].replace(/\/$/, '')
+  const tm = /\[GUI\] 握手令牌:\s*([A-Za-z0-9_-]+)/.exec(text)
+  return { url, token: tm ? tm[1] : null }
 }
 
 function waitForHttp(url, timeoutMs) {
   const deadline = Date.now() + timeoutMs
   return new Promise((resolve, reject) => {
     const attempt = () => {
-      const req = http.get(url + '/api/overview', (res) => {
+      const headers = handshakeToken ? { 'X-Handshake-Token': handshakeToken } : {}
+      const req = http.get(url + '/api/overview', { headers }, (res) => {
         res.resume()
         if (res.statusCode === 200) return resolve()
         retry()
@@ -75,12 +80,13 @@ function startBackend() {
     backend.on('error', (e) => reject(e))
     const onData = (d) => {
       out += d.toString()
-      const url = parseUrlFromOutput(out)
-      if (url) {
-        backendUrl = url
+      const parsed = parseUrlFromOutput(out)
+      if (parsed) {
+        backendUrl = parsed.url
+        handshakeToken = parsed.token
         backend.stdout.off('data', onData)
         backend.stderr.off('data', onData)
-        waitForHttp(url, 30000).then(resolve).catch(reject)
+        waitForHttp(parsed.url, 30000).then(resolve).catch(reject)
       }
     }
     backend.stdout.on('data', onData)
@@ -148,7 +154,8 @@ function createWindow() {
   mainWindow.on('resize', saveState)
   mainWindow.on('move', saveState)
   mainWindow.on('close', saveState)
-  mainWindow.loadURL(backendUrl + '/')
+  const frontUrl = handshakeToken ? backendUrl + '/?handshake=' + encodeURIComponent(handshakeToken) : backendUrl + '/'
+  mainWindow.loadURL(frontUrl)
   mainWindow.once('ready-to-show', () => mainWindow.show())
   // 外部链接用系统浏览器打开，不在应用窗口内跳转。
   // setWindowOpenHandler 只拦截 window.open() 弹窗；will-navigate 拦截

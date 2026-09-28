@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
@@ -115,7 +116,90 @@ def assert_asset_kind(data: Any, expected: str, ref: str) -> None:
 # ---------------------------------------------------------------------------
 
 # 已导入书籍：book_id -> {title, source_path, chapters:[(title, body)], metrics}
-_BOOKS: dict[str, dict[str, Any]] = {}
+# B9：LRU 缓存（最多 _BOOKS_MAX 本），超限时淘汰最久未用且未在分析中的书；
+# 被淘汰的书可通过 _BOOK_INDEX 从源文件透明重载。
+_BOOKS: OrderedDict[str, dict[str, Any]] = OrderedDict()
+_BOOKS_MAX = 3
+# 轻量索引：book_id -> source_path（淘汰后仍保留，用于透明重载）
+_BOOK_INDEX: dict[str, str] = {}
+_books_lock = threading.Lock()
+
+
+def _books_get(book_id: str) -> dict[str, Any] | None:
+    """LRU 获取：命中时移到末尾（标记最近使用）；未命中时尝试从源文件重载。
+
+    B9：淘汰后透明重载，保证用户无感。
+    """
+    with _books_lock:
+        book = _BOOKS.get(book_id)
+        if book is not None:
+            _BOOKS.move_to_end(book_id)
+            return book
+        # 未命中：尝试从索引重载
+        src_path = _BOOK_INDEX.get(book_id)
+    if src_path is None:
+        return None
+    # 在锁外重载（IO 耗时），重载后重新加锁插入
+    try:
+        reloaded = _load_book_from_disk(book_id, src_path)
+    except (OSError, ServiceError):
+        return None
+    with _books_lock:
+        # 双重检查：重载期间可能已被其他线程插入
+        if book_id in _BOOKS:
+            _BOOKS.move_to_end(book_id)
+            return _BOOKS[book_id]
+        _books_put_locked(book_id, reloaded)
+        return reloaded
+
+
+def _books_put_locked(book_id: str, book: dict[str, Any]) -> None:
+    """插入 LRU（调用方持有 _books_lock）；超限时淘汰最久未用者。
+
+    正在分析中（_runtime 有条目）的书永不淘汰。
+    """
+    _BOOKS[book_id] = book
+    _BOOKS.move_to_end(book_id)
+    _BOOK_INDEX[book_id] = book["source_path"]
+    # 淘汰：从最久未用开始，跳过正在分析的
+    with _runtime_lock:
+        analyzing = set(_runtime.keys())
+    while len(_BOOKS) > _BOOKS_MAX:
+        oldest_id = next(iter(_BOOKS))
+        if oldest_id in analyzing:
+            # 最久的是正在分析的，尝试淘汰次久的
+            evicted = False
+            for bid in list(_BOOKS.keys()):
+                if bid not in analyzing:
+                    del _BOOKS[bid]
+                    evicted = True
+                    break
+            if not evicted:
+                break  # 全在分析中，放弃淘汰
+        else:
+            del _BOOKS[oldest_id]
+
+
+def _load_book_from_disk(book_id: str, src_path: str) -> dict[str, Any]:
+    """从源文件重载书籍（B9 透明重载路径）。"""
+    src = Path(src_path)
+    if not src.exists():
+        raise ServiceError(f"源文件已丢失: {src_path}", 404)
+    try:
+        text = src.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        text = src.read_text(encoding="gbk")
+    chapters_raw = engine_adapter.split_chapters(text)
+    if not chapters_raw:
+        raise ServiceError("源文件无法解析", 400)
+    metrics = engine_adapter.compute_metrics(text)
+    del text
+    return {
+        "title": src.stem,
+        "source_path": str(src),
+        "chapters": chapters_raw,
+        "metrics": metrics,
+    }
 
 # 分析运行时：book_id -> 分析上下文（线程 + 控制标志）
 _runtime: dict[str, dict[str, Any]] = {}
@@ -130,6 +214,50 @@ def _books_dir() -> Path:
 # 导入
 # ---------------------------------------------------------------------------
 
+def _secure_read_text(path: str) -> str:
+    """TOCTOU 安全读取文本文件。
+
+    - O_NOFOLLOW：符号链接直接拒绝（errno.ELOOP），不跟随；
+    - fstat 验证为常规文件（防 FIFO/设备文件）；
+    - 打开后所有检查基于 fd，不再重解析路径，消除检查-使用竞态。
+    """
+    import errno
+    import os
+    import stat
+
+    if Path(path).suffix.lower() != ".txt":
+        raise ServiceError("首版仅支持 .txt 导入", 400)
+    try:
+        # O_NONBLOCK：防 FIFO 打开时阻塞；后续 fstat 会拒绝非常规文件
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise ServiceError("不允许导入符号链接", 403) from exc
+        raise ServiceError(f"文件无法打开: {path}", 404) from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise ServiceError("只能导入常规文件", 400)
+        if st.st_size > 100 * 1024 * 1024:
+            raise ServiceError("文件超过 100MB 上限", 400)
+    except ServiceError:
+        os.close(fd)
+        raise
+    try:
+        with os.fdopen(fd, "rb") as f:
+            data = f.read()
+        # fd 已由 fdopen 接管关闭
+    except OSError as exc:
+        raise ServiceError(f"文件读取失败: {path}", 500) from exc
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            return data.decode("gbk")
+        except UnicodeDecodeError as exc:
+            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400) from exc
+
+
 def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     """读 txt → 切章 → 切批 → 生成 book_id → 建状态文件 → 返回 Book。
 
@@ -137,19 +265,7 @@ def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     路径安全校验由路由层（router._h_import）负责，本函数保持对内部调用友好。
     """
     src = Path(path)
-    if not src.exists():
-        raise ServiceError(f"文件不存在: {path}", 404)
-    if src.suffix.lower() != ".txt":
-        raise ServiceError("首版仅支持 .txt 导入", 400)
-
-    try:
-        text = src.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        # 尝试 gbk（中文 txt 常见编码）
-        try:
-            text = src.read_text(encoding="gbk")
-        except UnicodeDecodeError as exc:
-            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400) from exc
+    text = _secure_read_text(path)
 
     chapters_raw = engine_adapter.split_chapters(text)
     if not chapters_raw:
@@ -183,12 +299,13 @@ def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     # 正文已在 chapters_raw 中保留，此处释放避免与后继流程叠加。
     del text
 
-    _BOOKS[book_id] = {
-        "title": title,
-        "source_path": str(src),
-        "chapters": chapters_raw,
-        "metrics": metrics,
-    }
+    with _books_lock:
+        _books_put_locked(book_id, {
+            "title": title,
+            "source_path": str(src),
+            "chapters": chapters_raw,
+            "metrics": metrics,
+        })
 
     # 建/复用状态文件。
     state = state_store.load_state(book_id)
@@ -255,7 +372,7 @@ def split_chapter_batches(book_id: str, idx: int, batch_size: int | None = None)
 
 
 def _get_book_or_raise(book_id: str) -> dict[str, Any]:
-    book = _BOOKS.get(book_id)
+    book = _books_get(book_id)
     if book is None:
         raise ServiceError(f"书籍 {book_id} 未导入（请先 import）", 404)
     return book
@@ -349,7 +466,7 @@ def start_analysis(book_id: str, genre: str, model_id: str | None = None,
 
 def _run_analysis(book_id: str, genre: str, model_id: str | None, batch_size: int, ctx: dict[str, Any]) -> None:
     """后台串行分析主循环。"""
-    book = _BOOKS.get(book_id)
+    book = _books_get(book_id)
     if book is None:
         return
     chapters = book["chapters"]
@@ -540,12 +657,13 @@ def get_status(book_id: str | None = None) -> dict[str, Any]:
     """
     if not book_id:
         # 返回第一个已导入的书，或空状态。
-        if not _BOOKS:
-            return {"book_id": None, "status": "idle", "cursor": "", "done": 0, "total": 0}
-        book_id = next(iter(_BOOKS))
+        with _books_lock:
+            if not _BOOKS:
+                return {"book_id": None, "status": "idle", "cursor": "", "done": 0, "total": 0}
+            book_id = next(reversed(_BOOKS))  # 最近使用的
 
     state = state_store.load_task(book_id)
-    book = _BOOKS.get(book_id)
+    book = _books_get(book_id)
     total = 0
     if book:
         total = _count_total_batches(book["chapters"], state.get("batch_size") or config.batch_size_from_env())

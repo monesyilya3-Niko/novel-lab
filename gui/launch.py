@@ -64,11 +64,17 @@ def main(argv: list[str] | None = None) -> int:
     _ensure_sys_path()
 
     from gui.server import GuiServer
+    import secrets
 
-    server = GuiServer(preferred_port=args.port)
+    # Electron 模式（--no-browser）：生成身份握手 token，防止端口被抢占伪造。
+    handshake_token = secrets.token_urlsafe(32) if args.no_browser else None
+
+    server = GuiServer(preferred_port=args.port, handshake_token=handshake_token)
     host, port = server.start()
     url = f"http://{host}:{port}/"
     print(f"[GUI] xuan 服务已启动: {url}")
+    if handshake_token:
+        print(f"[GUI] 握手令牌: {handshake_token}")
     print("[GUI] 按 Ctrl+C 停止。")
 
     if not args.no_browser:

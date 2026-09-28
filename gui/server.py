@@ -89,10 +89,29 @@ class _Handler(BaseHTTPRequestHandler):
 
         /api/admin/* 走管理员会话（Cookie），其中 /api/admin/login 豁免
         （有独立的登录频率限制）；其余 /api/* 走既有的 NOVEL_LAB_TOKEN 机制。
+        Electron 模式（handshake_token 非空）额外要求 /api/* 携带正确的
+        X-Handshake-Token 头，防止端口被抢占后伪造 /api/overview。
         """
         path = unquote(urlparse(self.path).path)
         if path == "/api/admin/login":
             return True
+        # 身份握手（Electron 模式）：/api/* 必须携带正确的握手 token。
+        # 静态文件（/）豁免，前端 HTML 加载不需要 token。
+        handshake = getattr(self.server, "handshake_token", None)
+        if handshake and (path == "/api" or path.startswith("/api/")):
+            supplied = self.headers.get("X-Handshake-Token", "")
+            if not supplied or not hmac.compare_digest(supplied, handshake):
+                self._send_json(router.err(403, "握手失败：非法客户端"), 403)
+                return False
+        # CSRF 纵深防御（非 Electron 模式）：/api/* 写操作要求 Origin 来自本机。
+        # Electron 模式已有握手 token，浏览器直连模式靠此挡 CSRF。
+        # 无 Origin 的视为非浏览器客户端（curl/脚本），不受影响。
+        if not handshake and self.command in ("POST", "PUT", "DELETE"):
+            if path == "/api" or path.startswith("/api/"):
+                origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
+                if origin and not self._is_same_host_origin(origin):
+                    self._send_json(router.err(403, "跨站请求被拒绝"), 403)
+                    return False
         if path == "/api/admin" or path.startswith("/api/admin/"):
             sid = self._get_cookie(admin.SESSION_COOKIE)
             user = admin.get_session_user(sid)
@@ -618,9 +637,12 @@ def _read_lock_pid(path: Path) -> int | None:
 class GuiServer:
     """封装 ThreadingHTTPServer 的启动 / 停机。"""
 
-    def __init__(self, preferred_port: int | None = None) -> None:
+    def __init__(self, preferred_port: int | None = None, handshake_token: str | None = None) -> None:
         self.preferred_port = preferred_port
         self._lock_fd: int | None = None
+        # 身份握手 token（Electron 模式）：/api/* 请求必须携带正确的
+        # X-Handshake-Token 头，否则 403。浏览器直连模式为 None，不校验。
+        self.handshake_token = handshake_token
 
     def _acquire_lock(self) -> bool:
         """单实例锁（W09）：``gui_state/.lock`` 用 O_CREAT|O_EXCL 独占创建。
@@ -762,6 +784,8 @@ class GuiServer:
         host, port = self._bind_port()
         self._httpd = ThreadingHTTPServer((host, port), _Handler)
         self._httpd.daemon_threads = True
+        # 身份握手：把 token 挂到 httpd 实例上，Handler 可经 self.server 访问。
+        self._httpd.handshake_token = self.handshake_token
         self._thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
         self._thread.start()
         return host, port

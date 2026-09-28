@@ -101,6 +101,20 @@ function bookFromSnake(b: Record<string, unknown>): Book {
 }
 
 // ---------------------------------------------------------------------------
+// 身份握手 token（Electron 模式）：main.js 经 URL ?handshake= 传入，
+// 每次 API 请求携带 X-Handshake-Token 头，后端校验防端口抢占伪造。
+// ---------------------------------------------------------------------------
+function getHandshakeToken(): string | null {
+  try {
+    const m = /[?&]handshake=([^&]+)/.exec(window.location.search)
+    return m ? decodeURIComponent(m[1]) : null
+  } catch {
+    return null
+  }
+}
+const HANDSHAKE_TOKEN: string | null = getHandshakeToken()
+
+// ---------------------------------------------------------------------------
 // 请求核心（唯一出口；post/put/del/get 是薄别名）
 // ---------------------------------------------------------------------------
 
@@ -114,9 +128,12 @@ async function typedRequest<T>(
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   let res: Response
   try {
+    const headers: Record<string, string> = {}
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (HANDSHAKE_TOKEN) headers['X-Handshake-Token'] = HANDSHAKE_TOKEN
     res = await fetch(`${BASE}${path}`, {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
     })
@@ -155,7 +172,9 @@ async function uploadRequest<T>(path: string, form: FormData): Promise<T> {
   let res: Response
   try {
     // 注意：不手动设 Content-Type，浏览器会自动带 boundary。
-    res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, signal: ctrl.signal })
+    const upHeaders: Record<string, string> = {}
+    if (HANDSHAKE_TOKEN) upHeaders['X-Handshake-Token'] = HANDSHAKE_TOKEN
+    res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, signal: ctrl.signal, headers: Object.keys(upHeaders).length ? upHeaders : undefined })
   } finally {
     clearTimeout(timer)
   }

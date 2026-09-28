@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 # GUI 包根目录（novel-lab/gui/）
@@ -26,9 +27,45 @@ DEFAULT_BATCH_SIZE = 4000
 
 # 状态/资产落盘目录（相对 novel-lab 根目录）。
 ASSETS_ROOT = ROOT_DIR / "assets"
+def _user_data_dir() -> Path:
+    r"""平台用户数据目录（桌面端运行时数据归宿）。
+
+    - Windows: %LOCALAPPDATA%\xuan
+    - macOS: ~/Library/Application Support/xuan
+    - Linux: ~/.local/share/xuan
+    可经 XUAN_DATA_DIR 环境变量覆盖（测试/便携模式）。
+    """
+    override = os.environ.get("XUAN_DATA_DIR")
+    if override:
+        return Path(override).expanduser()
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+        return Path(base) / "xuan"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "xuan"
+    return Path.home() / ".local" / "share" / "xuan"
+
+
+def _migrate_legacy_state(target: Path) -> None:
+    """旧版数据迁移：ROOT_DIR/gui_state -> 用户数据目录（仅首次）。"""
+    legacy = ROOT_DIR / "gui_state"
+    if target.exists() or not legacy.is_dir():
+        return
+    try:
+        import shutil
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # 排除 .lock（单实例锁含旧 PID，复制过去会误判）
+        shutil.copytree(legacy, target, ignore=shutil.ignore_patterns('.lock'))
+    except OSError:
+        pass  # 迁移失败不阻断启动，下次再试
+
+
 # 运行时状态目录：只放**运行时产物**（SQLite 库 / WAL / SHM、单实例锁、备份）。
-# 该目录被 .gitignore 整目录忽略（见 .gitignore「GUI 运行时数据」段）。
-STATE_ROOT = ROOT_DIR / "gui_state"
+# 桌面端：%LOCALAPPDATA%\xuan（Win）/ ~/Library/Application Support/xuan（macOS）
+#        / ~/.local/share/xuan（Linux）；旧版 ROOT_DIR/gui_state 自动迁移。
+_USER_DATA_DIR = _user_data_dir()
+_migrate_legacy_state(_USER_DATA_DIR)
+STATE_ROOT = _USER_DATA_DIR
 
 # 状态 JSON 副本目录：state_store 的 `gui_state_*.json` 降级副本落这里。
 #
