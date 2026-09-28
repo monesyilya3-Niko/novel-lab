@@ -167,7 +167,7 @@ def inject(voice: str, structure: str | None = None, commercial: str | None = No
         safe = re.sub(r'[^\w\-]', '_', title)[:60]
         fp = config.PROMPTS_DIR / f"{safe}-writing-prompt.md"
         fp.write_text(prompt, encoding="utf-8")
-        saved_path = str(fp.relative_to(config.ROOT_DIR))
+        saved_path = migrate.rel_path(fp)
 
     return {
         "prompt": prompt,
@@ -373,8 +373,8 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
                 "chapter_no": chapter_no, "target_score": target_score,
                 "pass_line": pass_line, "prompt": system,
                 "guide_markdown": guide,
-                "guide_path": str(guide_path.relative_to(config.ROOT_DIR)),
-                "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
+                "guide_path": migrate.rel_path(guide_path),
+                "chapter_path": migrate.rel_path(chapter_path),
                 "notice": "未配置外部模型：请把指引与 prompt 交给会话内智能写作，写完后用「手动入库」贴回。",
                 "error": None,
             }
@@ -446,7 +446,7 @@ def import_chapter(project: str, chapter_no: int, content: str,
     chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
 
     result: dict[str, Any] = {
-        "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
+        "chapter_path": migrate.rel_path(chapter_path),
         "chapter_no": chapter_no, "char_count": len(content),
     }
 
@@ -546,7 +546,7 @@ def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> Non
         chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, best_content or "")
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id]["status"] = "done"
-            _WRITING_TASKS[task_id]["chapter_path"] = str(chapter_path.relative_to(config.ROOT_DIR))
+            _WRITING_TASKS[task_id]["chapter_path"] = migrate.rel_path(chapter_path)
             _WRITING_TASKS[task_id]["message"] = (
                 f"完成：一致性 {best_cons:.1f}/100，质量 {best_qc}/100")
 
@@ -554,7 +554,7 @@ def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> Non
             "task_type": "writing", "task_id": task_id,
             "phase": "done", "chapter_no": chapter_no,
             "consistency": best_cons, "quality": best_qc,
-            "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
+            "chapter_path": migrate.rel_path(chapter_path),
         })
 
     except Exception as exc:  # noqa: BLE001

@@ -312,12 +312,20 @@ def rollback() -> Path | None:
 # 实体入库（UPSERT，幂等）
 # ---------------------------------------------------------------------------
 
-def _rel_path(fp: Path) -> str:
-    """相对化路径（相对 ROOT_DIR），回退为 <目录名>/<文件名>。"""
+def rel_path(fp: Path) -> str:
+    """相对化路径（相对 ROOT_DIR），回退为 <目录名>/<文件名>。
+
+    用户数据目录（%LOCALAPPDATA%/暮冬念春 等）永不在 ROOT_DIR 下，
+    直接 fp.relative_to(config.ROOT_DIR) 在生产环境必抛 ValueError。
+    """
     try:
         return str(fp.relative_to(config.ROOT_DIR))
     except ValueError:
         return f"{fp.parent.name}/{fp.name}"
+
+
+# 兼容旧名
+_rel_path = rel_path
 
 
 def _upsert_book(conn: Any, book_id: str, title: str, source_path: str | None,

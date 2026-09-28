@@ -209,7 +209,7 @@ def update_asset(kind: str, asset_id: str, content: dict[str, Any]) -> dict[str,
     # 重索引
     migrate.sync_asset(fp)
 
-    return {"name": name, "path": str(fp.relative_to(config.ROOT_DIR)), "updated": True}
+    return {"name": name, "path": migrate.rel_path(fp), "updated": True}
 
 
 def delete_asset(kind: str, asset_id: str) -> dict[str, Any]:
@@ -232,7 +232,7 @@ def delete_asset(kind: str, asset_id: str) -> dict[str, Any]:
     dst = trash_dir / f"{name}-{ts}-{uuid.uuid4().hex[:6]}.json"
     shutil.move(str(fp), str(dst))
 
-    return {"name": name, "trashed_to": str(dst.relative_to(config.ROOT_DIR)), "deleted": True}
+    return {"name": name, "trashed_to": migrate.rel_path(dst), "deleted": True}
 
 
 def create_asset(name: str, kind: str, content: dict[str, Any]) -> dict[str, Any]:
@@ -249,4 +249,4 @@ def create_asset(name: str, kind: str, content: dict[str, Any]) -> dict[str, Any
     fp.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding="utf-8")
     migrate.sync_asset(fp)
 
-    return {"name": name, "path": str(fp.relative_to(config.ROOT_DIR)), "created": True}
+    return {"name": name, "path": migrate.rel_path(fp), "created": True}

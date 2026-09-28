@@ -30,6 +30,17 @@ _MAX_CONCURRENT_QUALITY = 2
 _MAX_TERMINAL_TASKS = 50
 
 
+def _safe_report_rel(path: Path) -> str:
+    """报告路径转相对路径（相对 REPORTS_DIR）。P0 修复：用户数据目录
+    （%LOCALAPPDATA%/暮冬念春 等）永不在 ROOT_DIR 下，旧代码
+    path.relative_to(config.ROOT_DIR) 在生产环境必抛 ValueError，
+    导致每个 QC 任务在落盘后崩溃、报告列表接口 500。"""
+    try:
+        return str(path.relative_to(config.REPORTS_DIR))
+    except ValueError:
+        return str(path)
+
+
 def _prune_terminal_tasks() -> None:
     """清理终态任务，防止注册表无限增长。"""
     with _QUALITY_LOCK:
@@ -256,7 +267,7 @@ def list_qc_reports() -> list[dict[str, Any]]:
                 data = json.loads(fp.read_text(encoding="utf-8"))
                 reports.append({
                     "name": fp.stem,
-                    "path": str(fp.relative_to(config.ROOT_DIR)),
+                    "path": _safe_report_rel(fp),
                     "verdict": data.get("verdict", "?"),
                     "total_score": data.get("total_score"),
                     "created_at": data.get("meta", {}).get("created_at"),
@@ -391,8 +402,8 @@ def _run_qc_task(task_id: str, chapter_dir: str, voice_path: str | None,
                 "layers": report.get("layers", []),
                 "issues": report.get("issues", [])[:50],
                 "meta": report.get("meta", {}),
-                "report_json": str(json_fp.relative_to(config.ROOT_DIR)),
-                "report_md": str(md_fp.relative_to(config.ROOT_DIR)),
+                "report_json": _safe_report_rel(json_fp),
+                "report_md": _safe_report_rel(md_fp),
             })
 
         sse.broker.publish({
