@@ -111,12 +111,13 @@
 | 4. UI 达到高级感/企业级水准 | 本轮涉及前端竞态、中文化、Onboarding 向导；最终视觉验收由总负责人确认 |
 | 5. 交付总验收报告 | 本报告即是（唯一一份） |
 | 6. 最终代码同步到 GitHub | 已推送 `feat/enterprise-hardening`；远端 386 文件经路径/blob SHA/mode 完整 recursive tree 对比，与本地 HEAD **全一致**（验证方法见推送脚本 `push_v6.py` + `verify_tree.py`，报告内不硬编码追逐 SHA）；分支策略见 §6 |
-| 7. zip 成品包 + 仓库说明交付 | `novel-lab-enterprise-hardening-20260928-v6.zip`（2.3MB，由最终 Git HEAD 经 `git archive` 生成，解压复验通过，无压缩错误），SHA-256：`652992cf5a2ba31407c508b6f37d77452ac72fb8847b5b0f9e346f0f660e7ded` |
+| 7. zip 成品包 + 仓库说明交付 | `novel-lab-enterprise-hardening-20260928-v6.zip`（由最终 Git HEAD 经 `git archive` 生成，解压复验通过，无压缩错误；SHA-256 见交付时的 `SHA256SUMS.txt` 与交付记录，不在版本化报告内硬编码追逐） |
 
 ---
 
 ## 8. 交付物
 
-- GitHub：`monesyilya3-Niko/novel-lab` / `feat/enterprise-hardening`（386 文件与本地 HEAD 全一致，已复验）
-- zip：`~/workspace/your_files/novel-lab-enterprise-hardening-20260928-v6.zip`
+- GitHub：`monesyilya3-Niko/novel-lab` / `feat/enterprise-hardening`（384 文件与本地 HEAD 全一致，已复验）
+- zip：`~/workspace/your_files/novel-lab-enterprise-hardening-20260928-v6.zip`（由最终 Git HEAD 经 `git archive` 生成）
+- SHA-256：见同目录 `SHA256SUMS.txt`（交付时生成）
 - 原始备份（禁止修改/删除，未动）：`~/workspace/user/files/novel-lab-backup-2026-09-27_2_37wf.zip`
