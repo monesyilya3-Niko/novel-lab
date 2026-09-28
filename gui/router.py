@@ -115,9 +115,8 @@ def _h_import_sample(params: dict[str, Any], body: dict[str, Any]) -> dict[str, 
     if not resolved.is_relative_to(_samples_dir().resolve()) or not resolved.is_file():
         raise ServiceError("示例文件不存在", 404)
     # 复制到用户语料目录（防重名），再走标准导入流程
-    from gui.server import _unique_corpus_path  # noqa: PLC0415
     _config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
-    dest = _unique_corpus_path(name)
+    dest = services.unique_corpus_path(name)
     shutil.copy2(resolved, dest)
     batch_size = _safe_batch_size((body or {}).get("batch_size"))
     return ok(services.import_book(str(dest), batch_size))

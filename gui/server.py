@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 from gui import admin, auto_backup, config, db, router, services
 from gui.logging_setup import get_logger, setup_logging
-from gui.services import ServiceError
+from gui.services import ServiceError, unique_corpus_path as _unique_corpus_path
 from gui.sse import broker
 
 _log = get_logger("server")
@@ -39,20 +39,6 @@ def _safe_upload_filename(name: str) -> str:
     if len(base) > 200:
         raise ServiceError("文件名过长（最多 200 字符）", 400)
     return base
-
-
-def _unique_corpus_path(name: str) -> Path:
-    """corpus/ 下防重名：已存在则追加 -1/-2…。"""
-    dest = config.CORPUS_DIR / name
-    if not dest.exists():
-        return dest
-    stem, suffix = Path(name).stem, Path(name).suffix
-    i = 1
-    while True:
-        cand = config.CORPUS_DIR / f"{stem}-{i}{suffix}"
-        if not cand.exists():
-            return cand
-        i += 1
 
 
 def _parse_upload_batch_size(value: str | None) -> int | None:

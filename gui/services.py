@@ -214,6 +214,20 @@ def _books_dir() -> Path:
     return config.STATE_ROOT
 
 
+def unique_corpus_path(name: str) -> Path:
+    """corpus/ 下防重名：已存在则追加 -1/-2…。"""
+    dest = config.CORPUS_DIR / name
+    if not dest.exists():
+        return dest
+    stem, suffix = Path(name).stem, Path(name).suffix
+    i = 1
+    while True:
+        cand = config.CORPUS_DIR / f"{stem}-{i}{suffix}"
+        if not cand.exists():
+            return cand
+        i += 1
+
+
 # ---------------------------------------------------------------------------
 # 导入
 # ---------------------------------------------------------------------------
