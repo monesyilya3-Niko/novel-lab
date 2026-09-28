@@ -26,6 +26,13 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: 暮冬念春
   uninstallDisplayName: 暮冬念春
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  # 真正的软件安装体验：安装向导、开始菜单/桌面快捷方式、控制面板卸载项、
+  # 安装完成可直接启动。用户数据在 %LOCALAPPDATA%\暮冬念春（安装目录之外），
+  # 卸载/覆盖升级永不删除用户数据。
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
   # 未签名：Windows SmartScreen 会提示，属预期行为（个人分发无证书）。
   # 正式交付为 NSIS .exe 安装器（用户要求，禁用 zip 冒充安装器）。
   # 注意：Linux 下打 NSIS 包需 wine；本机无 wine，安装器须在 Windows 上跑 npm run dist 构建。
