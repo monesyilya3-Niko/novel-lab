@@ -53,6 +53,11 @@ class TestOverviewAPI(unittest.TestCase):
                   config.CONFIG_DIR, config.STATE_ROOT, config.STATE_JSON_DIR):
             d.mkdir(parents=True, exist_ok=True)
 
+        # _BOOKS 注册（安全修复后 get_book_results 要求 book 已导入）。
+        from gui import services as _svc
+        _svc._BOOKS["bookA"] = {"title": "测试书A", "chapters": [], "metrics": {}}
+        _svc._BOOKS["bookB"] = {"title": "测试书B", "chapters": [], "metrics": {}}
+
         # assets：voice-card + structure-obs + craft-card（组装卡，bookA）。
         (config.ASSETS_ROOT / "bookA-voice-card.json").write_text(
             json.dumps({"meta": {"source_title": "测试书A"}, "narration": {}}, ensure_ascii=False),
