@@ -45,14 +45,14 @@
 | 4 | `scripts/e2e_isolated.sh`：空库排除改为根锚定（`/corpus/` `/assets/` `/reports/` `/gui/state/`）；默认模式保留种子数据（smoke 资产库测试需要） | `E2E_EMPTY_LIBRARY=1` 下 onboarding 2/2 |
 | 5 | `AppContext` sequence guard、`ResultPanel` 请求序列守卫+切章批次归零、`SettingsWorkbench` 字符串态输入/即时校验/交叉阈值校验/保存重置刷新、Quality/Writing 状态中文化、`ErrorBoundary` 重试恢复 | vitest 51/51（含新增 race/校验/重试测试 11 例） |
 | 7 | ruff `--fix` 自动修复 4 项 | `ruff check .` 全清 |
-| 8 | `AGENTS.md §7` 基线同步为 1116（后随 metrics 新测试再次同步） | `test_doc_metrics` 通过 |
+| 8 | `AGENTS.md §7` 基线同步为 1116（后随 metrics 新测试再次同步；16:34 复验轮再同步为 1117） | `test_doc_metrics` 通过 |
 
 ---
 
 ## 4. 门禁结果（均为本轮最终代码上的真实工具输出）
 
 ### Python
-- `python3 -m unittest discover -s tests`：**1116 例，OK（3 跳过）**——3 跳过为 2 个 Windows-only + 1 个缺 corpus，与基线一致
+- `python3 -m unittest discover -s tests`：**1117 例，OK（3 跳过）**——3 跳过为 2 个 Windows-only + 1 个缺 corpus，与基线一致（16:34 复验轮新增守卫用例 1 例，基线 1116→1117）
 - `ruff check .`：**All checks passed**
 - `coverage report --fail-under=60`：**62%，通过**
 
@@ -105,19 +105,35 @@
 
 | DoD | 结论 |
 |---|---|
-| 1. P0 缺陷清零；P1 缺口关闭或有书面裁决 | 本轮未发现 P0；发现的 P1（内存放大、空库 E2E 隔离缺陷、前端竞态）已全部修复并回归验证 |
-| 2. 自主全量审计发现的真实 bug 全部修复 | §2 的 8 项已全部修复（§3），无剩余 |
-| 3. 第 7 节门禁全部落地且通过 | Python 1116 全绿 / ruff 全清 / coverage 62%（fail-under=60）/ ESLint 0 警告 / tsc 全清 / build 成功 / E2E 通过 / 提交前 §4 复核执行——**全部通过** |
+| 1. P0 缺陷清零；P1 缺口关闭或有书面裁决 | 本轮未发现 P0；发现的 P1（内存放大、空库 E2E 隔离缺陷、前端竞态）已全部修复并回归验证；16:34 复验轮又发现 2 个测试隔离泄漏（P1）+ 1 个守卫缺口，见 §9，已全部修复并回归验证 |
+| 2. 自主全量审计发现的真实 bug 全部修复 | §2 的 8 项 + §9 复验轮的 3 项已全部修复，无剩余 |
+| 3. 第 7 节门禁全部落地且通过 | Python 1117 全绿 / ruff 全清 / coverage 62%（fail-under=60）/ ESLint 0 警告 / tsc 全清 / build 成功 / E2E 通过 / 提交前 §4 复核执行——**全部通过** |
 | 4. UI 达到高级感/企业级水准 | 本轮涉及前端竞态、中文化、Onboarding 向导；最终视觉验收由总负责人确认 |
 | 5. 交付总验收报告 | 本报告即是（唯一一份） |
-| 6. 最终代码同步到 GitHub | 已推送 `feat/enterprise-hardening`；远端 386 文件经路径/blob SHA/mode 完整 recursive tree 对比，与本地 HEAD **全一致**（验证方法见推送脚本 `push_v6.py` + `verify_tree.py`，报告内不硬编码追逐 SHA）；分支策略见 §6 |
-| 7. zip 成品包 + 仓库说明交付 | `novel-lab-enterprise-hardening-20260928-v6.zip`（由最终 Git HEAD 经 `git archive` 生成，解压复验通过，无压缩错误；SHA-256 见交付时的 `SHA256SUMS.txt` 与交付记录，不在版本化报告内硬编码追逐） |
+| 6. 最终代码同步到 GitHub | 已推送 `feat/enterprise-hardening`；远端 384 文件经路径/blob SHA/mode 完整 recursive tree 对比，与本地 HEAD **全一致**（验证方法见推送脚本 `push_v*.py`，报告内不硬编码追逐 SHA）；分支策略见 §6 |
+| 7. zip 成品包 + 仓库说明交付 | `novel-lab-enterprise-hardening-20260928-v7.zip`（由最终 Git HEAD 经 `git archive` 生成，解压复验通过，无压缩错误；SHA-256 见交付时的 `SHA256SUMS.txt` 与交付记录，不在版本化报告内硬编码追逐） |
 
 ---
 
 ## 8. 交付物
 
 - GitHub：`monesyilya3-Niko/novel-lab` / `feat/enterprise-hardening`（384 文件与本地 HEAD 全一致，已复验）
-- zip：`~/workspace/your_files/novel-lab-enterprise-hardening-20260928-v6.zip`（由最终 Git HEAD 经 `git archive` 生成）
+- zip：`~/workspace/your_files/novel-lab-enterprise-hardening-20260928-v7.zip`（由最终 Git HEAD 经 `git archive` 生成）
 - SHA-256：见同目录 `SHA256SUMS.txt`（交付时生成）
 - 原始备份（禁止修改/删除，未动）：`~/workspace/user/files/novel-lab-backup-2026-09-27_2_37wf.zip`
+
+---
+
+## 9. 复验轮（2026-09-28 16:34，用户指令"再检查一遍…安装测试一下"）
+
+本轮不测工作树，测**交付物本身**：从 v6 zip 全新解压一套干净安装，跑全量测试。结果抓到 2 个真实隔离泄漏 + 1 个守卫缺口——在工作树里因残留文件已存在而被掩盖，正是"换真实审计角度"的价值。
+
+| # | 问题 | 根因 | 修复 | 验证 |
+|---|---|---|---|---|
+| 1 | `test_genre_validation.py` 在真实 `gui/state/` 写下 `gui_state_b.json` | `test_known_genre_passes_validation` 未 mock `state_store`，`start_analysis` 走过题材校验后用真实双写（JSON + SQLite）落盘 | 该用例补 `mock.patch.object(services, "state_store")`（与同文件 `_call` 一致） | 干净安装复测不再产生该文件 |
+| 2 | `test_p2_hardening.py` 在真实 `gui_state/` 落下 `index.db` | `TestServerAuth.setUpClass` 起真实 `GuiServer`，`start()` 调 `db.init_schema()`，但只隔离了 `LOCK_PATH`/`API_TOKEN`，未隔离 `STATE_ROOT` | `setUpClass`/`tearDownClass` 加 `STATE_ROOT` + `STATE_JSON_DIR` 成对隔离（沿用 `test_gui_backend.py` 既有模式） | 同上 |
+| 3 | 守卫缺口：`TestRealGuiStateLeakGuard` 从未比对 `files` 集合 | `_isolation.snapshot_real_gui_state()` 拍了 `files` 快照，但守卫只断言 `settings.json` 内容/mtime 与 `.tmp` 残留——问题 2 的 `index.db` 长期漏网 | 新增 `test_no_new_files_in_real_gui_state`：比对 `files` 集合（排除 SQLite `-wal`/`-shm` 边车，见快照函数注释） | 反向验证：基线后建 `fake_leak.db`，新守卫 FAIL 捕获；删除后通过 |
+
+修复后：工作树全量 **1117 例 OK（3 跳过）**；远端重新推送并 384 文件完整 recursive tree 复验一致；v7 zip（`git archive`）重新打包，`unzip -t` 通过；**从 v7 zip 干净安装再跑全量：1117 例 OK，`gui/state/` 与 `gui_state/` 零新增文件**；另从干净安装起真实服务冒烟：`GET /` 200、`/api/overview` 200、`POST /api/import-upload`（中文文件名 multipart）200 并正确入库 1 本书。
+
+本轮未发现生产代码缺陷；P0 仍为零。测试基线 `AGENTS.md §7` 已同步 1116→1117。
