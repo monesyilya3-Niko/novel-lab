@@ -798,8 +798,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[migrate] 内置资产同步：随包 {result['shipped_total']} / "
               f"用户目录 {result['runtime_total']}")
         print(f"  本次补齐: {result['copied'] or '无（已是最新）'}")
+        if result.get("reindexed"):
+            print(f"  已入库 SQLite（UI 即刻可见）: {result['reindexed']}")
         if result["modified"]:
-            print(f"  未覆盖（内容不同，需人工裁决）: {result['modified']}")
+            print(f"  未覆盖（疑似用户修改，需人工裁决）: {result['modified']}")
+        if result.get("upgradable"):
+            print(f"  官方旧版（有新版，可手动更新）: {result['upgradable']}")
         if result["extra"]:
             print(f"  用户自有（不动）: {len(result['extra'])} 个")
         return 0

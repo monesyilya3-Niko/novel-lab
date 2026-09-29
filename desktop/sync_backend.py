@@ -54,6 +54,17 @@ def main() -> int:
     # 语料与报告：corpus/、reports/ 同理
     total += sync_dir(ROOT / "corpus", BACKEND / "corpus", "corpus/")
     total += sync_dir(ROOT / "reports", BACKEND / "reports", "reports/")
+    # 内置资产版本清单：repo 根 assets-manifest.json -> backend/assets-manifest.json
+    # （builtin_sync.load_manifest 按 ROOT_DIR 实时读取；缺失则降级为旧行为，
+    #  但会丢失"官方旧版可升级"分类，因此打包必须携带）
+    manifest = ROOT / "assets-manifest.json"
+    if manifest.is_file():
+        shutil.copy2(manifest, BACKEND / "assets-manifest.json")
+        print(f"assets-manifest.json → { (BACKEND / 'assets-manifest.json').relative_to(ROOT) }")
+        total += 1
+    else:
+        print("警告：assets-manifest.json 不存在（请先跑 python -m gui.builtin_sync --write-manifest）",
+              file=sys.stderr)
     # dist 已在 gui/ 同步中包含，单独确认
     dist = BACKEND / "gui" / "web" / "dist" / "index.html"
     if not dist.exists():

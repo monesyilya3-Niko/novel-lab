@@ -369,6 +369,7 @@ function GeneratePanel({ sel }: { sel: WritingAssetSelection }) {
       <Divider sx={{ my: 2 }} />
       <TropePanel
         currentGenre={sel.voiceGenre}
+        taskText={task}
         onInsert={(text) => setTask((prev) => (prev ? `${prev}\n${text}` : text))}
       />
       <Divider sx={{ my: 2 }} />

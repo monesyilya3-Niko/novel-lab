@@ -92,11 +92,65 @@ expect(text).toContain('铺垫：公开打脸的铺垫')
 expect(text).toContain('引爆：公开打脸的引爆')
 })
 
-it('tropeToTaskText 纯函数：骨架四段式与参数齐全', () => {
+it('tropeToTaskText 纯函数：首行桥段名标记 + 骨架四段式与参数齐全', () => {
 const text = tropeToTaskText(T1 as never)
-expect(text).toContain('')
+const lines = text.split('\n')
+expect(lines[0]).toBe('【公开打脸】')
 expect(text).toContain('激化：1）公开打脸激化一2）公开打脸激化二')
 expect(text).toContain('可调参数：对手身份（情敌/上司）')
+})
+
+it('tropeTaskMarker 与 tropeToTaskText 首行一致', async () => {
+const { tropeTaskMarker} = await import('./TropePanel')
+expect(tropeTaskMarker(T1 as never)).toBe('【公开打脸】')
+expect(tropeToTaskText(T1 as never).startsWith(tropeTaskMarker(T1 as never))).toBe(true)
+})
+
+it('关键词搜索：按桥段名过滤', async () => {
+render(<TropePanel onInsert={() => {}} />)
+await screen.findByText('公开打脸')
+fireEvent.change(screen.getByLabelText('搜索桥段'), { target: { value: '英雄救美'}})
+expect(screen.queryByText('公开打脸')).toBeNull()
+expect(screen.getByText('英雄救美')).toBeTruthy()
+})
+
+it('关键词搜索：命中骨架文本', async () => {
+render(<TropePanel onInsert={() => {}} />)
+await screen.findByText('公开打脸')
+fireEvent.change(screen.getByLabelText('搜索桥段'), { target: { value: '英雄救美的引爆'}})
+expect(screen.queryByText('公开打脸')).toBeNull()
+expect(screen.getByText('英雄救美')).toBeTruthy()
+})
+
+it('关键词搜索：无命中时给提示', async () => {
+render(<TropePanel onInsert={() => {}} />)
+await screen.findByText('公开打脸')
+fireEvent.change(screen.getByLabelText('搜索桥段'), { target: { value: '不存在的桥段zzz'}})
+expect(await screen.findByText(/换个分类或关键词试试/)).toBeTruthy()
+})
+
+it('防重复写入：已在写作要点中的桥段按钮置灰且不回调', async () => {
+const onInsert = vi.fn()
+render(<TropePanel onInsert={onInsert} taskText={'已有内容\n【公开打脸】\n铺垫：xxx'} />)
+await screen.findByText('公开打脸')
+fireEvent.click(screen.getByText('公开打脸'))
+const btn = await screen.findByRole('button', { name: '已在写作要点中'})
+expect(btn).toBeDisabled()
+expect(screen.getByText(/无需重复添加/)).toBeTruthy()
+fireEvent.click(btn)
+expect(onInsert).not.toHaveBeenCalled()
+})
+
+it('防重复写入：未写入过的桥段按钮可用', async () => {
+const onInsert = vi.fn()
+render(<TropePanel onInsert={onInsert} taskText={'别的内容'} />)
+await screen.findByText('公开打脸')
+fireEvent.click(screen.getByText('公开打脸'))
+const btn = await screen.findByRole('button', { name: '写入写作要点'})
+expect(btn).not.toBeDisabled()
+fireEvent.click(btn)
+expect(onInsert).toHaveBeenCalledTimes(1)
+expect(onInsert.mock.calls[0][0] as string).toContain('【公开打脸】')
 })
 
 it('加载失败显示错误', async () => {

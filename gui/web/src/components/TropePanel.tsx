@@ -26,11 +26,17 @@ interface TropePanelProps {
 onInsert: (text: string) => void
 /** 当前题材（voice 的 genre），用于「只看当前题材适用」过滤。 */
 currentGenre?: string
+/** 写作要点当前文本：用于防止同一桥段重复写入（命中身份标记即视为已写入）。 */
+taskText?: string
 }
 
-/** 桥段 → 可直接拼进写作要点的紧凑文本。 */
+/** 桥段 → 可直接拼进写作要点的紧凑文本。
+ *
+ * 首行固定为桥段名标记 ``【name】``：一是让用户在写作要点里一眼看出这段
+ * 骨架来自哪个桥段；二是作为防重复写入的身份锚（见 TropePanel 的去重逻辑）。
+ */
 export function tropeToTaskText(t: Trope): string {
-const lines = [``]
+const lines = [`【${t.name}】`]
 const s = t.skeleton
 if (s) {
 if (s.setup) lines.push(`铺垫：${s.setup}`)
@@ -49,12 +55,18 @@ lines.push(`可调参数：${ps}`)
 return lines.join('\n')
 }
 
-export default function TropePanel({ onInsert, currentGenre}: TropePanelProps) {
+/** 桥段在写作要点中的身份标记（与 tropeToTaskText 首行一致）。 */
+export function tropeTaskMarker(t: Trope): string {
+return `【${t.name}】`
+}
+
+export default function TropePanel({ onInsert, currentGenre, taskText}: TropePanelProps) {
 const [tropes, setTropes] = useState<Trope[]>([])
 const [totalCount, setTotalCount] = useState(0)
 const [loading, setLoading] = useState(true)
 const [error, setError] = useState('')
 const [category, setCategory] = useState('全部')
+const [keyword, setKeyword] = useState('')
 const [onlyApplicable, setOnlyApplicable] = useState(false)
 const [selectedId, setSelectedId] = useState('')
 
@@ -77,21 +89,39 @@ const s = new Set(tropes.map((t) => t.category).filter(Boolean))
 return ['全部',...Array.from(s)]
 }, [tropes])
 
+/** 关键词命中的文本面：桥段名 / 分类 / 骨架四段 / 可调参数名。 */
+function tropeSearchHaystack(t: Trope): string {
+const parts: string[] = [t.name?? '', t.category?? '']
+const s = t.skeleton
+if (s) {
+parts.push(s.setup?? '', s.payoff?? '', s.aftermath?? '')
+parts.push(...(s.escalation?? []))
+}
+parts.push(...(t.parameters?? []).map((p) => p.name?? ''))
+parts.push(...(t.commonFailures?? []))
+return parts.join('\n').toLowerCase()
+}
+
 const filtered = useMemo(() => {
+const kw = keyword.trim().toLowerCase()
 return tropes.filter((t) => {
 if (category!== '全部' && t.category!== category) return false
 if (onlyApplicable && currentGenre) {
 const ag = t.applicableGenres?? []
 if (!ag.includes(currentGenre)) return false
 }
+if (kw && !tropeSearchHaystack(t).includes(kw)) return false
 return true
 })
-}, [tropes, category, onlyApplicable, currentGenre])
+}, [tropes, category, onlyApplicable, currentGenre, keyword])
 
 const selected = tropes.find((t) => t.id === selectedId)?? null
 
+/** 该桥段是否已在写作要点中（按身份标记判定，防重复写入）。 */
+const alreadyInserted = !!selected && !!taskText && taskText.includes(tropeTaskMarker(selected))
+
 const doInsert = () => {
-if (!selected) return
+if (!selected || alreadyInserted) return
 onInsert(tropeToTaskText(selected))
 }
 
@@ -123,6 +153,14 @@ sx={{ minWidth: 140}}
 <MenuItem key={c} value={c}>{c}</MenuItem>
 ))}
 </TextField>
+<TextField
+size="small"
+label="搜索桥段"
+placeholder="关键词：名称 / 骨架 / 参数"
+value={keyword}
+onChange={(e) => setKeyword(e.target.value)}
+sx={{ minWidth: 200}}
+/>
 <FormControlLabel
 control={
 <Checkbox
@@ -166,7 +204,7 @@ primaryTypographyProps={{ variant: 'body2'}}
 ))}
 {filtered.length === 0 && (
 <Typography variant="body2" color="text.secondary" sx={{ p: 2}}>
-没有符合筛选的桥段，换个分类试试。
+没有符合筛选的桥段，换个分类或关键词试试。
 </Typography>
 )}
 </List>
@@ -220,9 +258,20 @@ primaryTypographyProps={{ variant: 'body2'}}
 常见翻车：{selected.commonFailures.join('；')}
 </Typography>
 )}
-<Button variant="contained" size="small" onClick={doInsert} sx={{ mt: 1}}>
-写入写作要点
+<Button
+variant="contained"
+size="small"
+onClick={doInsert}
+disabled={alreadyInserted}
+sx={{ mt: 1}}
+>
+{alreadyInserted? '已在写作要点中': '写入写作要点'}
 </Button>
+{alreadyInserted && (
+<Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block'}}>
+该桥段已写入写作要点，无需重复添加。
+</Typography>
+)}
 </>
 )}
 </Box>
