@@ -33,7 +33,7 @@ jobs:
         run: |
           coverage run --parallel-mode run_tests.py
           coverage combine
-          coverage report
+          coverage report --fail-under=60
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v7
@@ -100,15 +100,16 @@ jobs:
       - name: E2E smoke (Playwright)
         working-directory: .
         run: |
-          # 起本地服务（纯标准库后端，ubuntu 可直接跑），等就绪后跑 e2e
-          python3 -m gui.server --port 8000 --no-browser &
-          for i in $(seq 1 20); do
-            curl -sf http://127.0.0.1:8000/ >/dev/null && break
-            sleep 1
-          done
-          cd gui/web
+          # 隔离运行：rsync 工作树副本 → 独立端口 → 跑 Playwright → 删副本。
+          # 禁止在 checkout 上直接起服务（会污染 gui_state/、corpus/、assets/）。
           npx playwright install chromium
-          npx playwright test
+          bash scripts/e2e_isolated.sh
+      - name: E2E onboarding（空库，独立隔离运行）
+        working-directory: .
+        run: |
+          # 第二次独立隔离调用：空库模式（排除 corpus/assets/reports/gui-state），
+          # 验证首访 OnboardingWizard 三步走/跳过。与上面 smoke 隔离，互不干扰。
+          E2E_EMPTY_LIBRARY=1 bash scripts/e2e_isolated.sh e2e/onboarding.spec.ts
       - name: Dist freshness check
         run: |
           # dist 预构建产物按设计入库（用户免装 Node）；校验它与 src 同步。

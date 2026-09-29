@@ -20,8 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, state_store, engine_adapter, router, services  # noqa: E402
-
+from gui import config, engine_adapter, router, services, state_store  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # 隔离：把 STATE_ROOT / STATE_JSON_DIR / ASSETS_ROOT 指向临时目录，避免污染
@@ -202,7 +201,7 @@ class TestEngineAdapter(unittest.TestCase):
         batches = engine_adapter.split_batches(text, 20)
         self.assertEqual(batches[0]["char_start"], 0)
         self.assertEqual(batches[-1]["char_end"], len(text))
-        for a, b in zip(batches, batches[1:]):
+        for a, b in zip(batches, batches[1:], strict=False):
             self.assertEqual(a["char_end"], b["char_start"], "批次边界必须连续无缝隙/无重叠")
 
 
@@ -309,10 +308,41 @@ class TestServicesImport(unittest.TestCase):
         try:
             book_id = services.import_book(str(self.tmp_txt))["book_id"]
             with self.assertRaises(services.ServiceError) as cm:
-                services.start_analysis(book_id, "unknown")
+                services.start_analysis(book_id, "campus-redemption")
             self.assertEqual(cm.exception.code, 400)
         finally:
             engine_adapter.any_model_configured = orig
+class TestServiceBatchSizeGuard(unittest.TestCase):
+    """纵深防御：服务层 batch_size 非法值直接 400，不依赖路由层校验。"""
+
+    def setUp(self):
+        self.tmp_txt = Path(_TMP) / "sample_book.txt"
+        self.tmp_txt.write_text(SAMPLE_TXT, encoding="utf-8")
+
+    def tearDown(self):
+        services._BOOKS.clear()
+        services._runtime.clear()
+
+    def test_guard_rejects_non_positive(self):
+        for bad in (0, -1, -100):
+            with self.assertRaises(services.ServiceError) as cm:
+                services._require_positive_batch_size(bad)
+            self.assertEqual(cm.exception.code, 400)
+        # None 与正整数放行
+        services._require_positive_batch_size(None)
+        services._require_positive_batch_size(5)
+
+    def test_import_book_negative_batch_size_400(self):
+        """内部直接调用 import_book(batch_size=-1) 应 400，而非透传进切分。"""
+        with self.assertRaises(services.ServiceError) as cm:
+            services.import_book(str(self.tmp_txt), batch_size=-1)
+        self.assertEqual(cm.exception.code, 400)
+
+    def test_split_negative_batch_size_400(self):
+        book_id = services.import_book(str(self.tmp_txt))["book_id"]
+        with self.assertRaises(services.ServiceError) as cm:
+            services.split_chapter_batches(book_id, 1, batch_size=0)
+        self.assertEqual(cm.exception.code, 400)
 
 
 class TestResumeSkipsSuccess(unittest.TestCase):
@@ -364,7 +394,7 @@ class TestResumeSkipsSuccess(unittest.TestCase):
         故本测试会 FAIL，用于路由给工程师修复。
         """
         book_id = services.import_book(str(self.tmp_txt))["book_id"]
-        services.start_analysis(book_id, "unknown")
+        services.start_analysis(book_id, "campus-redemption")
         st = self._wait_done(book_id)
         self.assertEqual(st["status"], "done", f"首次分析未完成: {st}")
 

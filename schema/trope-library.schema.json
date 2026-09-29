@@ -37,8 +37,8 @@
           },
           "genre_scope": {
             "type": "string",
-            "enum": ["universal", "campus-redemption"],
-            "description": "桥段题材作用域：universal=跨题材通用；具体题材 id=该题材专属。检索时按目标题材过滤（铁律一）"
+            "enum": ["universal", "campus-redemption", "dushi-gaowu", "dushi-naodong", "dushi-richang", "dushi-xiuzhen", "dushi-zhongtian", "gongdou", "gufeng-shiqing", "guyan-naodong", "haomen-zongcai", "kangzhan-diezhan", "kehuan-moshi", "kuaichuan", "lishi", "lishi-naodong", "minguo-yanqing", "niandai", "nvpin-xuanyi", "nvpin-zhongtian", "qingchun-tianchong", "realistic-romance", "shuangnan", "xianxia", "xianyan-naodong", "xifang-qihuan", "xingguang", "xuanhuan", "xuanhuan-naodong", "xuanhuan-yanqing", "xuanyi-lingyi", "xuanyi-naodong", "youxi-tiyu", "zhanshen-zhuixu", "zhichang-hunlian"],
+            "description": "桥段题材作用域：universal=跨题材通用；具体题材 id=该题材专属。检索时按目标题材过滤（铁律一）。合法题材 id 由 scripts/genre_registry.py 从磁盘派生，本枚举为 2026-09-29 快照；新增题材时以 validate.py 实时派生为准"
           },
 
           "skeleton": {

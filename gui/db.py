@@ -3,8 +3,11 @@
 这是全项目唯一 import ``sqlite3`` 并接触 ``index.db`` 文件的地方（铁律三边界）。
 
 设计要点（见 DESIGN_gui_persistence §1.3 / §2）：
-- 进程级单连接：``check_same_thread=False`` 让单连接跨线程共享，靠 SQLite 自身
-  锁串行化写；``ThreadingHTTPServer`` 多线程并发下由 WAL 提升并发读写。
+- 每线程独立连接（不是进程级单连接）：``check_same_thread=False`` 允许任意线程
+  关闭连接；连接按 ``threading.get_ident()`` 隔离存放。原因见下文
+  “连接管理：每线程独立连接”注释——共享单连接时 sqlite3 的连接级事务语义会
+  导致跨线程丢写/错写。``ThreadingHTTPServer`` 多线程并发下由 WAL 提升并发读写，
+  写冲突时 ``busy_timeout=5000`` 等待锁释放。
 - ``tx()`` 事务上下文：所有写路径统一走 ``with tx():``，失败回滚。
 - ``apply_migrations()``：按 ``migrations/*.sql`` 文件名序号顺序执行缺失版本，
   记录到 ``schema_migrations`` 表，每条迁移在单事务内执行。
@@ -16,11 +19,12 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from contextlib import contextmanager
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 from gui import config
 
@@ -35,9 +39,10 @@ from gui import config
 # 结果是任务状态/资产记录可能丢写、错写或跨请求串写。WAL 只提升并发读，
 # 解决不了「共享连接的事务语义」问题。
 # ---------------------------------------------------------------------------
-_conns: Dict[int, sqlite3.Connection] = {}   # threading.get_ident() -> Connection
+_conns: dict[int, sqlite3.Connection] = {}   # threading.get_ident() -> Connection
 _conns_lock = threading.Lock()
-_conn_path: Optional[Path] = None             # 当前所有连接绑定的库路径
+_conn_path: Path | None = None             # 当前所有连接绑定的库路径
+_get_conn_calls: list[int] = [0]            # B3：死线程清理节流计数器
 
 
 def db_path() -> Path:
@@ -50,9 +55,15 @@ def db_path() -> Path:
 
 
 def _new_conn(path: Path) -> sqlite3.Connection:
-    """建立并配置一条新连接（PRAGMA 统一在此处设置）。"""
+    """建立并配置一条新连接（PRAGMA 统一在此处设置）。
+
+    B3：check_same_thread=False —— 允许任意线程关闭连接。
+    事务隔离仍由「每线程独立连接」（_conns 按 tid 分池）保证，此处仅放行
+    跨线程 close()，否则 _prune_dead_threads_locked() 会因 ProgrammingError
+    静默失败导致 FD 泄漏。
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -79,8 +90,9 @@ def get_conn() -> sqlite3.Connection:
     ``foreign_keys=ON``、``busy_timeout=5000``。
 
     **每线程独立连接**：事务的 commit/rollback 是连接级操作，共享连接会让并发
-    线程互相污染事务边界（详见文件头注释）。这里不再使用 ``check_same_thread=False``，
-    每条连接只由其创建线程使用，天然安全。
+    线程互相污染事务边界（详见文件头注释）。每条连接仍只由其创建线程**使用**，
+    但创建时设 ``check_same_thread=False`` 以允许任意线程执行 ``close()``
+    （B3：否则跨线程关闭抛 ProgrammingError 被吞掉，FD 泄漏）。
 
     库路径变化时（测试 monkeypatch ``config.STATE_ROOT``）自动关闭旧连接重建。
     """
@@ -91,6 +103,10 @@ def get_conn() -> sqlite3.Connection:
         if _conn_path is not None and _conn_path != path:
             # STATE_ROOT 被切换（测试隔离场景）→ 丢弃全部旧连接
             _close_all_locked()
+        # B3：清理死线程的残留连接（每 50 次调用检查一次，避免每次枚举开销）。
+        _get_conn_calls[0] += 1
+        if _get_conn_calls[0] % 50 == 0:
+            _prune_dead_threads_locked()
         conn = _conns.get(tid)
         if conn is None:
             conn = _new_conn(path)
@@ -98,6 +114,22 @@ def get_conn() -> sqlite3.Connection:
             if _conn_path is None:
                 _conn_path = path
     return conn
+
+
+def _prune_dead_threads_locked() -> None:
+    """关闭已死亡线程的残留连接（B3：防止 fd/内存单调泄漏）。
+
+    调用方必须持有 _conns_lock。
+    """
+    live_idents = {t.ident for t in threading.enumerate() if t.ident is not None}
+    # 主线程的 ident 恒为 alive；当前线程也在 enumerate 内。
+    dead = [tid for tid in _conns if tid not in live_idents]
+    for tid in dead:
+        try:
+            _conns[tid].close()
+        except sqlite3.Error:
+            pass
+        del _conns[tid]
 
 
 def _reset_conn() -> None:
@@ -127,7 +159,7 @@ def init_schema() -> None:
     _exec_sql_file(Path(__file__).parent / "migrations" / "0001_init.sql")
 
 
-def split_sql_statements(script: str) -> List[str]:
+def split_sql_statements(script: str) -> list[str]:
     """把 SQL 脚本切分为单条语句（供事务内逐条 execute）。
 
     【为何不用 ``executescript``】``executescript`` 会先隐式提交当前事务再执行脚本，
@@ -137,8 +169,8 @@ def split_sql_statements(script: str) -> List[str]:
     切分规则：按 ``;`` 切分，并跳过 **行注释（``--``）**、**块注释（``/* */``）**
     与 **单/双引号字符串** 内部的分号（避免误切）。
     """
-    stmts: List[str] = []
-    buf: List[str] = []
+    stmts: list[str] = []
+    buf: list[str] = []
     i, n = 0, len(script)
     while i < n:
         ch = script[i]
@@ -192,7 +224,7 @@ def split_sql_statements(script: str) -> List[str]:
     return [s.strip() for s in stmts if s.strip()]
 
 
-def apply_migrations() -> List[int]:
+def apply_migrations() -> list[int]:
     """按 ``migrations/*.sql`` 文件名序号顺序执行缺失版本，返回已执行版本列表。
 
     版本号取自文件名前导数字（如 ``0001_init.sql`` → 1）。已登记的版本跳过。
@@ -202,7 +234,7 @@ def apply_migrations() -> List[int]:
     if not migrations_dir.is_dir():
         return []
 
-    applied: List[int] = []
+    applied: list[int] = []
     files = _sorted_migration_files(migrations_dir)
     for version, name, sql_path in files:
         if _is_applied(version):
@@ -229,9 +261,9 @@ def apply_migrations() -> List[int]:
     return applied
 
 
-def _sorted_migration_files(migrations_dir: Path) -> List[tuple[int, str, Path]]:
+def _sorted_migration_files(migrations_dir: Path) -> list[tuple[int, str, Path]]:
     """扫描迁移目录，返回按版本号排序的 (version, name, path) 列表。"""
-    entries: List[tuple[int, str, Path]] = []
+    entries: list[tuple[int, str, Path]] = []
     for fp in sorted(migrations_dir.glob("*.sql")):
         name = fp.name
         # 提取前导数字作为版本号。
@@ -287,9 +319,19 @@ def close() -> None:
 # 查询辅助（供 asset_index / services / migrate 复用，均走 SQLite）
 # ---------------------------------------------------------------------------
 
-def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
+def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     """把 sqlite3.Row 转为普通 dict。"""
     return {k: row[k] for k in row.keys()}
+
+
+def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    """把 sqlite3.Row 转为普通 dict（供各服务层使用的公开入口）。"""
+    return _row_to_dict(row)
+
+
+def rows_to_dicts(rows: Any) -> list[dict[str, Any]]:
+    """把 Row 序列转为普通 dict 列表（供各服务层使用的公开入口）。"""
+    return [_row_to_dict(r) for r in rows]
 
 
 def _db_ready() -> bool:
@@ -306,14 +348,14 @@ def _db_ready() -> bool:
         return False
 
 
-def count_assets(kind: Optional[str] = None, genre: Optional[str] = None,
-                 book_id: Optional[str] = None) -> int:
+def count_assets(kind: str | None = None, genre: str | None = None,
+                 book_id: str | None = None) -> int:
     """按条件聚合资产计数（SQL COUNT）。未建库时返回 0（上层回退）。"""
     if not _db_ready():
         return 0
     conn = get_conn()
-    where: List[str] = []
-    params: List[Any] = []
+    where: list[str] = []
+    params: list[Any] = []
     if kind:
         where.append("kind = ?")
         params.append(kind)
@@ -330,14 +372,14 @@ def count_assets(kind: Optional[str] = None, genre: Optional[str] = None,
     return int(row["n"]) if row else 0
 
 
-def list_asset_rows(kind: Optional[str] = None, genre: Optional[str] = None,
-                    book_id: Optional[str] = None, offset: int = 0, limit: int = 50) -> List[Dict[str, Any]]:
+def list_asset_rows(kind: str | None = None, genre: str | None = None,
+                    book_id: str | None = None, offset: int = 0, limit: int = 50) -> list[dict[str, Any]]:
     """按条件 + 分页查询资产行（SQL WHERE + LIMIT/OFFSET）。未建库时返回空列表。"""
     if not _db_ready():
         return []
     conn = get_conn()
-    where: List[str] = []
-    params: List[Any] = []
+    where: list[str] = []
+    params: list[Any] = []
     if kind:
         where.append("kind = ?")
         params.append(kind)
@@ -356,7 +398,7 @@ def list_asset_rows(kind: Optional[str] = None, genre: Optional[str] = None,
     return [_row_to_dict(r) for r in rows]
 
 
-def count_by_kind() -> Dict[str, int]:
+def count_by_kind() -> dict[str, int]:
     """按 kind 聚合计数（SELECT kind, COUNT(*) GROUP BY kind）。未建库时返回空 dict。"""
     if not _db_ready():
         return {}
@@ -365,7 +407,7 @@ def count_by_kind() -> Dict[str, int]:
     return {r["kind"]: int(r["n"]) for r in rows}
 
 
-def get_asset_by_key(asset_key: str) -> Optional[Dict[str, Any]]:
+def get_asset_by_key(asset_key: str) -> dict[str, Any] | None:
     """按 asset_key 查询单条资产（供详情定位 path）。未建库时返回 None。"""
     if not _db_ready():
         return None
@@ -374,7 +416,7 @@ def get_asset_by_key(asset_key: str) -> Optional[Dict[str, Any]]:
     return _row_to_dict(row) if row else None
 
 
-def list_reports(book_id: Optional[str] = None) -> List[Dict[str, Any]]:
+def list_reports(book_id: str | None = None) -> list[dict[str, Any]]:
     """查询报告清单（可选按 book_id 过滤）。未建库时返回空列表（上层回退扫描）。"""
     if not _db_ready():
         return []
@@ -386,8 +428,8 @@ def list_reports(book_id: Optional[str] = None) -> List[Dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
-def get_books(status: Optional[str] = None, book_id: Optional[str] = None,
-              genre: Optional[str] = None) -> List[Dict[str, Any]]:
+def get_books(status: str | None = None, book_id: str | None = None,
+              genre: str | None = None) -> list[dict[str, Any]]:
     """查询书清单（可选按 status / book_id / genre 过滤，参数化防注入）。
 
     未建库时返回空列表（上层回退）。genre 按 books.genre 列精确匹配。
@@ -395,8 +437,8 @@ def get_books(status: Optional[str] = None, book_id: Optional[str] = None,
     if not _db_ready():
         return []
     conn = get_conn()
-    where: List[str] = []
-    params: List[Any] = []
+    where: list[str] = []
+    params: list[Any] = []
     if status:
         where.append("status = ?")
         params.append(status)
@@ -414,7 +456,7 @@ def get_books(status: Optional[str] = None, book_id: Optional[str] = None,
     return [_row_to_dict(r) for r in rows]
 
 
-def get_genres() -> List[Dict[str, Any]]:
+def get_genres() -> list[dict[str, Any]]:
     """查询题材字典表。未建库时返回空列表。"""
     if not _db_ready():
         return []
@@ -423,7 +465,7 @@ def get_genres() -> List[Dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
-def get_task(book_id: str) -> Optional[Dict[str, Any]]:
+def get_task(book_id: str) -> dict[str, Any] | None:
     """按 book_id 查询分析任务。未建库时返回 None（上层回退 JSON）。"""
     if not _db_ready():
         return None
@@ -432,7 +474,7 @@ def get_task(book_id: str) -> Optional[Dict[str, Any]]:
     return _row_to_dict(row) if row else None
 
 
-def upsert_task(task: Dict[str, Any]) -> None:
+def upsert_task(task: dict[str, Any]) -> None:
     """UPSERT 分析任务（SQLite 权威写，见 state_store.upsert_task 双写入口）。
 
     task 需含 book_id；batch_state 用 JSON 字符串落库。
@@ -497,6 +539,33 @@ def backup_to(dst: Path) -> None:
         src = db_path()
         if src.is_file():
             shutil.copy2(src, dst)
+    # 验证备份可用：损坏的备份比没有备份更危险（恢复时才发现）。
+    _verify_backup(dst)
+
+
+def _verify_backup(dst: Path) -> None:
+    """校验备份文件可打开且完整；失败抛 RuntimeError。"""
+    if not dst.is_file():
+        raise RuntimeError(f"备份失败：{dst} 未生成")
+    try:
+        chk = sqlite3.connect(str(dst))
+    except sqlite3.Error as e:
+        raise RuntimeError(f"备份文件无法打开：{e}")
+    try:
+        try:
+            row = chk.execute("PRAGMA integrity_check").fetchone()
+        except sqlite3.Error as e:
+            raise RuntimeError(f"备份完整性校验失败：{e}")
+        if not row or row[0] != "ok":
+            raise RuntimeError(f"备份完整性校验失败：{row}")
+        # 关键表存在性抽查
+        tables = {r[0] for r in chk.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        for t in ("books", "assets", "reports"):
+            if t not in tables:
+                raise RuntimeError(f"备份缺关键表：{t}")
+    finally:
+        chk.close()
 
 
 def reset_all() -> None:

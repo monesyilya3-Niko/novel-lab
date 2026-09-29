@@ -14,7 +14,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "assets"
@@ -36,7 +36,7 @@ def _report_char_len(path: Path) -> int:
         return 0
 
 
-def combined_report_ok(book_chars: int, craft_chars: int) -> Dict[str, Any]:
+def combined_report_ok(book_chars: int, craft_chars: int) -> dict[str, Any]:
     """铁律二判定（**纯长度，不读盘**）——供「写盘前校验」使用。
 
     2026-09-23 新增（总工排查）：GUI 的 ``_generate_reports`` 原先是「先写盘 → 再校验」，
@@ -66,7 +66,7 @@ def combined_report_ok(book_chars: int, craft_chars: int) -> Dict[str, Any]:
     }
 
 
-def check_combined_report_length(reports_dir, name: str) -> Dict[str, Any]:
+def check_combined_report_length(reports_dir, name: str) -> dict[str, Any]:
     """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ MIN_REPORT_CHARS。
 
     【为何必须有此共享函数】该硬校验原先只内联在 CLI 的 ``novel.py 分析`` 里，

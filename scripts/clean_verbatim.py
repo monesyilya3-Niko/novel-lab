@@ -102,12 +102,12 @@ def main():
 
     walk2(asset)
     print(f"发现 {len(write_points)} 处原文引用待清洗：")
-    for parent, key, old, new in write_points[:10]:
+    for _parent, key, old, new in write_points[:10]:
         print(f"  {key}: …{old[:50]}…")
         print(f"    → …{new[:50]}…")
 
     if args.apply and write_points:
-        for parent, key, old, new in write_points:
+        for parent, key, _old, new in write_points:
             parent[key] = new
         asset_path.write_text(json.dumps(asset, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"\n✓ 已清洗 {len(write_points)} 处并保存")

@@ -2,6 +2,7 @@
 // 左侧章节导航，右侧内容区（导入/进度/结果切换），底部控制栏。
 import { useState } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import ImportPanel from './ImportPanel'
@@ -20,12 +21,16 @@ export default function AnalysisView() {
       {/* 左侧：章节导航 */}
       <Box
         sx={{
-          width: 280,
-          minWidth: 280,
-          borderRight: '1px solid #e0e0e0',
-          bgcolor: '#fff',
+          width: { xs: '100%', md: 280 },
+          minWidth: { xs: 'auto', md: 280 },
+          borderRight: { xs: 0, md: 1 },
+          borderBottom: { xs: 1, md: 0 },
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
           display: 'flex',
           flexDirection: 'column',
+          maxHeight: { xs: 200, md: 'none' },
+          overflow: { xs: 'auto', md: 'visible' },
         }}
       >
         <ImportPanel compact />
@@ -40,7 +45,8 @@ export default function AnalysisView() {
           sx={{
             px: 2,
             pt: 1,
-            borderBottom: '1px solid #eee',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
             display: 'flex',
             alignItems: 'center',
           }}
@@ -51,10 +57,11 @@ export default function AnalysisView() {
             <Tab value="result" label="结果" sx={{ minHeight: 40 }} />
           </Tabs>
           <Box sx={{ flex: 1 }} />
+          <ContextHelpButton guideKey="analysis" title="查看拆书指南" />
           {/* 一键分析：直接在当前工作台内触发，完成后切到结果页（由 SSE done 自动刷新） */}
           <AnalysisControlBar onGoResult={() => setSubTab('result')} />
         </Box>
-        <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
           {subTab === 'import' && <ImportPanel />}
           {subTab === 'progress' && <ProgressPanel />}
           {subTab === 'result' && <AnalysisResultView />}

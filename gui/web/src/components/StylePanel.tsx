@@ -9,6 +9,7 @@ import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import { styleApi } from '../api/client'
 import { friendlyError } from '../api/client'
+import InlineGuide from './InlineGuide'
 
 interface StyleCard {
   name: string
@@ -23,6 +24,7 @@ export default function StylePanel() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [styles, setStyles] = useState<StyleCard[]>([])
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
 
@@ -50,17 +52,22 @@ export default function StylePanel() {
   }
 
   const doSave = async () => {
-    if (!result || !styleName) return
+    if (!result || !styleName || saving) return
+    setSaving(true)
     try {
       await styleApi.save({ name: styleName, style_card: result })
       setMessage(`风格「${styleName}」已保存`)
       loadStyles()
     } catch (e) {
       setError(friendlyError(e))
+    } finally {
+      setSaving(false)
     }
   }
 
   const doDelete = async (name: string) => {
+    // P2-F13：破坏性操作二次确认
+    if (!window.confirm(`确定删除风格「${name}」吗？此操作不可恢复。`)) return
     try {
       await styleApi.delete(name)
       setMessage(`风格「${name}」已删除`)
@@ -88,6 +95,18 @@ export default function StylePanel() {
 
       {tab === 'analyze' && (
         <Box>
+          <InlineGuide
+            what="从一段样本文本里提取可量化的风格指标（句长、对话占比、情绪密度等），保存成风格卡，方便以后对照和复用。"
+            steps={[
+              '起一个风格名称，如：悬疑冷峻风。',
+              '粘贴至少 100 字的代表性文本（最好是你认可的成品段落）。',
+              '点「分析风格」，看平均句长、对话占比等指标。',
+              '确认指标符合预期后点「保存风格卡」，它会出现在「风格库」里。',
+            ]}
+            tips={[
+              '样本越有代表性，风格卡越准；拼凑的多段文字会拉平均值。',
+            ]}
+          />
           <TextField
             label="风格名称" fullWidth size="small" sx={{ mb: 1.5 }}
             value={styleName} onChange={(e) => setStyleName(e.target.value)}
@@ -113,7 +132,7 @@ export default function StylePanel() {
                 <Typography variant="body2">短段占比：{(Number(metrics.shortParagraphRatio ?? metrics.short_paragraph_ratio ?? 0) * 100).toFixed(1)}%</Typography>
                 <Typography variant="body2">总字数：{String(metrics.totalChars ?? metrics.total_chars ?? '-')}</Typography>
               </Box>
-              <Button variant="outlined" size="small" sx={{ mt: 1.5 }} onClick={doSave} disabled={!styleName}>
+              <Button variant="outlined" size="small" sx={{ mt: 1.5 }} onClick={doSave} disabled={!styleName || saving}>
                 保存风格卡
               </Button>
             </Paper>

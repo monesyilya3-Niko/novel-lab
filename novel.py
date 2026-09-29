@@ -19,8 +19,10 @@ novel-lab CLI 统一入口 — 一条命令覆盖全部工作流
 """
 import argparse
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent  # novel-lab/ 本身
@@ -37,6 +39,60 @@ def run_script(name: str, args: list) -> int:
         return 1
     cmd = [PY, str(script)] + [str(a) for a in args]
     return subprocess.call(cmd)
+
+
+def publish_reports_atomically(srcs, reports_dir) -> list:
+    """原子发布：多个报告文件要么全部搬入 reports_dir，要么一个都不进。
+
+    同名旧报告会先被搬到 reports_dir 内的临时备份目录；中途任一 move 失败时，
+    已搬入的新文件被移除，被覆盖的旧报告从备份完整恢复。成功或失败后备份
+    目录都会被清理，不留残留。
+
+    注意：失败时已搬入 staging 的新文件会被移除（不恢复回 staging），调用方
+    负责清理 staging 目录（novel.py main 的 finally 即如此）。
+
+    返回已搬入的目标路径列表。
+    """
+    reports_dir = Path(reports_dir)
+    staged = []  # [(目标路径, 备份路径或None)]
+    backup_root = None
+    try:
+        for src in srcs:
+            src = Path(src)
+            if not src.exists():
+                continue
+            dst = reports_dir / src.name
+            backup = None
+            if dst.exists() or dst.is_symlink():
+                if backup_root is None:
+                    # 备份目录建在 reports_dir 内：同文件系统，move 为原子 rename。
+                    backup_root = Path(tempfile.mkdtemp(prefix=".publish_backup_", dir=str(reports_dir)))
+                backup = backup_root / dst.name
+                if backup.exists():
+                    # 同一批次出现同名源：调用方 bug，先报出来而不是静默覆盖备份。
+                    raise ValueError(f"重复的报告文件名: {dst.name}")
+                shutil.move(str(dst), str(backup))
+            # 先登记再搬新文件：新文件搬运失败时，旧报告仍能从备份恢复。
+            staged.append((dst, backup))
+            shutil.move(str(src), str(dst))
+    except Exception:
+        # 逆序回滚：先删新文件，再把旧报告从备份搬回来。
+        for dst, backup in reversed(staged):
+            try:
+                if dst.exists() or dst.is_symlink():
+                    dst.unlink()
+            except OSError:
+                pass
+            if backup is not None:
+                try:
+                    shutil.move(str(backup), str(dst))
+                except OSError:
+                    pass
+        raise
+    finally:
+        if backup_root is not None:
+            shutil.rmtree(backup_root, ignore_errors=True)
+    return [dst for dst, _ in staged]
 
 
 def resolve_book_src(book: str) -> Path:
@@ -65,6 +121,21 @@ def resolve_book_src(book: str) -> Path:
                  f"  可传完整路径，或 corpus/ 下的书名。\n"
                  f"  当前可用: {avail if avail else '(空)'}")
     sys.exit(f"文件不存在: {p}")
+
+
+def cmd_reset_admin_password() -> int:
+    """本地重置管理员密码：生成随机新密码，输出到终端一次。"""
+    sys.path.insert(0, str(ROOT / "gui"))
+    from gui import admin
+    try:
+        new_pw = admin.reset_password()
+    except Exception as e:  # noqa: BLE001
+        print(f"✗ 重置失败: {e}")
+        return 1
+    print("✓ 管理员密码已重置，全部会话已吊销")
+    print(f"  新密码: {new_pw}")
+    print("  请妥善保存，下次登录后会被要求修改密码")
+    return 0
 
 
 def cmd_status():
@@ -128,6 +199,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", help="子命令")
 
     p_check = sub.add_parser("检查", help="章节质量+一致性双维度检查")
+    sub.add_parser("重置管理员密码", help="本地紧急重置 admin 密码（吊销全部会话）")
     p_check.add_argument("chapter", help="章节文件路径")
     p_check.add_argument("--voice", help="voice-card 路径（一致性打分）")
     p_check.add_argument("--genre-pack", help="题材包路径（可选）")
@@ -275,33 +347,48 @@ def main():
             return rc1
         if args.dry_run:
             return 0
-        # 2. 生成拆书报告
-        vc = ROOT / "assets" / f"{name}-voice-card.json"
-        so = ROOT / "assets" / f"{name}-structure-obs.json"
-        co = ROOT / "assets" / f"{name}-commercial-obs.json"
-        cc = ROOT / "assets" / f"{name}-craft-card.json"
-        if vc.exists():
-            rpt_args = [str(vc)]
-            if so.exists():
-                rpt_args += ["--structure", str(so)]
-            if co.exists():
-                rpt_args += ["--commercial", str(co)]
-            run_script("report.py", rpt_args)
-        # 3. 生成笔法报告
-        cc = ROOT / "assets" / f"{name}-craft-card.json"
-        if cc.exists():
-            run_script("report_craft.py", [str(cc)])
-        # 3.5 铁律二合计校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符（真·合计口径）
+        # 2/3. 生成报告 → 先写 staging 临时目录（校验先于副作用：reports/ 不见次品）
+        # P0-2 修复：原来先直写 reports/ 再做万字校验，校验失败次品已落盘。
+        # P1-B4 修复：原来丢弃 run_script 返回码，脚本失败时旧报告冒充本轮成果。
         # 【单一来源】校验逻辑在 scripts/report.py::check_combined_report_length，
         # 与 GUI（services._generate_reports）共用同一函数，避免两处口径漂移。
         from report import check_combined_report_length  # 局部导入：scripts 路径在此处才注入
-        _chk = check_combined_report_length(ROOT / "reports", name)
-        _book_len, _craft_len, _total = _chk["book_chars"], _chk["craft_chars"], _chk["total"]
-        print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
-        if not _chk["ok"]:
-            print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
-            sys.exit(1)
-        print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
+        staging = Path(tempfile.mkdtemp(prefix=f"novel-lab-staging-{name}-"))
+        try:
+            vc = ROOT / "assets" / f"{name}-voice-card.json"
+            so = ROOT / "assets" / f"{name}-structure-obs.json"
+            co = ROOT / "assets" / f"{name}-commercial-obs.json"
+            cc = ROOT / "assets" / f"{name}-craft-card.json"
+            book_out = staging / f"{name}-拆书报告.md"
+            craft_out = staging / f"{name}-笔法分析.md"
+            if vc.exists():
+                rpt_args = [str(vc), "--out", str(book_out)]
+                if so.exists():
+                    rpt_args += ["--structure", str(so)]
+                if co.exists():
+                    rpt_args += ["--commercial", str(co)]
+                rc = run_script("report.py", rpt_args)
+                if rc != 0:
+                    print(f"  ✗ 拆书报告生成失败（exit {rc}），reports/ 未写入")
+                    return rc
+            if cc.exists():
+                rc = run_script("report_craft.py", [str(cc), "--out", str(craft_out)])
+                if rc != 0:
+                    print(f"  ✗ 笔法报告生成失败（exit {rc}），reports/ 未写入")
+                    return rc
+            # 3.5 铁律二合计校验：在 staging 上做，通过后才搬入 reports/
+            _chk = check_combined_report_length(staging, name)
+            _book_len, _craft_len, _total = _chk["book_chars"], _chk["craft_chars"], _chk["total"]
+            print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
+            if not _chk["ok"]:
+                print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
+                sys.exit(1)
+            print(f"  ✓ 合计 {_total} 字 ≥ {_chk['min_chars']} 字，铁律二通过")
+            # 原子发布：两份报告要么全进 reports/，要么全不进；中途失败回滚，
+            # 同名旧报告从备份完整恢复（见 publish_reports_atomically）。
+            publish_reports_atomically((book_out, craft_out), ROOT / "reports")
+        finally:
+            shutil.rmtree(staging, ignore_errors=True)
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）
         print("\n[Hook] 自动质检:")
         corpus_file = ROOT / "corpus" / f"{name}.txt"
@@ -536,6 +623,8 @@ def main():
         return run_script("model_config.py", ["list"])
     if args.cmd == "状态":
         return cmd_status()
+    if args.cmd == "重置管理员密码":
+        return cmd_reset_admin_password()
     ap.print_help()
     return 0
 

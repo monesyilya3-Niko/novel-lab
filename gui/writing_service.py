@@ -6,11 +6,13 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
+import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, engine_adapter, migrate
 from gui.logging_setup import get_logger
@@ -21,8 +23,10 @@ _log = get_logger("writing_service")
 # ---------------------------------------------------------------------------
 # 任务注册表（进程内，不落库）
 # ---------------------------------------------------------------------------
-_WRITING_TASKS: Dict[str, Dict[str, Any]] = {}
-_WRITING_LOCK = threading.Lock()
+_WRITING_TASKS: dict[str, dict[str, Any]] = {}
+# RLock：generate() 提交路径在外层持锁后还会调 _active_writing_count()（同样拿锁），
+# 非重入 Lock 会自死锁（与 quality_service._QUALITY_LOCK 同一事故口径）。
+_WRITING_LOCK = threading.RLock()
 
 _ACTIVE_STATUSES = frozenset({"pending", "running", "scoring", "rewriting"})
 _MAX_CONCURRENT_WRITING = 2
@@ -35,8 +39,11 @@ def _prune_terminal_tasks() -> None:
         terminal = {k: v for k, v in _WRITING_TASKS.items()
                     if v.get("status") not in _ACTIVE_STATUSES}
         if len(terminal) > _MAX_TERMINAL_TASKS:
-            # 按 task_id 排序（含时间戳），删除最旧的
-            to_remove = sorted(terminal.keys())[:len(terminal) - _MAX_TERMINAL_TASKS]
+            # 按创建时间删除最旧的（task_id 是 uuid4 hex，无时间成分，不能按它排序）。
+            # 历史任务可能缺 created_at（旧版本注册表），缺省按 0（最旧）处理。
+            to_remove = sorted(terminal.keys(),
+                               key=lambda k: terminal[k].get("created_at", 0)
+                               )[:len(terminal) - _MAX_TERMINAL_TASKS]
             for k in to_remove:
                 del _WRITING_TASKS[k]
 
@@ -58,7 +65,7 @@ def _sanitize_project(project: str) -> str:
     return p
 
 
-def _load_asset_json(ref: str) -> Dict[str, Any]:
+def _load_asset_json(ref: str) -> dict[str, Any]:
     """把 '<kind>:<id>' 资产引用解析为 JSON dict。CRITICAL：防路径穿越。"""
     if not ref or ":" not in ref:
         raise ServiceError(f"非法资产引用: {ref!r}", 400)
@@ -76,10 +83,10 @@ def _load_asset_json(ref: str) -> Dict[str, Any]:
     try:
         return json.loads(fp.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
-        raise ServiceError(f"资产文件损坏: {exc}", 500)
+        raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
 
-def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
+def _load_asset_of_kind(ref: str, expected: str) -> dict[str, Any]:
     """加载资产引用并按**内容契约**校验 kind。
 
     文件名不保证与内容一致（蒸馏卡历史上落成 ``*-voice-card-distilled.json``），
@@ -91,17 +98,70 @@ def _load_asset_of_kind(ref: str, expected: str) -> Dict[str, Any]:
     return data
 
 
+def _asset_genre(data: dict) -> str | None:
+    """提取资产的题材标识。
+
+    书资产（voice/structure/commercial/craft/distilled）用 ``meta.genre``；
+    题材包/文风卡的题材在 ``meta.id`` 里（``genre-<slug>``），``meta.genre``
+    为空。未知返回 None（历史资产缺字段时不阻断，避免误伤）。
+    """
+    meta = data.get("meta", {}) or {}
+    g = meta.get("genre")
+    if g:
+        return str(g)
+    aid = meta.get("id", "")
+    if isinstance(aid, str) and aid.startswith("genre-"):
+        return aid[len("genre-"):]
+    return None
+
+
+def _require_genre_match(voice_data: dict, assets: dict[str, dict | None]) -> None:
+    """铁律一：注入时按题材匹配，禁止跨题材污染。
+
+    voice 题材已知、且某可选资产题材已知、两者不一致 → 400。
+    任一侧题材未知时不阻断（历史资产缺字段，避免误伤正常注入）。
+    tracking_state / context_intent 是写作现场状态，无题材语义，不参与校验；
+    prose_card（文风卡）是风格参照物，允许跨题材选用（"通用文风卡"定位，
+    tests/test_writing_service.py::test_real_prose_card_accepted 为证），
+    调用方不要把 prose_card 传进来。
+    """
+    voice_genre = _asset_genre(voice_data)
+    if not voice_genre:
+        return
+    for label, data in assets.items():
+        if not data:
+            continue
+        g = _asset_genre(data)
+        if g and g != voice_genre:
+            raise ServiceError(
+                f"题材不一致（铁律一：禁止跨题材污染）：voice 为 {voice_genre!r}，"
+                f"{label} 为 {g!r}", 400)
+
+
+def _atomic_write_json(fp: Path, data: dict) -> None:
+    """原子写 JSON：先写临时文件再 os.replace，避免并发同目标 torn-write。
+
+    assemble() 的 4 类资产卡可能被并发组装同一本书；直接 write_text 是截断写，
+    并发写会产生损坏的 JSON（读方 500"资产文件损坏"）。与 services 报告写盘同口径。
+    """
+    # tmp 名必须唯一：并发写同一目标时固定 tmp 名会互相抢占（一方 replace 掉
+    # 另一方的 tmp，导致 FileNotFoundError）。
+    tmp = fp.with_name(f"{fp.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.replace(tmp, fp)
+
+
 # ---------------------------------------------------------------------------
 # 同步能力
 # ---------------------------------------------------------------------------
 
-def list_projects() -> List[Dict[str, Any]]:
+def list_projects() -> list[dict[str, Any]]:
     """枚举 NOVEL_DIR 下项目；始终追加只读项目 default（D1）。
 
     2026-09-18 修复：此前仅当 ``novel/`` 目录已存在时才返回 default，
     全新环境 GUI 写作台项目列表为空。契约要求 default **恒在**（只读）。
     """
-    projects: List[Dict[str, Any]] = []
+    projects: list[dict[str, Any]] = []
     nd = config.NOVEL_DIR
     try:
         nd.mkdir(parents=True, exist_ok=True)
@@ -123,11 +183,58 @@ def list_projects() -> List[Dict[str, Any]]:
     return projects
 
 
-def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str] = None,
-           genre_pack: Optional[str] = None, craft: Optional[str] = None,
-           distilled: Optional[str] = None, prose_card: Optional[str] = None,
-           context_intent: Optional[str] = None, tracking_state: Optional[str] = None,
-           save: bool = False) -> Dict[str, Any]:
+_PROJECT_ID_RE = re.compile(r"^[^\s/\\]+$")
+
+
+def create_project(name: str) -> dict[str, Any]:
+    """新建写作项目：在 ``config.NOVEL_DIR`` 下建目录并写 ``state.json``。
+
+    安全规则：
+    - name 为空 / 超长（>60）→ 400。
+    - 目录 id 即 name 本身（首尾空白先去除）：禁止 ``/`` ``\\``、``.``/``..``，
+      防止路径穿越出 NOVEL_DIR；``default`` 为 CLI 只读保留 id，禁止占用。
+    - 同名目录已存在 → 409（不覆盖已有项目数据）。
+    - ``state.json`` 经 ``_atomic_write_json`` 原子写入。
+    """
+    clean = (name or "").strip()
+    if not clean:
+        raise ServiceError("项目名不能为空", 400)
+    if len(clean) > 60:
+        raise ServiceError("项目名过长（最多 60 个字符）", 400)
+    if clean in (".", "..") or not _PROJECT_ID_RE.match(clean):
+        raise ServiceError("项目名不能包含 / 或 \\", 400)
+    if clean == "default":
+        raise ServiceError("default 为 CLI 只读保留项目，不能新建", 400)
+
+    nd = config.NOVEL_DIR
+    try:
+        nd.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ServiceError(f"无法创建项目目录: {exc}", 500) from exc
+    target = nd / clean
+    # resolve 防御：即使上层校验有遗漏，解析后仍必须在 NOVEL_DIR 内。
+    try:
+        resolved = target.resolve()
+        if resolved.parent != nd.resolve():
+            raise ServiceError("非法项目名", 400)
+    except OSError as exc:
+        raise ServiceError(f"项目名非法: {exc}", 400) from exc
+    if target.exists():
+        raise ServiceError(f"项目已存在: {clean}", 409)
+    try:
+        target.mkdir()
+    except OSError as exc:
+        raise ServiceError(f"无法创建项目目录: {exc}", 500) from exc
+    _atomic_write_json(target / "state.json",
+                       {"name": clean, "created_at": time.time()})
+    return {"id": clean, "name": clean, "read_only": False}
+
+
+def inject(voice: str, structure: str | None = None, commercial: str | None = None,
+           genre_pack: str | None = None, craft: str | None = None,
+           distilled: str | None = None, prose_card: str | None = None,
+           context_intent: str | None = None, tracking_state: str | None = None,
+           save: bool = False) -> dict[str, Any]:
     """资产 → 写作 system prompt。
 
     每个资产参数只接受对应 kind 的内容：distilled 必须走 ``distilled`` 参数
@@ -135,16 +242,29 @@ def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str
     而非题材索引；错配由 ``_load_asset_of_kind`` 同步拒绝为 400。
     """
     voice_data = _load_asset_of_kind(voice, "voice")
+    structure_data = _load_asset_of_kind(structure, "structure") if structure else None
+    commercial_data = _load_asset_of_kind(commercial, "commercial") if commercial else None
+    genre_pack_data = _load_asset_json(genre_pack) if genre_pack else None
+    craft_data = _load_asset_of_kind(craft, "craft") if craft else None
+    distilled_data = _load_asset_of_kind(distilled, "distilled") if distilled else None
+    prose_card_data = _load_asset_of_kind(prose_card, "prose_card") if prose_card else None
+    # 铁律一：注入时按题材匹配，禁止跨题材污染（kind 校验只防错配，不防跨题材）。
+    # prose_card 豁免：文风卡是风格参照，允许跨题材选用。
+    _require_genre_match(voice_data, {
+        "structure": structure_data, "commercial": commercial_data,
+        "genre_pack": genre_pack_data, "craft": craft_data,
+        "distilled": distilled_data,
+    })
     prompt = engine_adapter.build_writing_prompt(
         voice_data,
-        structure=_load_asset_of_kind(structure, "structure") if structure else None,
-        commercial=_load_asset_of_kind(commercial, "commercial") if commercial else None,
-        genre_pack=_load_asset_json(genre_pack) if genre_pack else None,
-        craft_card=_load_asset_of_kind(craft, "craft") if craft else None,
-        distilled=_load_asset_of_kind(distilled, "distilled") if distilled else None,
+        structure=structure_data,
+        commercial=commercial_data,
+        genre_pack=genre_pack_data,
+        craft_card=craft_data,
+        distilled=distilled_data,
         context_intent=context_intent,
         tracking_state=_load_asset_json(tracking_state) if tracking_state else None,
-        genre_prose_card=_load_asset_of_kind(prose_card, "prose_card") if prose_card else None,
+        genre_prose_card=prose_card_data,
     )
     injected_kinds = ["voice"]
     if structure:
@@ -167,7 +287,7 @@ def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str
         safe = re.sub(r'[^\w\-]', '_', title)[:60]
         fp = config.PROMPTS_DIR / f"{safe}-writing-prompt.md"
         fp.write_text(prompt, encoding="utf-8")
-        saved_path = str(fp.relative_to(config.ROOT_DIR))
+        saved_path = migrate.rel_path(fp)
 
     return {
         "prompt": prompt,
@@ -181,8 +301,8 @@ def inject(voice: str, structure: Optional[str] = None, commercial: Optional[str
     }
 
 
-def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = None,
-          label: str = "", genre_pack: Optional[str] = None) -> Dict[str, Any]:
+def score(voice: str, text: str | None = None, chapter_path: str | None = None,
+          label: str = "", genre_pack: str | None = None) -> dict[str, Any]:
     """双维度打分：一致性五维 + 章节质量十二维。"""
     if not text and not chapter_path:
         raise ServiceError("需要 text 或 chapter_path", 400)
@@ -196,7 +316,7 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
         try:
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:
-            raise ServiceError(f"读取章节失败: {exc}", 400)
+            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
 
     voice_data = _load_asset_of_kind(voice, "voice")
     cons = engine_adapter.score_text(voice_data, text, label=label)
@@ -235,7 +355,7 @@ def score(voice: str, text: Optional[str] = None, chapter_path: Optional[str] = 
     }
 
 
-def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
+def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
     """组装 pass1-5 → 4 类资产入库。genre 必填（D7）。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空（铁律一：题材隔离）", 400)
@@ -249,7 +369,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if not raw_dir.is_dir():
         raise ServiceError(f"pass 输出目录不存在: {raw_dir}", 404)
 
-    def _load_pass(fname: str) -> Optional[Dict[str, Any]]:
+    def _load_pass(fname: str) -> dict[str, Any] | None:
         fp = raw_dir / fname
         if not fp.is_file():
             return None
@@ -275,7 +395,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
         except (json.JSONDecodeError, OSError) as exc:
             _log.warning(f"量化指标加载失败，注入提示将不含统计画像 {metrics_fp.name}: {exc}")
 
-    written: List[str] = []
+    written: list[str] = []
 
     # voice-card
     if pass2 and pass3:
@@ -285,7 +405,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
             name, genre, {"title": name}, metrics, voices,
             narration, dialogue, emotion, imagery, banned)
         vc_fp = config.ASSETS_ROOT / f"{name}-voice-card.json"
-        vc_fp.write_text(json.dumps(vc, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(vc_fp, vc)
         migrate.sync_asset(vc_fp)
         written.append(str(vc_fp.name))
 
@@ -293,7 +413,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if pass1:
         so = engine_adapter.assemble_asset_obs("structure", name, genre, pass1)
         so_fp = config.ASSETS_ROOT / f"{name}-structure-obs.json"
-        so_fp.write_text(json.dumps(so, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(so_fp, so)
         migrate.sync_asset(so_fp)
         written.append(str(so_fp.name))
 
@@ -301,7 +421,7 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if pass4:
         co = engine_adapter.assemble_asset_obs("commercial", name, genre, pass4)
         co_fp = config.ASSETS_ROOT / f"{name}-commercial-obs.json"
-        co_fp.write_text(json.dumps(co, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(co_fp, co)
         migrate.sync_asset(co_fp)
         written.append(str(co_fp.name))
 
@@ -309,14 +429,14 @@ def assemble(name: str, genre: str, skip_craft: bool = False) -> Dict[str, Any]:
     if pass5 and not skip_craft:
         cc = engine_adapter.assemble_asset_craft_card(name, genre, {"title": name}, metrics, pass5)
         cc_fp = config.ASSETS_ROOT / f"{name}-craft-card.json"
-        cc_fp.write_text(json.dumps(cc, ensure_ascii=False, indent=2), encoding="utf-8")
+        _atomic_write_json(cc_fp, cc)
         migrate.sync_asset(cc_fp)
         written.append(str(cc_fp.name))
 
     return {"name": name, "genre": genre, "written": written}
 
 
-def assemble_candidates() -> List[Dict[str, Any]]:
+def assemble_candidates() -> list[dict[str, Any]]:
     """列出 corpus/raw/ 下可组装的书（有 pass1 即可组装）。"""
     raw_root = config.CORPUS_DIR / "raw"
     candidates = []
@@ -333,10 +453,10 @@ def assemble_candidates() -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 def generate(voice: str, project: str, chapter_no: int, task: str,
-             novel_name: Optional[str] = None, prompt: Optional[str] = None,
-             genre_pack: Optional[str] = None, words: int = 2400,
-             target_score: int = 90, quality_target: Optional[int] = None,
-             save_prompt: bool = False) -> Dict[str, Any]:
+             novel_name: str | None = None, prompt: str | None = None,
+             genre_pack: str | None = None, words: int = 2400,
+             target_score: int = 90, quality_target: int | None = None,
+             save_prompt: bool = False) -> dict[str, Any]:
     """开始写作任务。无模型时同步返回降级指引；有模型时后台线程跑改写循环。"""
     project = _sanitize_project(project)
     if chapter_no < 1:
@@ -347,8 +467,10 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
 
     # 构建 system prompt
+    gp_data = _load_asset_json(genre_pack) if genre_pack else None
+    # 铁律一：注入时按题材匹配，禁止跨题材污染。
+    _require_genre_match(voice_data, {"genre_pack": gp_data})
     if not prompt:
-        gp_data = _load_asset_json(genre_pack) if genre_pack else None
         system = engine_adapter.build_writing_prompt(voice_data, genre_pack=gp_data)
     else:
         system = prompt
@@ -370,11 +492,12 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id] = {
                 "task_id": task_id, "status": "degraded", "mode": "no_model",
+                "created_at": time.time(),
                 "chapter_no": chapter_no, "target_score": target_score,
                 "pass_line": pass_line, "prompt": system,
                 "guide_markdown": guide,
-                "guide_path": str(guide_path.relative_to(config.ROOT_DIR)),
-                "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
+                "guide_path": migrate.rel_path(guide_path),
+                "chapter_path": migrate.rel_path(chapter_path),
                 "notice": "未配置外部模型：请把指引与 prompt 交给会话内智能写作，写完后用「手动入库」贴回。",
                 "error": None,
             }
@@ -395,6 +518,7 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
         }
         _WRITING_TASKS[task_id] = {
             "task_id": task_id, "status": "running", "mode": "llm",
+            "created_at": time.time(),
             "chapter_no": chapter_no, "attempt": 0, "score": None,
             "quality_score": None, "target_score": target_score,
             "pass_line": pass_line, "chapter_path": None,
@@ -406,16 +530,16 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
         daemon=True, name=f"writing-{task_id}")
     try:
         thread.start()
-    except RuntimeError:
+    except RuntimeError as exc:
         # HIGH：start 失败必须释放并发槽位，否则永久占用
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id]["status"] = "error"
             _WRITING_TASKS[task_id]["error"] = "线程启动失败"
-        raise ServiceError("线程启动失败，请稍后重试", 500)
+        raise ServiceError("线程启动失败，请稍后重试", 500) from exc
     return {"task_id": task_id, "status": "running", "mode": "llm", "chapter_no": chapter_no}
 
 
-def task_state(task_id: str) -> Dict[str, Any]:
+def task_state(task_id: str) -> dict[str, Any]:
     """查询写作任务状态。"""
     import copy
     with _WRITING_LOCK:
@@ -427,8 +551,8 @@ def task_state(task_id: str) -> Dict[str, Any]:
 
 
 def import_chapter(project: str, chapter_no: int, content: str,
-                   novel_name: Optional[str] = None, voice: Optional[str] = None,
-                   genre_pack: Optional[str] = None) -> Dict[str, Any]:
+                   novel_name: str | None = None, voice: str | None = None,
+                   genre_pack: str | None = None) -> dict[str, Any]:
     """手动入库：用户贴回会话内写好的正文 → 落盘 + 双维度打分。"""
     project = _sanitize_project(project)
     if chapter_no < 1:
@@ -445,8 +569,8 @@ def import_chapter(project: str, chapter_no: int, content: str,
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
     chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
 
-    result: Dict[str, Any] = {
-        "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
+    result: dict[str, Any] = {
+        "chapter_path": migrate.rel_path(chapter_path),
         "chapter_no": chapter_no, "char_count": len(content),
     }
 
@@ -460,10 +584,17 @@ def import_chapter(project: str, chapter_no: int, content: str,
         result["quality_verdict"] = qc.get("verdict", "?")
         result["pass_line"] = pass_line
 
+    # v2.0.2：码字统计（失败不阻断写作主流程）
+    try:
+        from gui import writing_extra
+        writing_extra.record_words(project, writing_extra.count_words(content), chapters=1)
+    except Exception:
+        pass
+
     return result
 
 
-def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> None:
+def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> None:
     """后台线程：初稿 + 最多 2 轮改写循环。"""
     from gui import sse
 
@@ -544,9 +675,12 @@ def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> Non
 
         # 落盘最佳稿
         chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, best_content or "")
+        # v2.0.2：码字统计（失败不阻断）
+        from gui import writing_extra
+        writing_extra.record_words(project, writing_extra.count_words(best_content or ""), chapters=1)
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id]["status"] = "done"
-            _WRITING_TASKS[task_id]["chapter_path"] = str(chapter_path.relative_to(config.ROOT_DIR))
+            _WRITING_TASKS[task_id]["chapter_path"] = migrate.rel_path(chapter_path)
             _WRITING_TASKS[task_id]["message"] = (
                 f"完成：一致性 {best_cons:.1f}/100，质量 {best_qc}/100")
 
@@ -554,7 +688,7 @@ def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> Non
             "task_type": "writing", "task_id": task_id,
             "phase": "done", "chapter_no": chapter_no,
             "consistency": best_cons, "quality": best_qc,
-            "chapter_path": str(chapter_path.relative_to(config.ROOT_DIR)),
+            "chapter_path": migrate.rel_path(chapter_path),
         })
 
     except Exception as exc:  # noqa: BLE001
@@ -567,9 +701,9 @@ def _run_generate(task_id: str, voice_data: Dict, system: str, req: Dict) -> Non
         })
 
 
-def _build_rewrite_user(prev_user: str, req: Dict, score: float, target: int,
-                        details: List[str], quality_issues: List[str],
-                        voice_data: Dict, content: str) -> str:
+def _build_rewrite_user(prev_user: str, req: dict, score: float, target: int,
+                        details: list[str], quality_issues: list[str],
+                        voice_data: dict, content: str) -> str:
     """构建改写指令：指出扣分点，要求重写。"""
     problems = []
     for d in details[:8]:
@@ -591,7 +725,7 @@ def _build_rewrite_user(prev_user: str, req: Dict, score: float, target: int,
     )
 
 
-def _build_degrade_guide(req: Dict, prompt: str, chapter_path: Path, pass_line: int) -> str:
+def _build_degrade_guide(req: dict, prompt: str, chapter_path: Path, pass_line: int) -> str:
     """组装无模型降级指引 Markdown。"""
     return (
         f"# 内置智能接管写作任务（无外部模型模式）\n\n"

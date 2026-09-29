@@ -31,11 +31,10 @@ LLM 因果合理性二次判定 Hook — 纯标准库，零第三方依赖
 """
 import json
 import re
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 # 仅 import 项目内 `llm_client`（本身是纯标准库 urllib 实现，不违反铁律三）
 import llm_client
-
 
 # 系统提示（固定：判定角色 + 只输出 JSON 的输出契约）
 SYSTEM_PROMPT = (
@@ -79,7 +78,7 @@ _REAL_KEYWORDS = [
 _BRACE_RE = re.compile(r"\{.*\}", re.S)
 
 
-def make_causality_hook(task: str = JUDGE_TASK, texts: dict = None) -> Optional[Callable[[list], list]]:
+def make_causality_hook(task: str = JUDGE_TASK, texts: dict = None) -> Callable[[list], list] | None:
     """构造因果合理性二次判定 hook。
 
     Args:
@@ -144,7 +143,7 @@ def _is_candidate(issue: dict) -> bool:
     return issue.get("type") in CANDIDATE_TYPES
 
 
-def _select_candidates(issues: list, max_candidates: int = MAX_CANDIDATES) -> List[int]:
+def _select_candidates(issues: list, max_candidates: int = MAX_CANDIDATES) -> list[int]:
     """从 issue 列表中筛出候选的下标，按 severity 优先 + 原顺序截断。
 
     Returns:
@@ -175,7 +174,7 @@ def _chapter_number(chapter) -> int:
     return 0
 
 
-def _extract_entities(detail: str) -> List[str]:
+def _extract_entities(detail: str) -> list[str]:
     """从 issue.detail 中抽取「实体名」，用于定位原文片段的关键词。
 
     抽取规则：匹配「实体「XXX」」或「角色「XXX」」中的引号内名称。
@@ -267,7 +266,7 @@ def _parse_verdict(text: str) -> str:
     return "real_contradiction"
 
 
-def _try_json_parse(text: str) -> Optional[str]:
+def _try_json_parse(text: str) -> str | None:
     """尝试 JSON 解析，返回规范化的 verdict；失败返回 None。"""
     # 第一层：直接解析
     obj = _loads_soft(text)
@@ -302,7 +301,7 @@ def _loads_soft(text: str):
         return None
 
 
-def _keyword_fallback(text: str) -> Optional[str]:
+def _keyword_fallback(text: str) -> str | None:
     """关键字回退：命中误报词 → false_positive；命中真矛盾词 → real_contradiction。
 
     优先检查误报词，再检查真矛盾词（避免「矛盾」同时命中两边时误判）。

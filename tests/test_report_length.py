@@ -251,7 +251,7 @@ class TestReportLengthThreshold(unittest.TestCase):
         """
         techniques = []
         for i in range(technique_count):
-            da = {f: "深" * deep_text_len for f in DEEP_FIELDS}
+            da = dict.fromkeys(DEEP_FIELDS, "深" * deep_text_len)
             techniques.append({
                 "name": f"技法{i}",
                 "description": "手法描述",

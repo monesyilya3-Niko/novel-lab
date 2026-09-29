@@ -296,6 +296,61 @@ class TestConcurrencyLimit(unittest.TestCase):
             quality_service._QUALITY_TASKS.clear()
 
 
+
+    def _make_chapter_dir(self, name: str):
+        ch_dir = config.CORPUS_DIR / name
+        ch_dir.mkdir(parents=True, exist_ok=True)
+        (ch_dir / "001.txt").write_text(
+            "第一章 测试\n\n" + "他推门而入。\n" * 30, encoding="utf-8")
+        return name
+
+    def test_429_when_slots_full(self):
+        """故障注入：2 个槽位全占时，第 3 个 qc() 必须 429，且不登记新任务。"""
+        target = self._make_chapter_dir("qa_429_chapters")
+        with quality_service._QUALITY_LOCK:
+            quality_service._QUALITY_TASKS.clear()
+            quality_service._QUALITY_TASKS["q-full-1"] = {"status": "running"}
+            quality_service._QUALITY_TASKS["q-full-2"] = {"status": "running"}
+        try:
+            with self.assertRaises(ServiceError) as ctx:
+                quality_service.qc(target=target)
+            self.assertEqual(ctx.exception.code, 429)
+            # 429 拒绝后不得残留新任务登记
+            with quality_service._QUALITY_LOCK:
+                self.assertEqual(
+                    set(quality_service._QUALITY_TASKS), {"q-full-1", "q-full-2"})
+        finally:
+            with quality_service._QUALITY_LOCK:
+                quality_service._QUALITY_TASKS.clear()
+
+    def test_thread_start_failure_releases_slot(self):
+        """故障注入：后台线程启动失败时，任务必须置 error 终态、槽位释放。"""
+        import threading
+        from unittest import mock
+        target = self._make_chapter_dir("qa_boomb_chapters")
+        with quality_service._QUALITY_LOCK:
+            quality_service._QUALITY_TASKS.clear()
+
+        class BoomThread:
+            def __init__(self, *a, **k):
+                pass
+            def start(self):
+                raise RuntimeError("boom")
+
+        try:
+            with mock.patch.object(threading, "Thread", BoomThread):
+                with self.assertRaises(ServiceError) as ctx:
+                    quality_service.qc(target=target)
+            self.assertEqual(ctx.exception.code, 500)
+            # 槽位已释放：活跃数为 0，且任务为终态 error
+            self.assertEqual(quality_service._active_quality_count(), 0)
+            with quality_service._QUALITY_LOCK:
+                tasks = list(quality_service._QUALITY_TASKS.values())
+            self.assertEqual(len(tasks), 1)
+            self.assertEqual(tasks[0]["status"], "error")
+        finally:
+            with quality_service._QUALITY_LOCK:
+                quality_service._QUALITY_TASKS.clear()
 class TestListQcReports(unittest.TestCase):
     def test_empty_reports_dir(self):
         reports = quality_service.list_qc_reports()

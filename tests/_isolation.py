@@ -17,8 +17,9 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Dict, Iterator, Tuple
+from typing import Any
 
 from gui import config
 
@@ -26,7 +27,7 @@ ROOT_DIR = config.ROOT_DIR
 CONFIG_SOURCE = ROOT_DIR / "gui" / "config.py"
 
 # 代码布局类常量（非「可重定向的数据目录」），不参与隔离。
-INFRASTRUCTURE_CONSTANTS: Tuple[str, ...] = (
+INFRASTRUCTURE_CONSTANTS: tuple[str, ...] = (
     "GUI_DIR",
     "ROOT_DIR",
     "SCRIPTS_DIR",
@@ -35,7 +36,7 @@ INFRASTRUCTURE_CONSTANTS: Tuple[str, ...] = (
 )
 
 # 项目内数据路径常量登记表 —— 新增 config 路径常量必须在此登记。
-DATA_PATH_CONSTANTS: Tuple[str, ...] = (
+DATA_PATH_CONSTANTS: tuple[str, ...] = (
     "ASSETS_ROOT",
     "STATE_ROOT",
     "STATE_JSON_DIR",
@@ -57,14 +58,14 @@ REAL_STATE_JSON_DIR = ROOT_DIR / "gui" / "state"
 REAL_GUI_STATE_DIR = ROOT_DIR / "gui_state"
 
 
-def _canonical_config_namespace() -> Dict[str, Any]:
+def _canonical_config_namespace() -> dict[str, Any]:
     """在全新命名空间里重新执行 ``gui/config.py`` 源码，取**规范值**。
 
     不能用运行时 ``getattr(config, name)``：其它测试会 monkeypatch config 常量
     （指向临时目录），使「是否位于项目根内」的判定失真。重新执行源码可得到
     与任何 patch 无关的、定义期的真实值。
     """
-    namespace: Dict[str, Any] = {
+    namespace: dict[str, Any] = {
         "__file__": str(CONFIG_SOURCE),
         "__name__": "gui._config_canonical_probe",
     }
@@ -72,7 +73,7 @@ def _canonical_config_namespace() -> Dict[str, Any]:
     return namespace
 
 
-def discover_data_path_constants() -> Dict[str, Path]:
+def discover_data_path_constants() -> dict[str, Path]:
     """内省 ``gui/config.py``，返回所有「位于项目根内」的模块级 Path 常量。
 
     基于**定义期规范值**（非运行时被 patch 的值），排除下划线私有名与
@@ -80,17 +81,21 @@ def discover_data_path_constants() -> Dict[str, Path]:
     """
     namespace = _canonical_config_namespace()
     root = namespace["ROOT_DIR"]
-    found: Dict[str, Path] = {}
+    found: dict[str, Path] = {}
     for name, value in namespace.items():
         if name.startswith("_") or name in INFRASTRUCTURE_CONSTANTS:
             continue
-        if isinstance(value, Path) and value.is_relative_to(root):
+        if not isinstance(value, Path):
+            continue
+        # 数据路径：项目根内，或已登记的用户数据目录（如 STATE_ROOT 已迁至
+        # %LOCALAPPDATA%/xuan，不在项目根内但仍需隔离）。
+        if value.is_relative_to(root) or name in DATA_PATH_CONSTANTS:
             found[name] = value
     return found
 
 
 @contextlib.contextmanager
-def isolate_paths(tmp_root: Path) -> Iterator[Dict[str, Path]]:
+def isolate_paths(tmp_root: Path) -> Iterator[dict[str, Path]]:
     """把全部 ``DATA_PATH_CONSTANTS`` 重定向到 ``tmp_root/<常量名小写>``，退出还原。
 
     Yields:
@@ -114,7 +119,7 @@ def snapshot_real_state_json_dir() -> frozenset:
     return frozenset(p.name for p in REAL_STATE_JSON_DIR.glob("gui_state_*.json"))
 
 
-def snapshot_real_gui_state() -> Dict[str, Any]:
+def snapshot_real_gui_state() -> dict[str, Any]:
     """真实 ``gui_state/`` 的可观测快照：文件集合 + ``settings.json`` 内容 sha256 + mtime。
 
     只取「稳定可判定的可观测量」：**不含** SQLite 的 ``-wal`` / ``-shm`` 边车——

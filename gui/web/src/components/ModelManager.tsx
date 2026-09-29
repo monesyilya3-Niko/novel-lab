@@ -52,6 +52,7 @@ export default function ModelManager() {
   const [editing, setEditing] = useState<ModelInfo | null>(null)
   const [showKey, setShowKey] = useState<string | null>(null)
   const [apiKey, setApiKey] = useState('')
+  const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState<string | null>(null)
 
   // Form state
@@ -107,6 +108,8 @@ export default function ModelManager() {
   }
 
   const saveModel = async () => {
+    if (saving) return
+    setSaving(true)
     setMessage('')
     setError('')
     try {
@@ -126,6 +129,8 @@ export default function ModelManager() {
       loadModels()
     } catch (e) {
       setError(friendlyError(e))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -141,7 +146,8 @@ export default function ModelManager() {
   }
 
   const saveKey = async () => {
-    if (!showKey || !apiKey) return
+    if (!showKey || !apiKey || saving) return
+    setSaving(true)
     try {
       await modelApi.setKey(showKey, apiKey)
       setMessage('API Key 已保存')
@@ -150,6 +156,8 @@ export default function ModelManager() {
       loadModels()
     } catch (e) {
       setError(friendlyError(e))
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -271,7 +279,7 @@ export default function ModelManager() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowAdd(false)}>取消</Button>
-          <Button variant="contained" onClick={saveModel} disabled={!form.id || !form.baseUrl || !form.modelName}>
+          <Button variant="contained" onClick={saveModel} disabled={saving || !form.id || !form.baseUrl || !form.modelName}>
             {editing ? '保存' : '添加'}
           </Button>
         </DialogActions>
@@ -289,7 +297,7 @@ export default function ModelManager() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowKey(null)}>取消</Button>
-          <Button variant="contained" onClick={saveKey} disabled={!apiKey}>保存</Button>
+          <Button variant="contained" onClick={saveKey} disabled={saving || !apiKey}>保存</Button>
         </DialogActions>
       </Dialog>
     </Box>

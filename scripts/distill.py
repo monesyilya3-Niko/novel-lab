@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """蒸馏主控：编排蒸馏并落盘 distilled JSON。
 
 调用流程：
@@ -16,7 +15,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 # 保证可被独立执行与从 novel.py 透传调用。
 _SCRIPTS = Path(__file__).resolve().parent
@@ -30,7 +28,7 @@ from validate import validate_asset_data  # noqa: E402
 _GENRE_RE = re.compile(r"[A-Za-z0-9_-]+")
 
 
-def validate_distilled_payload(distilled: dict) -> Tuple[List[str], List[str]]:
+def validate_distilled_payload(distilled: dict) -> tuple[list[str], list[str]]:
     """校验单份 distilled 资产，返回 ``(硬错误, 警告)`` 纯文本列表。
 
     Task 1 的 ``validate_asset_data("distilled", ...)`` 薄包装：
@@ -47,7 +45,7 @@ def validate_distilled_payload(distilled: dict) -> Tuple[List[str], List[str]]:
     return [f"[{label}] {e}" for e in errors], list(warns)
 
 
-def write_distilled_outputs(distilled_by_dim: dict, assets_dir: Path) -> List[str]:
+def write_distilled_outputs(distilled_by_dim: dict, assets_dir: Path) -> list[str]:
     """全量校验四维 distilled 后落盘，返回写入的绝对路径列表。
 
     门禁语义（HIGH）：先对固定 :data:`DIMENSIONS` 逐维确认存在、``meta.dimension``
@@ -58,7 +56,7 @@ def write_distilled_outputs(distilled_by_dim: dict, assets_dir: Path) -> List[st
     """
     assets_dir = Path(assets_dir)
     payloads = distilled_by_dim if isinstance(distilled_by_dim, dict) else {}
-    errors: List[str] = []
+    errors: list[str] = []
 
     # 阶段一：全量校验（此阶段禁止任何文件系统写操作）。
     for dimension in DIMENSIONS:
@@ -87,7 +85,7 @@ def write_distilled_outputs(distilled_by_dim: dict, assets_dir: Path) -> List[st
     # 阶段二：校验通过后创建目录并落盘。
     assets_dir.mkdir(parents=True, exist_ok=True)
 
-    written: List[str] = []
+    written: list[str] = []
     for dimension in DIMENSIONS:
         distilled = payloads[dimension]
         genre = distilled["meta"]["genre"]
@@ -98,7 +96,7 @@ def write_distilled_outputs(distilled_by_dim: dict, assets_dir: Path) -> List[st
     return written
 
 
-def run_distill(genre: str, book_names: Optional[List[str]] = None) -> dict:
+def run_distill(genre: str, book_names: list[str] | None = None) -> dict:
     """执行蒸馏，返回 ``{dimension: distilled_dict}`` 并落盘。"""
     distilled_by_dim = distill_genre(genre, book_names=book_names)
 
@@ -116,7 +114,7 @@ def run_distill(genre: str, book_names: Optional[List[str]] = None) -> dict:
     }
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI 入口。"""
     parser = argparse.ArgumentParser(description="蒸馏层主控：跨书聚合四类资产并落盘")
     parser.add_argument("--genre", required=True, help="题材目录名，如 campus-redemption")

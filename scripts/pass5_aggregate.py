@@ -233,7 +233,7 @@ def main():
     #     明确列出（不静默跳过）但不阻断。
     if book_names:
         selected = {b["name"] for b in books}
-        actual_genre = {n: g for n, g in mismatches}
+        actual_genre = dict(mismatches)
         offenders = [(n, actual_genre.get(n, "不存在")) for n in book_names if n not in selected]
         if offenders:
             detail = "；".join(f"{n}(genre={g or '缺失'})" for n, g in offenders)

@@ -1,27 +1,38 @@
-// 首页仪表盘（M0）：KPI 卡片 + 资产类型分布 + 数据管理入口。
+// 首页仪表盘（M0）：「墨」设计系统 v2 重制版。
+// 纸墨质感 + 衬线标题 + 交错入场动画 + 悬浮卡片。
 import { useState, useEffect, useMemo } from 'react'
 import Box from '@mui/material/Box'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
-import Button from '@mui/material/Button'
+import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
+import Divider from '@mui/material/Divider'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
 import StyleIcon from '@mui/icons-material/Style'
 import ArticleIcon from '@mui/icons-material/Article'
 import FolderIcon from '@mui/icons-material/Folder'
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import AsyncBoundary from './common/AsyncBoundary'
 import { useApp } from '../state/AppContext'
-import PieChart from './charts/PieChart'
+import { lazy, Suspense } from 'react'
+const PieChart = lazy(() => import('./charts/PieChart'))
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
 import { friendlyError } from '../api/client'
 import { kindLabel } from '../assetKindLabels'
+import { ink, cardHover, stagger } from '../ink'
+import { useThemeMode } from '../state/ThemeModeContext'
 
 export default function HomeDashboard() {
-  const { overview, refreshOverview, setWorkbench } = useApp()
+  const { overview, refreshOverview, setWorkbench, openHelp } = useApp()
   const [loadError, setLoadError] = useState<unknown>(null)
+  const { isDark } = useThemeMode()
 
   useEffect(() => {
     refreshOverview()
@@ -31,19 +42,16 @@ export default function HomeDashboard() {
 
   const pieData = useMemo(() => {
     if (!overview) return []
-    // report/book 是虚拟 kind，已由「报告」「已拆书」卡片单独展示，
-    // 不属于「资产类型分布」——计入会让饼图与「资产总数」卡片口径打架。
-    // 键是 deepToCamel 后的 camelCase（proseCard / genrePack），共享表两种键都认。
     return Object.entries(overview.assetsByKind)
       .filter(([k, v]) => v > 0 && k !== 'report' && k !== 'book')
       .map(([k, v]) => ({ name: kindLabel(k), value: v }))
   }, [overview])
 
   const kpis = overview ? [
-    { label: '已拆书', value: overview.totalBooks, icon: <MenuBookIcon />, color: 'primary.main' },
-    { label: '题材包', value: overview.totalGenrePacks, icon: <StyleIcon />, color: '#9c27b0' },
-    { label: '报告', value: overview.totalReports, icon: <ArticleIcon />, color: 'success.main' },
-    { label: '资产总数', value: overview.totalAssets, icon: <FolderIcon />, color: 'info.main' },
+    { label: '已拆书', value: overview.totalBooks, icon: <MenuBookIcon sx={{ fontSize: 28 }} />, accent: ink.cinnabar },
+    { label: '题材包', value: overview.totalGenrePacks, icon: <StyleIcon sx={{ fontSize: 28 }} />, accent: ink.gold },
+    { label: '报告', value: overview.totalReports, icon: <ArticleIcon sx={{ fontSize: 28 }} />, accent: ink.teal },
+    { label: '资产总数', value: overview.totalAssets, icon: <FolderIcon sx={{ fontSize: 28 }} />, accent: '#3A7CA5' },
   ] : []
 
   const retry = () => {
@@ -51,8 +59,10 @@ export default function HomeDashboard() {
     refreshOverview().catch((e) => setLoadError(e))
   }
 
+  const accentSoft = (c: string) => `${c}14`
+
   return (
-    <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+    <Box sx={{ p: { xs: 2, md: 4 }, height: '100%', overflow: 'auto', maxWidth: 1200, mx: 'auto' }}>
       <AsyncBoundary
         loading={!overview && !loadError}
         error={loadError}
@@ -65,33 +75,73 @@ export default function HomeDashboard() {
       >
       {overview && (
       <>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          项目概览
-        </Typography>
-        <Chip
-          label={overview.modelConfigured ? '模型已配置' : '模型未配置'}
-          color={overview.modelConfigured ? 'success' : 'warning'}
-          size="small"
-        />
+      {/* —— 页眉：书卷气标题 —— */}
+      <Box sx={{ mb: 3, ...stagger(0) }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <Box sx={{
+            width: 40, height: 40, borderRadius: 3,
+            background: ink.primary,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(16,16,20,0.18)',
+          }}>
+            <AutoAwesomeIcon sx={{ color: '#fff', fontSize: 22 }} />
+          </Box>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '0.05em' }}>
+              暮冬念春工作台
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '0.2em' }}>
+              中文书籍创作辅助系统
+            </Typography>
+          </Box>
+          <Box sx={{ flex: 1 }} />
+          <Tooltip title="新手上路：从这里开始">
+            <IconButton size="small" onClick={() => openHelp('start', null)} aria-label="新手上路">
+              <HelpOutlineIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Chip
+            label={overview.modelConfigured ? '模型已配置' : '模型未配置'}
+            color={overview.modelConfigured ? 'success' : 'warning'}
+            size="small"
+            sx={{ fontWeight: 600 }}
+          />
+        </Box>
+        <Divider sx={{ mt: 2 }} />
       </Box>
 
       {!overview.modelConfigured && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          尚未配置外部模型，请先运行 model_config.py 配置（PRD Q7）。
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 3 }}>
+          尚未配置外部模型，请先运行 model_config.py 配置。
         </Alert>
       )}
 
-      <Grid container spacing={2}>
-        {kpis.map((k) => (
-          <Grid item xs={6} sm={3} key={k.label}>
-            <Card variant="outlined">
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <Box sx={{ color: k.color, mb: 1 }}>{k.icon}</Box>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
+      {/* —— KPI 卡片 —— */}
+      <Grid container spacing={2.5} sx={{ mb: 3 }}>
+        {kpis.map((k, i) => (
+          <Grid item xs={6} sm={3} key={k.label} sx={stagger(i + 1)}>
+            <Card sx={{ ...cardHover, overflow: 'hidden', position: 'relative' }}>
+              <Box sx={{
+                position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+                background: k.accent,
+              }} />
+              <CardContent sx={{ py: 2.5, px: 2.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Box sx={{
+                    width: 44, height: 44, borderRadius: 2.5,
+                    background: accentSoft(k.accent), color: k.accent,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {k.icon}
+                  </Box>
+                </Box>
+                <Typography
+                  variant="h3"
+                  sx={{ fontWeight: 700, lineHeight: 1.1, mb: 0.5 }}
+                >
                   {k.value}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ letterSpacing: '0.1em' }}>
                   {k.label}
                 </Typography>
               </CardContent>
@@ -100,53 +150,100 @@ export default function HomeDashboard() {
         ))}
       </Grid>
 
-      <Grid container spacing={2} sx={{ mt: 1 }}>
-        <Grid item xs={12} md={5}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                资产类型分布
-              </Typography>
-              {pieData.length > 0 ? (
-                <PieChart data={pieData} height={300} />
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>
-                  暂无资产数据
+      <Grid container spacing={2.5}>
+        {/* —— 资产分布 —— */}
+        <Grid item xs={12} md={5} sx={stagger(5)}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  资产类型分布
                 </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  共 {overview.totalAssets} 项
+                </Typography>
+              </Box>
+              <Divider sx={{ mb: 2 }} />
+              {pieData.length > 0 ? (
+                <Suspense fallback={<Box sx={{ height: 280, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><CircularProgress size={24} /></Box>}>
+                  <PieChart data={pieData} height={280} />
+                </Suspense>
+              ) : (
+                <Box sx={{ py: 8, textAlign: 'center' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    暂无资产数据
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    拆书分析后自动生成
+                  </Typography>
+                </Box>
               )}
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} md={7}>
-          <Card variant="outlined">
-            <CardContent>
-              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                数据管理入口
+
+        {/* —— 快捷入口 —— */}
+        <Grid item xs={12} md={7} sx={stagger(6)}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                开始创作
               </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                <Button
-                  variant="outlined"
-                  onClick={() => setWorkbench('analysis' as WorkbenchKey)}
-                >
-                  去分析拆书
-                </Button>
-                <Button
-                  variant="outlined"
-                  onClick={() => setWorkbench('assets' as WorkbenchKey)}
-                >
-                  浏览资产库
-                </Button>
-              </Box>
+              <Divider sx={{ mb: 2.5 }} />
+              <Grid container spacing={2}>
+                {[
+                  { title: '分析拆书', desc: '导入 TXT，全链路拆解', key: 'analysis' as WorkbenchKey, accent: ink.cinnabar },
+                  { title: '资产库', desc: '浏览题材包与笔法卡', key: 'assets' as WorkbenchKey, accent: ink.teal },
+                  { title: '辅助写作', desc: '注入资产，AI 伴写', key: 'writing' as WorkbenchKey, accent: ink.gold },
+                ].map((a) => (
+                  <Grid item xs={12} sm={4} key={a.key}>
+                    <Card
+                      variant="outlined"
+                      onClick={() => setWorkbench(a.key)}
+                      sx={{
+                        cursor: 'pointer', ...cardHover,
+                        borderLeft: `3px solid ${a.accent}`,
+                      }}
+                    >
+                      <CardContent sx={{ p: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
+                          {a.title}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                          {a.desc}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', color: a.accent, fontSize: 13, fontWeight: 600 }}>
+                          进入 <ArrowForwardIcon sx={{ fontSize: 16, ml: 0.5 }} />
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+
               {overview.recentActivity && overview.recentActivity.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography variant="caption" color="text.secondary">
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, letterSpacing: '0.05em' }}>
                     最近动态
                   </Typography>
-                  {overview.recentActivity.map((a, i) => (
-                    <Typography key={i} variant="body2" sx={{ mt: 0.5 }}>
-                      {a}
-                    </Typography>
-                  ))}
+                  <Box sx={{ position: 'relative', pl: 2.5 }}>
+                    <Box sx={{
+                      position: 'absolute', left: 6, top: 8, bottom: 8, width: 2,
+                      background: isDark ? ink.nightLine : ink.line, borderRadius: 1,
+                    }} />
+                    {overview.recentActivity.slice(0, 5).map((a, i) => (
+                      <Box key={i} sx={{ position: 'relative', pb: 1.5 }}>
+                        <Box sx={{
+                          position: 'absolute', left: -20.5, top: 5, width: 9, height: 9,
+                          borderRadius: '50%', background: i === 0 ? ink.cinnabar : ink.inkFaint,
+                          border: `2px solid ${isDark ? ink.nightCard : ink.card}`,
+                        }} />
+                        <Typography variant="body2" sx={{ lineHeight: 1.6 }}>
+                          {a}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                 </Box>
               )}
             </CardContent>
@@ -155,7 +252,7 @@ export default function HomeDashboard() {
       </Grid>
       </>
       )}
-    </AsyncBoundary>
+      </AsyncBoundary>
     </Box>
   )
 }

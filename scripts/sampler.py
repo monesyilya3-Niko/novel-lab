@@ -83,6 +83,18 @@ def split_sentences(text):
     return [s for s in re.split(r'[。！？!?…;；\n]', text) if s.strip()]
 
 
+def _sentence_at(body, boundaries, k):
+    """按句子边界取第 k 句；越界返回空串。
+
+    刻意提为模块级函数并显式接收 body/boundaries：原实现是循环内闭包，
+    虽然每轮都立即调用（当前无 bug），但闭包按引用延迟绑定循环变量——
+    一旦将来有人把它存到循环外或延后调用，就会静默拿到最后一轮的数据。
+    """
+    if k < 0 or k >= len(boundaries) - 1:
+        return ""
+    return body[boundaries[k]:boundaries[k + 1]].strip()
+
+
 def extract_dialogue(chapters, indices):
     """抽取选中章里的对话行 + 前后各一句（数据量降到约 20%）。
 
@@ -93,11 +105,6 @@ def extract_dialogue(chapters, indices):
         title, body = chapters[i]
         # 句子边界（带字符偏移），用于定位上下文
         boundaries = [m.start() for m in SENT_RE.finditer(body)] + [len(body)]
-
-        def sent_at(k):
-            if k < 0 or k >= len(boundaries) - 1:
-                return ""
-            return body[boundaries[k]:boundaries[k + 1]].strip()
 
         for op, cl in QUOTE_PAIRS:
             pat = re.escape(op) + r'(?:[^' + re.escape(cl) + r']*)' + re.escape(cl)
@@ -111,9 +118,9 @@ def extract_dialogue(chapters, indices):
                 out.append({
                     "chapter": i + 1,
                     "title": title,
-                    "before": sent_at(si - 1),
-                    "line": sent_at(si),
-                    "after": sent_at(si + 1),
+                    "before": _sentence_at(body, boundaries, si - 1),
+                    "line": _sentence_at(body, boundaries, si),
+                    "after": _sentence_at(body, boundaries, si + 1),
                 })
     return out
 

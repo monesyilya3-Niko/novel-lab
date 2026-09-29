@@ -1,6 +1,6 @@
 // 分析结果面板：查看选定章节×批次各 pass 产出的资产 JSON。
 // 首版以结构化 JSON 树 + 可读化摘要两种形式展示（P1 只做到可读 JSON）。
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
@@ -41,33 +41,44 @@ export default function ResultPanel() {
     return Array.from({ length: currentChapter.batchCount }, (_, i) => i)
   }, [currentChapter])
 
-  const load = useCallback(async () => {
-    if (!bookId || chapterIndex == null) {
+  const loadSeq = useRef(0)
+  const load = useCallback(async (chapter: number | null, bi: number, pn: string) => {
+    if (!bookId || chapter == null) {
       setAsset(null)
       return
     }
+    const seq = ++loadSeq.current
     setLoading(true)
     setError(null)
     try {
-      const data = await api.getAsset(bookId, chapterIndex, batchIndex, passName)
-      setAsset(data)
+      const data = await api.getAsset(bookId, chapter, bi, pn)
+      // 序列守卫：迟到响应不得覆盖更新的请求（与 AppContext 的 bookResults 同模式）
+      if (seq === loadSeq.current) setAsset(data)
     } catch (e) {
-      setError((e as Error).message)
-      setAsset(null)
+      if (seq === loadSeq.current) {
+        setError((e as Error).message)
+        setAsset(null)
+      }
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
-  }, [bookId, chapterIndex, batchIndex, passName])
+  }, [bookId])
 
+  // P2-F9 真修复：单 effect 统一处理"章节/批次/阶段/书"变化。
+  // - 章节变化时批次强制归零，用 (新章节, 0) 直接加载，不等 setBatchIndex 重渲染，
+  //   避免闭包拿到旧 batchIndex 发出"新章节+旧批次"的误请求；
+  // - lastLoadKey 去重：归零引发的重渲染（batchIndex 2→0）不再二次加载。
+  const lastChapterRef = useRef<number | null>(null)
+  const lastLoadKey = useRef('')
   useEffect(() => {
-    setBatchIndex(0)
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapterIndex])
-
-  useEffect(() => {
-    load()
-  }, [load])
+    const bi = chapterIndex !== lastChapterRef.current ? 0 : batchIndex
+    lastChapterRef.current = chapterIndex
+    if (bi !== batchIndex) setBatchIndex(bi) // 同步下拉框显示
+    const key = `${bookId}|${chapterIndex}|${bi}|${passName}`
+    if (key === lastLoadKey.current) return
+    lastLoadKey.current = key
+    if (chapterIndex != null) load(chapterIndex, bi, passName)
+  }, [bookId, chapterIndex, batchIndex, passName, load])
 
   if (!book || chapterIndex == null) {
     return (
@@ -115,7 +126,12 @@ export default function ResultPanel() {
           ))}
         </Tabs>
 
-        <Button size="small" variant="outlined" onClick={load} disabled={loading}>
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => { if (chapterIndex != null) load(chapterIndex, batchIndex, passName) }}
+          disabled={loading}
+        >
           刷新
         </Button>
       </Box>
@@ -130,7 +146,7 @@ export default function ResultPanel() {
       ) : asset && Object.keys(asset).length > 0 ? (
         <Paper
           variant="outlined"
-          sx={{ p: 2, bgcolor: '#f7f7f7', overflow: 'auto' }}
+          sx={{ p: 2, bgcolor: 'background.paper', overflow: 'auto' }}
         >
           <pre
             style={{

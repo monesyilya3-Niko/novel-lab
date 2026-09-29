@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from gui import config, engine_adapter
 from gui.logging_setup import get_logger
@@ -16,18 +16,11 @@ from gui.services import ServiceError
 _log = get_logger("system_service")
 
 
-def _ensure_scripts_path() -> None:
-    """确保 scripts/ 在 sys.path 中（幂等）。"""
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
-
-
 # ---------------------------------------------------------------------------
 # 系统状态
 # ---------------------------------------------------------------------------
 
-def system_status() -> Dict[str, Any]:
+def system_status() -> dict[str, Any]:
     """系统状态总览：磁盘、数据库、模型、任务。"""
     # 磁盘占用
     def _dir_size(p: Path) -> int:
@@ -95,8 +88,8 @@ def system_status() -> Dict[str, Any]:
 # 版权合规扫描
 # ---------------------------------------------------------------------------
 
-def compliance_scan(voice: Optional[str] = None,
-                    book_path: Optional[str] = None) -> Dict[str, Any]:
+def compliance_scan(voice: str | None = None,
+                    book_path: str | None = None) -> dict[str, Any]:
     """版权合规扫描：对指定资产或全部资产做 12 字原文匹配检查。"""
     results = []
 
@@ -113,25 +106,26 @@ def compliance_scan(voice: Optional[str] = None,
         try:
             asset = json.loads(fp.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError) as exc:
-            raise ServiceError(f"资产文件损坏: {exc}", 500)
+            raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
-        # HIGH：book_path 也必须在项目根内
+        # HIGH：book_path 约束在允许根内（防任意文件读取）。
+        # 允许根 = 项目根 + 用户数据目录下的书籍/语料目录（CORPUS_DIR、NOVEL_DIR
+        # 位于用户数据目录，不在 ROOT_DIR 内，旧检查会误伤合法文件）。
         book_text = ""
         if book_path:
             bp = Path(book_path).resolve()
-            if not bp.is_relative_to(config.ROOT_DIR.resolve()):
-                raise ServiceError("book_path 必须在项目目录内", 400)
+            _allowed = {config.ROOT_DIR.resolve(), config.CORPUS_DIR.resolve(), config.NOVEL_DIR.resolve()}
+            if not any(bp.is_relative_to(r) for r in _allowed):
+                raise ServiceError("book_path 必须在项目目录或用户数据目录内", 400)
             if not bp.is_file():
                 raise ServiceError(f"原文不存在: {book_path}", 404)
             try:
                 book_text = bp.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError) as exc:
-                raise ServiceError(f"读取原文失败: {exc}", 400)
+                raise ServiceError(f"读取原文失败: {exc}", 400) from exc
 
         # 调用 compliance.scan_asset（需要 ngram 索引）
-        _ensure_scripts_path()
-        import compliance as compliance_mod
-
+        # 铁律：scripts/ 只经 engine_adapter 触碰。
         ngram = set()
         if book_text:
             WINDOW = 12
@@ -139,7 +133,7 @@ def compliance_scan(voice: Optional[str] = None,
             for i in range(len(compact) - WINDOW + 1):
                 ngram.add(compact[i:i + WINDOW])
 
-        errors, warns = compliance_mod.scan_asset(asset, ngram)
+        errors, warns = engine_adapter.compliance_scan_asset(asset, ngram)
         results.append({
             "name": name,
             "errors": errors,
@@ -148,16 +142,13 @@ def compliance_scan(voice: Optional[str] = None,
         })
     else:
         # 全量扫描（不带原文，只做字段级检查）
-        _ensure_scripts_path()
-        import compliance as compliance_mod
-
         for fp in sorted(config.ASSETS_ROOT.glob("*.json")):
             try:
                 asset = json.loads(fp.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError) as exc:
                 _log.warning(f"合规扫描跳过无法解析的资产 {fp.name}: {exc}")
                 continue
-            errors, warns = compliance_mod.scan_asset(asset, set())
+            errors, warns = engine_adapter.compliance_scan_asset(asset, set())
             results.append({
                 "name": fp.stem,
                 "errors": errors,
@@ -180,7 +171,7 @@ def compliance_scan(voice: Optional[str] = None,
 # 模型配置（只读展示，修改走 CLI model_config.py）
 # ---------------------------------------------------------------------------
 
-def model_info() -> Dict[str, Any]:
+def model_info() -> dict[str, Any]:
     """模型配置信息（脱敏展示）。"""
     configured = engine_adapter.any_model_configured()
     models = engine_adapter.list_models() if configured else []
@@ -221,7 +212,7 @@ def _settings_file() -> Path:
     return config.STATE_ROOT / "settings.json"
 
 
-def _load_settings_file() -> Dict[str, Any]:
+def _load_settings_file() -> dict[str, Any]:
     """读取 settings.json（不存在返回空 dict）。"""
     path = _settings_file()
     if not path.is_file():
@@ -234,7 +225,7 @@ def _load_settings_file() -> Dict[str, Any]:
         return {}
 
 
-def _save_settings_file(data: Dict[str, Any]) -> None:
+def _save_settings_file(data: dict[str, Any]) -> None:
     """写入 settings.json（原子写）。"""
     path = _settings_file()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -243,7 +234,7 @@ def _save_settings_file(data: Dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def get_settings() -> Dict[str, Any]:
+def get_settings() -> dict[str, Any]:
     """当前系统设置。优先级：环境变量 > settings.json > 默认值。"""
     saved = _load_settings_file()
     return {
@@ -275,7 +266,7 @@ def get_settings() -> Dict[str, Any]:
     }
 
 
-def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
+def update_settings(updates: dict[str, Any]) -> dict[str, Any]:
     """更新设置（写入 settings.json）。只接受白名单字段。"""
     if not updates or not isinstance(updates, dict):
         raise ServiceError("updates 必须为 JSON 对象", 400)
@@ -291,7 +282,7 @@ def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
         for key in ("consistency_target", "quality_pass_line", "quality_warn_line"):
             if key in th:
                 val = th[key]
-                if not isinstance(val, (int, float)) or not (0 <= val <= 100):
+                if isinstance(val, bool) or not isinstance(val, (int, float)) or not (0 <= val <= 100):
                     raise ServiceError(f"{key} 必须为 0-100 的数值", 400)
                 saved["thresholds"][key] = int(val)
         # 校验 pass_line >= warn_line
@@ -306,24 +297,24 @@ def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
         saved.setdefault("writing", {})
         if "default_words" in wr:
             val = wr["default_words"]
-            if not isinstance(val, int) or not (100 <= val <= 20000):
+            if isinstance(val, bool) or not isinstance(val, int) or not (100 <= val <= 20000):
                 raise ServiceError("default_words 必须为 100-20000 的整数", 400)
             saved["writing"]["default_words"] = val
         if "max_attempts" in wr:
             val = wr["max_attempts"]
-            if not isinstance(val, int) or not (1 <= val <= 10):
+            if isinstance(val, bool) or not isinstance(val, int) or not (1 <= val <= 10):
                 raise ServiceError("max_attempts 必须为 1-10 的整数", 400)
             saved["writing"]["max_attempts"] = val
 
     # 端口/批次大小（需重启生效，仅记录）
     if "port" in updates:
         val = updates["port"]
-        if not isinstance(val, int) or not (1 <= val <= 65535):
+        if isinstance(val, bool) or not isinstance(val, int) or not (1 <= val <= 65535):
             raise ServiceError("port 必须为 1-65535 的整数", 400)
         saved["port"] = val
     if "batch_size" in updates:
         val = updates["batch_size"]
-        if not isinstance(val, int) or not (100 <= val <= 100000):
+        if isinstance(val, bool) or not isinstance(val, int) or not (100 <= val <= 100000):
             raise ServiceError("batch_size 必须为 100-100000 的整数", 400)
         saved["batch_size"] = val
 
@@ -331,7 +322,7 @@ def update_settings(updates: Dict[str, Any]) -> Dict[str, Any]:
     return get_settings()
 
 
-def reset_settings() -> Dict[str, Any]:
+def reset_settings() -> dict[str, Any]:
     """重置设置为默认值（删除 settings.json）。"""
     path = _settings_file()
     if path.is_file():

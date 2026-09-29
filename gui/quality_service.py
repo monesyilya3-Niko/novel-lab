@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from gui import config, engine_adapter
 from gui.logging_setup import get_logger
@@ -20,7 +21,7 @@ _log = get_logger("quality_service")
 # ---------------------------------------------------------------------------
 # 任务注册表
 # ---------------------------------------------------------------------------
-_QUALITY_TASKS: Dict[str, Dict[str, Any]] = {}
+_QUALITY_TASKS: dict[str, dict[str, Any]] = {}
 # RLock：qc() 提交路径在外层持锁后还会调 _active_quality_count()（同样拿锁），
 # 非重入 Lock 会自死锁（GUI 质检台 QC 按钮曾因此完全不可用）。
 _QUALITY_LOCK = threading.RLock()
@@ -30,15 +31,55 @@ _MAX_CONCURRENT_QUALITY = 2
 _MAX_TERMINAL_TASKS = 50
 
 
+def _safe_report_rel(path: Path) -> str:
+    """报告路径转相对路径（相对 REPORTS_DIR）。P0 修复：用户数据目录
+    （%LOCALAPPDATA%/暮冬念春 等）永不在 ROOT_DIR 下，旧代码
+    path.relative_to(config.ROOT_DIR) 在生产环境必抛 ValueError，
+    导致每个 QC 任务在落盘后崩溃、报告列表接口 500。"""
+    try:
+        return str(path.relative_to(config.REPORTS_DIR))
+    except ValueError:
+        return str(path)
+
+
 def _prune_terminal_tasks() -> None:
     """清理终态任务，防止注册表无限增长。"""
     with _QUALITY_LOCK:
         terminal = {k: v for k, v in _QUALITY_TASKS.items()
                     if v.get("status") not in _ACTIVE_STATUSES}
         if len(terminal) > _MAX_TERMINAL_TASKS:
-            to_remove = sorted(terminal.keys())[:len(terminal) - _MAX_TERMINAL_TASKS]
+            # 按创建时间删除最旧的（task_id 是 uuid4 hex，无时间成分，不能按它排序）。
+            to_remove = sorted(terminal.keys(),
+                               key=lambda k: terminal[k].get("created_at", 0)
+                               )[:len(terminal) - _MAX_TERMINAL_TASKS]
             for k in to_remove:
                 del _QUALITY_TASKS[k]
+
+
+_EXTERNAL_SCRATCH_PREFIX = "qc-external-"
+
+
+def _is_external_scratch_copy(p: Path) -> bool:
+    """判断是否为 resolve_chapter_target 产生的外部隔离副本。"""
+    d = p if p.is_dir() else p.parent
+    return (d.name.startswith(_EXTERNAL_SCRATCH_PREFIX)
+            and d.parent == (config.STATE_ROOT / "scratch"))
+
+
+def _cleanup_external_copy(p: Path | str | None) -> None:
+    """删除外部隔离副本。
+
+    P1-5 修复：旧实现只在启动时清 scratch，桌面端常驻会话中多次外部文件
+    质检（单文件上限 50MB）可累积至 GB 级磁盘占用，会话内无回收。
+    """
+    if not p:
+        return
+    import shutil
+    d = Path(p)
+    if not _is_external_scratch_copy(d):
+        return
+    target_dir = d if d.is_dir() else d.parent
+    shutil.rmtree(target_dir, ignore_errors=True)
 
 
 def _active_quality_count() -> int:
@@ -50,11 +91,16 @@ def _active_quality_count() -> int:
 # 路径安全
 # ---------------------------------------------------------------------------
 
-def resolve_chapter_target(target: str, *, novel_dir: Optional[str] = None) -> Path:
+def resolve_chapter_target(target: str, *, novel_dir: str | None = None) -> Path:
     """把前端 target 解析为磁盘上真实存在的章节文件/目录（防路径穿越）。
 
-    只允许解析到 NOVEL_DIR / CORPUS_DIR 之内；越界 → 400。
+    - 相对路径：在 NOVEL_DIR / CORPUS_DIR 内查找。
+    - 绝对路径在 novel/corpus 内：直接使用。
+    - 绝对路径在外但文件存在：复制到 scratch 隔离目录后使用
+      （桌面端用户指定任意位置文件的场景；复制隔离防 TOCTOU）。
     """
+    import shutil
+    import uuid
     if not target:
         raise ServiceError("target 不能为空", 400)
     p = Path(target)
@@ -70,11 +116,23 @@ def resolve_chapter_target(target: str, *, novel_dir: Optional[str] = None) -> P
 
     resolved = p.resolve()
     allowed_roots = [config.NOVEL_DIR.resolve(), config.CORPUS_DIR.resolve()]
-    if not any(resolved.is_relative_to(r) for r in allowed_roots):
-        raise ServiceError("target 必须在 novel/ 或 corpus/ 目录内", 400)
+    if any(resolved.is_relative_to(r) for r in allowed_roots):
+        if not resolved.exists():
+            raise ServiceError(f"target 不存在: {target}", 404)
+        return resolved
+
+    # 绝对路径但不在 novel/corpus 内：复制到 scratch 隔离目录
     if not resolved.exists():
         raise ServiceError(f"target 不存在: {target}", 404)
-    return resolved
+    if not resolved.is_file():
+        raise ServiceError("外部路径仅支持单文件（目录请先放入 novel/ 或 corpus/）", 400)
+    if resolved.stat().st_size > 50 * 1024 * 1024:
+        raise ServiceError("文件超过 50MB 上限", 400)
+    scratch_dir = config.STATE_ROOT / "scratch" / f"qc-external-{uuid.uuid4().hex[:8]}"
+    scratch_dir.mkdir(parents=True, exist_ok=True)
+    dest = scratch_dir / resolved.name
+    shutil.copy2(resolved, dest)
+    return dest
 
 
 def _materialize_text(text: str, task_id: str) -> Path:
@@ -87,20 +145,22 @@ def _materialize_text(text: str, task_id: str) -> Path:
 
 
 def clean_stale_scratch() -> int:
-    """删除 STATE_ROOT/scratch/ 下全部残留任务目录/文件（进程启动时调用一次）。"""
+    """删除 STATE_ROOT/scratch/ 下全部残留任务目录/文件（进程启动时调用一次）。
+
+    P2-9 修复：旧实现只清一层嵌套，二级以上残留会导致 rmdir 失败被吞掉而永久残留。
+    """
+    import shutil
     scratch_dir = config.STATE_ROOT / "scratch"
     if not scratch_dir.is_dir():
         return 0
     count = 0
     for item in scratch_dir.iterdir():
         try:
-            if item.is_file():
+            if item.is_file() or item.is_symlink():
                 item.unlink()
                 count += 1
             elif item.is_dir():
-                for fp in item.iterdir():
-                    fp.unlink()
-                item.rmdir()
+                shutil.rmtree(item, ignore_errors=True)
                 count += 1
         except OSError:
             pass
@@ -111,7 +171,7 @@ def clean_stale_scratch() -> int:
 # 同步能力
 # ---------------------------------------------------------------------------
 
-def _safe_asset_path(ref: str) -> Optional[Path]:
+def _safe_asset_path(ref: str) -> Path | None:
     """安全解析资产引用路径（防路径穿越）。"""
     name = ref.split(":")[-1]
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
@@ -122,7 +182,7 @@ def _safe_asset_path(ref: str) -> Optional[Path]:
     return fp if fp.is_file() else None
 
 
-def _checked_asset_path(ref: str, expected: str) -> Optional[Path]:
+def _checked_asset_path(ref: str, expected: str) -> Path | None:
     """解析资产引用 → 读取 JSON → 内容契约校验，返回可用路径。
 
     - 引用非法 / 文件不存在 / JSON 损坏：返回 None（沿用调用方「跳过该资产」语义）；
@@ -142,8 +202,8 @@ def _checked_asset_path(ref: str, expected: str) -> Optional[Path]:
     return fp
 
 
-def check(target: Optional[str] = None, text: Optional[str] = None,
-          voice: Optional[str] = None, genre_pack: Optional[str] = None) -> Dict[str, Any]:
+def check(target: str | None = None, text: str | None = None,
+          voice: str | None = None, genre_pack: str | None = None) -> dict[str, Any]:
     """单章双维度检查：质量 12 维 + 一致性 5 维。"""
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
@@ -151,10 +211,19 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
         fp = resolve_chapter_target(target)
         if fp.is_dir():
             raise ServiceError("check 需要单章文件，不是目录", 400)
+        # P2-8：corpus/novel 内文件此前无大小限制，大文件会 read_text 到 MemoryError。
+        # 与外部文件分支统一 50MB 上限。
+        try:
+            if fp.stat().st_size > 50 * 1024 * 1024:
+                raise ServiceError("文件超过 50MB 上限", 400)
+        except OSError as exc:
+            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
         try:
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:
-            raise ServiceError(f"读取章节失败: {exc}", 400)
+            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
+        finally:
+            _cleanup_external_copy(fp)  # P1-5：外部隔离副本用后即删
 
     gp_data = None
     if genre_pack:
@@ -166,7 +235,7 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
                 _log.warning(f"题材包加载失败，本次检查不带题材约束 {gp_fp.name}: {exc}")
 
     qc = engine_adapter.chapter_check(text, gp_data)
-    result: Dict[str, Any] = {"quality": qc}
+    result: dict[str, Any] = {"quality": qc}
 
     if voice:
         voice_fp = _safe_asset_path(voice)
@@ -188,8 +257,8 @@ def check(target: Optional[str] = None, text: Optional[str] = None,
     return result
 
 
-def book(target: Optional[str] = None, text: Optional[str] = None,
-         voice: Optional[str] = None) -> Dict[str, Any]:
+def book(target: str | None = None, text: str | None = None,
+         voice: str | None = None) -> dict[str, Any]:
     """全书质检（重复/连贯/凑字数/乱编/AI味）。"""
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
@@ -203,10 +272,13 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
         if vfp:
             voice_path = str(vfp)
 
-    chapter_dir: Optional[str] = None
-    scratch_fp: Optional[Path] = None
+    chapter_dir: str | None = None
+    scratch_fp: Path | None = None
+    external_fp: Path | None = None
     if target:
         fp = resolve_chapter_target(target)
+        if _is_external_scratch_copy(fp):
+            external_fp = fp
         if fp.is_file():
             chapter_dir = str(fp.parent)
         else:
@@ -227,9 +299,10 @@ def book(target: Optional[str] = None, text: Optional[str] = None,
                 scratch_fp.parent.rmdir()
             except OSError:
                 pass
+        _cleanup_external_copy(external_fp)  # P1-5：外部隔离副本用后即删
 
 
-def list_qc_reports() -> List[Dict[str, Any]]:
+def list_qc_reports() -> list[dict[str, Any]]:
     """列出 reports/qc/ 下的历史报告。"""
     qc_dir = config.REPORTS_DIR / "qc"
     reports = []
@@ -239,7 +312,7 @@ def list_qc_reports() -> List[Dict[str, Any]]:
                 data = json.loads(fp.read_text(encoding="utf-8"))
                 reports.append({
                     "name": fp.stem,
-                    "path": str(fp.relative_to(config.ROOT_DIR)),
+                    "path": _safe_report_rel(fp),
                     "verdict": data.get("verdict", "?"),
                     "total_score": data.get("total_score"),
                     "created_at": data.get("meta", {}).get("created_at"),
@@ -254,10 +327,10 @@ def list_qc_reports() -> List[Dict[str, Any]]:
 # W14 长任务：qc / qc_task_state
 # ---------------------------------------------------------------------------
 
-def qc(target: Optional[str] = None, text: Optional[str] = None,
-       voice: Optional[str] = None, genre_pack: Optional[str] = None,
-       asset: Optional[str] = None, book: Optional[str] = None,
-       novel_dir: Optional[str] = None, llm_hook: bool = False) -> Dict[str, Any]:
+def qc(target: str | None = None, text: str | None = None,
+       voice: str | None = None, genre_pack: str | None = None,
+       asset: str | None = None, book: str | None = None,
+       novel_dir: str | None = None, llm_hook: bool = False) -> dict[str, Any]:
     """启动 qc 长任务（四层十二维）。并发上限 2（D6）。"""
     task_id = f"q-{uuid.uuid4().hex[:12]}"
 
@@ -270,8 +343,11 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
             voice_path = str(vfp)
 
     # 解析章节目录
+    external_copy: str | None = None
     if target:
         fp = resolve_chapter_target(target)
+        if _is_external_scratch_copy(fp):
+            external_copy = str(fp)
         chapter_dir = str(fp if fp.is_dir() else fp)
         display_target = target
     elif text:
@@ -283,11 +359,11 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
         raise ServiceError("需要 target 或 text", 400)
 
     # 解析资产路径
-    def _asset_path(ref: Optional[str]) -> Optional[str]:
+    def _asset_path(ref: str | None) -> str | None:
         if not ref:
             return None
         name = ref.split(':')[-1]
-        if not name or any(ch in name for ch in ("/", "\\", "..")):
+        if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
             return None
         p = (config.ASSETS_ROOT / f"{name}.json").resolve()
         if not p.is_relative_to(config.ASSETS_ROOT.resolve()):
@@ -308,6 +384,7 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
             raise ServiceError(f"质检任务已达上限 {_MAX_CONCURRENT_QUALITY}，请等待当前任务完成", 429)
         _QUALITY_TASKS[task_id] = {
             "task_id": task_id, "status": "running", "phase": "qc",
+            "created_at": time.time(),
             "target": display_target, "verdict": None, "total_score": None,
             "layers": [], "issues": [], "meta": {},
             "report_json": None, "report_md": None, "error": None,
@@ -315,20 +392,20 @@ def qc(target: Optional[str] = None, text: Optional[str] = None,
 
     thread = threading.Thread(
         target=_run_qc_task,
-        args=(task_id, chapter_dir, voice_path, gp_path, asset_path, book_path, nd, llm_hook, display_target),
+        args=(task_id, chapter_dir, voice_path, gp_path, asset_path, book_path, nd, llm_hook, display_target, external_copy),
         daemon=True, name=f"qc-{task_id}")
     try:
         thread.start()
-    except RuntimeError:
+    except RuntimeError as exc:
         # HIGH：start 失败必须释放并发槽位
         with _QUALITY_LOCK:
             _QUALITY_TASKS[task_id]["status"] = "error"
             _QUALITY_TASKS[task_id]["error"] = "线程启动失败"
-        raise ServiceError("线程启动失败，请稍后重试", 500)
+        raise ServiceError("线程启动失败，请稍后重试", 500) from exc
     return {"task_id": task_id, "status": "running", "target": display_target}
 
 
-def qc_task_state(task_id: str) -> Dict[str, Any]:
+def qc_task_state(task_id: str) -> dict[str, Any]:
     """查询 qc 任务状态。"""
     import copy
     with _QUALITY_LOCK:
@@ -338,10 +415,11 @@ def qc_task_state(task_id: str) -> Dict[str, Any]:
         return copy.deepcopy(t)
 
 
-def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
-                 gp_path: Optional[str], asset_path: Optional[str],
-                 book_path: Optional[str], novel_dir: Optional[str],
-                 llm_hook: bool, display_target: str) -> None:
+def _run_qc_task(task_id: str, chapter_dir: str, voice_path: str | None,
+                 gp_path: str | None, asset_path: str | None,
+                 book_path: str | None, novel_dir: str | None,
+                 llm_hook: bool, display_target: str,
+                 external_copy: str | None = None) -> None:
     """后台线程：跑 qc 并落盘报告。"""
     from gui import sse
 
@@ -374,8 +452,8 @@ def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
                 "layers": report.get("layers", []),
                 "issues": report.get("issues", [])[:50],
                 "meta": report.get("meta", {}),
-                "report_json": str(json_fp.relative_to(config.ROOT_DIR)),
-                "report_md": str(md_fp.relative_to(config.ROOT_DIR)),
+                "report_json": _safe_report_rel(json_fp),
+                "report_md": _safe_report_rel(md_fp),
             })
 
         sse.broker.publish({
@@ -404,3 +482,4 @@ def _run_qc_task(task_id: str, chapter_dir: str, voice_path: Optional[str],
                 task_scratch.rmdir()
             except OSError:
                 pass
+        _cleanup_external_copy(external_copy)  # P1-5：外部隔离副本用后即删

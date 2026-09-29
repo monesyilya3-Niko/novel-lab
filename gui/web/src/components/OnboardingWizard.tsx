@@ -43,7 +43,7 @@ export default function OnboardingWizard({
   const steps = useMemo<Step[]>(
     () => [
       {
-        title: '欢迎使用 novel-lab',
+        title: '欢迎使用暮冬念春',
         body: (
           <Typography variant="body2" color="text.secondary">
             把优秀小说拆成可复用的写作资产，再用这些资产驱动创作。

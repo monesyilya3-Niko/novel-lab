@@ -6,14 +6,15 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
+from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from gui import config, engine_adapter, state_store, asset_index
+from gui import asset_index, config, db, engine_adapter, state_store
 from gui.logging_setup import get_logger
-from gui import db
 from gui.sse import broker
 
 _log = get_logger("services")
@@ -29,6 +30,16 @@ class ServiceError(Exception):
         super().__init__(message)
         self.message = message
         self.code = code
+
+
+def _require_positive_batch_size(batch_size: int | None) -> None:
+    """纵深防御：服务层不信任调用方已做校验，非法 batch_size 直接 400。
+
+    路由层已有 _safe_batch_size，但内部调用可绕过路由；负数 batch_size
+    会透过 `batch_size or default`（负数 truthy）进入后台线程导致异常。
+    """
+    if batch_size is not None and batch_size <= 0:
+        raise ServiceError("batch_size 必须为正整数", 400)
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +65,7 @@ _KIND_HINTS = {
 }
 
 
-def detect_asset_kind(data: Any) -> Optional[str]:
+def detect_asset_kind(data: Any) -> str | None:
     """按**内容**识别资产 kind（不接触磁盘）；无法自证的返回 None。
 
     Returns:
@@ -106,52 +117,214 @@ def assert_asset_kind(data: Any, expected: str, ref: str) -> None:
 # ---------------------------------------------------------------------------
 
 # 已导入书籍：book_id -> {title, source_path, chapters:[(title, body)], metrics}
-_BOOKS: Dict[str, Dict[str, Any]] = {}
+# B9：LRU 缓存（最多 _BOOKS_MAX 本），超限时淘汰最久未用且未在分析中的书；
+# 被淘汰的书可通过 _BOOK_INDEX 从源文件透明重载。
+_BOOKS: OrderedDict[str, dict[str, Any]] = OrderedDict()
+_BOOKS_MAX = 3
+# 轻量索引：book_id -> source_path（淘汰后仍保留，用于透明重载）。
+# 有界：防止长期导入导致无界增长；超限时淘汰最久未写入者。
+_BOOK_INDEX: OrderedDict[str, str] = OrderedDict()
+_BOOK_INDEX_MAX = 100
+_books_lock = threading.Lock()
+
+
+def _books_get(book_id: str) -> dict[str, Any] | None:
+    """LRU 获取：命中时移到末尾（标记最近使用）；未命中时尝试从源文件重载。
+
+    B9：淘汰后透明重载，保证用户无感。
+    """
+    with _books_lock:
+        book = _BOOKS.get(book_id)
+        if book is not None:
+            _BOOKS.move_to_end(book_id)
+            return book
+        # 未命中：尝试从索引重载
+        src_path = _BOOK_INDEX.get(book_id)
+    if src_path is None:
+        return None
+    # 在锁外重载（IO 耗时），重载后重新加锁插入
+    try:
+        reloaded = _load_book_from_disk(book_id, src_path)
+    except (OSError, ServiceError):
+        return None
+    with _books_lock:
+        # 双重检查：重载期间可能已被其他线程插入
+        if book_id in _BOOKS:
+            _BOOKS.move_to_end(book_id)
+            return _BOOKS[book_id]
+        _books_put_locked(book_id, reloaded)
+        return reloaded
+
+
+def _books_put_locked(book_id: str, book: dict[str, Any]) -> None:
+    """插入 LRU（调用方持有 _books_lock）；超限时淘汰最久未用者。
+
+    正在分析中（_runtime 有条目）的书永不淘汰。
+    """
+    _BOOKS[book_id] = book
+    _BOOKS.move_to_end(book_id)
+    _BOOK_INDEX[book_id] = book["source_path"]
+    _BOOK_INDEX.move_to_end(book_id)
+    # 有界：索引超限时淘汰最久未写入者（仅影响极旧书的透明重载，可重新导入）。
+    while len(_BOOK_INDEX) > _BOOK_INDEX_MAX:
+        _BOOK_INDEX.popitem(last=False)
+    # 淘汰：从最久未用开始，跳过正在分析的
+    with _runtime_lock:
+        analyzing = set(_runtime.keys())
+    while len(_BOOKS) > _BOOKS_MAX:
+        oldest_id = next(iter(_BOOKS))
+        if oldest_id in analyzing:
+            # 最久的是正在分析的，尝试淘汰次久的
+            evicted = False
+            for bid in list(_BOOKS.keys()):
+                if bid not in analyzing:
+                    del _BOOKS[bid]
+                    evicted = True
+                    break
+            if not evicted:
+                break  # 全在分析中，放弃淘汰
+        else:
+            del _BOOKS[oldest_id]
+
+
+def _load_book_from_disk(book_id: str, src_path: str) -> dict[str, Any]:
+    """从源文件重载书籍（B9 透明重载路径）。"""
+    src = Path(src_path)
+    if not src.exists():
+        raise ServiceError(f"源文件已丢失: {src_path}", 404)
+    # 经 _secure_read_text：防符号链接、FIFO、超大文件（与 import 同一路防线）。
+    text = _secure_read_text(str(src))
+    chapters_raw = engine_adapter.split_chapters(text)
+    if not chapters_raw:
+        raise ServiceError("源文件无法解析", 400)
+    metrics = engine_adapter.compute_metrics(text)
+    del text
+    return {
+        "title": src.stem,
+        "source_path": str(src),
+        "chapters": chapters_raw,
+        "metrics": metrics,
+    }
 
 # 分析运行时：book_id -> 分析上下文（线程 + 控制标志）
-_runtime: Dict[str, Dict[str, Any]] = {}
+_runtime: dict[str, dict[str, Any]] = {}
 _runtime_lock = threading.Lock()
+# 报告生成互斥：两个 _watch 线程（前后两轮一键分析）可能同时观察到 done
+# 并发写同一报告文件；write_text 非原子，会交错损坏。串行化生成。
+_report_gen_lock = threading.Lock()
 
 
 def _books_dir() -> Path:
     return config.STATE_ROOT
 
 
+def unique_corpus_path(name: str) -> Path:
+    """corpus/ 下防重名：已存在则追加 -1/-2…。
+
+    P2-3 修复：用 O_CREAT|O_EXCL 原子占位，避免并发同名上传的 check-then-act
+    竞态（旧实现双线程可返回同一路径，后写覆盖前写）。占位产生空文件，
+    调用方随后覆盖写入（write_bytes/copy2 均可）；导入失败时由 P2-2 清理删掉。
+    """
+    config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
+    stem, suffix = Path(name).stem, Path(name).suffix
+    i = 0
+    while True:
+        cand = config.CORPUS_DIR / (name if i == 0 else f"{stem}-{i}{suffix}")
+        try:
+            fd = os.open(cand, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            return cand
+        except FileExistsError:
+            i += 1
+
+
 # ---------------------------------------------------------------------------
 # 导入
 # ---------------------------------------------------------------------------
 
-def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
+def _secure_read_text(path: str) -> str:
+    """TOCTOU 安全读取文本文件。
+
+    - O_NOFOLLOW：符号链接直接拒绝（errno.ELOOP），不跟随；
+    - fstat 验证为常规文件（防 FIFO/设备文件）；
+    - 打开后所有检查基于 fd，不再重解析路径，消除检查-使用竞态。
+    - Windows 无 O_NOFOLLOW/O_NONBLOCK：降级为打开后 islink 尽力检查
+      （Windows 建符号链接需提权，实际风险低；不崩溃优先）。
+    """
+    import errno
+    import os
+    import stat
+
+    if Path(path).suffix.lower() != ".txt":
+        raise ServiceError("首版仅支持 .txt 导入", 400)
+    flags = os.O_RDONLY
+    has_nofollow = hasattr(os, "O_NOFOLLOW")
+    if has_nofollow:
+        flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_NONBLOCK"):
+        # O_NONBLOCK：防 FIFO 打开时阻塞；后续 fstat 会拒绝非常规文件
+        flags |= os.O_NONBLOCK
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise ServiceError("不允许导入符号链接", 403) from exc
+        raise ServiceError(f"文件无法打开: {path}", 404) from exc
+    # 无 O_NOFOLLOW 平台（Windows）的尽力而为检查：打开后仍是链接则拒绝。
+    # 有 TOCTOU 窗口，但在该平台上无更好原语；建链接需提权，风险可接受。
+    if not has_nofollow:
+        try:
+            if os.path.islink(path):
+                os.close(fd)
+                raise ServiceError("不允许导入符号链接", 403)
+        except ServiceError:
+            raise
+        except OSError:
+            pass
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise ServiceError("只能导入常规文件", 400)
+        if st.st_size > 100 * 1024 * 1024:
+            raise ServiceError("文件超过 100MB 上限", 400)
+    except ServiceError:
+        os.close(fd)
+        raise
+    try:
+        with os.fdopen(fd, "rb") as f:
+            data = f.read()
+        # fd 已由 fdopen 接管关闭
+    except OSError as exc:
+        raise ServiceError(f"文件读取失败: {path}", 500) from exc
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            return data.decode("gbk")
+        except UnicodeDecodeError as exc:
+            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400) from exc
+
+
+def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     """读 txt → 切章 → 切批 → 生成 book_id → 建状态文件 → 返回 Book。
 
     返回的 Book 章节列表只含批次元信息（不含正文），正文按需由 chapter 接口返回。
     路径安全校验由路由层（router._h_import）负责，本函数保持对内部调用友好。
     """
     src = Path(path)
-    if not src.exists():
-        raise ServiceError(f"文件不存在: {path}", 404)
-    if src.suffix.lower() != ".txt":
-        raise ServiceError("首版仅支持 .txt 导入", 400)
-
-    try:
-        text = src.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        # 尝试 gbk（中文 txt 常见编码）
-        try:
-            text = src.read_text(encoding="gbk")
-        except UnicodeDecodeError:
-            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400)
+    text = _secure_read_text(path)
 
     chapters_raw = engine_adapter.split_chapters(text)
     if not chapters_raw:
         raise ServiceError("未解析到任何章节（请确认文件为章节体 txt）", 400)
 
+    _require_positive_batch_size(batch_size)
     bs = batch_size or config.batch_size_from_env()
     title = src.stem
     book_id = state_store.book_id_from_title(title, str(src))
 
     # 计算每章批次（只存元信息；正文不入响应，按需由 chapter 接口返回）。
-    chapters_meta: List[Dict[str, Any]] = []
+    chapters_meta: list[dict[str, Any]] = []
     for i, (ctitle, cbody) in enumerate(chapters_raw, start=1):
         batches = engine_adapter.split_batches(cbody, bs)
         chapters_meta.append({
@@ -169,13 +342,17 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
 
     # 整书量化指标（缓存复用，供单批分析）。
     metrics = engine_adapter.compute_metrics(text)
+    # 内存：text（约 1x 文件大小的 str）只用于算 metrics，
+    # 正文已在 chapters_raw 中保留，此处释放避免与后继流程叠加。
+    del text
 
-    _BOOKS[book_id] = {
-        "title": title,
-        "source_path": str(src),
-        "chapters": chapters_raw,
-        "metrics": metrics,
-    }
+    with _books_lock:
+        _books_put_locked(book_id, {
+            "title": title,
+            "source_path": str(src),
+            "chapters": chapters_raw,
+            "metrics": metrics,
+        })
 
     # 建/复用状态文件。
     state = state_store.load_state(book_id)
@@ -191,7 +368,7 @@ def import_book(path: str, batch_size: Optional[int] = None) -> Dict[str, Any]:
     }
 
 
-def get_book(book_id: str) -> Dict[str, Any]:
+def get_book(book_id: str) -> dict[str, Any]:
     """返回 Book 摘要（章节 + 批元信息，不含正文全文）。"""
     book = _get_book_or_raise(book_id)
     chapters_meta = _chapters_meta(book_id, book)
@@ -204,7 +381,7 @@ def get_book(book_id: str) -> Dict[str, Any]:
     }
 
 
-def get_chapter(book_id: str, idx: int) -> Dict[str, Any]:
+def get_chapter(book_id: str, idx: int) -> dict[str, Any]:
     """返回单章（含全文 + 批切分结果）。"""
     book = _get_book_or_raise(book_id)
     chapters = book["chapters"]
@@ -221,13 +398,14 @@ def get_chapter(book_id: str, idx: int) -> Dict[str, Any]:
     }
 
 
-def split_chapter_batches(book_id: str, idx: int, batch_size: Optional[int] = None) -> List[Dict[str, Any]]:
+def split_chapter_batches(book_id: str, idx: int, batch_size: int | None = None) -> list[dict[str, Any]]:
     """切批薄封装，可配置 batch_size。"""
     book = _get_book_or_raise(book_id)
     chapters = book["chapters"]
     if idx < 1 or idx > len(chapters):
         raise ServiceError(f"章节 {idx} 不存在", 404)
     _, cbody = chapters[idx - 1]
+    _require_positive_batch_size(batch_size)
     bs = batch_size or config.batch_size_from_env()
     batches = engine_adapter.split_batches(cbody, bs)
     return [{
@@ -240,14 +418,14 @@ def split_chapter_batches(book_id: str, idx: int, batch_size: Optional[int] = No
     } for b in batches]
 
 
-def _get_book_or_raise(book_id: str) -> Dict[str, Any]:
-    book = _BOOKS.get(book_id)
+def _get_book_or_raise(book_id: str) -> dict[str, Any]:
+    book = _books_get(book_id)
     if book is None:
         raise ServiceError(f"书籍 {book_id} 未导入（请先 import）", 404)
     return book
 
 
-def _chapters_meta(book_id: str, book: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _chapters_meta(book_id: str, book: dict[str, Any]) -> list[dict[str, Any]]:
     """构造章节元信息（批数 + 状态，从状态文件同步状态）。"""
     state = state_store.load_state(book_id)
     chapter_states = state.get("chapter_states", {})
@@ -279,13 +457,19 @@ def _chapters_meta(book_id: str, book: Dict[str, Any]) -> List[Dict[str, Any]]:
 # 分析执行（串行：章→批→pass）
 # ---------------------------------------------------------------------------
 
-def start_analysis(book_id: str, genre: str, model_id: Optional[str] = None,
-                   batch_size: Optional[int] = None) -> Dict[str, Any]:
+def start_analysis(book_id: str, genre: str, model_id: str | None = None,
+                   batch_size: int | None = None) -> dict[str, Any]:
     """开始/重启分析。串行跑，后台线程执行，SSE 推送进度。"""
     book = _get_book_or_raise(book_id)
     if not engine_adapter.any_model_configured():
         raise ServiceError("未配置外部模型，请先运行 model_config.py 配置（PRD Q7：首版 GUI 仅支持已配置模型）", 400)
 
+    # P0-4：题材必填且必须在注册表中（唯一来源：engine_adapter.is_known_genre）。
+    if not engine_adapter.is_known_genre(genre):
+        raise ServiceError(
+            f"未知题材 {genre!r}，请从题材列表中选择（GET /api/genres）", 400)
+
+    _require_positive_batch_size(batch_size)
     bs = batch_size or config.batch_size_from_env()
 
     # 【修复 M6】「检查 + 建 ctx + 建线程 + 登记 + 启动」必须在一个临界区内完成。
@@ -327,17 +511,19 @@ def start_analysis(book_id: str, genre: str, model_id: Optional[str] = None,
     return {"task_id": book_id, "cursor": cursor, "status": "running"}
 
 
-def _run_analysis(book_id: str, genre: str, model_id: Optional[str], batch_size: int, ctx: Dict[str, Any]) -> None:
+def _run_analysis(book_id: str, genre: str, model_id: str | None, batch_size: int, ctx: dict[str, Any]) -> None:
     """后台串行分析主循环。"""
-    book = _BOOKS.get(book_id)
-    if book is None:
-        return
-    chapters = book["chapters"]
-    metrics = book["metrics"]
-    total_batches = _count_total_batches(chapters, batch_size)
-    done = 0
-
     try:
+        book = _books_get(book_id)
+        if book is None:
+            # B7：书在线程启动后被 LRU 淘汰（_books_get 会尝试重载，仍为 None
+            # 说明源文件也丢了），直接返回；finally 仍清理 _runtime 防泄漏。
+            return
+        chapters = book["chapters"]
+        metrics = book["metrics"]
+        total_batches = _count_total_batches(chapters, batch_size)
+        done = 0
+
         for ci, (ctitle, cbody) in enumerate(chapters, start=1):
             batches = engine_adapter.split_batches(cbody, batch_size)
             for b in batches:
@@ -407,15 +593,19 @@ def _run_analysis(book_id: str, genre: str, model_id: Optional[str], batch_size:
         state["status"] = "error"
         state["last_error"] = str(exc)[:500]
         state_store.save_state(state)
+    finally:
+        # B7：任务结束清理 _runtime 条目，避免内存缓慢增长。
+        with _runtime_lock:
+            _runtime.pop(book_id, None)
 
 
-def _wait_if_paused(ctx: Dict[str, Any]) -> None:
+def _wait_if_paused(ctx: dict[str, Any]) -> None:
     """暂停时阻塞，直到 resume 或 stop。"""
     while ctx["paused"].is_set() and not ctx["stop_flag"].is_set():
         time.sleep(0.2)
 
 
-def _publish(book_id: str, ci: int, bi: int, status: str, done: int, total: int, ctx: Dict[str, Any]) -> None:
+def _publish(book_id: str, ci: int, bi: int, status: str, done: int, total: int, ctx: dict[str, Any]) -> None:
     broker.publish({
         "book_id": book_id,
         "cursor": state_store.batch_id(ci, bi),
@@ -427,7 +617,7 @@ def _publish(book_id: str, ci: int, bi: int, status: str, done: int, total: int,
     })
 
 
-def _count_total_batches(chapters: List[Any], batch_size: int) -> int:
+def _count_total_batches(chapters: list[Any], batch_size: int) -> int:
     total = 0
     for _, cbody in chapters:
         total += len(engine_adapter.split_batches(cbody, batch_size))
@@ -438,7 +628,7 @@ def _count_total_batches(chapters: List[Any], batch_size: int) -> int:
 # 暂停 / 续传 / 重试
 # ---------------------------------------------------------------------------
 
-def pause(book_id: str) -> Dict[str, Any]:
+def pause(book_id: str) -> dict[str, Any]:
     """暂停（当前批完成后停）。"""
     ctx = _runtime.get(book_id)
     if ctx is None:
@@ -450,7 +640,7 @@ def pause(book_id: str) -> Dict[str, Any]:
     return {"cursor": state.get("cursor", "")}
 
 
-def resume(book_id: str, genre: Optional[str] = None, model_id: Optional[str] = None) -> Dict[str, Any]:
+def resume(book_id: str, genre: str | None = None, model_id: str | None = None) -> dict[str, Any]:
     """从中断批续传（跳过已 success 批，幂等）。"""
     book = _get_book_or_raise(book_id)
     ctx = _runtime.get(book_id)
@@ -464,11 +654,11 @@ def resume(book_id: str, genre: Optional[str] = None, model_id: Optional[str] = 
     state = state_store.load_state(book_id)
     g = genre or state.get("genre", "unknown")
     mid = model_id or state.get("model_id")
-    bs = state.get("batch_size", config.batch_size_from_env())
+    bs = state.get("batch_size") or config.batch_size_from_env()
     return start_analysis(book_id, g, mid, bs)
 
 
-def retry_failed(book_id: str) -> Dict[str, Any]:
+def retry_failed(book_id: str) -> dict[str, Any]:
     """重试所有失败批（P1）。把失败批状态重置为 pending，再触发续传。"""
     state = state_store.load_state(book_id)
     failed = [k for k, v in state.get("chapter_states", {}).items() if v.get("status") == "failed"]
@@ -489,7 +679,7 @@ def retry_failed(book_id: str) -> Dict[str, Any]:
 # 状态查询
 # ---------------------------------------------------------------------------
 
-def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str) -> Dict[str, Any]:
+def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str) -> dict[str, Any]:
     """读取某批某个 pass 的资产 JSON 内容。
 
     pass_name 允许传入任意值，但会做白名单校验以防路径穿越；
@@ -508,7 +698,7 @@ def get_asset(book_id: str, chapter_index: int, batch_index: int, pass_name: str
         return {}
 
 
-def get_status(book_id: Optional[str] = None) -> Dict[str, Any]:
+def get_status(book_id: str | None = None) -> dict[str, Any]:
     """返回 TaskState（含 cursor + chapter_states）。
 
     优先从 ``state_store.load_task``（SQLite 权威 + JSON 降级）读取，保证进程重启后
@@ -516,15 +706,16 @@ def get_status(book_id: Optional[str] = None) -> Dict[str, Any]:
     """
     if not book_id:
         # 返回第一个已导入的书，或空状态。
-        if not _BOOKS:
-            return {"book_id": None, "status": "idle", "cursor": "", "done": 0, "total": 0}
-        book_id = next(iter(_BOOKS))
+        with _books_lock:
+            if not _BOOKS:
+                return {"book_id": None, "status": "idle", "cursor": "", "done": 0, "total": 0}
+            book_id = next(reversed(_BOOKS))  # 最近使用的
 
     state = state_store.load_task(book_id)
-    book = _BOOKS.get(book_id)
+    book = _books_get(book_id)
     total = 0
     if book:
-        total = _count_total_batches(book["chapters"], state.get("batch_size", config.batch_size_from_env()))
+        total = _count_total_batches(book["chapters"], state.get("batch_size") or config.batch_size_from_env())
     done = sum(1 for v in state.get("chapter_states", {}).values() if v.get("status") == "success")
     return {
         "book_id": book_id,
@@ -541,7 +732,7 @@ def get_status(book_id: Optional[str] = None) -> Dict[str, Any]:
 # 阶段一：概览 / 资产 / 报告 / 拆书结果 / 一键分析
 # ---------------------------------------------------------------------------
 
-def get_overview() -> Dict[str, Any]:
+def get_overview() -> dict[str, Any]:
     """首页概览聚合：SQL 聚合计数 + 已拆书本数 + 模型状态。"""
     ov = asset_index.index.get_overview()
     # 「已拆 N 本」来自 SQLite books 表（status='done'）优先，回退 gui_state 目录。
@@ -555,26 +746,46 @@ def get_overview() -> Dict[str, Any]:
     return ov
 
 
-def list_assets(kind: Optional[str] = None, genre: Optional[str] = None,
-                book_id: Optional[str] = None, offset: int = 0, limit: int = 50) -> Dict[str, Any]:
+def list_assets(kind: str | None = None, genre: str | None = None,
+                book_id: str | None = None, offset: int = 0, limit: int = 50) -> dict[str, Any]:
     """资产清单分页（kind/genre/book_id 可选组合筛选）。"""
     try:
         return asset_index.index.list_assets(kind, genre, book_id, offset, limit)
     except ValueError as exc:
-        raise ServiceError(str(exc), 400)
+        raise ServiceError(str(exc), 400) from exc
 
 
-def get_asset_detail(kind: str, asset_id: str) -> Dict[str, Any]:
+def get_asset_detail(kind: str, asset_id: str) -> dict[str, Any]:
     """资产详情（只读，白名单校验）。"""
     try:
         return asset_index.index.get_asset_detail(kind, asset_id)
     except ValueError as exc:
-        raise ServiceError(str(exc), 400)
+        raise ServiceError(str(exc), 400) from exc
     except KeyError as exc:
-        raise ServiceError(str(exc), 404)
+        raise ServiceError(str(exc), 404) from exc
 
 
-def list_reports() -> List[Dict[str, Any]]:
+def list_tropes() -> dict[str, Any]:
+    """桥段库清单（只读）：直接读 ``config.ASSETS_ROOT/trope-library.json``。
+
+    不走 ``/api/assets?kind=trope`` 通道：该文件在目录扫描中不被归类为
+    trope kind（见 ``_SUFFIX_KIND``），且 SQLite 迁移状态因环境而异；
+    桥段库是内置只读数据，直读文件最可靠。
+    """
+    fp = config.ASSETS_ROOT / "trope-library.json"
+    if not fp.is_file():
+        raise ServiceError("桥段库文件不存在（assets/trope-library.json）", 404)
+    try:
+        data = json.loads(fp.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ServiceError(f"桥段库文件损坏: {exc}", 500) from exc
+    tropes = data.get("tropes") if isinstance(data, dict) else None
+    if not isinstance(tropes, list):
+        raise ServiceError("桥段库格式错误：缺少 tropes 数组", 500)
+    return {"total_count": len(tropes), "tropes": tropes}
+
+
+def list_reports() -> list[dict[str, Any]]:
     """报告清单（拆书报告 + 笔法分析），优先 SQLite，空则回退扫描。"""
     rows = db.list_reports()
     if rows:
@@ -604,7 +815,7 @@ def list_reports() -> List[Dict[str, Any]]:
     return out
 
 
-def get_stats() -> Dict[str, Any]:
+def get_stats() -> dict[str, Any]:
     """关系统计（P1）：书→资产/报告计数、题材→卡片计数、kind 分布。
 
     返回结构：
@@ -657,17 +868,17 @@ def get_stats() -> Dict[str, Any]:
     return {"books": book_stats, "genres": genres, "by_kind": by_kind, "totals": totals}
 
 
-def get_report(report_id: str) -> Dict[str, Any]:
+def get_report(report_id: str) -> dict[str, Any]:
     """报告 Markdown 原文（前端 react-markdown 渲染）。"""
     # report_id 形如 ``report:<name>``。
     try:
         detail = asset_index.index.get_asset_detail("report", report_id)
     except (ValueError, KeyError) as exc:
-        raise ServiceError(str(exc), 404)
+        raise ServiceError(str(exc), 404) from exc
     return {"id": report_id, "name": detail["name"], "markdown": detail["markdown"]}
 
 
-def _load_assembled_card(book_id: str, card_type: str) -> Dict[str, Any]:
+def _load_assembled_card(book_id: str, card_type: str) -> dict[str, Any]:
     """从 assets/{book_id}/ 或 assets/ 根目录定位**单书基础组装卡**。
 
     阶段一沿用旧 DESIGN A6：整书跑完统一组装，命名 ``{book_id}-{card_type}.json``，
@@ -698,12 +909,15 @@ def _load_assembled_card(book_id: str, card_type: str) -> Dict[str, Any]:
     return {}
 
 
-def get_book_results(book_id: str) -> Dict[str, Any]:
+def get_book_results(book_id: str) -> dict[str, Any]:
     """某书拆书结构化结果（组装卡 + 章节打分 + 报告关联）。
 
     阶段一：voice-card/structure/commercial 缺失时降级返回批级 pass 原始 JSON 聚合
     （见 DESIGN §8 D1）；章节打分为空列表（打分属阶段二 consistency，见 D2）。
+
+    安全：book_id 直接拼文件路径，必须先校验存在性（防 ../ 路径穿越）。
     """
+    _get_book_or_raise(book_id)
     voice = _load_assembled_card(book_id, "voice")
     structure = _load_assembled_card(book_id, "structure")
     commercial = _load_assembled_card(book_id, "commercial")
@@ -729,18 +943,18 @@ def get_book_results(book_id: str) -> Dict[str, Any]:
     }
 
 
-def _collect_chapter_scores(book_id: str, voice: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _collect_chapter_scores(book_id: str, voice: dict[str, Any]) -> list[dict[str, Any]]:
     """章节打分（阶段一尽力而为）。
 
     若组装卡含一致性相关分数则提取；否则扫描批级 pass 结果 JSON，尝试读取内嵌的
     一致性/质量分。阶段一通常返回空列表（打分属阶段二）。
     """
-    scores: List[Dict[str, Any]] = []
+    scores: list[dict[str, Any]] = []
     assets_dir = config.ASSETS_ROOT / book_id
     if not assets_dir.is_dir():
         return scores
     # 扫描批级 pass JSON，按章节聚合（尽力而为提取 quality/consistency 字段）。
-    seen: Dict[int, Dict[str, Any]] = {}
+    seen: dict[int, dict[str, Any]] = {}
     for fp in sorted(assets_dir.glob("c*-b*-pass*.json")):
         # 文件名形如 c{ch}-b{bi}-{pass}.json。
         stem = fp.stem  # e.g. c3-b2-pass1_structure
@@ -771,12 +985,12 @@ def _collect_chapter_scores(book_id: str, voice: Dict[str, Any]) -> List[Dict[st
     return scores
 
 
-def get_book_scores(book_id: str) -> List[Dict[str, Any]]:
+def get_book_scores(book_id: str) -> list[dict[str, Any]]:
     """章节打分数据（供章节打分对比图）。"""
     return get_book_results(book_id)["chapter_scores"]
 
 
-def run_full_analysis(book_id: str, genre: str, model_id: Optional[str] = None) -> Dict[str, Any]:
+def run_full_analysis(book_id: str, genre: str, model_id: str | None = None) -> dict[str, Any]:
     """一键「分析」：拆书 + 拆书报告 + 笔法报告串联。
 
     拆书阶段复用现有 ``start_analysis``（后台线程 + SSE）；报告阶段在拆书线程
@@ -795,7 +1009,7 @@ def run_full_analysis(book_id: str, genre: str, model_id: Optional[str] = None) 
     return result
 
 
-def _schedule_report_generation(book_id: str, book: Dict[str, Any]) -> None:
+def _schedule_report_generation(book_id: str, book: dict[str, Any]) -> None:
     """拆书线程完成后回调生成两份报告（拆书报告 + 笔法分析，尽力而为）。
 
     用独立守护线程轮询拆书状态，done 后调用 ``_generate_reports``。不阻塞
@@ -819,8 +1033,18 @@ def _schedule_report_generation(book_id: str, book: Dict[str, Any]) -> None:
     threading.Thread(target=_watch, daemon=True, name=f"report-{book_id}").start()
 
 
-def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
+def _generate_reports(book_id: str, book: dict[str, Any]) -> None:
     """组装拆书报告 + 笔法报告，**校验通过后**写 reports/{book_id}-*.md，并 invalidate 资产索引。
+
+    报告生成串行化：前后两轮一键分析的 _watch 线程可能同时观察到 done，
+    并发写同一报告文件（write_text 非原子，会交错损坏）；此处持锁串行。
+    """
+    with _report_gen_lock:
+        _generate_reports_inner(book_id, book)
+
+
+def _generate_reports_inner(book_id: str, book: dict[str, Any]) -> None:
+    """_generate_reports 的实际实现（调用方已持 _report_gen_lock）。
 
     尽力而为（DESIGN §8 D3）：craft-card 缺失时笔法报告留空并在结果提示，不阻断。
 
@@ -867,11 +1091,19 @@ def _generate_reports(book_id: str, book: Dict[str, Any]) -> None:
         return
 
     # 3. 校验通过才落盘（此时两份报告都已确定合格）。
+    #    原子写（tmp + os.replace）：崩溃不留半份文件；与 _report_gen_lock
+    #    配合，并发 _watch 也只会完整覆盖，不会交错。
+    def _atomic_write_text(fp: Path, text: str) -> None:
+        # tmp 名唯一：即使未来有锁外并发写，也不互相抢占 tmp。
+        tmp = fp.with_name(f"{fp.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, fp)
+
     reports_dir.mkdir(parents=True, exist_ok=True)
     if book_md:
-        (reports_dir / f"{book_id}-拆书报告.md").write_text(book_md, encoding="utf-8")
+        _atomic_write_text(reports_dir / f"{book_id}-拆书报告.md", book_md)
     if craft_md:
-        (reports_dir / f"{book_id}-笔法分析.md").write_text(craft_md, encoding="utf-8")
+        _atomic_write_text(reports_dir / f"{book_id}-笔法分析.md", craft_md)
 
     # 刷新资产索引。
     asset_index.index.invalidate()

@@ -95,7 +95,7 @@ def analyze_craft_card(craft: dict) -> dict:
     analysis = craft.get("craft_analysis")
     if not isinstance(analysis, dict):
         return stats
-    for dim_key, dim_val in analysis.items():
+    for dim_val in analysis.values():
         if not isinstance(dim_val, dict):
             continue
         techniques = dim_val.get("techniques", [])

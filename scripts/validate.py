@@ -29,9 +29,45 @@ CHAPTER_ROLE_ENUM = {"铺垫", "推进", "转折", "爆发", "缓冲", "过渡",
 ABSTRACTION_ENUM = {"structural", "scenic", "verbal"}
 LANG_SUBTYPE_ENUM = {"直白", "偶有潜台词", "大量潜台词"}
 
-# 题材白名单：craft-card / voice-card 的 meta.genre 必须 ∈ 此集合。
-# 后续扩展题材包时在此追加（铁律一）。
-KNOWN_GENRES = {"campus-redemption", "realistic-romance", "xuanhuan"}
+# 题材白名单（铁律一）。
+#
+# 2026-09-27 企业级整改 P0-2：原先是手写 3 个题材的硬编码集合，而 assets/ 下
+# genre-prose-card 实际覆盖 32 个题材且 slug 无人校验——白名单与磁盘早已脱节，
+# 「题材隔离」因此只是名义存在（三条隔离机制仅一条硬阻断，见 baseline/A06 断言 4）。
+# 现改为由 genre_registry 从磁盘资产派生，人工不再维护清单。
+#
+# 两层集合语义不同，必须分开使用，不可合并放宽：
+#   CORE_GENRES   拥有完整资产链（craft-card / voice-card / …）的题材。
+#                 craft-card 的 meta.genre 用它校验——保持严格，勿改用 KNOWN_GENRES，
+#                 否则 32 个只有 prose 卡的题材会被误判为"已有完整链"。
+#   KNOWN_GENRES  完整链题材 ∪ prose-card 题材，用于 genre_scope 等"是否已知题材"判断。
+try:
+    from genre_registry import (
+        PROSE_ID_RE,
+        PROSE_SLUG_PREFIX,
+    )
+    from genre_registry import (
+        core_genres as _core_genres,
+    )
+    from genre_registry import (
+        prose_genres as _prose_genres,
+    )
+except ImportError:  # pragma: no cover - 精简打包环境兜底
+    import re as _re
+
+    PROSE_ID_RE = _re.compile(r"^genre-[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
+    PROSE_SLUG_PREFIX = "genre-"
+    _core_genres = _prose_genres = None
+
+if _core_genres is None:  # pragma: no cover
+    CORE_GENRES: frozenset = frozenset({"campus-redemption", "realistic-romance", "xuanhuan"})
+    PROSE_GENRES: frozenset = frozenset()
+else:
+    CORE_GENRES = _core_genres()
+    PROSE_GENRES = _prose_genres()
+
+#: 向后兼容：历史调用方（含 test_genre_isolation）按集合使用 KNOWN_GENRES
+KNOWN_GENRES = set(CORE_GENRES | PROSE_GENRES)
 
 # 蒸馏维度枚举：distilled 资产的 meta.dimension 与 rules[].dimension 都必须 ∈ 此集合。
 DISTILLED_DIMENSIONS = ("voice-card", "craft-card", "structure-obs", "commercial-obs")
@@ -79,7 +115,8 @@ def check_probability(v, path):
 
 
 def check_strength(v, path):
-    if not is_num(v) or not (1 <= v <= 10):
+    # schema 约定为 integer：小数（如 7.5）必须拒收；bool 是 int 子类，需显式排除。
+    if isinstance(v, bool) or not isinstance(v, int) or not (1 <= v <= 10):
         err(f"强度应为 1-10 整数，实际 {v!r}", path)
 
 
@@ -235,7 +272,7 @@ def validate_voice_card(d):
             for i, domain in enumerate(hfm):
                 if not isinstance(domain, str):
                     err(f"比喻领域应为字符串，实际 {type(domain).__name__}", f"imagery.high_freq_metaphor_domains[{i}]")
-                elif len(domain) > 10:
+                elif len(domain) > 6:
                     warn(f"比喻领域 '{domain[:15]}...' 过长（{len(domain)}字），应为简短标签（≤6字）", f"imagery.high_freq_metaphor_domains[{i}]")
         sp = img.get("sensory_preference")
         if isinstance(sp, dict) and sp:
@@ -409,8 +446,10 @@ def validate_craft_card(d):
         genre = meta.get("genre", "")
         if not genre:
             err("meta.genre 为空，题材未标注", "meta.genre")   # 硬错误
-        elif genre not in KNOWN_GENRES:
-            warn(f"meta.genre='{genre}' 不在已知题材白名单 {sorted(KNOWN_GENRES)}，"
+        elif genre not in CORE_GENRES:
+            # 文案关键词「不在已知题材白名单」被 test_genre_isolation 按子串匹配，
+            # 改动会导致那条既有测试静默空转——如需改文案必须同步那条测试。
+            warn(f"meta.genre='{genre}' 不在已知题材白名单 {sorted(CORE_GENRES)}，"
                  f"请确认题材包是否已登记", "meta.genre")        # 警告（不阻断拆书，但阻断聚合）
 
     analysis = d.get("craft_analysis")
@@ -531,6 +570,18 @@ def validate_genre_prose_card(d):
                 err(f"缺少必填字段 '{k}'", "meta")
             else:
                 check_str(meta.get(k, ""), f"meta.{k}", min_len=2)
+        # === 新增（P0-2，铁律一缺口填补）===
+        # 此前 32 张 prose 卡的 meta.id 无任何格式校验：slug 写成大写、下划线、
+        # 中文，或漏掉 genre- 前缀，都会静默通过，而下游按 slug 做题材匹配——
+        # 错配时既不会报错也不会警告，正是"名义隔离"的成因。
+        mid = meta.get("id")
+        if isinstance(mid, str) and mid:
+            if not PROSE_ID_RE.match(mid):
+                err(f"meta.id='{mid}' 不符合 'genre-<slug>' 命名规范"
+                    f"（须为小写字母数字与连字符，且以 '{PROSE_SLUG_PREFIX}' 开头）",
+                    "meta.id")
+            elif mid[len(PROSE_SLUG_PREFIX):] == "":
+                err("meta.id 只有前缀，缺少题材 slug", "meta.id")
         if "confidence" not in meta:
             err("缺少必填字段 'confidence'", "meta")
         else:
@@ -540,8 +591,17 @@ def validate_genre_prose_card(d):
             check_enum(meta.get("upgrade_status"), ("seed", "upgraded"), "meta.upgrade_status")
         prov = meta.get("provenance")
         if prov is None:
-            warn("建议显式声明 provenance 溯源（来源/许可证/是否验证）", "meta.provenance")
+            err("缺少 provenance 溯源：第三方衍生内容必须声明来源/许可证/版权", "meta.provenance")
         elif check_obj(prov, "meta.provenance"):
+            # MIT 归因硬要求（2026-09-27 P0-3）：来源、许可证、版权声明缺一不可。
+            # 原为 warn 级「建议声明」，结果 32 张卡长期无人填写 copyright——
+            # 软约束在归因这类问题上不起作用，必须硬阻断。
+            for k, label in (("source", "来源"), ("license", "许可证"),
+                             ("copyright", "版权声明")):
+                value = prov.get(k)
+                if not isinstance(value, str) or not value.strip():
+                    err(f"provenance.{k} 必须为非空字符串（第三方{label}归因必需）",
+                        f"meta.provenance.{k}")
             if "verified" in prov:
                 check_bool(prov["verified"], "meta.provenance.verified")
                 if prov.get("verified") is not False:

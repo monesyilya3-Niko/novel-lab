@@ -1,5 +1,5 @@
 // 分析结果视图（M1/M3）：拆书完成后结果面板 —— 资产卡（非裸 JSON）+ 章节打分图 + 报告 Markdown。
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
@@ -7,6 +7,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'
+import Button from '@mui/material/Button'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Accordion from '@mui/material/Accordion'
@@ -16,8 +17,8 @@ import CircularProgress from '@mui/material/CircularProgress'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import { useApp } from '../state/AppContext'
 import * as api from '../api/client'
-import BarChart from './charts/BarChart'
-import RadarChart from './charts/RadarChart'
+const BarChart = lazy(() => import('./charts/BarChart'))
+const RadarChart = lazy(() => import('./charts/RadarChart'))
 import MarkdownReport from './MarkdownReport'
 import { chartSeries, palette } from '../theme'
 import { useThemeMode } from '../state/ThemeModeContext'
@@ -112,6 +113,14 @@ function ReportSection({ reportId }: { reportId: string }) {
   return <MarkdownReport title={report.name} markdown={report.markdown} />
 }
 
+function ChartSkeleton({ height }: { height: number }) {
+  return (
+    <Box sx={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <CircularProgress size={24} />
+    </Box>
+  )
+}
+
 function AlertBox({ severity, children }: { severity: 'error' | 'info' | 'warning'; children: ReactNode }) {
   const color =
     severity === 'error' ? palette.error : severity === 'warning' ? palette.warning : palette.info
@@ -134,13 +143,27 @@ export default function AnalysisResultView() {
 
   const bookId = book?.bookId ?? null
 
-  useEffect(() => {
-    if (!bookId) return
+  // P1-F5：请求竞态守卫——bookId 快速切换时，只有最新请求能写状态。
+  // 渲染期重置 loading/error（React 推荐模式，避免 effect 内同步 setState）。
+  const [prevBookId, setPrevBookId] = useState(bookId)
+  if (bookId !== prevBookId) {
+    setPrevBookId(bookId)
     setLoading(true)
     setError('')
+  }
+  useEffect(() => {
+    if (!bookId) return
+    let latest = true
     loadBookResults(bookId)
-      .catch((e) => setError(friendlyError(e)))
-      .finally(() => setLoading(false))
+      .catch((e) => {
+        if (latest) setError(friendlyError(e))
+      })
+      .finally(() => {
+        if (latest) setLoading(false)
+      })
+    return () => {
+      latest = false
+    }
   }, [bookId, loadBookResults])
 
   const scoreCategories = useMemo(
@@ -192,7 +215,10 @@ export default function AnalysisResultView() {
   if (error) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error">加载失败：{error}</Typography>
+        <Typography color="error" sx={{ mb: 2 }}>加载失败：{error}</Typography>
+        <Button variant="outlined" onClick={() => { setError(''); setLoading(true); loadBookResults(bookId).catch((e) => setError(friendlyError(e))).finally(() => setLoading(false)) }}>
+          重试
+        </Button>
       </Box>
     )
   }
@@ -262,7 +288,9 @@ export default function AnalysisResultView() {
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
                       章节打分对比
                     </Typography>
-                    <BarChart categories={scoreCategories} series={barSeries} height={320} />
+                    <Suspense fallback={<ChartSkeleton height={320} />}>
+                      <BarChart categories={scoreCategories} series={barSeries} height={320} />
+                    </Suspense>
                   </CardContent>
                 </Card>
               </Grid>
@@ -272,7 +300,9 @@ export default function AnalysisResultView() {
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
                       综合能力雷达
                     </Typography>
-                    <RadarChart indicators={radarIndicators} series={radarSeries} height={320} />
+                    <Suspense fallback={<ChartSkeleton height={320} />}>
+                      <RadarChart indicators={radarIndicators} series={radarSeries} height={320} />
+                    </Suspense>
                   </CardContent>
                 </Card>
               </Grid>

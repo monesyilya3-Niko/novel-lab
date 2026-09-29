@@ -15,16 +15,40 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Optional
-from urllib.parse import urlparse, parse_qs, unquote
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlparse
 
-from gui import auto_backup, config, router
-from gui import db
+from gui import admin, auto_backup, config, db, router, services
 from gui.logging_setup import get_logger, setup_logging
+from gui.services import ServiceError, unique_corpus_path as _unique_corpus_path
 from gui.sse import broker
-from gui.services import ServiceError
 
 _log = get_logger("server")
+
+
+def _safe_upload_filename(name: str) -> str:
+    """上传文件名安全检查：去目录、去控制字符、仅允许 .txt。"""
+    base = Path(name).name.strip()
+    base = re.sub(r'[\x00-\x1f\x7f/\\]', "_", base)
+    if not base or base in (".", ".."):
+        raise ServiceError("文件名非法", 400)
+    if not base.lower().endswith(".txt"):
+        raise ServiceError("首版仅支持 .txt 导入", 400)
+    # B8：限制文件名长度（200 字符），超长时 400 拒绝，避免 book_id 过长
+    # 导致 gui_state 文件名超限（ext4 255 字节 / Windows MAX_PATH）。
+    if len(base) > 200:
+        raise ServiceError("文件名过长（最多 200 字符）", 400)
+    return base
+
+
+def _parse_upload_batch_size(value: str | None) -> int | None:
+    """上传表单的 batch_size：缺省走服务端默认；非法值 400（不透传成 500）。"""
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    if not value.isdigit() or int(value) <= 0:
+        raise ServiceError("batch_size 必须为正整数", 400)
+    return int(value)
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -34,18 +58,83 @@ class _Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
     # ------------------------------------------------------------------
-    def _check_auth(self) -> bool:
-        """NOVEL_LAB_TOKEN 启用时校验 /api/* 的访问令牌；拒绝时已回 401。
+    def _get_cookie(self, name: str) -> str | None:
+        """从 Cookie 请求头解析单个 cookie 值。"""
+        raw = self.headers.get("Cookie", "")
+        for part in raw.split(";"):
+            part = part.strip()
+            if not part or "=" not in part:
+                continue
+            k, v = part.split("=", 1)
+            if k.strip() == name:
+                return unquote(v.strip())
+        return None
 
-        支持两种凭证：X-Auth-Token 请求头（常规 fetch）；?auth= 查询参数
-        （仅 EventSource 场景需要）。比较用 hmac.compare_digest 防时序侧信道。
-        静态壳（index.html/assets）不设防——数据全部经 /api/* 流动。
+    def _check_auth(self) -> bool:
+        """鉴权总闸。
+
+        /api/admin/* 走管理员会话（Cookie），其中 /api/admin/login 豁免
+        （有独立的登录频率限制）；其余 /api/* 走既有的 NOVEL_LAB_TOKEN 机制。
+        Electron 模式（handshake_token 非空）额外要求 /api/* 携带正确的
+        X-Handshake-Token 头，防止端口被抢占后伪造 /api/overview。
         """
+        path = unquote(urlparse(self.path).path)
+        if path == "/api/admin/login":
+            return True
+        # 身份握手（Electron 模式）：/api/* 必须携带正确的握手 token。
+        # 静态文件（/）豁免，前端 HTML 加载不需要 token。
+        # EventSource（SSE）发不了自定义头，/api/events 允许经 ?handshake_token=
+        # 查询参数传递（与 X-Handshake-Token 头等效，hmac 常量时间比对）。
+        handshake = getattr(self.server, "handshake_token", None)
+        if handshake and (path == "/api" or path.startswith("/api/")):
+            supplied = self.headers.get("X-Handshake-Token", "")
+            if not supplied and path == "/api/events":
+                qs = parse_qs(urlparse(self.path).query)
+                supplied = (qs.get("handshake_token") or [""])[0]
+            if not supplied or not hmac.compare_digest(supplied, handshake):
+                self._send_json(router.err(403, "握手失败：非法客户端"), 403)
+                return False
+        # CSRF 纵深防御（非 Electron 模式）：/api/* 写操作要求 Origin 来自本机。
+        # Electron 模式已有握手 token，浏览器直连模式靠此挡 CSRF。
+        # 无 Origin 的视为非浏览器客户端（curl/脚本），不受影响。
+        if not handshake and self.command in ("POST", "PUT", "DELETE"):
+            if path == "/api" or path.startswith("/api/"):
+                origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
+                if origin and not self._is_same_host_origin(origin):
+                    self._send_json(router.err(403, "跨站请求被拒绝"), 403)
+                    return False
+        if path == "/api/admin" or path.startswith("/api/admin/"):
+            sid = self._get_cookie(admin.SESSION_COOKIE)
+            user = admin.get_session_user(sid)
+            if user:
+                self._admin_user = user
+                self._admin_sid = sid or ""
+                self._admin_ip = self.client_address[0]
+                # 强制改密网关：处于 must_change_password 状态时，只允许
+                # me（查询状态）/ logout（退出）/ change-password（改密），
+                # 其余管理接口一律 403，防止绕过改密直接调用管理 API。
+                if admin.needs_password_change(user) and path not in (
+                    "/api/admin/me",
+                    "/api/admin/logout",
+                    "/api/admin/change-password",
+                ):
+                    self._send_json(router.err(403, "请先修改初始密码"), 403)
+                    return False
+                # CSRF 防护：管理端写操作（POST/PUT/DELETE，登录除外）要求
+                # Origin/Referer 来自本机。浏览器 fetch 一定带 Origin；
+                # 无 Origin 的视为非浏览器客户端（curl 等），不受 CSRF 影响。
+                if self.command in ("POST", "PUT", "DELETE"):
+                    origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
+                    if origin and not self._is_same_host_origin(origin):
+                        self._send_json(router.err(403, "跨站请求被拒绝"), 403)
+                        return False
+                return True
+            self._send_json(router.err(401, "管理员未登录"), 401)
+            return False
         token = config.API_TOKEN
         if not token:
             auto_backup.daily_backup_if_due()
             return True
-        path = unquote(urlparse(self.path).path)
         if not (path == "/api" or path.startswith("/api/")):
             return True
         supplied = self.headers.get("X-Auth-Token", "")
@@ -64,6 +153,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
 
         # SSE 长连接
         if path == "/api/events":
@@ -82,7 +172,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(router.err(exc.code, exc.message), exc.code)
             return
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
             return
 
         # 静态文件
@@ -93,7 +186,18 @@ class _Handler(BaseHTTPRequestHandler):
             return
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
+        if path == "/api/import-upload":
+            # P0-3：浏览器文件上传导入（multipart），不走 JSON body。
+            self._handle_import_upload()
+            return
+        if path == "/api/admin/login":
+            self._handle_admin_login()
+            return
+        if path == "/api/admin/logout":
+            self._handle_admin_logout()
+            return
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
 
         try:
             body = router.read_body(self)
@@ -105,7 +209,10 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
 
     def do_PUT(self) -> None:
         """CRITICAL：M4 资产更新需要 PUT 支持。"""
@@ -114,6 +221,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
         try:
             body = router.read_body(self)
             payload, _ = router.dispatch("PUT", path, body, query)
@@ -124,7 +232,10 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
 
     def do_DELETE(self) -> None:
         """CRITICAL：M4 资产删除需要 DELETE 支持。"""
@@ -133,6 +244,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
+        self._inject_admin_ctx(path, query)
         try:
             payload, _ = router.dispatch("DELETE", path, {}, query)
             if payload is not None:
@@ -142,7 +254,54 @@ class _Handler(BaseHTTPRequestHandler):
         except ServiceError as exc:
             self._send_json(router.err(exc.code, exc.message), exc.code)
         except Exception as exc:  # noqa: BLE001
-            self._send_json(router.err(500, f"内部错误: {exc}"), 500)
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
+
+    # ------------------------------------------------------------------
+    # 管理员登录 / 登出（Cookie 会话，需在 router 分发前处理 Set-Cookie）
+    # ------------------------------------------------------------------
+    def _session_cookie_header(self, session_id: str | None) -> dict[str, str]:
+        if session_id is None:
+            value = f"{admin.SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
+        else:
+            value = (f"{admin.SESSION_COOKIE}={session_id}; Path=/; HttpOnly; "
+                     f"SameSite=Lax; Max-Age={admin.SESSION_TTL_SECONDS}")
+        return {"Set-Cookie": value}
+
+    def _handle_admin_login(self) -> None:
+        ip = self.client_address[0]
+        try:
+            body = router.read_body(self)
+            username = str((body or {}).get("username", "")).strip()
+            password = str((body or {}).get("password", ""))
+            result = admin.authenticate(username, password, ip)
+        except ServiceError as exc:
+            self._send_json(router.err(exc.code, exc.message), exc.code)
+            return
+        except Exception as exc:  # noqa: BLE001
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
+            return
+        self._send_json(
+            router.ok({"username": result["username"],
+                       "mustChangePassword": result["must_change_password"]}),
+            200, self._session_cookie_header(result["session_id"]))
+
+    def _handle_admin_logout(self) -> None:
+        admin.logout(self._get_cookie(admin.SESSION_COOKIE), self.client_address[0])
+        self._send_json(router.ok({"loggedOut": True}), 200,
+                        self._session_cookie_header(None))
+
+    def _inject_admin_ctx(self, path: str, query: dict[str, Any]) -> None:
+        """给 /api/admin/* 路由注入管理员上下文（用户名/会话ID/IP），供 handler 审计用。"""
+        if path == "/api/admin" or path.startswith("/api/admin/"):
+            query["_admin_user"] = getattr(self, "_admin_user", "")
+            query["_admin_sid"] = getattr(self, "_admin_sid", "")
+            query["_admin_ip"] = getattr(self, "_admin_ip", "")
 
     # ------------------------------------------------------------------
     def _is_same_host_origin(self, origin: str) -> bool:
@@ -152,13 +311,64 @@ class _Handler(BaseHTTPRequestHandler):
             host = (urlparse(origin).hostname or "").lower()
         except Exception:  # noqa: BLE001
             return False
-        return host in ("localhost", "127.0.0.1", "::1", "[::1]", "")
+        # 安全：空 hostname（Origin: null，如 sandboxed iframe）不放行。
+        return host in ("localhost", "127.0.0.1", "::1", "[::1]")
 
-    def _send_json(self, payload: dict, status: int = 200) -> None:
+    def _handle_import_upload(self) -> None:
+        """POST /api/import-upload：multipart 文件上传导入。
+
+        流程：解析 multipart → 文件名安全检查 → 存入 corpus/ →
+        调 services.import_book。全部错误转为统一 JSON 错误体。
+        """
+        try:
+            ctype = self.headers.get("Content-Type", "")
+            if "multipart/form-data" not in ctype:
+                raise ServiceError("Content-Type 必须为 multipart/form-data", 400)
+            raw_len = self.headers.get("Content-Length", "0") or "0"
+            try:
+                length = int(raw_len)
+            except ValueError as exc:
+                raise ServiceError("Content-Length 非法", 400) from exc
+            if length <= 0:
+                raise ServiceError("请求体为空", 400)
+            if length > router._MAX_UPLOAD_BYTES:
+                raise ServiceError("上传文件过大（上限 100MB）", 413)
+            raw = self.rfile.read(length)
+            filename, file_bytes, fields = router.parse_multipart_upload(raw, ctype)
+            safe_name = _safe_upload_filename(filename)
+            config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
+            dest = _unique_corpus_path(safe_name)
+            dest.write_bytes(file_bytes)
+            batch_size = _parse_upload_batch_size(fields.get("batch_size"))
+            # 内存：上传缓冲（raw + file_bytes 约 2x 文件大小）已落盘，
+            # 先释放再跑导入，避免与导入期（text + chapters 约 2x）的峰值叠加。
+            del raw, file_bytes
+            try:
+                result = services.import_book(str(dest), batch_size)
+            except Exception:
+                # P2-2：导入失败删掉已落盘的副本，不在 corpus 留垃圾文件。
+                try:
+                    dest.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
+            self._send_json(router.ok(result))
+        except ServiceError as exc:
+            self._send_json(router.err(exc.code, exc.message), exc.code)
+        except Exception as exc:  # noqa: BLE001
+            # 安全：异常原文只记服务端日志（含堆栈），不返回给前端，
+            # 避免路径/SQL 等内部细节泄漏。
+            _log.exception("请求处理异常: %s %s", self.command, self.path)
+            self._send_json(router.err(500, "内部错误，请稍后重试"), 500)
+
+    def _send_json(self, payload: dict, status: int = 200,
+                   extra_headers: dict[str, str] | None = None) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        for k, v in (extra_headers or {}).items():
+            self.send_header(k, v)
         # 【修复 M8】不再无条件返回 `Access-Control-Allow-Origin: *`。
         # 本服务绑定 127.0.0.1 且无任何鉴权；通配 CORS 会让任意网站在用户浏览器里
         # 读取本服务响应（/api/import 会回吐整书正文），构成**本地文件外泄**。
@@ -191,7 +401,7 @@ class _Handler(BaseHTTPRequestHandler):
         task_type = query.get("task_type")
         q: queue.Queue = broker.subscribe()
         try:
-            self.wfile.write(f"data: {json.dumps({'status': 'connected', 'book_id': book_id, 'task_id': task_id}, ensure_ascii=False)}\n\n".encode("utf-8"))
+            self.wfile.write(f"data: {json.dumps({'status': 'connected', 'book_id': book_id, 'task_id': task_id}, ensure_ascii=False)}\n\n".encode())
             self.wfile.flush()
             while True:
                 try:
@@ -207,7 +417,7 @@ class _Handler(BaseHTTPRequestHandler):
                     continue
                 if not task_id and not book_id and task_type and event.get("task_type") != task_type:
                     continue
-                self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode("utf-8"))
+                self.wfile.write(f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode())
                 self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError, OSError):
             pass
@@ -271,7 +481,7 @@ class _Handler(BaseHTTPRequestHandler):
         _log.info("http %s %s", self.address_string(), line)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """常驻入口（W09）：``python -m gui.server`` 阻塞运行，重复启动被单实例锁拦截。"""
     import argparse
     from pathlib import Path as _P
@@ -314,7 +524,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     return 0
 
 
-def _win_pid_is_alive(pid: int) -> Optional[bool]:
+def _win_pid_is_alive(pid: int) -> bool | None:
     """Windows 专用存活探测：``OpenProcess`` + ``GetExitCodeProcess``（仅 ctypes 标准库）。
 
     相比 ``os.kill(pid, 0)`` 更可靠——实测本机（Windows + CPython 3.13）`os.kill`
@@ -408,7 +618,7 @@ def _pid_is_alive(pid: int) -> bool:
     return True
 
 
-def _read_lock_pid(path: Path) -> Optional[int]:
+def _read_lock_pid(path: Path) -> int | None:
     """读取锁文件内容并解析为 pid；文件缺失/为空/非数字/非正数一律返回 None。"""
     try:
         raw = path.read_text(encoding="ascii").strip()
@@ -426,9 +636,12 @@ def _read_lock_pid(path: Path) -> Optional[int]:
 class GuiServer:
     """封装 ThreadingHTTPServer 的启动 / 停机。"""
 
-    def __init__(self, preferred_port: Optional[int] = None) -> None:
+    def __init__(self, preferred_port: int | None = None, handshake_token: str | None = None) -> None:
         self.preferred_port = preferred_port
-        self._lock_fd: Optional[int] = None
+        self._lock_fd: int | None = None
+        # 身份握手 token（Electron 模式）：/api/* 请求必须携带正确的
+        # X-Handshake-Token 头，否则 403。浏览器直连模式为 None，不校验。
+        self.handshake_token = handshake_token
 
     def _acquire_lock(self) -> bool:
         """单实例锁（W09）：``gui_state/.lock`` 用 O_CREAT|O_EXCL 独占创建。
@@ -465,7 +678,7 @@ class GuiServer:
         # 清理后重试仍被抢占（并发启动）→ 承认冲突。
         return False
 
-    def _clear_stale_lock(self, lock_path: Path, observed_pid: Optional[int]) -> bool:
+    def _clear_stale_lock(self, lock_path: Path, observed_pid: int | None) -> bool:
         """原子清理 stale 锁：先 rename 到本进程专属临时名，复核后再删除。
 
         直接 ``unlink`` 会与并发启动进程产生「双删双获取」竞态。改为：
@@ -539,6 +752,15 @@ class GuiServer:
         # 单实例锁：已有实例则拒绝二次启动。
         if not self._acquire_lock():
             raise RuntimeError("novel-lab GUI 已在运行中（单实例锁 gui_state/.lock 存在）")
+        # P2-4 修复：获锁后任一步抛异常都必须释放锁，否则锁文件残留。
+        # （_acquire_lock 有 stale 自愈可覆盖进程退出场景；这里覆盖同进程内重复 start 的测试/嵌入场景。）
+        try:
+            return self._start_inner()
+        except Exception:
+            self._release_lock()
+            raise
+
+    def _start_inner(self) -> tuple[str, int]:
 
         # 初始化持久化层 + 迁移（幂等），保证 analysis_tasks 表就绪。
         try:
@@ -549,6 +771,36 @@ class GuiServer:
 
         # 自动备份：启动时一次（每日备份由请求闸点触发，见 auto_backup）
         auto_backup.startup_backup()
+
+        # 内置资产增量同步（2026-09-29）：把随包新增的内置资产卡补进用户数据
+        # 目录（只补缺失、永不覆盖）。失败只记日志，不阻断启动。
+        from gui import builtin_sync
+        builtin_sync.sync_at_startup()
+
+        # 管理员系统：首次启动生成随机初始密码（只打印一次）。
+        # P1-2 修复（2026-09-29）：桌面端无控制台窗口（windowsHide），只写日志
+        # 用户无从得知。首次生成时同步写入数据目录下的明文指引文件，
+        # 改密成功后自动删除。
+        initial_pw = admin.ensure_initialized()
+        if initial_pw:
+            _log.warning("=" * 60)
+            _log.warning("管理员初始账号已创建：用户名 admin / 初始密码 %s", initial_pw)
+            _log.warning("请立即登录管理后台修改密码（该密码仅显示一次）。")
+            _log.warning("=" * 60)
+            try:
+                hint_fp = config.STATE_ROOT / "admin-初始密码.txt"
+                hint_fp.write_text(
+                    "管理员初始账号\n"
+                    "================\n"
+                    f"用户名：admin\n初始密码：{initial_pw}\n"
+                    "（该密码仅生成一次）\n\n"
+                    "操作：用上面的账号密码登录管理后台，立即修改密码。\n"
+                    "修改成功后本文件会被自动删除；也可手动删除。\n"
+                    f"数据目录：{config.STATE_ROOT}\n",
+                    encoding="utf-8",
+                )
+            except OSError as exc:
+                _log.warning("写入初始密码指引文件失败: %s", exc)
 
         # W15/D3：启动自清理 scratch 残留
         try:
@@ -562,6 +814,8 @@ class GuiServer:
         host, port = self._bind_port()
         self._httpd = ThreadingHTTPServer((host, port), _Handler)
         self._httpd.daemon_threads = True
+        # 身份握手：把 token 挂到 httpd 实例上，Handler 可经 self.server 访问。
+        self._httpd.handshake_token = self.handshake_token
         self._thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
         self._thread.start()
         return host, port

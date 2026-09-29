@@ -17,7 +17,7 @@ export interface MarkdownReportProps {
 /** 将 markdown 字符串渲染为富文本（支持 GFM 表格/列表/代码块）。 */
 export default function MarkdownReport({ title, markdown }: MarkdownReportProps) {
   return (
-    <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fff' }}>
+    <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper' }}>
       {title && (
         <>
           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
@@ -37,13 +37,13 @@ export default function MarkdownReport({ title, markdown }: MarkdownReportProps)
           '& code': {
             fontFamily: 'monospace',
             fontSize: '0.85em',
-            bgcolor: '#f5f5f5',
+            bgcolor: 'background.paper',
             px: 0.5,
             py: 0.2,
             borderRadius: 0.5,
           },
           '& pre': {
-            bgcolor: '#f5f5f5',
+            bgcolor: 'background.paper',
             p: 1.5,
             borderRadius: 1,
             overflow: 'auto',
@@ -57,20 +57,22 @@ export default function MarkdownReport({ title, markdown }: MarkdownReportProps)
             fontSize: '0.9rem',
           },
           '& th, & td': {
-            border: '1px solid #e0e0e0',
+            border: '1px solid',
+            borderColor: 'divider',
             px: 1,
             py: 0.5,
             textAlign: 'left',
           },
-          '& th': { bgcolor: '#fafafa', fontWeight: 600 },
+          '& th': { bgcolor: 'background.paper', fontWeight: 600 },
           '& blockquote': {
-            borderLeft: '3px solid #1976d2',
+            borderLeft: '3px solid',
+            borderColor: 'primary.main',
             pl: 1.5,
             ml: 0,
             color: 'text.secondary',
             my: 1,
           },
-          '& hr': { border: 'none', borderTop: '1px solid #eee', my: 1.5 },
+          '& hr': { border: 'none', borderTop: '1px solid', borderColor: 'divider', my: 1.5 },
           '& a': { color: 'primary.main' },
         }}
       >

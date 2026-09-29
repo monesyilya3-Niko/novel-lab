@@ -2,6 +2,166 @@
 
 本文件记录面向用户的显著变更。版本发布由 `.github/workflows/release.yml` 驱动：推送 `v*` tag 即从 Conventional Commits 自动生成发布说明。
 
+## [2.0.0] - 2026-09-28（企业级加固 + 管理员系统 + 单文件安装器）
+
+第一版正式发布。相比 1.1.2 的主要变化：
+
+### Added
+- **管理员系统**：单管理员账号（PBKDF2-HMAC-SHA256 200k 轮 + 随机盐），首次启动生成随机初始密码（服务端日志一次性显示）。
+- 管理员会话：`HttpOnly; SameSite=Lax` Cookie（`nl_admin_session`），服务端内存表，12 小时有效期；同 IP 连续 5 次失败锁定 5 分钟；失败记录 5 分钟过期自动清理。
+- 管理后台前端（`Alt+9`）：仪表盘（含最近操作）、书库管理、资产管理、审计日志（含 action/username 过滤）、会话管理（查看/吊销）、修改密码、退出登录。
+- CSRF 防护：管理员写操作校验 Origin/Referer（本机来源）。
+- CLI 紧急重置：`novel 重置管理员密码`（随机新密码 + 吊销全部会话 + 强制下次改密 + 审计）。
+- **单文件自解压安装器**：`novel-lab-installer-*.sh`（3.1MB），payload SHA-256 防篡改，`--prefix`/`--bin-dir` 可配，装后自动自检，`--uninstall` 安全卸载。
+- 安装器覆盖升级：检测已安装版本 → 自动备份旧代码 → 数据目录原位保留。
+- 管理员删书：仅限 corpus 内原文、状态文件、资产目录、SQLite 相关行；analyzing 状态 409 拒绝；非法 book_id 400；corpus 外 source_path 跳过不删。
+- 审计日志（JSONL）：登录/登出/删书/改密/会话吊销/密码重置等关键操作全记录。
+- API：77 个端点（含 11 个 `/api/admin/*` 管理员路由）。
+
+### Verified
+- Python 1133 例全绿（3 跳过，含 `tests/test_admin.py` 16 例），ruff 全清，coverage 62%（`--fail-under=60`）。
+- tsc 全清，ESLint 0 警告/错误，vitest 51/51，`npm run build` 成功。
+- 管理员流程 HTTP 真机 18/18：登录/限流/Cookie、首次改密、仪表盘、书库/会话/审计、未登录 401、退出吊销。
+- 干净安装→自检→服务→中文上传→全量测试→卸载零残留→篡改拦截，全链路实测。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
+## [Unreleased]
+
+### Fixed
+- **上传内存治理**：100MB 上传导入服务端 RSS 峰值从 3092MB 降至 431.5MB。
+  - `gui/router.py`：multipart 解析器重写为纯 bytes 边界扫描（替代 stdlib `email`，后者实测 10 倍瞬时放大）；缺 boundary/截断 body 返回 400（19 例回归）。
+  - `scripts/metrics.py`：`compute_metrics` 流式化——`char_ttr` 改唯一字符集+计数器（旧 33M 字符 list 约 1.6GB），句子统计改 `finditer` 单遍（旧 310 万句子 list），`bigram_freq` 改 zip 配对；与旧实现全量 JSON 数值一致性校验通过（7 例新回归锁定内存上界）。
+  - `gui/server.py` / `gui/services.py`：上传缓冲落盘后释放、metrics 算完后释放正文 str，避免导入期内存叠加。
+- **空库 Onboarding**：首访空库弹出三步引导向导（可跳过，刷新不再出现），`E2E_EMPTY_LIBRARY=1` 独立隔离 E2E 2/2；修复隔离脚本 rsync 非锚定 `--exclude='assets/'` 误伤 `gui/web/dist/assets/`。
+- **前端竞态收官**：`AppContext.selectChapter` sequence guard、`ResultPanel` 请求序列守卫与切章批次归零、`SettingsWorkbench` 即时校验/交叉阈值校验/保存重置刷新、Quality/Writing 状态中文化、ErrorBoundary 重试恢复（vitest 51/51）。
+- E2E 旅程新增真 UI 一键分析链路（导入→选合法题材→一键分析→`/api/analyze/full` 200 + task_id）。
+- CI：E2E 改用 `scripts/e2e_isolated.sh`（禁止在 checkout 上直接起服务），并新增空库 onboarding 第二次独立隔离调用。
+- **安装器原子升级与自动回滚**（`packaging/installer_template.sh` 重写安装/升级/卸载流程）：
+  - 覆盖升级：payload SHA-256 校验 → staging 目录解压 → 旧安装整体 `mv` 到带时间戳备份（`${PREFIX}.bak-YYYYmmdd-HHMMSS`）→ staging 原子 `mv` 切换（同文件系统 rename）→ 用户数据目录（`gui_state`、`gui/state`、`corpus`、`reports`、`config`、`novel`、`prompts/generated`）从备份搬回，原样保留；
+  - 任一步失败或装后自检失败 → 自动回滚到备份并以非零退出码退出（数据目录先搬回备份再整体搬回，不丢数据）；
+  - 卸载：残留检查——升级备份默认保留并报告、中断安装遗留的 staging 孤儿目录自动清理、启动器残留复核；`--uninstall --clean-backups` 可一并清理备份；
+  - `/tmp` 隔离实测：全新安装→升级（8 类数据哨兵全保留）→自检失败自动回滚（代码/标记/数据还原）→篡改 payload 被 SHA-256 拦截（exit=1，旧安装 untouched）→卸载残留报告→`--clean-backups` 零残留。
+- **版本统一到 2.0.1**：`gui/__init__.py`（canonical 单一真相源）、前端顶栏显示、前端 `package.json`、Windows 安装器 `build/installer.iss`、AGENTS.md §7 实测口径、前端 `dist/` 重建（含新版号）；新增 `tests/test_version_consistency.py` 锁定各处版本号一致，防漂移（`gui/admin.py::VERSION` 为管理员子系统独立版本，有意排除在外，不统一）。
+- `packaging/build_installer.sh`：传入版本与 `gui/__init__.py` 不一致时打印警告。
+- `.githooks/pre-commit`：工作区补可执行位（此前工作区为 644 导致 hook 实际无法运行；提交索引中已为 100755，保持不变）。
+
+### Verified
+- Python 1155 例全绿（3 跳过）。ruff 与 coverage 本轮未重跑（环境无 ruff），不沿用旧断言。
+- tsc 全清，ESLint 0 警告/错误，vitest 51/51，`npm run build` 成功。
+- Playwright：普通模式 12/12（2 onboarding 按设计跳过）+ 空库模式 2/2，均为隔离服务实测。
+- 性能（隔离复测，`docs/internal/perf_2026-09-28.json`）：100MB 上传 RSS 峰值 431.5MB（旧 3092MB）；20 并发读 p99 1035.6ms（nearest-rank）；10 并发上传 10 本全入库；超限 413；模型超时熔断正常。
+- npm audit 未完成（环境代理策略拒绝 `POST /-/npm/v1/security/audits/quick`，`policy_denied`），不记为通过。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
+## [Unreleased] - 2026-09-28（企业出版级第五轮：测试直调生产函数 + 纵深防御 + 远端一致性）
+
+### Fixed
+- P0-2 原子发布逻辑提取为 `novel.publish_reports_atomically`，测试直调生产函数（4 例）。
+- `TestSecretStorePerms` 直调生产函数 `save_secrets` 验证 0o600（此前只重复 os.open）。
+- 服务层 batch_size 纵深防御：`_require_positive_batch_size`，内部调用传非法值直接 400（3 例回归）。
+- `BaseChart` 注册 `HeatmapChart`：QcVisuals 热力图此前因未注册静默空白。
+- 远端一致性：修正推送脚本 CRLF/LF 字节偏差（约 100 文件 blob SHA 不一致）与 8 个过期 dist 残留；
+  远端 `eb46ff05` 经完整 recursive tree 对比验证（373 文件，路径/blob SHA/mode 全一致）。
+
+### Verified
+- Python 1074 例全绿（3 跳过），ruff 全清，coverage 62%。
+- tsc 全清，ESLint 0 警告，vitest 40/40，`npm run build` 成功。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
+## [Unreleased] - 2026-09-28（企业出版级第四轮：安全审计 + 测试补强 + 性能）
+
+### Security
+- 修复 `get_book_results` book_id 未校验（路径穿越/文件探测）。
+- 修复 `export_book_for_platform` book_dir 未约束在项目根。
+- 修复 CORS 放行 `Origin: null`。
+- 修复 `distill_status` genre 拼入 glob（加白名单）。
+- 修复 secrets 文件先写后 chmod 的 TOCTOU 窗口（改用 os.open 0o600 原子创建）。
+
+### Added
+- **ECharts 懒加载**：BarChart/RadarChart/PieChart/BaseChart 改 React.lazy，echarts 604KB 拆为独立 chunk 按需加载。
+- **E2E 用户旅程**（2 例，隔离服务实测）：分析页上传导入→书入库；未选题材时一键分析禁用。
+- **纯函数测试补强**（89 例）：batch/normalize/report/assemble/inject/model_service 校验。
+
+### Verified
+- Python 1069 例全绿（3 跳过），ruff 全清，coverage 61%。
+- tsc 全清，ESLint 0 警告，vitest 40/40，Playwright 冒烟 4/4 + 旅程 2/2。
+- 性能：20 并发平均 10-115ms；3.6MB 文件上传导入 1.5s。
+- **外部模型链路未实测**（无可用 LLM key，仅 mock/离线验证）。
+
+## [Unreleased] - 2026-09-28（企业级整改第三轮：原子发布 + 竞态彻底关闭 + P2 polish）
+
+### Added
+- **`tests/test_p2_validation.py`**（7 例）：P2-B5/B6 非法 `chapter_num`/`batch_size` 返回 400 回归。
+- **`tests/test_atomic_publish.py`**（2 例）：P0-2 CLI 报告原子发布，部分失败回滚。
+- **`AnalysisControlBar.test.tsx`**（3 例）：题材必填（下拉加载/未选禁用/加载失败提示）。
+
+### Fixed
+- **P0-2 原子发布**：CLI 两份报告要么全进 `reports/`，要么全不进；中途失败自动回滚已搬入文件。
+- **P1-F5 彻底关闭**：`AppContext.loadBookResults` 加序列号守卫，旧请求无法覆盖全局 `bookResults`（此前 `latest` 只守组件本地态）。
+- **P0-4**：移除题材下拉自动选中首项，用户必须显式选择（必填本意）。
+- **P2-F9**：`ResultPanel` 章节切换移除过期闭包导致的双请求。
+- **P2-F12**：`AnalysisResultView` 错误态加重试按钮。
+- **P2-F13**：`StylePanel` 删除、`SettingsWorkbench` 重置加二次确认。
+- **P2-F15**：`ProgressPanel` 状态文案中文化（idle→空闲等）。
+- **P2-F16**：`PlatformPanel` 默认平台与异步列表校准。
+- **P2-F17**：`ScorePanel` 截断加剩余条数提示。
+- **P2-F18**：`MarkdownReport`/`ResultPanel`/`WritingWorkbench` 硬编码浅色背景改主题色，修复暗色可读性。
+- **P2-F10/F11**：`AnalysisView` 窄屏单列、`SettingsWorkbench` 表单 flexWrap。
+- **Ruff UP012**：移除 `test_import_upload.py` 多余的 utf-8 参数。
+
+### Changed
+- **测试基线 971 → 980**（新增 9 例），`AGENTS.md` 口径同步。
+- **Vitest 37 → 40**。
+
+## [Unreleased] - 2026-09-28（企业级整改第二轮：P0-3/P0-4 + P1 全清 + 门禁）
+
+### Added
+- **`GET /api/genres`**：题材注册表 API，前端下拉与后端校验的**同一来源**（`scripts/genre_registry` 磁盘派生，34 题材）。
+- **`tests/test_genre_validation.py`**（7 例）：adapter 与注册表同源、已知/未知/空/非字符串题材、非法题材 400、`GET /api/genres` 排序。
+- **Coverage fail-under=60**：`pyproject.toml` 与 CI 双配置，覆盖率跌破基线即失败。
+
+### Fixed
+- **P0-3 书籍导入**：`POST /api/import-upload`（multipart），前端直传 `File`，不再依赖非标准 `File.path`；修复 `batch_size=NULL` 时 `get_status` 崩溃。
+- **P0-4 题材必填**：`start_analysis` 非法题材返回 400；前端题材改为必填下拉（`/api/genres` 动态加载），移除 `'未知'` 默认值。
+- **P1-F8**：`AppContext` 初始化错误写入 `initError` 并在顶部展示，不再静默吞错。
+- **P1-F5**：`AnalysisResultView` bookId 切换竞态守卫（latest 标志 + 渲染期重置）。
+- **P1-F3/F4**：QC 合格线改从 `qualityPassLine`（默认 75）、写书目标分改从 `consistencyTarget`，不再硬编码 70/90。
+- **P1-F1**：暗色模式硬编码 `#fff` 改 `background.paper`。
+- **P1-F2**：E2E 饼图断言加强为 canvas 真实渲染 + 有尺寸。
+- **P2-B5/B6**：`chapter_num`/`batch_size` 非法值返回 400 而非 500。
+- **P2-F14**：写书 AssemblePanel 默认题材改为空，强制显式选择。
+- **P2-F19**：删除 `ControlBar.tsx` 死代码。
+- **ESLint**：4 warnings → 0（exhaustive-deps、memoization、第三方库兼容性注释）。
+
+### Changed
+- **ECharts 按需引入**：`BaseChart` 改用 `echarts/core` + 显式注册，chunk 1126KB → 604KB（-46%）。
+
+## [Unreleased] - 2026-09-27（企业级整改第一轮：P0 全清）
+
+基线 `edfae04`（909 测试全绿）起，在独立 worktree 分支 `feat/enterprise-hardening` 完成 6 次提交。测试基线 **909 → 951**，`ruff check .` 全程保持全绿，pre-commit 每次跑全量。
+
+### Added
+- **`scripts/genre_registry.py`**：`CORE_GENRES`（3 个全链路题材）与 `KNOWN_GENRES`（34 个，含 32 个仅有 prose 卡的题材）改为**扫描 `assets/` 磁盘派生**，取代 `validate.py` / `chapter_check.py` 中的硬编码题材清单。刻意不引入 `config/genres.json`——那会成为第二个真相源，把漂移从「代码 vs 磁盘」换成「配置 vs 磁盘」。语义分裂为两集是必要的：craft-card 校验只用 `CORE_GENRES`（避免为 prose-only 题材造假阳性），tropes 标注用 `KNOWN_GENRES`。
+- **第三方许可证归因**：新增 `LICENSES/oh-story-claudecode/LICENSE`（逐字保留上游 1081 字节 MIT 文本，未作修改）与 `THIRD_PARTY_NOTICES.md`（清单由脚本从磁盘派生生成，不手抄 slug）。32 张 `genre-prose-card-*.json` 的 `provenance` 补写 `copyright`。
+- 守卫测试新增 3 文件共 **40 例**：`test_genre_registry.py`(19)、`test_third_party_notices.py`(15)、`test_bugbear_regressions.py`(6)。全部配「正向基线 + 负向拒绝」双向断言，防止守卫本身空转。
+
+### Fixed
+- **12 维评分权重的单一真相源**：`chapter_check.py` 的权重常量此前与文件头 docstring、`DIMENSION_ORDER` 互为并行副本，而 `tests/test_regressions.py` 的对应断言是**空转的**（断言表达式恒真）。改为运行时守卫 + 真断言。
+- **`provenance` 校验 warn → err**：原先只是「建议声明」，结果 32 张卡长期无人填写 `copyright`，使 MIT「许可证副本须同时包含版权声明与许可声明」的条件不成立。软约束在归因这类问题上不起作用，必须硬阻断。
+- **异常链断裂 21 处（`B904`）**：`gui/*_service.py`、`gui/router.py`、`scripts/llm_client.py` 在 `except` 中 `raise` 未带 `from exc`，导致 400/500 业务异常丢失原始栈信息，排查时无法区分底层错误与处理过程自身的错误。
+- **`gui/launch.py` 自检可静默失效**：`names` 是 `mods` 的手抄副本，新增模块时漏改会让自检少打一行、整体看起来仍是绿的。改为从 `mod.__name__` 派生名字，消除平行列表这一根因。
+- **`dist/` 换行符假脏**：`git status` 长期挂着十余个实质为空的「已修改」（`git diff` 实测为空），既污染变更视图，也威胁 CI 的 dist freshness 门禁。`.gitattributes` 补 `gui/web/dist/** -text`，并补 `gui/web/index.html text eol=lf`——后者才是根因：产物换行风格继承自源模板，只给产物打补丁治不好。验证：完整 `vite build` 后 `git status --porcelain` 仅剩 `.gitattributes` 自身。
+
+### Changed
+- **ruff 规则集 `["E4","E7","E9","F"]` → `["E4","E7","E9","F","I","C4","B","UP"]`**：按「存量体量 × 缺陷相关性」分三批启用（`I`+`C4` / `B` / `UP`），每批都由全量测试证明无行为变化。启用 `I` 前专门用 `--diff` 核验重排不会越过 `sys.path` 引导块（本项目 ignore `E402` 正因依赖该引导顺序，此类故障静态检查发现不了）。`B023` 的 4 处经核验**当前不是 bug**（闭包每轮立即调用、未逃逸出循环），选择重构为模块级函数消除隐患而非 `# noqa` 压制；`zip` 的 7 处按语义分 `strict=True`（5，等长即应报错）与 `strict=False`（2，`zip(xs, xs[1:])` 天然差一），未一刀切。
+- **`UP`（pyupgrade）1036 处存量落地**（第三批，独立提交以便整体回滚）：984 处安全自动修复 + 52 处 `UP035` 收敛，实测 `+644/−649`。此处有一条不看就会踩的耦合——`UP006`/`UP045` 把注解迁到内置容器后，原 `from typing import Dict, List, Tuple` 全部成为未使用导入，而本仓库 `select` 早已含 `F`（`F401`），**只应用 `UP` 而不同步清理导入会让门禁当场报 52+ 处失败**；`UP035`（deprecated-import）自身标记为不可自动修复，实为靠 `F401` 删除失效导入后自然归零，无需手写迁移。运行时安全性另有论证而非仅凭测试转绿：`target-version=py310` 使 PEP 604 的 `X | None` 在运行时即可求值，故未加 `from __future__ import annotations` 的文件也不会炸，CI 矩阵 3.11/3.12/3.13 全部 ≥3.10。75 处 `F401` 删除逐个核过范围：被改写的 29 行导入全为 `from typing import ...` 形态，无任何 `from gui.xxx import` 项目内 re-export 被动过——那是唯一可能悄悄破坏外部调用方的类别。
+- `AGENTS.md` 记录题材注册表派生机制、第三方归因登记约定，测试基线同步至 951。
+
+### Known Issues（本轮未做，已定性排序）
+- `SIM`(56) / `RET`(12) 以风格为主，暂缓；`PTH`(49) 判定**不启用**：`os.path` 属正当用法，纯风格迁移只制造 diff 噪音。
+- 前端审计项「移除 console.log」经实测**不成立**：`gui/web/src` 下仅 3 处 `console.*`，两处是 SSE 帧解析失败的诊断告警、一处是 `ErrorBoundary.componentDidCatch` 的标准写法，删掉会让故障静默，故保留。
+- `provenance.verified` 维持 `false`：其语义是**内容级**核验，许可证已核验不等于内容已核验。
+
 ## [Unreleased] - 2026-09-23（总工第二轮：规则体系 + 存量处置 + 铁律一修复）
 
 ### Added

@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, db, migrate, asset_index  # noqa: E402
+from gui import asset_index, config, db, migrate  # noqa: E402
 
 
 class TestMigrateInfer(unittest.TestCase):

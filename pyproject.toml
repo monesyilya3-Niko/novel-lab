@@ -8,9 +8,22 @@ target-version = "py310"
 exclude = ["gui/web", "docs/archive"]
 
 [tool.ruff.lint]
-# 基线从宽：默认规则集（pyflakes + 关键 pycodestyle）。
+# 基线：默认规则集（pyflakes + 关键 pycodestyle）+ 导入排序 + 推导式冗余。
 # E501 行宽不作为硬门禁（存量 CLI 文案含长中文行），由 review 把关。
-select = ["E4", "E7", "E9", "F"]
+# 启用节奏（2026-09-27 企业级整改 P0-4）：按「存量体量 × 缺陷相关性」分批，
+# 而不是一次全开——每批必须能被全量测试证明无行为变化。
+#   已启：I（导入排序）、C4（推导式冗余）、B（bugbear：异常链/闭包/zip 错位）、
+#         UP（PEP 585/604 注解现代化：List→list、Optional[X]→X|None）
+#   待启：SIM（56）/RET（12）——以风格为主，暂缓
+#   不启：PTH（49 处，os.path 属正当用法，纯风格迁移无实质收益只制造 diff 噪音）
+#
+# UP 一处须留意的耦合：UP006/UP045 把注解迁到内置容器后，原
+# `from typing import Dict, List, Tuple` 即成为未使用导入，而本仓库 select 已含
+# F（F401）——只跑 UP 不清 import 会让门禁当场失败。故 UP 必须与 F401 同步应用，
+# 且 UP035（deprecated-import，56 处）本身不可自动修复，是靠 F401 删除失效导入后
+# 自然收敛的。target-version=py310 保证 `X | None` 在运行时即可求值，
+# CI 矩阵（3.11/3.12/3.13）全部 ≥3.10，不存在 PEP 604 求值失败的风险窗口。
+select = ["E4", "E7", "E9", "F", "I", "C4", "B", "UP"]
 ignore = [
     # ---- 已知风格债，有意豁免（治理清单见 docs/lint-debt.md）----
     "E402",  # gui 层函数级延迟 import 依赖 sys.path 引导（engine_adapter 既有设计）
@@ -31,3 +44,4 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+fail_under = 60

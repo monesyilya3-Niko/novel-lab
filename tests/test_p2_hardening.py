@@ -23,8 +23,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from gui import config  # noqa: E402
-from gui import logging_setup  # noqa: E402
+from gui import (
+    config,  # noqa: E402
+    logging_setup,  # noqa: E402
+)
 
 
 class TestLoggingSetup(unittest.TestCase):
@@ -74,9 +76,16 @@ class TestTokenAuth(unittest.TestCase):
         from gui import server as server_mod
         cls._orig_lock = config.LOCK_PATH
         cls._orig_token = config.API_TOKEN
+        cls._orig_state_root = config.STATE_ROOT
+        cls._orig_state_json_dir = config.STATE_JSON_DIR
         cls._tmp = Path(tempfile.mkdtemp(prefix="auth_qa_"))
         config.LOCK_PATH = cls._tmp / ".lock"
         config.API_TOKEN = cls.TOKEN
+        # 隔离：真实 GuiServer.start() 会调 db.init_schema() 在 config.STATE_ROOT
+        # 建库（gui_state/index.db）。2026-09-28 干净安装复测发现此前未隔离，
+        # 真实 gui_state/ 落下 index.db。STATE_JSON_DIR 成对隔离（R1）。
+        config.STATE_ROOT = cls._tmp / "gui_state"
+        config.STATE_JSON_DIR = cls._tmp / "gui" / "state"
         # 隔离：起真实服务会触发 auto_backup（真实 gui_state 备份+剪枝），替换为 no-op
         cls._orig_bk = (server_mod.auto_backup.startup_backup,
                         server_mod.auto_backup.daily_backup_if_due)
@@ -98,6 +107,8 @@ class TestTokenAuth(unittest.TestCase):
         server_mod.auto_backup.startup_backup, server_mod.auto_backup.daily_backup_if_due = cls._orig_bk
         config.LOCK_PATH = cls._orig_lock
         config.API_TOKEN = cls._orig_token
+        config.STATE_ROOT = cls._orig_state_root
+        config.STATE_JSON_DIR = cls._orig_state_json_dir
 
     def _get(self, path: str, headers: dict | None = None) -> int:
         req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", headers=headers or {})

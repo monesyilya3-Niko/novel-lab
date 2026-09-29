@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import queue
 import threading
-from typing import Any, Dict
+from typing import Any
 
 
 class SseBroker:
@@ -34,7 +34,7 @@ class SseBroker:
         with self._lock:
             self._subscribers.discard(q)
 
-    def publish(self, event: Dict[str, Any]) -> None:
+    def publish(self, event: dict[str, Any]) -> None:
         """向所有活跃订阅者广播一个事件（非阻塞投递）。"""
         with self._lock:
             subs = list(self._subscribers)
@@ -46,7 +46,7 @@ class SseBroker:
                 continue
 
 
-def format_event(event: Dict[str, Any]) -> str:
+def format_event(event: dict[str, Any]) -> str:
     """把一个事件 dict 序列化为 SSE 帧。"""
     return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
 

@@ -44,7 +44,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # 允许作为脚本独立运行，也允许被 novel.py 子进程调用（cwd 为项目根）。
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -70,7 +70,7 @@ _SECTION_TITLES = (
 
 # 钩子类型枚举映射：散文卡「章尾钩子 / 正文落点」里的关键词 → 规则包 hook_types.type。
 # 值仅使用 genre-pack.schema.json 已有枚举 + 本任务新增的青春甜宠枚举。
-_HOOK_KEYWORD_MAP: List[Tuple[str, str]] = [
+_HOOK_KEYWORD_MAP: list[tuple[str, str]] = [
     ("误会升级", "误会升级"),
     ("甜蜜瞬间", "甜蜜瞬间"),
     ("暧昧拉扯", "暧昧拉扯"),
@@ -90,7 +90,7 @@ _HOOK_KEYWORD_MAP: List[Tuple[str, str]] = [
 ]
 
 # 爽点类型枚举映射：散文卡「爽点与情绪释放」关键词 → payoff_types.type。
-_PAYOFF_KEYWORD_MAP: List[Tuple[str, str]] = [
+_PAYOFF_KEYWORD_MAP: list[tuple[str, str]] = [
     ("维护", "他人认可"),
     ("补课", "情感回应"),
     ("帮忙", "情感回应"),
@@ -108,7 +108,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def parse_sections(body: str) -> Dict[str, str]:
+def parse_sections(body: str) -> dict[str, str]:
     """把 markdown 正文按 ``## 标题`` 切成 ``{标题: 内容}``。
 
     Args:
@@ -117,9 +117,9 @@ def parse_sections(body: str) -> Dict[str, str]:
     Returns:
         以 13 个规范标题为 key 的字典（未出现的 section 值为空字符串）。
     """
-    sections: Dict[str, str] = {title: "" for title in _SECTION_TITLES}
-    current_title: Optional[str] = None
-    buffer: List[str] = []
+    sections: dict[str, str] = dict.fromkeys(_SECTION_TITLES, "")
+    current_title: str | None = None
+    buffer: list[str] = []
 
     def _flush() -> None:
         if current_title is not None:
@@ -153,14 +153,14 @@ def _confidence_map(level: str) -> float:
 
 
 def _extract_hook_types(
-    sections: Dict[str, str]
-) -> List[Dict[str, Any]]:
+    sections: dict[str, str]
+) -> list[dict[str, Any]]:
     """从「章尾钩子」「正文落点」抽取 hook_types（启发式，留空则返回 []）。"""
     text = sections.get("章尾钩子", "") + "\n" + sections.get("正文落点", "")
     if not text.strip():
         return []
 
-    found: List[Dict[str, Any]] = []
+    found: list[dict[str, Any]] = []
     seen: set = set()
     for keyword, hook_type in _HOOK_KEYWORD_MAP:
         if keyword in text and hook_type not in seen:
@@ -177,14 +177,14 @@ def _extract_hook_types(
 
 
 def _extract_payoff_types(
-    sections: Dict[str, str]
-) -> List[Dict[str, Any]]:
+    sections: dict[str, str]
+) -> list[dict[str, Any]]:
     """从「爽点与情绪释放」抽取 payoff_types（启发式，留空则返回 []）。"""
     text = sections.get("爽点与情绪释放", "")
     if not text.strip():
         return []
 
-    found: List[Dict[str, Any]] = []
+    found: list[dict[str, Any]] = []
     seen: set = set()
     for keyword, payoff_type in _PAYOFF_KEYWORD_MAP:
         if keyword in text and payoff_type not in seen:
@@ -200,11 +200,11 @@ def _extract_payoff_types(
     return found
 
 
-def _extract_banned_phrases(text: str) -> List[str]:
+def _extract_banned_phrases(text: str) -> list[str]:
     """从「禁止漂移」提取禁用词/禁用倾向（粗略，仅当明确动词短语出现）。"""
     if not text.strip():
         return []
-    phrases: List[str] = []
+    phrases: list[str] = []
     # 散文卡的「不要/禁止」句，抽取「不要 XXX」作为禁用倾向描述。
     for clause in text.replace("；", "。").replace("，", "。").split("。"):
         clause = clause.strip()
@@ -218,7 +218,7 @@ def _extract_banned_phrases(text: str) -> List[str]:
     return phrases
 
 
-def _extract_required_elements(text: str) -> List[str]:
+def _extract_required_elements(text: str) -> list[str]:
     """从「正文提示词」「节奏密度」抽取题材必备要素（启发式）。"""
     if not text.strip():
         return []
@@ -227,8 +227,8 @@ def _extract_required_elements(text: str) -> List[str]:
 
 
 def build_genre_pack(
-    frontmatter: Dict[str, Any], sections: Dict[str, str], genre_id: str
-) -> Dict[str, Any]:
+    frontmatter: dict[str, Any], sections: dict[str, str], genre_id: str
+) -> dict[str, Any]:
     """组装 genre-pack JSON。
 
     Args:
@@ -294,7 +294,7 @@ def build_genre_pack(
     }
 
 
-def _load_existing(output_path: Path) -> Optional[Dict[str, Any]]:
+def _load_existing(output_path: Path) -> dict[str, Any] | None:
     """读取已存在的输出文件（不存在或损坏返回 None）。"""
     if not output_path.exists():
         return None
@@ -310,7 +310,7 @@ def convert(
     output_path: Path,
     genre_id: str,
     force: bool = False,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """执行转换，返回 ``(是否写出, 说明)``。
 
     Args:
@@ -348,7 +348,7 @@ def convert(
     return True, f"已写出: {output_path}"
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI 入口。"""
     parser = argparse.ArgumentParser(
         description="体裁散文卡 → genre-pack 规则包转换器",

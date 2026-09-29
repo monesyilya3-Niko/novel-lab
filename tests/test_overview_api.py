@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, asset_index, router  # noqa: E402
+from gui import asset_index, config, router  # noqa: E402
 from gui.services import ServiceError  # noqa: E402
 
 
@@ -52,6 +52,11 @@ class TestOverviewAPI(unittest.TestCase):
         for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
                   config.CONFIG_DIR, config.STATE_ROOT, config.STATE_JSON_DIR):
             d.mkdir(parents=True, exist_ok=True)
+
+        # _BOOKS 注册（安全修复后 get_book_results 要求 book 已导入）。
+        from gui import services as _svc
+        _svc._BOOKS["bookA"] = {"title": "测试书A", "chapters": [], "metrics": {}}
+        _svc._BOOKS["bookB"] = {"title": "测试书B", "chapters": [], "metrics": {}}
 
         # assets：voice-card + structure-obs + craft-card（组装卡，bookA）。
         (config.ASSETS_ROOT / "bookA-voice-card.json").write_text(

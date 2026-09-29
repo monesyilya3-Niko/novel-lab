@@ -27,7 +27,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # 常量
@@ -52,7 +52,7 @@ def _utf8_bytes(text: str) -> int:
     return len(text.encode("utf-8"))
 
 
-def _snapshot_bytes(snapshot: Dict[str, Any]) -> int:
+def _snapshot_bytes(snapshot: dict[str, Any]) -> int:
     """计算单个角色快照序列化后的字节数。"""
     return _utf8_bytes(json.dumps(snapshot, ensure_ascii=False))
 
@@ -63,15 +63,15 @@ def _is_retired_status(status: str) -> bool:
 
 
 def _validate_snapshot_limits(
-    character_snapshots: Dict[str, Any],
-) -> Tuple[bool, List[str]]:
+    character_snapshots: dict[str, Any],
+) -> tuple[bool, list[str]]:
     """校验角色快照字节限制，返回 ``(是否通过, 警告列表)``。
 
     Returns:
         ``(ok, warnings)``。``ok`` 为 False 表示存在超硬上限（8192 字节）的快照，
         必须拒绝写入；``warnings`` 为超目标上限（4096 字节）的快照名列表。
     """
-    warnings: List[str] = []
+    warnings: list[str] = []
     for name, snapshot in character_snapshots.items():
         size = _snapshot_bytes(snapshot)
         if size > SNAPSHOT_HARD_BYTES:
@@ -85,7 +85,7 @@ def _validate_snapshot_limits(
 # 权威状态读写
 # ---------------------------------------------------------------------------
 
-def _empty_state(book_title: str = "") -> Dict[str, Any]:
+def _empty_state(book_title: str = "") -> dict[str, Any]:
     """构造空的权威状态骨架。"""
     return {
         "schema_version": _SCHEMA_VERSION,
@@ -106,7 +106,7 @@ def _empty_state(book_title: str = "") -> Dict[str, Any]:
     }
 
 
-def load_state(state_path: str | os.PathLike) -> Dict[str, Any]:
+def load_state(state_path: str | os.PathLike) -> dict[str, Any]:
     """读取权威状态文件；不存在时返回空状态。"""
     path = Path(state_path)
     if not path.exists():
@@ -115,7 +115,7 @@ def load_state(state_path: str | os.PathLike) -> Dict[str, Any]:
         return json.load(fh)
 
 
-def save_state(state: Dict[str, Any], state_path: str | os.PathLike) -> None:
+def save_state(state: dict[str, Any], state_path: str | os.PathLike) -> None:
     """原子写回权威状态文件（先写临时文件再替换）。"""
     path = Path(state_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -131,10 +131,10 @@ def save_state(state: Dict[str, Any], state_path: str | os.PathLike) -> None:
 # ---------------------------------------------------------------------------
 
 def apply_transaction(
-    state: Dict[str, Any],
-    transaction: Dict[str, Any],
-    state_path: Optional[str | os.PathLike] = None,
-) -> Dict[str, Any]:
+    state: dict[str, Any],
+    transaction: dict[str, Any],
+    state_path: str | os.PathLike | None = None,
+) -> dict[str, Any]:
     """应用一次逐章事务到权威状态，返回更新后的 state。
 
     幂等且无副作用（除非传入 ``state_path`` 则原子写回磁盘）。
@@ -270,8 +270,8 @@ def apply_transaction(
 
 
 def _apply_delta(
-    state: Dict[str, Any], delta: Dict[str, Any], mode: str
-) -> Dict[str, Any]:
+    state: dict[str, Any], delta: dict[str, Any], mode: str
+) -> dict[str, Any]:
     """把 delta 应用到状态的深拷贝上，返回新 state。"""
     import copy
 
@@ -279,7 +279,7 @@ def _apply_delta(
 
     # 伏笔变更（upsert / delete）。
     foreshadow = result.setdefault("foreshadow", [])
-    foreshadow_index: Dict[str, int] = {
+    foreshadow_index: dict[str, int] = {
         f.get("id", ""): i for i, f in enumerate(foreshadow)
     }
     for change in delta.get("foreshadow_changes", []):
@@ -300,7 +300,7 @@ def _apply_delta(
 
     # 时间线事件（upsert / delete）。
     timeline = result.setdefault("timeline_events", [])
-    timeline_index: Dict[str, int] = {
+    timeline_index: dict[str, int] = {
         e.get("id", ""): i for i, e in enumerate(timeline)
     }
     for event in delta.get("timeline_events", []):
@@ -330,10 +330,10 @@ def _apply_delta(
 
 
 def _derive_recent_chapters(
-    old_state: Dict[str, Any],
-    transaction: Dict[str, Any],
-    new_state: Dict[str, Any],
-) -> List[Any]:
+    old_state: dict[str, Any],
+    transaction: dict[str, Any],
+    new_state: dict[str, Any],
+) -> list[Any]:
     """派生近章速记（最多 3 章）：合并旧近章 + 本章结果，截尾。"""
     old_recent = old_state.get("context", {}).get("recent_chapters", [])
     if not isinstance(old_recent, list):
@@ -348,8 +348,8 @@ def _derive_recent_chapters(
         combined.append(entry)
 
     # 去重（同章覆盖）。
-    seen: Dict[int, int] = {}
-    deduped: List[Any] = []
+    seen: dict[int, int] = {}
+    deduped: list[Any] = []
     for e in combined:
         ch = e.get("chapter") if isinstance(e, dict) else None
         if ch is not None:
@@ -369,7 +369,7 @@ def _derive_recent_chapters(
 # ---------------------------------------------------------------------------
 
 def build_injection_context(
-    state: Dict[str, Any],
+    state: dict[str, Any],
     max_characters: int = MAX_ACTIVE_CHARACTERS,
     max_foreshadows: int = MAX_ACTIVE_FORESHAWDS,
     max_recent: int = MAX_RECENT_CHAPTERS,
@@ -392,13 +392,13 @@ def build_injection_context(
     if not ctx and not state.get("character_snapshots"):
         return ""
 
-    blocks: List[str] = []
+    blocks: list[str] = []
     blocks.append("## 长期状态追踪")
 
     # 1. 角色快照（活跃角色）。
     active_names = ctx.get("active_character_names", [])
     snapshots = state.get("character_snapshots", {})
-    ordered_names: List[str] = []
+    ordered_names: list[str] = []
     for name in active_names[:max_characters]:
         if name in snapshots:
             ordered_names.append(name)
@@ -472,9 +472,9 @@ def build_injection_context(
 # ---------------------------------------------------------------------------
 
 def validate_revision(
-    state: Dict[str, Any],
+    state: dict[str, Any],
     expected_state_revision: int,
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """校验 ``expected_state_revision`` 是否与当前状态修订号一致。
 
     Args:
@@ -522,7 +522,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """CLI 入口。"""
     parser = _build_arg_parser()
     args = parser.parse_args(argv)

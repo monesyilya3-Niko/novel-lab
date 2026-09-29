@@ -7,6 +7,8 @@ config/.secrets.bin
 # 范文原文（版权材料，只在本地留存）
 corpus/
 *.txt
+# 原创示例语料例外：samples/示例-*.txt 为项目原创，随安装包发布
+!samples/示例-*.txt
 
 # 拆书中间产物
 .cache/
@@ -69,3 +71,12 @@ build/dist/
 
 # 第三方参考技能（上游无 LICENSE 文件，不入 MIT 仓库；本地留存自用）
 reference/oh-story-claudecode/
+.coverage
+
+# desktop 构建产物（可由脚本/构建流程再生）
+desktop/backend/
+desktop/build/python-embed.zip
+desktop/build/python-win/
+desktop/node_modules/
+desktop/release/
+desktop/package-lock.json

@@ -15,10 +15,9 @@
 import json
 import os
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Optional
 
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 MODELS_FILE = CONFIG_DIR / "models.json"
@@ -196,8 +195,8 @@ def _call_openai_compatible(model: dict, api_key: str, system: str,
     raw = _post_json(url, payload, headers, model.get("timeout", 180))
     try:
         text = raw["choices"][0]["message"]["content"]
-    except (KeyError, IndexError):
-        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}")
+    except (KeyError, IndexError) as exc:
+        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}") from exc
     usage = raw.get("usage") or {}
     return {
         "text": text,
@@ -228,8 +227,8 @@ def _call_anthropic(model: dict, api_key: str, system: str,
     raw = _post_json(url, payload, headers, model.get("timeout", 180))
     try:
         text = "".join(b.get("text", "") for b in raw["content"])
-    except (KeyError, TypeError):
-        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}")
+    except (KeyError, TypeError) as exc:
+        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}") from exc
     usage = raw.get("usage") or {}
     return {
         "text": text,
@@ -260,8 +259,8 @@ def _call_ollama(model: dict, api_key: str, system: str,
     raw = _post_json(url, payload, {}, model.get("timeout", 600))
     try:
         text = raw["message"]["content"]
-    except KeyError:
-        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}")
+    except KeyError as exc:
+        raise LLMError(f"响应格式异常: {json.dumps(raw, ensure_ascii=False)[:400]}") from exc
     return {
         "text": text,
         "prompt_tokens": raw.get("prompt_eval_count", 0),
@@ -280,7 +279,7 @@ PROTOCOL_HANDLERS = {
 # 对外接口
 # --------------------------------------------------------------------------
 
-def resolve_model(task: Optional[str] = None, model_id: Optional[str] = None) -> tuple:
+def resolve_model(task: str | None = None, model_id: str | None = None) -> tuple:
     """
     解析该用哪个模型。
     显式 model_id > 任务路由 > 角色默认 > 报错
@@ -311,8 +310,8 @@ def resolve_model(task: Optional[str] = None, model_id: Optional[str] = None) ->
     return first, models[first]
 
 
-def resolve_fallback_chain(task: Optional[str] = None,
-                           model_id: Optional[str] = None) -> list:
+def resolve_fallback_chain(task: str | None = None,
+                           model_id: str | None = None) -> list:
     """
     给出候选模型 id 列表，第 1 位是 resolve_model 得到的主模型。
 
@@ -363,7 +362,7 @@ def _is_retryable_error(exc: Exception) -> bool:
 
 def _chat_one(mid: str, model: dict, user: str, system: str,
               max_tokens: int, temperature: float, retries: int,
-              json_mode: Optional[bool], skip_unretryable: bool) -> dict:
+              json_mode: bool | None, skip_unretryable: bool) -> dict:
     """对单个模型执行「重试 retries 次」逻辑。彻底失败则抛 LLMError。
 
     skip_unretryable=True（启用备用链路时）→ 401/403/余额不足立即放弃该候选，
@@ -411,10 +410,10 @@ def _chat_one(mid: str, model: dict, user: str, system: str,
     raise LLMError(f"模型 '{mid}' 调用失败（重试 {retries} 次）: {last_err}")
 
 
-def chat(user: str, system: str = "", task: Optional[str] = None,
-         model_id: Optional[str] = None, max_tokens: int = 8192,
+def chat(user: str, system: str = "", task: str | None = None,
+         model_id: str | None = None, max_tokens: int = 8192,
          temperature: float = 0.7, retries: int = 2,
-         json_mode: Optional[bool] = None,
+         json_mode: bool | None = None,
          allow_fallback: bool = True) -> dict:
     """
     统一调用入口。

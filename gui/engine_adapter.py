@@ -11,9 +11,10 @@
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from gui import config
 
@@ -22,6 +23,11 @@ from gui import config
 # ---------------------------------------------------------------------------
 if str(config.SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(config.SCRIPTS_DIR))
+# P2-6：`from scripts import genre_registry` 走包路径，需要项目根也在 sys.path；
+# 只靠 cwd 不可靠（异常 cwd 拉起的启动器）。与 SCRIPTS_DIR 共存：扁平 import 走
+# SCRIPTS_DIR，包 import 走 ROOT_DIR，互不冲突。
+if str(config.ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(config.ROOT_DIR))
 
 # 延迟 import，避免模块级副作用在 self-check 前就触发。
 _sampler = None
@@ -85,16 +91,43 @@ def _get_consistency():
     return _consistency
 
 
+# 延迟 import：model_config / distill / compliance（gui 服务层经本模块触碰）。
+_model_config = None
+_distill = None
+_compliance = None
+
+
+def _get_model_config():
+    global _model_config
+    if _model_config is None:
+        import model_config as _model_config  # type: ignore
+    return _model_config
+
+
+def _get_distill():
+    global _distill
+    if _distill is None:
+        import distill as _distill  # type: ignore
+    return _distill
+
+
+def _get_compliance():
+    global _compliance
+    if _compliance is None:
+        import compliance as _compliance  # type: ignore
+    return _compliance
+
+
 # ---------------------------------------------------------------------------
 # 章切分（复用 sampler）
 # ---------------------------------------------------------------------------
 
-def split_chapters(text: str) -> List[Tuple[str, str]]:
+def split_chapters(text: str) -> list[tuple[str, str]]:
     """把整本文本切成 [(标题, 正文), ...]，过滤空章。"""
     return _get_sampler().split_chapters(text)
 
 
-def detect_volumes(chapters: List[Tuple[str, str]]) -> List[Tuple[int, int]]:
+def detect_volumes(chapters: list[tuple[str, str]]) -> list[tuple[int, int]]:
     """按『第X卷』切分卷边界，返回 [(start, end), ...] 索引对（0 起）。"""
     return _get_sampler().detect_volumes(chapters)
 
@@ -103,7 +136,7 @@ def detect_volumes(chapters: List[Tuple[str, str]]) -> List[Tuple[int, int]]:
 # 批次切分（新增薄封装）
 # ---------------------------------------------------------------------------
 
-def split_batches(text: str, batch_size: int) -> List[Dict[str, Any]]:
+def split_batches(text: str, batch_size: int) -> list[dict[str, Any]]:
     """把一段文本按 ``batch_size`` 字符切成批次列表。
 
     尽量在换行/句号边界断开，避免把一个句子劈成两半；单批硬上限即 batch_size。
@@ -118,7 +151,7 @@ def split_batches(text: str, batch_size: int) -> List[Dict[str, Any]]:
     if not text.strip():
         return []
 
-    batches: List[Dict[str, Any]] = []
+    batches: list[dict[str, Any]] = []
     start = 0
     total = len(text)
     bidx = 0
@@ -163,7 +196,7 @@ def _find_cut_boundary(text: str, start: int, end: int) -> int:
 # 量化指标（整书算一次，缓存复用）
 # ---------------------------------------------------------------------------
 
-def compute_metrics(text: str) -> Dict[str, Any]:
+def compute_metrics(text: str) -> dict[str, Any]:
     """对整本书算一次量化指标（metrics.compute），供单批分析复用。"""
     return _get_metrics().compute(text)
 
@@ -186,8 +219,8 @@ def build_single_batch_slices(
     chapter_index: int,
     chapter_title: str,
     batch_text: str,
-    metrics: Dict[str, Any],
-) -> Dict[str, Any]:
+    metrics: dict[str, Any],
+) -> dict[str, Any]:
     """把「单批文本」构造成 pipeline.build_user_input 需要的切片结构。
 
     这是 GUI 单章单批粒度与 pipeline 整书粒度的衔接点：
@@ -224,10 +257,10 @@ def run_batch(
     chapter_index: int,
     chapter_title: str,
     batch_text: str,
-    metrics: Dict[str, Any],
+    metrics: dict[str, Any],
     dry_run: bool = False,
-    model_id: Optional[str] = None,
-) -> Dict[str, Any]:
+    model_id: str | None = None,
+) -> dict[str, Any]:
     """对单批文本执行一次 pass 分析，返回结果 dict。
 
     复用 pipeline.load_prompt / build_user_input / run_pass，不改 pipeline 源码。
@@ -244,26 +277,26 @@ def run_batch(
 def assemble_voice_card(
     name: str,
     genre: str,
-    manifest: Dict[str, Any],
-    pass2: Dict[str, Any],
-    pass3: Dict[str, Any],
-    metrics: Dict[str, Any],
-) -> Dict[str, Any]:
+    manifest: dict[str, Any],
+    pass2: dict[str, Any],
+    pass3: dict[str, Any],
+    metrics: dict[str, Any],
+) -> dict[str, Any]:
     """组装 voice-card（复用 pipeline.assemble_voice_card）。"""
     return _get_pipeline().assemble_voice_card(name, genre, manifest, pass2, pass3, metrics)
 
 
-def assemble_obs(kind: str, name: str, genre: str, pass_out: Dict[str, Any]) -> Dict[str, Any]:
+def assemble_obs(kind: str, name: str, genre: str, pass_out: dict[str, Any]) -> dict[str, Any]:
     """组装结构/商业观测（复用 pipeline.assemble_obs）。"""
     return _get_pipeline().assemble_obs(kind, name, genre, pass_out)
 
 
-def extract_json(raw: str) -> Dict[str, Any]:
+def extract_json(raw: str) -> dict[str, Any]:
     """LLM 输出 → JSON（复用 pipeline.extract_json）。"""
     return _get_pipeline().extract_json(raw)
 
 
-def load_prompt(kind: str) -> Tuple[str, str]:
+def load_prompt(kind: str) -> tuple[str, str]:
     """读取 prompt 模板 (system, user_template)（复用 pipeline.load_prompt）。"""
     return _get_pipeline().load_prompt(kind)
 
@@ -273,7 +306,7 @@ def any_model_configured() -> bool:
     return _get_llm_client().any_model_configured()
 
 
-def list_models() -> List[Dict[str, Any]]:
+def list_models() -> list[dict[str, Any]]:
     """列出已配置模型（不含密钥），供 /api/config/models 使用。"""
     llm = _get_llm_client()
     cfg = llm.load_models()
@@ -298,10 +331,10 @@ def list_models() -> List[Dict[str, Any]]:
 # ---------------------------------------------------------------------------
 
 def build_report(
-    voice: Dict[str, Any],
-    structure: Dict[str, Any],
-    commercial: Dict[str, Any],
-    title_override: Optional[str] = None,
+    voice: dict[str, Any],
+    structure: dict[str, Any],
+    commercial: dict[str, Any],
+    title_override: str | None = None,
 ) -> str:
     """拆书报告：voice-card + structure + commercial → Markdown 文本。
 
@@ -310,12 +343,12 @@ def build_report(
     return _get_report().build_report(voice, structure, commercial, title_override=title_override)
 
 
-def render_craft_report(craft: Dict[str, Any]) -> str:
+def render_craft_report(craft: dict[str, Any]) -> str:
     """笔法报告：craft-card → Markdown 文本（复用 ``report_craft.render_craft_report``）。"""
     return _get_report_craft().render_craft_report(craft)
 
 
-def combined_report_ok(book_chars: int, craft_chars: int) -> Dict[str, Any]:
+def combined_report_ok(book_chars: int, craft_chars: int) -> dict[str, Any]:
     """铁律二判定（纯长度，不读盘）——供 GUI **写盘前**校验使用。
 
     2026-09-23 新增（总工排查）：GUI 原先「先写盘 → 再校验」，校验失败只抑制
@@ -328,7 +361,7 @@ def combined_report_ok(book_chars: int, craft_chars: int) -> Dict[str, Any]:
     return _get_report().combined_report_ok(book_chars, craft_chars)
 
 
-def check_report_min_length(reports_dir, name: str) -> Dict[str, Any]:
+def check_report_min_length(reports_dir, name: str) -> dict[str, Any]:
     """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ 10000 字符。
 
     【为何需要】该校验原先只内联在 CLI 的 ``novel.py 分析`` 收尾，GUI 生成报告后
@@ -341,7 +374,7 @@ def check_report_min_length(reports_dir, name: str) -> Dict[str, Any]:
     return _get_report().check_combined_report_length(reports_dir, name)
 
 
-def score_text(voice_card: Dict[str, Any], text: str, label: str = "") -> Dict[str, Any]:
+def score_text(voice_card: dict[str, Any], text: str, label: str = "") -> dict[str, Any]:
     """一致性打分：voice-card + 章节文本 → (score, details, raw) 归一化为 dict。
 
     复用 ``consistency.score_text``（原子函数），返回结构化结果供章节打分图使用。
@@ -350,7 +383,7 @@ def score_text(voice_card: Dict[str, Any], text: str, label: str = "") -> Dict[s
     return {"score": float(total_score), "details": details, "raw": raw}
 
 
-def get_pass5_craft(book_id: str) -> Optional[Dict[str, Any]]:
+def get_pass5_craft(book_id: str) -> dict[str, Any] | None:
     """预留：读取某书 pass5（笔法）craft-card 资产。阶段一尽力而为，通常返回 None。"""
     _ = book_id
     return None
@@ -420,12 +453,12 @@ _assemble = None
 
 # --- 注入（inject.py）---
 
-def build_writing_prompt(voice: Dict[str, Any], structure: Optional[Dict] = None,
-                         commercial: Optional[Dict] = None, genre_pack: Optional[Dict] = None,
-                         craft_card: Optional[Dict] = None, distilled: Optional[Dict] = None,
-                         context_intent: Optional[str] = None,
-                         tracking_state: Optional[Dict] = None,
-                         genre_prose_card: Optional[Dict] = None) -> str:
+def build_writing_prompt(voice: dict[str, Any], structure: dict | None = None,
+                         commercial: dict | None = None, genre_pack: dict | None = None,
+                         craft_card: dict | None = None, distilled: dict | None = None,
+                         context_intent: str | None = None,
+                         tracking_state: dict | None = None,
+                         genre_prose_card: dict | None = None) -> str:
     """资产 → 写作 system prompt（inject.build_prompt）。"""
     return _get_inject().build_prompt(
         voice, structure=structure, commercial=commercial, genre_pack=genre_pack,
@@ -436,11 +469,88 @@ def build_writing_prompt(voice: Dict[str, Any], structure: Optional[Dict] = None
 # --- 写作（write.py 原子 + llm_client）---
 
 def llm_chat(user: str, system: str, task: str = "writing", max_tokens: int = 6000,
-             temperature: float = 0.8, json_mode: bool = False) -> Dict[str, Any]:
+             temperature: float = 0.8, json_mode: bool = False) -> dict[str, Any]:
     """LLM 对话调用（llm_client.chat）。无模型时由调用方先判 any_model_configured()。"""
     return _get_llm_client().chat(user=user, system=system, task=task,
                                   max_tokens=max_tokens, temperature=temperature,
                                   json_mode=json_mode)
+
+
+# ---------------------------------------------------------------------------
+# 模型管理 / 蒸馏 / 合规（gui 服务层经此触碰 scripts/）
+# 铁律：只有本模块可以直接 import scripts/；其他 gui 模块一律走这里。
+# ---------------------------------------------------------------------------
+
+def models_load() -> dict[str, Any]:
+    """读取模型配置（复用 llm_client.load_models）。供 model_service。"""
+    return _get_llm_client().load_models()
+
+
+def models_save(cfg: dict[str, Any]) -> None:
+    """保存模型配置（复用 llm_client.save_models）。供 model_service。"""
+    _get_llm_client().save_models(cfg)
+
+
+def secrets_load() -> dict[str, Any]:
+    """读取模型密钥（复用 llm_client.load_secrets）。供 model_service。"""
+    return _get_llm_client().load_secrets()
+
+
+def secrets_save(secrets: dict[str, Any]) -> None:
+    """保存模型密钥（复用 llm_client.save_secrets）。供 model_service。"""
+    _get_llm_client().save_secrets(secrets)
+
+
+def model_test(model_id: str) -> dict[str, Any]:
+    """模型连通性测试（复用 llm_client.test_model）。供 model_service。"""
+    return _get_llm_client().test_model(model_id)
+
+
+def model_presets() -> dict[str, Any]:
+    """内置服务商预设（复用 model_config.PRESETS）。供 model_service。"""
+    return {"presets": _get_model_config().PRESETS}
+
+
+def distill_run(genre: str, book_names: list[str] | None = None) -> dict[str, Any]:
+    """题材蒸馏（复用 distill.run_distill）。供 advanced_service。
+
+    scripts/distill.run_distill 把产物写进仓库 ``novel-lab/assets/``（硬编码），
+    而 GUI 数据面（扫描/状态/详情/索引）一律走 ``config.ASSETS_ROOT``（用户数据
+    目录）。这里把写出的文件搬运到 ASSETS_ROOT 再返回，保证 distill_status()
+    可见、migrate.sync_asset() 索引的路径可被 resolve_rel_path 逆解析。
+    （采集侧 distill_core.collect_assets 同样硬编码仓库目录，需 scripts 侧接受
+    assets_dir 参数才能根治——本层在不改 scripts 的前提下无法修正。）
+    """
+    result = _get_distill().run_distill(genre, book_names=book_names)
+    relocated: list[str] = []
+    try:
+        dest_root = config.ASSETS_ROOT
+        dest_root.mkdir(parents=True, exist_ok=True)
+        for fp_str in result.get("written", []):
+            src = Path(fp_str)
+            dst = dest_root / src.name
+            try:
+                if src.resolve() == dst.resolve():
+                    relocated.append(str(dst))
+                    continue
+                # 原子搬运：先写临时文件再 rename，避免半成品；成功后删源。
+                tmp = dst.with_name(dst.name + ".reloc-tmp")
+                tmp.write_bytes(src.read_bytes())
+                os.replace(tmp, dst)
+                src.unlink()
+                relocated.append(str(dst))
+            except OSError:
+                # 搬运失败则保留原路径（至少不丢产物）。
+                relocated.append(fp_str)
+    except OSError:
+        relocated = [str(p) for p in result.get("written", [])]
+    result["written"] = relocated
+    return result
+
+
+def compliance_scan_asset(asset: dict[str, Any], ngram: set) -> tuple:
+    """合规扫描单个资产（复用 compliance.scan_asset）。供 system_service。"""
+    return _get_compliance().scan_asset(asset, ngram)
 
 
 def ensure_novel_structure(novel_dir: str, name: str = "新书") -> Path:
@@ -455,20 +565,20 @@ def save_chapter(novel_dir: str, chapter_no: int, content: str) -> Path:
 
 # --- 打分 / 检查（consistency.py / chapter_check.py）---
 
-def chapter_check(text: str, genre_pack: Optional[Dict] = None) -> Dict[str, Any]:
+def chapter_check(text: str, genre_pack: dict | None = None) -> dict[str, Any]:
     """章节质量 12 维检查（chapter_check.chapter_check）。"""
     return _get_chapter_check().chapter_check(text, genre_pack)
 
 
-def resolve_thresholds(genre_pack: Optional[Dict] = None) -> Tuple[int, int]:
+def resolve_thresholds(genre_pack: dict | None = None) -> tuple[int, int]:
     """解析质量阈值 (pass_line, warn_line)（chapter_check.resolve_thresholds）。"""
     return _get_chapter_check().resolve_thresholds(genre_pack)
 
 
 # --- 全书质检（book_quality.py）---
 
-def book_quality_check(chapter_dir: str, voice_card_path: Optional[str] = None,
-                       prev_chapters_dir: Optional[str] = None) -> Dict[str, Any]:
+def book_quality_check(chapter_dir: str, voice_card_path: str | None = None,
+                       prev_chapters_dir: str | None = None) -> dict[str, Any]:
     """全书质检（book_quality.book_quality_check）。"""
     return _get_book_quality().book_quality_check(
         chapter_dir, voice_card_path=voice_card_path, prev_chapters_dir=prev_chapters_dir)
@@ -476,10 +586,10 @@ def book_quality_check(chapter_dir: str, voice_card_path: Optional[str] = None,
 
 # --- QC（qc.py）---
 
-def run_qc(chapter_dir: str, *, voice_card_path: Optional[str] = None,
-           genre_pack_path: Optional[str] = None, asset_path: Optional[str] = None,
-           book_path: Optional[str] = None, novel_dir: Optional[str] = None,
-           enable_llm_hook: bool = False) -> Dict[str, Any]:
+def run_qc(chapter_dir: str, *, voice_card_path: str | None = None,
+           genre_pack_path: str | None = None, asset_path: str | None = None,
+           book_path: str | None = None, novel_dir: str | None = None,
+           enable_llm_hook: bool = False) -> dict[str, Any]:
     """四层十二维 QC（qc.run_qc），返回 report dict + markdown。"""
     report = _get_qc().run_qc(
         chapter_dir, voice_card_path=voice_card_path, genre_pack_path=genre_pack_path,
@@ -495,38 +605,69 @@ def run_qc(chapter_dir: str, *, voice_card_path: Optional[str] = None,
 
 # --- 组装（assemble.py / normalize.py）---
 
-def normalize_pass2(pass2: Dict[str, Any]) -> List[Dict[str, Any]]:
+def normalize_pass2(pass2: dict[str, Any]) -> list[dict[str, Any]]:
     """Pass2 角色声线归一化（normalize.normalize_pass2）。"""
     return _get_normalize().normalize_pass2(pass2)
 
 
-def normalize_pass3(pass3: Dict[str, Any]) -> Tuple[Dict, Dict, Dict, Dict, Dict]:
+def normalize_pass3(pass3: dict[str, Any]) -> tuple[dict, dict, dict, dict, dict]:
     """Pass3 文风归一化（normalize.normalize_pass3）。"""
     return _get_normalize().normalize_pass3(pass3)
 
 
-def assemble_asset_voice_card(name: str, genre: str, manifest: Dict, metrics: Dict,
-                              voices: List, narration: Dict, dialogue: Dict, emotion: Dict,
-                              imagery: Dict, banned: Dict) -> Dict[str, Any]:
+def assemble_asset_voice_card(name: str, genre: str, manifest: dict, metrics: dict,
+                              voices: list, narration: dict, dialogue: dict, emotion: dict,
+                              imagery: dict, banned: dict) -> dict[str, Any]:
     """组装 voice-card（assemble.assemble_voice_card）。"""
     return _get_assemble().assemble_voice_card(
         name, genre, manifest, metrics, voices, narration, dialogue, emotion, imagery, banned)
 
 
-def assemble_asset_obs(kind: str, name: str, genre: str, pass_out: Dict) -> Dict:
+def assemble_asset_obs(kind: str, name: str, genre: str, pass_out: dict) -> dict:
     """组装 structure-obs / commercial-obs（assemble.assemble_obs）。"""
     return _get_assemble().assemble_obs(kind, name, genre, pass_out)
 
 
-def assemble_asset_craft_card(name: str, genre: str, manifest: Dict, metrics: Dict,
-                              pass5: Dict) -> Dict[str, Any]:
+def assemble_asset_craft_card(name: str, genre: str, manifest: dict, metrics: dict,
+                              pass5: dict) -> dict[str, Any]:
     """组装 craft-card（assemble.assemble_craft_card）。"""
     return _get_assemble().assemble_craft_card(name, genre, manifest, metrics, pass5)
 
 
-def clean_verbatim(asset: Dict[str, Any], book_text: str) -> Tuple[Dict, int]:
+def clean_verbatim(asset: dict[str, Any], book_text: str) -> tuple[dict, int]:
     """清除资产中夹带的原文台词（assemble._clean_verbatim）。"""
     return _get_assemble()._clean_verbatim(asset, book_text)
+
+
+# ---------------------------------------------------------------------------
+# 题材注册表（P0-4：后端校验唯一来源，磁盘资产派生）
+# ---------------------------------------------------------------------------
+
+def _get_genre_registry():
+    """延迟加载 scripts/genre_registry（P0-1：gui 层不得直连 scripts/）。"""
+    from scripts import genre_registry
+    return genre_registry
+
+
+def known_genres() -> list[str]:
+    """返回已知题材 slug 列表（排序，稳定）。"""
+    try:
+        return sorted(_get_genre_registry().known_genres())
+    except Exception:
+        # 精简打包/资产缺失时用兜底集，保证 API 可用
+        from scripts.genre_registry import FALLBACK_CORE_GENRES
+        return sorted(FALLBACK_CORE_GENRES)
+
+
+def is_known_genre(genre: str) -> bool:
+    """题材是否在注册表中（P0-4 后端校验入口）。"""
+    if not isinstance(genre, str) or not genre.strip():
+        return False
+    try:
+        return bool(_get_genre_registry().is_known_genre(genre.strip()))
+    except Exception:
+        from scripts.genre_registry import FALLBACK_CORE_GENRES
+        return genre.strip() in FALLBACK_CORE_GENRES
 
 
 # ---------------------------------------------------------------------------

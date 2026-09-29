@@ -35,10 +35,10 @@ def run_check() -> int:
     """自检：import 全部后端模块，校验路径，不弹浏览器。"""
     from gui import engine_adapter, router, server, services, sse, state_store
 
-    mods = [engine_adapter, router, server, services, sse, state_store]
-    names = ["engine_adapter", "router", "server", "services", "sse", "state_store"]
-    for name, mod in zip(names, mods):
-        print(f"[check] import gui.{name} ... OK")
+    # 名字直接从模块对象派生。原先另抄一份 names 字符串列表与模块列表 zip：
+    # 加模块时漏改 names 就会静默少打一行自检结果，让自检报告看起来是绿的。
+    for mod in (engine_adapter, router, server, services, sse, state_store):
+        print(f"[check] import {mod.__name__} ... OK")
 
     if config.DIST_DIR.is_dir():
         print(f"[check] 静态目录存在: {config.DIST_DIR}")
@@ -64,11 +64,17 @@ def main(argv: list[str] | None = None) -> int:
     _ensure_sys_path()
 
     from gui.server import GuiServer
+    import secrets
 
-    server = GuiServer(preferred_port=args.port)
+    # Electron 模式（--no-browser）：生成身份握手 token，防止端口被抢占伪造。
+    handshake_token = secrets.token_urlsafe(32) if args.no_browser else None
+
+    server = GuiServer(preferred_port=args.port, handshake_token=handshake_token)
     host, port = server.start()
     url = f"http://{host}:{port}/"
-    print(f"[GUI] novel-lab 书籍分析服务已启动: {url}")
+    print(f"[GUI] 暮冬念春 服务已启动: {url}")
+    if handshake_token:
+        print(f"[GUI] 握手令牌: {handshake_token}")
     print("[GUI] 按 Ctrl+C 停止。")
 
     if not args.no_browser:

@@ -44,8 +44,8 @@ def git_archive(stage_app: Path) -> None:
         ["git", "archive", "HEAD", "--format=tar.gz"],
         cwd=ROOT, check=True, capture_output=True,
     ).stdout
-    import tarfile
     import io
+    import tarfile
     with tarfile.open(fileobj=io.BytesIO(tar), mode="r:gz") as tf:
         tf.extractall(stage_app)  # noqa: S202 — 内容来自本仓 git，受控
 

@@ -9,9 +9,9 @@ import json
 import shutil
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from gui import config, migrate
+from gui import config, engine_adapter, migrate
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
 
@@ -22,7 +22,7 @@ _log = get_logger("advanced_service")
 # M1: 蒸馏
 # ---------------------------------------------------------------------------
 
-def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[str, Any]:
+def distill_genre(genre: str, book_names: list[str] | None = None) -> dict[str, Any]:
     """触发题材蒸馏：跨书聚合资产 → distilled JSON。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
@@ -54,15 +54,11 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
         raise ServiceError(f"非法 genre 名: {genre!r}", 400)
 
     # 调用 distill（CRITICAL：必须调 run_distill 而非 distill_genre，后者不写盘）
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
-    import distill as distill_mod
-
+    # 铁律：scripts/ 只经 engine_adapter 触碰。
     # 写盘门禁失败（payload 不合法）抛 ValueError；这是**可诊断的输入问题**，
     # 必须转成 400 可读错误，否则会冒到路由层变成 500，用户只看到「服务器内部错误」。
     try:
-        result = distill_mod.run_distill(genre, book_names=books)
+        result = engine_adapter.distill_run(genre, book_names=books)
     except ValueError as exc:
         raise ServiceError(f"蒸馏写盘门禁失败：{exc}", 400) from exc
     written = result.get("written", [])
@@ -81,11 +77,15 @@ def distill_genre(genre: str, book_names: Optional[List[str]] = None) -> Dict[st
     }
 
 
-def distill_status(genre: str) -> Dict[str, Any]:
+def distill_status(genre: str) -> dict[str, Any]:
     """查看题材蒸馏状态：已有 distilled 资产 + 可蒸馏的书。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
     genre = genre.strip()
+    # 安全：genre 用于拼 glob 路径，必须白名单校验（与 distill_genre 一致）。
+    import re as _re
+    if not _re.fullmatch(r"[A-Za-z0-9_-]+", genre):
+        raise ServiceError(f"非法 genre 名: {genre!r}", 400)
 
     # 已有 distilled 资产
     distilled = []
@@ -118,15 +118,11 @@ def distill_status(genre: str) -> Dict[str, Any]:
 # M1: 题材聚合
 # ---------------------------------------------------------------------------
 
-def aggregate_genre(genre: str) -> Dict[str, Any]:
+def aggregate_genre(genre: str) -> dict[str, Any]:
     """聚合题材包：≥3 本同题材 → genre-pack。"""
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空", 400)
     genre = genre.strip()
-
-    import sys
-    if str(config.SCRIPTS_DIR) not in sys.path:
-        sys.path.insert(0, str(config.SCRIPTS_DIR))
 
     # 检查书数
     books = []
@@ -166,7 +162,7 @@ def aggregate_genre(genre: str) -> Dict[str, Any]:
 # M1: 批量拆书状态
 # ---------------------------------------------------------------------------
 
-def batch_status() -> Dict[str, Any]:
+def batch_status() -> dict[str, Any]:
     """批量拆书状态：corpus/raw/ 下各书的 pass 完成情况。"""
     raw_root = config.CORPUS_DIR / "raw"
     books = []
@@ -192,7 +188,7 @@ def batch_status() -> Dict[str, Any]:
 # M4: 资产写入
 # ---------------------------------------------------------------------------
 
-def update_asset(kind: str, asset_id: str, content: Dict[str, Any]) -> Dict[str, Any]:
+def update_asset(kind: str, asset_id: str, content: dict[str, Any]) -> dict[str, Any]:
     """更新资产 JSON 内容。"""
     if not content or not isinstance(content, dict):
         raise ServiceError("content 必须为 JSON 对象", 400)
@@ -213,10 +209,10 @@ def update_asset(kind: str, asset_id: str, content: Dict[str, Any]) -> Dict[str,
     # 重索引
     migrate.sync_asset(fp)
 
-    return {"name": name, "path": str(fp.relative_to(config.ROOT_DIR)), "updated": True}
+    return {"name": name, "path": migrate.rel_path(fp), "updated": True}
 
 
-def delete_asset(kind: str, asset_id: str) -> Dict[str, Any]:
+def delete_asset(kind: str, asset_id: str) -> dict[str, Any]:
     """删除资产（移到回收站而非硬删除）。"""
     name = asset_id.split(":")[-1] if ":" in asset_id else asset_id
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00")):
@@ -236,10 +232,10 @@ def delete_asset(kind: str, asset_id: str) -> Dict[str, Any]:
     dst = trash_dir / f"{name}-{ts}-{uuid.uuid4().hex[:6]}.json"
     shutil.move(str(fp), str(dst))
 
-    return {"name": name, "trashed_to": str(dst.relative_to(config.ROOT_DIR)), "deleted": True}
+    return {"name": name, "trashed_to": migrate.rel_path(dst), "deleted": True}
 
 
-def create_asset(name: str, kind: str, content: Dict[str, Any]) -> Dict[str, Any]:
+def create_asset(name: str, kind: str, content: dict[str, Any]) -> dict[str, Any]:
     """新建资产。"""
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00")):
         raise ServiceError(f"非法资产名: {name}", 400)
@@ -253,4 +249,4 @@ def create_asset(name: str, kind: str, content: Dict[str, Any]) -> Dict[str, Any
     fp.write_text(json.dumps(content, ensure_ascii=False, indent=2), encoding="utf-8")
     migrate.sync_asset(fp)
 
-    return {"name": name, "path": str(fp.relative_to(config.ROOT_DIR)), "created": True}
+    return {"name": name, "path": migrate.rel_path(fp), "created": True}

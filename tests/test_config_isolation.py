@@ -29,8 +29,9 @@ _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
-from gui import config, state_store, db  # noqa: E402
 import _isolation  # noqa: E402
+
+from gui import config, db, state_store  # noqa: E402
 
 
 def _file_fingerprint(path: Path):

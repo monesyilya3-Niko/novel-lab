@@ -66,7 +66,7 @@ export default function ChapterList() {
                     label={`${st.label}`}
                     sx={{
                       bgcolor: st.color,
-                      color: '#fff',
+                      color: 'common.white',
                       height: 18,
                       fontSize: 11,
                     }}

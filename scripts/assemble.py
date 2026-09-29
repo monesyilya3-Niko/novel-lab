@@ -27,8 +27,8 @@ import sys
 from datetime import date
 from pathlib import Path
 
-import normalize as norm
 import compliance as comp
+import normalize as norm
 import validate as validate_mod
 
 ROOT = Path(__file__).resolve().parent.parent

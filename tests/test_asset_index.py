@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config, asset_index, state_store  # noqa: E402
+from gui import asset_index, config, state_store  # noqa: E402
 
 
 class TestAssetIndex(unittest.TestCase):
@@ -251,3 +251,216 @@ class TestListBooksSummary(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestAssetSummary(unittest.TestCase):
+    """资产可读摘要回归（2026-09-29 用户反馈"资产库有很多内容不对"）：
+    详情必须带中文 summary；占位 0 与注入一致被省略；标签与 scripts 同步。
+
+    隔离：自建 setUpClass，把 config 路径指向临时目录并写入夹具，
+    不读真实 assets（AGENTS.md §4）。"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = Path(tempfile.mkdtemp(prefix="asset_summary_qa_"))
+        cls._orig = {
+            "ASSETS_ROOT": config.ASSETS_ROOT,
+            "REPORTS_DIR": config.REPORTS_DIR,
+            "CORPUS_DIR": config.CORPUS_DIR,
+            "CONFIG_DIR": config.CONFIG_DIR,
+            "STATE_ROOT": config.STATE_ROOT,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.ASSETS_ROOT = cls._tmp / "assets"
+        config.REPORTS_DIR = cls._tmp / "reports"
+        config.CORPUS_DIR = cls._tmp / "corpus"
+        config.CONFIG_DIR = cls._tmp / "config"
+        config.STATE_ROOT = cls._tmp / "gui_state"
+        config.STATE_JSON_DIR = cls._tmp / "gui_state"
+        for d in ("ASSETS_ROOT", "REPORTS_DIR", "CORPUS_DIR", "CONFIG_DIR",
+                  "STATE_ROOT"):
+            getattr(config, d).mkdir(parents=True, exist_ok=True)
+
+        import json as _json
+        voice = {
+            "meta": {"source_title": "测试书", "genre": "test-genre"},
+            "narration": {"pov": "第三人称限知"},
+            "dialogue": {"dialogue_ratio": 0.26},
+            "banned": {"never_used_words": ["华丽辞藻堆砌", "复杂心理学术语"]},
+        }
+        distilled = {
+            "meta": {
+                "id": "t-voice-card-distilled",
+                "dimension": "voice-card",
+                "genre": "test-genre",
+                "source_books": ["bookA", "bookB"],
+                "books_count": 2,
+            },
+            "rules": [
+                {"id": "r1", "dimension": "voice-card",
+                 "field": "narration.pov", "kind": "hard",
+                 "value": "第三人称限知", "sources": [],
+                 "confidence": 0.8, "conflict": False,
+                 "over_generalized": False, "blindspot_books": []},
+                {"id": "r2", "dimension": "voice-card",
+                 "field": "narration.sentence_rhythm.avg_length",
+                 "kind": "hard", "value": 0, "sources": [],
+                 "confidence": 0.8, "conflict": False,
+                 "over_generalized": False, "blindspot_books": []},
+                {"id": "r3", "dimension": "voice-card",
+                 "field": "emotion_handling.mode", "kind": "soft",
+                 "value": "混合式", "sources": [
+                     {"book": "bookA", "value": "混合式"},
+                     {"book": "bookB", "value": "直陈式"}],
+                 "confidence": 0.7, "conflict": True,
+                 "over_generalized": False, "blindspot_books": []},
+            ],
+            "blindspots": [],
+            "stats": {},
+        }
+        trope = {
+            "meta": {"id": "trope-library"},
+            "tropes": [
+                {"id": "t1", "name": "公开打脸", "genre_scope": "universal"},
+                {"id": "t2", "name": "隐藏身份", "genre_scope": "universal"},
+            ],
+        }
+        (config.ASSETS_ROOT / "test-book-voice-card.json").write_text(
+            _json.dumps(voice, ensure_ascii=False), encoding="utf-8")
+        (config.ASSETS_ROOT / "test-voice-card-distilled.json").write_text(
+            _json.dumps(distilled, ensure_ascii=False), encoding="utf-8")
+        (config.ASSETS_ROOT / "trope-library.json").write_text(
+            _json.dumps(trope, ensure_ascii=False), encoding="utf-8")
+
+    @classmethod
+    def tearDownClass(cls):
+        for k, v in cls._orig.items():
+            setattr(config, k, v)
+        for child in sorted(cls._tmp.rglob("*"), reverse=True):
+            if child.is_file() or child.is_symlink():
+                child.unlink()
+            elif child.is_dir():
+                child.rmdir()
+        cls._tmp.rmdir()
+
+    def test_detail_has_chinese_summary(self):
+        idx = asset_index.AssetIndex()
+        detail = idx._detail_from_scan(
+            "voice", "test-book-voice-card", "test-book-voice-card")
+        summary = detail.get("summary", "")
+        self.assertIn("## 基本信息", summary)
+        self.assertIn("## 用途", summary)
+        self.assertIn("## 关键内容", summary)
+        self.assertIn("## 适用位置", summary)
+        self.assertIn("声线卡", summary)
+        self.assertIn("叙述人称", summary)
+        self.assertIn("第三人称限知", summary)
+        self.assertIn("26%", summary)
+        self.assertIn("## 禁止项", summary)
+        # 原始 JSON 仍保留（前端收进"高级"折叠区），不是被摘要替换。
+        self.assertIn("content", detail)
+
+    def test_distilled_summary_skips_placeholder_zero(self):
+        idx = asset_index.AssetIndex()
+        detail = idx._detail_from_scan(
+            "distilled", "test-voice-card-distilled", "test-voice-card-distilled")
+        summary = detail.get("summary", "")
+        # 与注入一致：占位 0 不作为有效规则展示，文末注明省略。
+        self.assertNotIn("必守 · 平均句长", summary)
+        self.assertIn("从未被统计", summary)
+        self.assertIn("必守 · 叙述人称", summary)
+        # 分歧的建议规则只计数不展开（保持摘要简洁，详情见原始数据）。
+        self.assertIn("建议 1 条", summary)
+
+    def test_trope_summary_lists_names(self):
+        idx = asset_index.AssetIndex()
+        detail = idx._detail_from_scan("trope", "trope-library", "trope-library")
+        summary = detail.get("summary", "")
+        self.assertIn("桥段库", summary)
+        self.assertIn("公开打脸", summary)
+        self.assertIn("隐藏身份", summary)
+
+    def test_summary_never_crashes_on_empty(self):
+        for kind in asset_index.ASSET_KINDS:
+            s = asset_index.describe_asset(kind, "x", {})
+            self.assertIn("## 基本信息", s, kind)
+            self.assertIn("## 适用位置", s, kind)
+
+    def test_distilled_labels_in_sync_with_scripts(self):
+        # gui 镜像的中文标签必须与 scripts/distill_render.py 保持一致。
+        scripts_dir = str(ROOT / "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        import distill_render
+        for k, v in asset_index._DISTILLED_FIELD_LABELS.items():
+            self.assertIn(k, distill_render.FIELD_LABELS)
+            self.assertEqual(v, distill_render.FIELD_LABELS[k],
+                             f"蒸馏字段标签漂移: {k}")
+        self.assertEqual(asset_index._ZERO_MEANS_MISSING,
+                         distill_render._ZERO_MEANS_MISSING,
+                         "占位零值字段表漂移：摘要与注入将不一致")
+
+
+class TestGenreFromFile(unittest.TestCase):
+    """_genre_from_file / _make_item 的 genre 透出（2026-09-29 题材隔离 UI 预检配套）。
+
+    规则必须与 writing_service._asset_genre 一致：
+    meta.genre 优先，否则取 meta.id 的 ``genre-`` 前缀；文件损坏/结构异常 → None。
+    纯静态方法 + 临时文件，不碰 config 路径，无需隔离。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="genre_from_file_"))
+        self._n = 0
+
+    def tearDown(self):
+        for p in self._tmp.iterdir():
+            p.unlink()
+        self._tmp.rmdir()
+
+    def _f(self, content: str) -> Path:
+        self._n += 1
+        p = self._tmp / f"a{self._n}-voice-card.json"
+        p.write_text(content, encoding="utf-8")
+        return p
+
+    def test_meta_genre_preferred(self):
+        p = self._f('{"meta":{"genre":"xianxia","id":"genre-xianxia-abc"}}')
+        self.assertEqual(asset_index.AssetIndex._genre_from_file(p), "xianxia")
+
+    def test_falls_back_to_id_prefix(self):
+        p = self._f('{"meta":{"id":"genre-dushi-2026"}}')
+        self.assertEqual(asset_index.AssetIndex._genre_from_file(p), "dushi-2026")
+
+    def test_no_genre_no_prefix_returns_none(self):
+        p = self._f('{"meta":{"id":"bookA-voice"}}')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_broken_json_returns_none(self):
+        p = self._f('{"meta": {"genre": "xianxia"')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_non_dict_json_returns_none(self):
+        p = self._f('[1, 2, 3]')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_meta_not_dict_returns_none(self):
+        p = self._f('{"meta": "xianxia"}')
+        self.assertIsNone(asset_index.AssetIndex._genre_from_file(p))
+
+    def test_missing_file_returns_none(self):
+        self.assertIsNone(
+            asset_index.AssetIndex._genre_from_file(self._tmp / "nope.json"))
+
+    def test_make_item_carries_genre(self):
+        """扫描回退路径的 item 必须带 genre，前端预检依赖该字段。"""
+        p = self._f('{"meta":{"genre":"xianxia"}}')
+        idx = asset_index.AssetIndex(ttl_seconds=5)
+        item = idx._make_item("voice", p, self._tmp)
+        self.assertEqual(item["genre"], "xianxia")
+
+    def test_make_item_genre_none_when_unknown(self):
+        p = self._f('{"meta":{}}')
+        idx = asset_index.AssetIndex(ttl_seconds=5)
+        item = idx._make_item("voice", p, self._tmp)
+        self.assertIsNone(item["genre"])

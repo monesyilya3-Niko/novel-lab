@@ -252,8 +252,9 @@ class TestListProjects(unittest.TestCase):
         """全新环境：NOVEL_DIR 不存在时 default 仍必须出现在列表中（D1）。"""
         import tempfile
         from pathlib import Path
-        from tests import _isolation  # noqa: F401  — ensure package importable
+
         import gui.config as gconfig
+        from tests import _isolation  # noqa: F401  — ensure package importable
         missing = Path(tempfile.mkdtemp()) / "novel-missing"
         assert not missing.exists()
         old = gconfig.NOVEL_DIR
@@ -370,6 +371,56 @@ class TestConcurrencyLimit(unittest.TestCase):
         with writing_service._WRITING_LOCK:
             writing_service._WRITING_TASKS.clear()
 
+
+class TestCreateProject(unittest.TestCase):
+    """新建写作项目（交接文档待办⑦）：POST /api/writing/projects。"""
+
+    def test_create_ok(self):
+        r = writing_service.create_project("新书计划")
+        self.assertEqual(r["id"], "新书计划")
+        self.assertFalse(r["read_only"])
+        target = config.NOVEL_DIR / "新书计划"
+        self.assertTrue(target.is_dir())
+        state = json.loads((target / "state.json").read_text(encoding="utf-8"))
+        self.assertEqual(state["name"], "新书计划")
+        # 建完后 list_projects 能看到。
+        ids = [p["id"] for p in writing_service.list_projects()]
+        self.assertIn("新书计划", ids)
+
+    def test_empty_name_400(self):
+        for bad in ("", "   "):
+            with self.assertRaises(ServiceError) as cm:
+                writing_service.create_project(bad)
+            self.assertEqual(cm.exception.code, 400)
+
+    def test_duplicate_409(self):
+        writing_service.create_project("重复项目")
+        with self.assertRaises(ServiceError) as cm:
+            writing_service.create_project("重复项目")
+        self.assertEqual(cm.exception.code, 409)
+
+    def test_traversal_rejected(self):
+        for bad in ("a/b", "a\\b", "..", "."):
+            with self.assertRaises(ServiceError) as cm:
+                writing_service.create_project(bad)
+            self.assertEqual(cm.exception.code, 400)
+        # 穿越失败后 NOVEL_DIR 外不应留下任何目录。
+        self.assertFalse((config.NOVEL_DIR / "a").exists())
+
+    def test_leading_trailing_whitespace_stripped(self):
+        """首尾空白被去除后使用，不报错。"""
+        r = writing_service.create_project("  空白项目  ")
+        self.assertEqual(r["id"], "空白项目")
+
+    def test_default_reserved(self):
+        with self.assertRaises(ServiceError) as cm:
+            writing_service.create_project("default")
+        self.assertEqual(cm.exception.code, 400)
+
+    def test_name_too_long(self):
+        with self.assertRaises(ServiceError) as cm:
+            writing_service.create_project("x" * 61)
+        self.assertEqual(cm.exception.code, 400)
 
 if __name__ == "__main__":
     unittest.main()

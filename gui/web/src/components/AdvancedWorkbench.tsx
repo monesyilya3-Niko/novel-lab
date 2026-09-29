@@ -1,6 +1,7 @@
 // M1 高级分析 + M4 资产写入工作台：蒸馏 / 聚合 / 批量状态 / 资产编辑。
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback} from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -20,13 +21,16 @@ export default function AdvancedWorkbench() {
   const [tab, setTab] = useState(0)
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
         <Tab label="蒸馏" />
         <Tab label="批量状态" />
         <Tab label="资产编辑" />
         <Tab label="平台适配" />
       </Tabs>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        <ContextHelpButton guideKey="advanced" />
+      </Box>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
         {tab === 0 && <DistillPanel />}
         {tab === 1 && <BatchStatusPanel />}
         {tab === 2 && <AssetEditPanel />}
@@ -47,14 +51,14 @@ function DistillPanel() {
   const [rawOpen, setRawOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     try {
       const data = await advancedApi.distillStatus(genre)
       setStatus(data as Record<string, unknown>)
-    } catch { /* ignore */ }
-  }
+    } catch { /* P2-F12：后台轮询静默失败是预期的（避免错误刷屏），状态区保持旧值 */ }
+  }, [genre])
 
-  useEffect(() => { loadStatus() }, [genre])
+  useEffect(() => { loadStatus() }, [loadStatus])
 
   const doDistill = async () => {
     setLoading(true)

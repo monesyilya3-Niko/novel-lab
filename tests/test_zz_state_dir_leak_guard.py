@@ -92,6 +92,23 @@ class TestRealGuiStateLeakGuard(unittest.TestCase):
         residue = sorted(p.name for p in real_dir.glob("*.tmp"))
         self.assertEqual(residue, [], f"真实 gui_state/ 存在原子写 .tmp 残留: {residue}")
 
+    def test_no_new_files_in_real_gui_state(self):
+        # 2026-09-28 补：此前只比对 settings.json 内容/mtime 和 .tmp 残留，
+        # _isolation.snapshot_real_gui_state() 拍了 files 集合却从未比对，
+        # 导致 test_p2_hardening 起真实 GuiServer 在真实 gui_state/ 落下
+        # index.db 长期漏网（干净安装复测抓获）。本用例补上文件集合比对。
+        # 排除 SQLite -wal/-shm 边车（只读打开 WAL 库也可能创建，见快照函数注释）。
+        current = _isolation.snapshot_real_gui_state()["files"]
+        baseline = _isolation.SESSION_START_GUI_STATE_SNAPSHOT["files"]
+        ignore = {n for n in current | baseline
+                  if n.endswith("-wal") or n.endswith("-shm")}
+        leaked = sorted((current - baseline) - ignore)
+        self.assertEqual(
+            leaked, [],
+            "检测到测试污染真实 gui_state/（未隔离 STATE_ROOT/DB_PATH）："
+            f"新增 {leaked}",
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

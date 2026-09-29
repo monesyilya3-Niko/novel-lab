@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import CssBaseline from '@mui/material/CssBaseline'
 import Box from '@mui/material/Box'
+import Alert from '@mui/material/Alert'
 import AppBar from '@mui/material/AppBar'
 import Toolbar from '@mui/material/Toolbar'
 import IconButton from '@mui/material/IconButton'
@@ -13,14 +14,19 @@ import DarkModeIcon from '@mui/icons-material/DarkMode'
 import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import CircularProgress from '@mui/material/CircularProgress'
 import { AppProvider, useApp } from './state/AppContext'
 import { useThemeMode } from './state/ThemeModeContext'
 import { buildMuiTheme } from './theme'
+import { ink } from './ink'
 import WorkbenchNav from './layout/WorkbenchNav'
 import type { WorkbenchKey } from './layout/WorkbenchNav'
 import ErrorBoundary from './components/ErrorBoundary'
 import OnboardingWizard, { isOnboarded } from './components/OnboardingWizard'
+import CommandPalette, { CommandPaletteTrigger } from './components/CommandPalette'
+import WorkbenchTransition from './components/WorkbenchTransition'
+import { DashboardSkeleton } from './components/SkeletonBlocks'
+import Fab from '@mui/material/Fab'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 
 // 4B：页面级组件 lazy 加载，主包只含框架 + 导航 + 主题
 const HomeDashboard = lazy(() => import('./components/HomeDashboard'))
@@ -31,13 +37,15 @@ const QualityWorkbench = lazy(() => import('./components/QualityWorkbench'))
 const SystemWorkbench = lazy(() => import('./components/SystemWorkbench'))
 const AdvancedWorkbench = lazy(() => import('./components/AdvancedWorkbench'))
 const SettingsWorkbench = lazy(() => import('./components/SettingsWorkbench'))
+const AdminWorkbench = lazy(() => import('./components/AdminWorkbench'))
+const HelpWorkbench = lazy(() => import('./components/HelpWorkbench'))
 
 const SIDEBAR_WIDTH = 220
 
 function LoadingFallback() {
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-      <CircularProgress />
+    <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
+      <DashboardSkeleton />
     </Box>
   )
 }
@@ -76,16 +84,16 @@ export default function App() {
 }
 
 const WORKBENCH_ORDER: WorkbenchKey[] = [
-  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings',
+  'home', 'analysis', 'writing', 'quality', 'assets', 'advanced', 'system', 'settings', 'admin', 'help',
 ]
 
 function AppShell() {
-  const { workbench, setWorkbench, overview } = useApp()
+  const { workbench, setWorkbench, overview, initError, helpRequest, openHelp } = useApp()
   const wide = useMediaQuery('(min-width: 961px)')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [onboarded, setOnboarded] = useState(isOnboarded)
 
-  // 键盘快捷键：Alt+1..8 切换工作台（输入框聚焦时不劫持）
+  // 键盘快捷键：Alt+1..9 切换工作台（输入框聚焦时不劫持）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey) return
@@ -118,17 +126,41 @@ function AppShell() {
       {showWizard && (
         <OnboardingWizard onDone={() => setOnboarded(true)} onNavigate={setWorkbench} />
       )}
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'primary.main' }}>
-        <Toolbar sx={{ minHeight: 48, gap: 1 }}>
+      <AppBar position="static" elevation={0} sx={{
+        background: (theme) => theme.palette.mode === 'dark' ? ink.nightCard : ink.surface,
+        borderBottom: (theme) => `1px solid ${theme.palette.mode === 'dark' ? ink.nightLine : ink.hairline}`,
+      }}>
+      {initError && (
+        <Alert severity="error" sx={{ borderRadius: 0 }}>
+          初始化失败：{initError}
+        </Alert>
+      )}
+        <Toolbar sx={{ minHeight: 56, gap: 1.5, px: { xs: 2, md: 3 } }}>
           {!wide && (
-            <IconButton color="inherit" edge="start" onClick={() => setDrawerOpen(true)} aria-label="打开导航">
+            <IconButton color="inherit" edge="start" onClick={() => setDrawerOpen(true)} aria-label="打开导航" sx={{ color: (theme) => theme.palette.mode === 'dark' ? ink.moonWhite : ink.text }}>
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="h6" sx={{ fontSize: 18, flex: 1 }}>
-            novel-lab 全功能工作台
-          </Typography>
-          <ModeToggle />
+          <Box sx={{
+            width: 32, height: 32, borderRadius: 2,
+            background: ink.primary,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700, color: '#fff', fontSize: 18,
+          }}>
+            暮
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="subtitle1" sx={{ color: (theme) => theme.palette.mode === 'dark' ? ink.moonWhite : ink.text, fontWeight: 700, letterSpacing: '0.12em', lineHeight: 1.2 }}>
+              暮冬念春
+            </Typography>
+            <Typography variant="caption" sx={{ color: (theme) => theme.palette.mode === 'dark' ? ink.moonSoft : ink.textTertiary, letterSpacing: '0.3em', fontSize: 10 }}>
+              全功能工作台
+            </Typography>
+          </Box>
+          <Box>
+            <ModeToggle />
+          </Box>
+          <CommandPaletteTrigger />
         </Toolbar>
       </AppBar>
 
@@ -158,6 +190,7 @@ function AppShell() {
           <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback />}>
+                <WorkbenchTransition key={workbench}>
                 {workbench === 'home' && <HomeDashboard />}
                 {workbench === 'analysis' && <AnalysisView />}
                 {workbench === 'assets' && <AssetLibrary />}
@@ -166,11 +199,42 @@ function AppShell() {
                 {workbench === 'quality' && <QualityWorkbench />}
                 {workbench === 'system' && <SystemWorkbench />}
                 {workbench === 'settings' && <SettingsWorkbench />}
+                {workbench === 'admin' && <AdminWorkbench />}
+                {workbench === 'help' && (
+                  <HelpWorkbench
+                    key={helpRequest ? `help-${helpRequest.nonce}` : 'help-default'}
+                    initialTab={helpRequest?.tab ?? 'start'}
+                    initialAnchor={helpRequest?.anchor ?? null}
+                  />
+                )}
+                </WorkbenchTransition>
               </Suspense>
             </ErrorBoundary>
           </Box>
         </Box>
       </Box>
+      <CommandPalette />
+      {/* 全局悬浮帮助按钮：任何页面一键进入帮助中心 */}
+      {workbench !== 'help' && (
+        <Tooltip title="帮助中心：术语、指南、工作流" placement="left">
+          <Fab
+            size="medium"
+            onClick={() => openHelp('start', null)}
+            aria-label="打开帮助中心"
+            sx={{
+              position: 'fixed',
+              bottom: 24,
+              right: 24,
+              bgcolor: ink.primary,
+              color: '#fff',
+              '&:hover': { bgcolor: ink.primaryDeep },
+              zIndex: 1200,
+            }}
+          >
+            <HelpOutlineIcon />
+          </Fab>
+        </Tooltip>
+      )}
     </Box>
   )
 }

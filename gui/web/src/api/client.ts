@@ -34,11 +34,20 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * 管理员会话失效（401）全局回调。
+ * AdminWorkbench 注册后，任何 /api/admin/* 请求返回 401 即自动回登录页。
+ */
+let adminUnauthorizedHandler: (() => void) | null = null
+export function onAdminUnauthorized(fn: (() => void) | null) {
+  adminUnauthorizedHandler = fn
+}
+
 /** 把底层异常翻译为用户可读中文（AsyncBoundary/告警条统一展示）。 */
 export function friendlyError(e: unknown): string {
   if (e instanceof ApiError) return e.message
   if (e instanceof DOMException && e.name === 'AbortError') return '请求超时，请重试'
-  if (e instanceof TypeError) return '无法连接服务——请确认 novel-lab 正在运行'
+  if (e instanceof TypeError) return '无法连接服务——请确认暮冬念春正在运行'
   if (e instanceof Error && e.message) return e.message
   return '发生未知错误，请重试'
 }
@@ -92,6 +101,20 @@ function bookFromSnake(b: Record<string, unknown>): Book {
 }
 
 // ---------------------------------------------------------------------------
+// 身份握手 token（Electron 模式）：main.js 经 URL ?handshake= 传入，
+// 每次 API 请求携带 X-Handshake-Token 头，后端校验防端口抢占伪造。
+// ---------------------------------------------------------------------------
+function getHandshakeToken(): string | null {
+  try {
+    const m = /[?&]handshake=([^&]+)/.exec(window.location.search)
+    return m ? decodeURIComponent(m[1]) : null
+  } catch {
+    return null
+  }
+}
+const HANDSHAKE_TOKEN: string | null = getHandshakeToken()
+
+// ---------------------------------------------------------------------------
 // 请求核心（唯一出口；post/put/del/get 是薄别名）
 // ---------------------------------------------------------------------------
 
@@ -105,9 +128,12 @@ async function typedRequest<T>(
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
   let res: Response
   try {
+    const headers: Record<string, string> = {}
+    if (body !== undefined) headers['Content-Type'] = 'application/json'
+    if (HANDSHAKE_TOKEN) headers['X-Handshake-Token'] = HANDSHAKE_TOKEN
     res = await fetch(`${BASE}${path}`, {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: Object.keys(headers).length ? headers : undefined,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
     })
@@ -115,6 +141,11 @@ async function typedRequest<T>(
     clearTimeout(timer)
   }
 
+  return parseApiResponse<T>(res, path)
+}
+
+/** 解析统一响应体：非 JSON / 业务 code 非零都抛 ApiError。 */
+async function parseApiResponse<T>(res: Response, path: string): Promise<T> {
   let json: ApiResponse<unknown>
   try {
     json = (await res.json()) as ApiResponse<unknown>
@@ -123,9 +154,31 @@ async function typedRequest<T>(
     throw new ApiError(`服务返回异常响应 (HTTP ${res.status})`, res.status)
   }
   if (json.code !== 0) {
+    // 管理员接口 401 → 会话失效，通知全局回调自动回登录页
+    if (json.code === 401 && path.startsWith('/admin/') && adminUnauthorizedHandler) {
+      adminUnauthorizedHandler()
+    }
     throw new ApiError(json.message || `请求失败 (code=${json.code})`, json.code)
   }
   return deepToCamel<T>(json.data)
+}
+
+const UPLOAD_TIMEOUT_MS = 120_000
+
+/** 上传文件导入（P0-3）：浏览器 File 直传，不走 path。 */
+async function uploadRequest<T>(path: string, form: FormData): Promise<T> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), UPLOAD_TIMEOUT_MS)
+  let res: Response
+  try {
+    // 注意：不手动设 Content-Type，浏览器会自动带 boundary。
+    const upHeaders: Record<string, string> = {}
+    if (HANDSHAKE_TOKEN) upHeaders['X-Handshake-Token'] = HANDSHAKE_TOKEN
+    res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, signal: ctrl.signal, headers: Object.keys(upHeaders).length ? upHeaders : undefined })
+  } finally {
+    clearTimeout(timer)
+  }
+  return parseApiResponse<T>(res, path)
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -138,6 +191,34 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export async function importBook(path: string, batchSize?: number): Promise<Book> {
   const data = await request<Record<string, unknown>>('POST', '/import', { path, batch_size: batchSize })
+  return bookFromSnake(data)
+}
+
+/** 上传 .txt 文件导入（P0-3 修复：浏览器拿不到 file.path，改走 multipart 上传）。 */
+export async function uploadBook(file: File, batchSize?: number): Promise<Book> {
+  const form = new FormData()
+  form.append('file', file, file.name)
+  if (batchSize) form.append('batch_size', String(batchSize))
+  const data = await uploadRequest<Record<string, unknown>>('/import-upload', form)
+  return bookFromSnake(data)
+}
+
+export interface SampleInfo {
+  name: string
+  genre: string
+  size: number
+  chapters: number
+}
+
+/** 获取内置示例语料列表。 */
+export async function listSamples(): Promise<SampleInfo[]> {
+  const data = await request<{ samples: SampleInfo[] }>('GET', '/samples')
+  return data.samples
+}
+
+/** 一键导入内置示例语料。 */
+export async function importSample(name: string): Promise<Book> {
+  const data = await request<Record<string, unknown>>('POST', '/samples/import', { name })
   return bookFromSnake(data)
 }
 
@@ -194,6 +275,11 @@ export async function resumeAnalysis(bookId: string, genre?: string, modelId?: s
 
 export async function retryFailed(bookId: string): Promise<{ retried: number }> {
   return toCamel(await request<Record<string, unknown>>('POST', '/analyze/retry-failed', { book_id: bookId }))
+}
+
+export async function getGenres(): Promise<string[]> {
+  const data = await request<{ genres: string[] }>('GET', '/genres')
+  return data.genres ?? []
 }
 
 export async function getStatus(bookId?: string): Promise<StatusInfo> {
@@ -322,7 +408,11 @@ export async function runFullAnalysis(
 // ---------------------------------------------------------------------------
 
 export function subscribeEvents(bookId: string | null, onEvent: (e: ProgressEvent) => void): () => void {
-  const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
+  const params = new URLSearchParams()
+  if (bookId) params.set('book_id', bookId)
+  // Electron 模式：EventSource 发不了自定义头，token 走查询参数（后端同样校验）。
+  if (HANDSHAKE_TOKEN) params.set('handshake_token', HANDSHAKE_TOKEN)
+  const q = params.toString() ? `?${params.toString()}` : ''
   const es = new EventSource(`${BASE}/events${q}`)
   es.onmessage = (msg) => {
     try {
@@ -355,6 +445,8 @@ const get = <T>(path: string) => typedRequest<T>('GET', path)
 // 写作
 export const writingApi = {
   projects: () => get<import('../types').WritingProject[]>('/writing/projects'),
+  createProject: (name: string) =>
+    post<import('../types').WritingProject>('/writing/projects', { name }),
   inject: (body: Record<string, unknown>) => post<import('../types').InjectResult>('/writing/inject', body),
   generate: (body: Record<string, unknown>) => post<import('../types').WritingTaskState>('/writing/generate', body),
   taskState: (taskId: string) => get<import('../types').WritingTaskState>(`/writing/tasks/${taskId}`),
@@ -362,6 +454,46 @@ export const writingApi = {
   score: (body: Record<string, unknown>) => post<import('../types').ScoreResult>('/writing/score', body),
   assemble: (body: Record<string, unknown>) => post<Record<string, unknown>>('/writing/assemble', body),
   assembleCandidates: () => get<Record<string, unknown>[]>('/writing/assemble-candidates'),
+  // v2.0.2 写作增值功能：大纲 / 人物卡 / 便签 / 统计 / 导出
+  outlines: (project: string) => get<OutlineItem[]>(`/writing/outlines?project=${encodeURIComponent(project)}`),
+  createOutline: (body: Record<string, unknown>) => post<OutlineItem>('/writing/outlines', body),
+  updateOutline: (id: number, body: Record<string, unknown>) => put<OutlineItem>(`/writing/outlines/${id}`, body),
+  deleteOutline: (id: number) => del<{ deleted: boolean }>(`/writing/outlines/${id}`),
+  characters: (project: string) => get<CharacterCard[]>(`/writing/characters?project=${encodeURIComponent(project)}`),
+  createCharacter: (body: Record<string, unknown>) => post<CharacterCard>('/writing/characters', body),
+  updateCharacter: (id: number, body: Record<string, unknown>) => put<CharacterCard>(`/writing/characters/${id}`, body),
+  deleteCharacter: (id: number) => del<{ deleted: boolean }>(`/writing/characters/${id}`),
+  notes: (project: string) => get<NoteItem[]>(`/writing/notes?project=${encodeURIComponent(project)}`),
+  createNote: (body: Record<string, unknown>) => post<NoteItem>('/writing/notes', body),
+  updateNote: (id: number, body: Record<string, unknown>) => put<NoteItem>(`/writing/notes/${id}`, body),
+  deleteNote: (id: number) => del<{ deleted: boolean }>(`/writing/notes/${id}`),
+  stats: (project: string, days = 30) =>
+    get<WritingStats>(`/writing/stats?project=${encodeURIComponent(project)}&days=${days}`),
+  exportTxt: (project: string) =>
+    get<{ filename: string; content: string; chapters: number; words: number }>(
+      `/writing/export?project=${encodeURIComponent(project)}`),
+}
+
+export interface OutlineItem {
+  id: number; project: string; kind: 'volume' | 'chapter'; title: string
+  summary: string; status: 'planned' | 'writing' | 'done'; sortOrder: number
+  createdAt: string; updatedAt: string
+}
+
+export interface CharacterCard {
+  id: number; project: string; name: string; role: string
+  description: string; extra: string; createdAt: string; updatedAt: string
+}
+
+export interface NoteItem {
+  id: number; project: string; title: string; content: string
+  createdAt: string; updatedAt: string
+}
+
+export interface WritingStats {
+  project: string; todayWords: number; todayChapters: number
+  totalWords: number; totalChapters: number; streakDays: number
+  history: { date: string; words: number; chapters: number }[]
 }
 
 // 质检
@@ -419,9 +551,16 @@ export const assetApi = {
     del<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`),
 }
 
+// 桥段库：只读，直读后端 assets/trope-library.json（32 条，见 /api/tropes）。
+export const tropeApi = {
+  list: () => get<import('../types').TropeListResult>('/tropes'),
+}
+
 // SSE：按 task_id 订阅（写作/质检长任务）
 export function subscribeTaskEvents(taskId: string, onEvent: (e: Record<string, unknown>) => void): () => void {
-  const es = new EventSource(`${BASE}/events?task_id=${encodeURIComponent(taskId)}`)
+  const params = new URLSearchParams({ task_id: taskId })
+  if (HANDSHAKE_TOKEN) params.set('handshake_token', HANDSHAKE_TOKEN)
+  const es = new EventSource(`${BASE}/events?${params.toString()}`)
   es.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data) as Record<string, unknown>
@@ -457,4 +596,76 @@ export const platformApi = {
     post<Record<string, unknown>>('/platform/format', body),
   export: (body: { platform_id: string; book_dir: string }) =>
     post<Record<string, unknown>>('/platform/export', body),
+}
+
+// 管理员系统
+export interface AdminMe {
+  loggedIn: boolean
+  username: string
+  mustChangePassword?: boolean
+}
+export interface AdminDashboard {
+  version: string
+  python: string
+  startedAt: string
+  uptimeSeconds: number
+  books: {
+    total: number
+    analyzing: number
+    items: { bookId: string; title: string; status: string; totalChapters: number }[]
+  }
+  assetsTotal: number
+  reportsTotal: number
+  assetsByKind: Record<string, number>
+  diskBytes: Record<string, number>
+  diskTotalBytes: number
+  recentAudit: AdminAuditEntry[]
+}
+export interface AdminBookSummary {
+  bookId: string
+  title: string
+  status: string
+  totalChapters: number
+  doneBatches?: number
+  totalBatches?: number
+}
+export interface AdminAuditEntry {
+  ts: string
+  username: string
+  ip: string
+  action: string
+  detail: string
+}
+export interface AdminSession {
+  id: string
+  username: string
+  ip: string
+  createdAt: string
+  expiresAt: string
+  current?: boolean
+}
+
+export const adminApi = {
+  me: () => get<AdminMe>('/admin/me'),
+  login: (username: string, password: string) =>
+    post<{ username: string; mustChangePassword: boolean }>('/admin/login', { username, password }),
+  logout: () => post<{ loggedOut: boolean }>('/admin/logout', {}),
+  dashboard: () => get<AdminDashboard>('/admin/dashboard'),
+  books: () => get<AdminBookSummary[]>('/admin/books'),
+  deleteBook: (bookId: string) => del<{ bookId: string; status: 'ok' | 'partial'; removed: string[]; skipped: string[]; warnings: string[] }>(`/admin/books/${encodeURIComponent(bookId)}`),
+  assets: (kind?: string) =>
+    get<AssetListResult>(`/admin/assets${kind ? `?kind=${encodeURIComponent(kind)}` : ''}`),
+  deleteAsset: (kind: string, id: string) =>
+    del<Record<string, unknown>>(`/admin/assets/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`),
+  reports: () => get<ReportItem[]>('/admin/reports'),
+  audit: (limit = 100, action = '', username = '') => {
+    const q = new URLSearchParams({ limit: String(limit) })
+    if (action) q.set('action', action)
+    if (username) q.set('username', username)
+    return get<AdminAuditEntry[]>(`/admin/audit?${q}`)
+  },
+  changePassword: (oldPassword: string, newPassword: string) =>
+    post<{ changed: boolean }>('/admin/change-password', { oldPassword, newPassword }),
+  sessions: () => get<AdminSession[]>('/admin/sessions'),
+  revokeSession: (id: string) => del<{ revoked: boolean }>(`/admin/sessions/${encodeURIComponent(id)}`),
 }

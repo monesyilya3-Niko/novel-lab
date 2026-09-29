@@ -23,10 +23,11 @@ const ASSETS: Row[] = [
   { id: 'genre-prose-card-index', name: 'genre-prose-card-index', kind: 'prose_card_index' },
 ]
 
-const { assetListMock, listAssetsMock, injectMock } = vi.hoisted(() => ({
+const { assetListMock, listAssetsMock, injectMock, getAssetDetailMock } = vi.hoisted(() => ({
   assetListMock: vi.fn(),
   listAssetsMock: vi.fn(),
   injectMock: vi.fn(),
+  getAssetDetailMock: vi.fn(),
 }))
 
 vi.mock('../api/client', () => ({
@@ -38,7 +39,7 @@ vi.mock('../api/client', () => ({
     delete: vi.fn(),
   },
   listAssets: (...args: unknown[]) => listAssetsMock(...args),
-  getAssetDetail: vi.fn(),
+  getAssetDetail: (...args: unknown[]) => getAssetDetailMock(...args),
   subscribeTaskEvents: vi.fn(() => () => {}),
   writingApi: {
     inject: (...args: unknown[]) => injectMock(...args),
@@ -95,6 +96,7 @@ beforeEach(() => {
   assetListMock.mockReset()
   listAssetsMock.mockReset()
   injectMock.mockReset()
+  getAssetDetailMock.mockReset()
   mockAssetList(ASSETS)
   listAssetsMock.mockResolvedValue({ total: 0, items: [] })
   injectMock.mockResolvedValue({
@@ -129,13 +131,23 @@ describe('注入面板 kind 边界', () => {
     expect(openSelectOptions('蒸馏规则（可选）')).toEqual(['无', 'distilled-A'])
   })
 
-  it('默认选中第一张 distilled 并随 body 一起注入', async () => {
+  it('distilled 默认不选中：用户明确选择后才随 body 注入', async () => {
+    // 2026-09-29 新策略：只有 voice 默认首张；distilled 默认空，避免凭空
+    // 携带资产制造题材不一致。
     render(<WritingWorkbench />)
     await screen.findByLabelText('蒸馏规则（可选）')
 
+    // 默认不自动选中
     fireEvent.click(screen.getByRole('button', { name: '生成 Prompt' }))
     await waitFor(() => expect(injectMock).toHaveBeenCalledTimes(1))
-    expect(injectMock.mock.calls[0][0]).toMatchObject({ voice: 'voice-a', distilled: 'distilled-a' })
+    expect(injectMock.mock.calls[0][0]).toMatchObject({ voice: 'voice-a', distilled: undefined })
+
+    // 用户明确选择后随 body 注入
+    fireEvent.mouseDown(screen.getByLabelText('蒸馏规则（可选）'))
+    fireEvent.click(screen.getByRole('option', { name: 'distilled-A' }))
+    fireEvent.click(screen.getByRole('button', { name: '生成 Prompt' }))
+    await waitFor(() => expect(injectMock).toHaveBeenCalledTimes(2))
+    expect(injectMock.mock.calls[1][0]).toMatchObject({ voice: 'voice-a', distilled: 'distilled-a' })
   })
 
   it('无 distilled 资产时 body 传 distilled: undefined', async () => {
@@ -183,5 +195,75 @@ describe('资产编辑面板 kind 标签边界', () => {
     expect(screen.queryByText('distilled')).not.toBeInTheDocument()
     // 索引被排除在可编辑列表外，只给只读提示
     expect(screen.getByText(/只读寻址表/)).toBeInTheDocument()
+  })
+})
+
+describe('资产库详情可读摘要', () => {
+  const ITEMS = [
+    { id: 'voice-a', name: 'voice-A', kind: 'voice', path: 'assets/voice-A.json', size: 10, mtime: 1 },
+  ]
+
+  beforeEach(() => {
+    listAssetsMock.mockResolvedValue({ total: ITEMS.length, items: ITEMS })
+  })
+
+  const SUMMARY = [
+    '# voice-A',
+    '',
+    '## 基本信息',
+    '- 类型：声线卡',
+    '- 来源书籍：测试书',
+    '',
+    '## 用途',
+    '测试用途说明。',
+    '',
+    '## 关键内容',
+    '- 叙述人称：第三人称',
+    '',
+    '## 适用位置',
+    '写作页。',
+  ].join('\n')
+
+  it('默认显示中文摘要，原始 JSON 收进"高级"折叠区', async () => {
+    getAssetDetailMock.mockResolvedValue({
+      kind: 'voice',
+      id: 'voice-a',
+      name: 'voice-A',
+      summary: SUMMARY,
+      content: { meta: { source_title: '测试书' } },
+    })
+    render(<AssetLibrary />)
+
+    fireEvent.click(await screen.findByText('voice-A'))
+
+    // 中文摘要可见。
+    expect(await screen.findByText('基本信息')).toBeInTheDocument()
+    expect(screen.getByText('测试用途说明。')).toBeInTheDocument()
+    expect(screen.getByText('叙述人称')).toBeInTheDocument()
+    // 折叠区默认收起：原始数据不可见。
+    const toggle = screen.getByRole('button', { name: '高级 · 查看原始数据' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByText(/source_title/)).not.toBeVisible()
+    // 展开后可见原始 JSON。
+    fireEvent.click(toggle)
+    await waitFor(() =>
+      expect(toggle.getAttribute('aria-expanded')).toBe('true'),
+    )
+    expect(screen.getByText(/source_title/)).toBeVisible()
+  })
+
+  it('无 summary 时回退到原始 JSON 展示（兼容旧后端）', async () => {
+    getAssetDetailMock.mockResolvedValue({
+      kind: 'voice',
+      id: 'voice-a',
+      name: 'voice-A',
+      content: { hello: 'world' },
+    })
+    render(<AssetLibrary />)
+
+    fireEvent.click(await screen.findByText('voice-A'))
+
+    expect(await screen.findByText(/"hello": "world"/)).toBeInTheDocument()
+    expect(screen.queryByText('高级 · 查看原始数据')).not.toBeInTheDocument()
   })
 })

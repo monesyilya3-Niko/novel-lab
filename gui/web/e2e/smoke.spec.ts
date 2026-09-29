@@ -8,8 +8,15 @@ test.describe('GUI 冒烟', () => {
     await expect(page.getByRole('heading', { name: 'novel-lab 全功能工作台' })).toBeVisible()
     await expect(page.getByText('已拆书')).toBeVisible()
     await expect(page.getByText('资产总数')).toBeVisible()
-    // 饼图（canvas，BaseChart role=img）
-    await expect(page.locator('[role="img"][aria-label="饼图"]')).toBeVisible()
+    // 饼图（P1-F2：不仅查容器，还要查 canvas 真实渲染且有尺寸）
+    const pie = page.locator('[role="img"][aria-label="饼图"]')
+    await expect(pie).toBeVisible()
+    const canvas = pie.locator('canvas')
+    await expect(canvas).toBeVisible()
+    const box = await canvas.boundingBox()
+    expect(box, '饼图 canvas 应有真实尺寸').not.toBeNull()
+    expect(box!.width).toBeGreaterThan(0)
+    expect(box!.height).toBeGreaterThan(0)
   })
 
   test('资产库：分类筛选可见且列表非空', async ({ page }) => {

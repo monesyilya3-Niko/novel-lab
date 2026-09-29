@@ -1,0 +1,52 @@
+name: 构建 Windows 安装包
+
+# 用途：Linux 构建机因缺 wine 打不出 NSIS 安装器（electron-builder 硬性要求），
+# 真正的 .exe 安装器只能在 Windows 上构建。本 workflow 在云端 Windows runner
+# 上跑 `npm run dist`，产物为 NSIS 安装器。
+#
+# 触发：推送到 feat/enterprise-hardening 分支即自动构建；
+# 也可在 Actions 页面手动 Run workflow（需 workflow 已合入默认分支）。
+
+on:
+  # 手动触发（workflow 合并进默认分支后可用）
+  workflow_dispatch:
+  # 推送到本分支即自动构建安装器
+  push:
+    branches: [feat/enterprise-hardening]
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+        # 注：不启用 npm cache——desktop/package-lock.json 被 .gitignore 忽略、
+        # 未入库，runner 上无此文件会导致 "unable to cache dependencies" 硬失败。
+
+      - name: 安装依赖
+        # 注：不用 npm ci——desktop/package-lock.json 被 .gitignore 忽略未入库，
+        # runner 上没有 lock 文件，npm ci 会硬失败；用 npm install 按语义版本解析。
+        run: npm install
+
+      - name: 构建 NSIS 安装器
+        # predist 钩子自动执行：fetch-python-win.py（准备 embeddable Python，
+        # runner 上 python 命令可用）+ sync_backend.py（同步后端 296 文件，
+        # 含 python-win/；缺失则 fail fast，不产残缺包）
+        run: npm run dist
+
+      - name: 上传安装器
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: desktop/release/*-Setup-*-win64.exe
+          if-no-files-found: error

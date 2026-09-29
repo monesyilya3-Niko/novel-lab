@@ -31,8 +31,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from gui import config  # noqa: E402
-from gui import server  # noqa: E402
+from gui import (
+    config,  # noqa: E402
+    server,  # noqa: E402
+)
 
 
 class TestStaleLock(unittest.TestCase):
@@ -53,7 +55,7 @@ class TestStaleLock(unittest.TestCase):
         config.LOCK_PATH = self._orig_lock
         shutil.rmtree(self._tmp, ignore_errors=True)
 
-    def _new_server(self) -> "server.GuiServer":
+    def _new_server(self) -> server.GuiServer:
         s = server.GuiServer()
         self._servers.append(s)
         return s

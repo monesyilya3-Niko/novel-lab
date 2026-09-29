@@ -1,0 +1,40 @@
+appId: com.mudongnianchun.desktop
+productName: 暮冬念春
+directories:
+  output: release
+  buildResources: build
+files:
+  - main.js
+  - package.json
+extraResources:
+  - from: backend
+    to: backend
+    filter:
+      - "**/*"
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: 暮冬念春-Setup-${version}-win64.${ext}
+  # 注意：不要加 signAndEditExecutable: false —— 它会跳过 signAndEditResources，
+  # 连 win.icon 也不写，导致 exe 回退到 Electron 默认图标（v2.0.1/v2.0.2 首构建实锤）。
+  # 无证书时签名本就会被优雅跳过（"no signing info identified, signing is skipped"），无需此开关。
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 暮冬念春
+  uninstallDisplayName: 暮冬念春
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  # 真正的软件安装体验：安装向导、开始菜单/桌面快捷方式、控制面板卸载项、
+  # 安装完成可直接启动。用户数据在 %LOCALAPPDATA%\暮冬念春（安装目录之外），
+  # 卸载/覆盖升级永不删除用户数据。
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  # 未签名：Windows SmartScreen 会提示，属预期行为（个人分发无证书）。
+  # 正式交付为 NSIS .exe 安装器（用户要求，禁用 zip 冒充安装器）。
+  # 注意：Linux 下打 NSIS 包需 wine；本机无 wine，安装器须在 Windows 上跑 npm run dist 构建。

@@ -1,6 +1,7 @@
 // M3 质检工作台：检查 / 全书质检 / qc 三 Tab。
 import { useState, useEffect, useRef } from 'react'
 import Box from '@mui/material/Box'
+import ContextHelpButton from './ContextHelpButton'
 import Tabs from '@mui/material/Tabs'
 import Tab from '@mui/material/Tab'
 import Typography from '@mui/material/Typography'
@@ -24,6 +25,14 @@ const VERDICT_LABELS: Record<string, string> = {
 }
 const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
 
+const STATUS_LABELS: Record<string, string> = {
+  pending: '等待中',
+  running: '运行中',
+  done: '已完成',
+  error: '失败',
+}
+const statusLabel = (s: string | null | undefined) => (s ? STATUS_LABELS[s] ?? s : s)
+
 // 全书质检面板「收起」时最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是
 // 同一个数：响应体可能在 50 条处截断，而面板收起时只渲染 20 行。只要「屏幕条数 < 声称的
 // 总数」就必须说明，且文案里的条数要按实际渲染条数给出，否则会出现「共 61 条，仅显示前
@@ -36,12 +45,15 @@ export default function QualityWorkbench() {
   const [tab, setTab] = useState(0)
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
         <Tab label="单章检查" />
         <Tab label="全书质检" />
         <Tab label="QC 综合" />
       </Tabs>
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+        <ContextHelpButton guideKey="quality" />
+      </Box>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
         {tab === 0 && <CheckPanel />}
         {tab === 1 && <BookQualityPanel />}
         {tab === 2 && <QcPanel />}
@@ -59,6 +71,9 @@ function CheckPanel() {
   const [text, setText] = useState('')
   const [voice, setVoice] = useState('')
   const [assets, setAssets] = useState<{ id: string; name: string; kind: string }[]>([])
+  // genre-pack：后端 /quality/check 支持，之前前端没传导致选了也用不上。
+  const [genrePack, setGenrePack] = useState('')
+  const [genrePacks, setGenrePacks] = useState<{ id: string; name: string; kind: string }[]>([])
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -71,6 +86,13 @@ function CheckPanel() {
         if (items.length > 0) setVoice(items[0].id)
       })
       .catch((e) => setError(`加载资产失败: ${e}`))
+    // genre-pack 可选：默认不选，保持与之前一致的行为（不传即不用题材包）。
+    assetApi.list({ kind: 'genre_pack', limit: 50 })
+      .then((j) => {
+        const items = ((j as Record<string, unknown>).items ?? []) as { id: string; name: string; kind: string }[]
+        setGenrePacks(items)
+      })
+      .catch(() => setGenrePacks([]))
   }, [])
 
   const doCheck = async () => {
@@ -81,6 +103,7 @@ function CheckPanel() {
       if (target.trim()) body.target = target.trim()
       else if (text.trim()) body.text = text
       if (voice) body.voice = voice
+      if (genrePack) body.genre_pack = genrePack
       const r = await qualityApi.check(body)
       setResult(r)
     } catch (e) {
@@ -101,6 +124,10 @@ function CheckPanel() {
         <TextField select label="voice-card（可选）" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
           <MenuItem value="">无</MenuItem>
           {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
+        </TextField>
+        <TextField select label="genre-pack（可选）" value={genrePack} onChange={(e) => setGenrePack(e.target.value)} sx={{ minWidth: 200 }} size="small">
+          <MenuItem value="">无</MenuItem>
+          {genrePacks.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <Button variant="contained" onClick={doCheck} disabled={loading || (!target.trim() && !text.trim())}>
           {loading ? <CircularProgress size={20} /> : '检查'}
@@ -296,7 +323,7 @@ function QcPanel() {
       {taskState && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1">
-            状态：{taskState.status}
+            状态：{statusLabel(taskState.status)}
             {taskState.verdict && <> | 判定：<Chip label={verdictLabel(taskState.verdict)} size="small" color={taskState.verdict === 'PASS' ? 'success' : taskState.verdict === 'WARN' ? 'warning' : 'error'} /></>}
             {taskState.totalScore != null && <> | 总分 {taskState.totalScore.toFixed(1)}</>}
           </Typography>

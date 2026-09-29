@@ -6,6 +6,29 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import HomeDashboard from './HomeDashboard'
 import { KIND_LABELS, kindLabel } from '../assetKindLabels'
+import { ThemeModeProvider } from '../state/ThemeModeContext'
+
+// HomeDashboard 依赖 useThemeMode，测试需包裹 Provider。
+// ThemeModeProvider 内部用 window.matchMedia，jsdom 无此 API，先 mock。
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }),
+})
+
+const renderDashboard = () => render(
+  <ThemeModeProvider>
+    <HomeDashboard />
+  </ThemeModeProvider>
+)
 
 // 后端 snake_case 经 deepToCamel 后的真实形状（见 api/client.test.ts）。
 const OVERVIEW = {
@@ -46,10 +69,10 @@ vi.mock('./charts/PieChart', () => ({
 }))
 
 describe('HomeDashboard 资产类型分布标签', () => {
-  it('camelCase 键渲染为共享表中的中文标签', () => {
-    render(<HomeDashboard />)
+  it('camelCase 键渲染为共享表中的中文标签', async () => {
+    renderDashboard()
 
-    const slices = screen.getByTestId('pie-slices').textContent ?? ''
+    const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
     expect(slices).toContain(`${KIND_LABELS.prose_card}=1`)
     expect(slices).toContain(`${KIND_LABELS.genre_pack}=1`)
     expect(slices).toContain(`${KIND_LABELS.distilled}=2`)
@@ -57,20 +80,20 @@ describe('HomeDashboard 资产类型分布标签', () => {
     expect(slices).toContain(`${KIND_LABELS.voice}=2`)
   })
 
-  it('不得把原始英文 kind 或 undefined 渲染进图例', () => {
-    render(<HomeDashboard />)
+  it('不得把原始英文 kind 或 undefined 渲染进图例', async () => {
+    renderDashboard()
 
-    const slices = screen.getByTestId('pie-slices').textContent ?? ''
+    const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
     expect(slices).not.toContain('undefined')
     for (const raw of ['distilled', 'proseCardIndex', 'proseCard', 'genrePack']) {
       expect(slices).not.toContain(`${raw}=`)
     }
   })
 
-  it('与共享 kindLabel 对同一批键给出完全一致的标签', () => {
-    render(<HomeDashboard />)
+  it('与共享 kindLabel 对同一批键给出完全一致的标签', async () => {
+    renderDashboard()
 
-    const slices = screen.getByTestId('pie-slices').textContent ?? ''
+    const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
     for (const [camelKey, value] of Object.entries(OVERVIEW.assetsByKind)) {
       if (camelKey === 'report' || camelKey === 'book') continue
       expect(slices).toContain(`${kindLabel(camelKey)}=${value}`)

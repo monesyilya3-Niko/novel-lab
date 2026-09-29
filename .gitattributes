@@ -17,6 +17,19 @@
 *.sh text eol=lf
 .githooks/pre-commit text eol=lf
 
+# --- 构建产物：禁止换行转换 ---
+# vite 输出的 dist 落地即为 LF，而本机 core.autocrlf=true 会让 git 预告
+# 「下次 touch 会变 CRLF」，于是 git status 长期显示一堆实质为空的假脏改动
+# （git diff 实测为空）。这既污染开发时的变更视图，也可能干扰 CI 的
+# dist freshness 门禁（该门禁靠 git diff 比对构建结果）。故整体关闭转换。
+gui/web/dist/** -text
+
+# --- 前端源模板：强制 LF ---
+# vite 会把该模板的换行风格原样带进 gui/web/dist/index.html。若源模板在
+# Windows 工作区以 CRLF 落地，构建产物就跟着变成 CRLF，与仓库里的 LF 逐行
+# 冲突（表现为整份 index.html 重写）。源头统一 LF 才能根除，而不是在产物上打补丁。
+gui/web/index.html text eol=lf
+
 # --- 二进制：不做任何换行转换 ---
 *.png binary
 *.jpg binary

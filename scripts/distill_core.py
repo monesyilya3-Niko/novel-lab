@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """蒸馏核心库（纯函数，无第三方依赖）。
 
 本模块是「蒸馏层」的纯逻辑内核，负责把同一题材下多本拆书产出的四类资产
@@ -27,10 +26,11 @@ import math
 import re
 import statistics
 from collections import defaultdict
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # 四类资产维度，与资产文件名后缀一一对应。
 DIMENSIONS: tuple[str, ...] = (
@@ -181,11 +181,11 @@ class AggregatedRule:
     kind: str = "soft"
     books_count: int = 0
     value: Any = None
-    sources: List[SourceValue] = dc_field(default_factory=list)
+    sources: list[SourceValue] = dc_field(default_factory=list)
     confidence: float = 0.0
     conflict: bool = False
     over_generalized: bool = False
-    blindspot_books: List[str] = dc_field(default_factory=list)
+    blindspot_books: list[str] = dc_field(default_factory=list)
 
 
 @dataclass
@@ -202,11 +202,11 @@ class TechniqueCluster:
     """
 
     representative: str = ""
-    names: List[str] = dc_field(default_factory=list)
-    skeletons: List[str] = dc_field(default_factory=list)
-    sources: List[SourceValue] = dc_field(default_factory=list)
+    names: list[str] = dc_field(default_factory=list)
+    skeletons: list[str] = dc_field(default_factory=list)
+    sources: list[SourceValue] = dc_field(default_factory=list)
     count: int = 0
-    books: List[str] = dc_field(default_factory=list)
+    books: list[str] = dc_field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -237,7 +237,7 @@ def _flatten(value: Any) -> str:
     return str(value)
 
 
-def _to_number(value: Any) -> Optional[float]:
+def _to_number(value: Any) -> float | None:
     """尽力把值转为数值；无法转换返回 None。"""
     if value is None:
         return None
@@ -252,7 +252,7 @@ def _to_number(value: Any) -> Optional[float]:
     return None
 
 
-def _extract_word_count(buildup_length: Any) -> Optional[float]:
+def _extract_word_count(buildup_length: Any) -> float | None:
     """从 buildup_length 中抽取字数数值（int 原样，dict 取 ``words``）。"""
     if buildup_length is None:
         return None
@@ -288,7 +288,7 @@ def _dedup_payoff_types(items: Any) -> Any:
     """
     if not isinstance(items, list):
         return items
-    result: List[Any] = []
+    result: list[Any] = []
     seen: set = set()
     for item in items:
         if isinstance(item, dict):
@@ -313,7 +313,7 @@ def _dedup_payoff_types(items: Any) -> Any:
     return result
 
 
-def _parse_payoff_ratio(value: Any) -> Optional[float]:
+def _parse_payoff_ratio(value: Any) -> float | None:
     """把单个 payoff ratio 解析为非负有限数值；不可解析返回 None。
 
     仅接受非 bool 的 int/float 且 ``>= 0`` 且有限（排除 NaN/Inf）。字符串、
@@ -356,8 +356,10 @@ def _normalize_payoff_ratios(items: Any) -> Any:
     ]
     total = math.fsum(v for v in parsed if v is not None)
 
-    normalized: List[Any] = []
-    for item, value in zip(items, parsed):
+    normalized: list[Any] = []
+    # parsed 由 items 逐项推导，长度必然相等；strict=True 让将来的过滤/分支
+    # 改动在错位的第一时间抛出，而不是静默丢项。
+    for item, value in zip(items, parsed, strict=True):
         if not isinstance(item, dict):
             normalized.append(copy.deepcopy(item))
             continue
@@ -391,7 +393,7 @@ def _parse_payoff_types(value: Any) -> Any:
         if "=" in value:
             return None
         # 形如 "情感回应:7，他人认可:2，反杀:1"
-        parsed: List[Any] = []
+        parsed: list[Any] = []
         for m in re.finditer(r"([^:：，,;；\n=]+)[:：]\s*(\d+(?:\.\d+)?)", value):
             name = m.group(1).strip()
             ratio = float(m.group(2))
@@ -401,28 +403,28 @@ def _parse_payoff_types(value: Any) -> Any:
     return None
 
 
-def _median(values: List[float]) -> Optional[float]:
+def _median(values: list[float]) -> float | None:
     """安全中位数；空列表返回 None。"""
     if not values:
         return None
     return statistics.median(values)
 
 
-def _list_intersection(lists: List[List[Any]]) -> List[Any]:
+def _list_intersection(lists: list[list[Any]]) -> list[Any]:
     """多列表交集（保序，去重）；任一列表为空返回空。"""
     cleaned = [lst for lst in lists if lst is not None]
     if not cleaned:
         return []
-    result: List[Any] = []
+    result: list[Any] = []
     for item in cleaned[0]:
         if all(item in lst for lst in cleaned[1:]) and item not in result:
             result.append(item)
     return result
 
 
-def _list_union(lists: List[List[Any]]) -> List[Any]:
+def _list_union(lists: list[list[Any]]) -> list[Any]:
     """多列表并集（保序，去重）。"""
-    result: List[Any] = []
+    result: list[Any] = []
     for lst in lists:
         if lst is None:
             continue
@@ -455,7 +457,7 @@ def _stringify_for_freq(value: Any) -> str:
     return str(value)
 
 
-def _freq_aggregate_strings_full(values: List[str]) -> tuple[str, bool]:
+def _freq_aggregate_strings_full(values: list[str]) -> tuple[str, bool]:
     """对自然语言字符串做纯字符串匹配 + 频次聚合，并返回是否发生分歧。
 
     返回 ``(聚合结果, has_divergence)``。``has_divergence=True`` 表示存在少数派
@@ -468,7 +470,7 @@ def _freq_aggregate_strings_full(values: List[str]) -> tuple[str, bool]:
     non_empty = [v for v in values if v and v.strip()]
     if not non_empty:
         return "", False
-    counter: Dict[str, int] = defaultdict(int)
+    counter: dict[str, int] = defaultdict(int)
     for v in non_empty:
         counter[v.strip()] += 1
     if len(counter) == 1:
@@ -480,7 +482,7 @@ def _freq_aggregate_strings_full(values: List[str]) -> tuple[str, bool]:
         # 众数唯一且出现 >=2 次：取众数，但标记存在少数派分歧。
         return top[0], True
     # 无法去重：保留来源（按出现顺序去重后拼接），并标记分歧。
-    seen: List[str] = []
+    seen: list[str] = []
     for v in non_empty:
         s = v.strip()
         if s not in seen:
@@ -488,7 +490,7 @@ def _freq_aggregate_strings_full(values: List[str]) -> tuple[str, bool]:
     return "；".join(seen), True
 
 
-def _freq_aggregate_strings(values: List[str]) -> str:
+def _freq_aggregate_strings(values: list[str]) -> str:
     """对自然语言字符串做频次聚合（向后兼容，仅返回聚合结果字符串）。"""
     value, _ = _freq_aggregate_strings_full(values)
     return value
@@ -563,7 +565,7 @@ def _char_ngram_similarity(a: str, b: str, n: int = NGRAM_N) -> float:
     return len(inter) / len(union)
 
 
-def _load_synonyms() -> Dict[str, Dict[str, List[str]]]:
+def _load_synonyms() -> dict[str, dict[str, list[str]]]:
     """读取项目根 ``synonyms.json`` 同义词表。
 
     格式：``{维度: {规范名: [别名...]}}``。文件缺失或 JSON 损坏时回退空表 ``{}``，
@@ -575,7 +577,7 @@ def _load_synonyms() -> Dict[str, Dict[str, List[str]]]:
     try:
         if not SYNONYMS_PATH.is_file():
             return {}
-        with open(SYNONYMS_PATH, "r", encoding="utf-8") as fh:
+        with open(SYNONYMS_PATH, encoding="utf-8") as fh:
             data = json.load(fh)
         if not isinstance(data, dict):
             return {}
@@ -584,7 +586,7 @@ def _load_synonyms() -> Dict[str, Dict[str, List[str]]]:
         return {}
 
 
-def _cluster_techniques(techniques: List[dict]) -> List[TechniqueCluster]:
+def _cluster_techniques(techniques: list[dict]) -> list[TechniqueCluster]:
     """把技法列表按「同义词 → 双条件相似度」归一化聚成簇。
 
     对每个技法（含 name + skeleton），与已有簇的代表比较：
@@ -614,15 +616,15 @@ def _cluster_techniques(techniques: List[dict]) -> List[TechniqueCluster]:
         TechniqueCluster 列表（按首次出现顺序）。
     """
     synonyms = _load_synonyms()
-    clusters: List[TechniqueCluster] = []
+    clusters: list[TechniqueCluster] = []
     # 簇代表名 → 簇索引，供相似度比较时 O(1) 定位。
-    rep_to_idx: Dict[str, int] = {}
+    rep_to_idx: dict[str, int] = {}
     # 同义词表展开后的「任一名称（规范名 + 别名）→ 簇索引」映射。
     # 该映射在建簇/归并后立即登记，且【永不 pop】，保证同义词命中稳定可达。
-    alias_to_idx: Dict[str, int] = {}
+    alias_to_idx: dict[str, int] = {}
 
     # 预先展开同义词表：任一名称 → 规范名，供 O(1) 命中（而非每次遍历表）。
-    name_to_canon: Dict[str, str] = {}
+    name_to_canon: dict[str, str] = {}
     for dimension_aliases in synonyms.values():
         if not isinstance(dimension_aliases, dict):
             continue
@@ -644,7 +646,7 @@ def _cluster_techniques(techniques: List[dict]) -> List[TechniqueCluster]:
 
         norm_name = _normalize_technique(name)
 
-        target_idx: Optional[int] = None
+        target_idx: int | None = None
 
         # 1) 同义词命中优先：任一名称（规范名/别名）命中即归并到对应簇。
         if name in alias_to_idx:
@@ -732,9 +734,9 @@ def _cluster_techniques(techniques: List[dict]) -> List[TechniqueCluster]:
 
 
 def _most_frequent_name(
-    names: List[str],
-    sources: List[SourceValue],
-    canon_map: Optional[Dict[str, str]] = None,
+    names: list[str],
+    sources: list[SourceValue],
+    canon_map: dict[str, str] | None = None,
 ) -> str:
     """从簇内原始 name 中选出频次最高者作为代表名。
 
@@ -746,7 +748,7 @@ def _most_frequent_name(
 
     ``canon_map`` 缺省为 None 时保持旧行为（频次优先、并列取先出现者），向后兼容。
     """
-    counter: Dict[str, int] = defaultdict(int)
+    counter: dict[str, int] = defaultdict(int)
     for s in sources:
         if s.value:
             counter[str(s.value)] += 1
@@ -769,8 +771,8 @@ def _most_frequent_name(
 # ---------------------------------------------------------------------------
 
 def collect_assets(
-    genre: str, book_names: Optional[List[str]] = None
-) -> Dict[str, Dict[str, dict]]:
+    genre: str, book_names: list[str] | None = None
+) -> dict[str, dict[str, dict]]:
     """采集指定题材下各本书的四类资产。
 
     资产平铺在 ``assets/*-<dimension>.json``，通过每本 ``meta.genre`` 过滤出
@@ -784,7 +786,7 @@ def collect_assets(
         形如 ``{dimension: {book: asset_dict}}`` 的分组结果。
     """
     assets_dir = Path(__file__).resolve().parent.parent / "assets"
-    result: Dict[str, Dict[str, dict]] = {d: {} for d in DIMENSIONS}
+    result: dict[str, dict[str, dict]] = {d: {} for d in DIMENSIONS}
     if not assets_dir.is_dir():
         return result
 
@@ -795,7 +797,7 @@ def collect_assets(
             if book_names is not None and book not in book_names:
                 continue
             try:
-                with open(path, "r", encoding="utf-8") as fh:
+                with open(path, encoding="utf-8") as fh:
                     data = json.load(fh)
             except (json.JSONDecodeError, OSError):
                 # 损坏的资产文件跳过，交由盲区诊断体现为缺失。
@@ -812,7 +814,7 @@ def collect_assets(
 # 对齐
 # ---------------------------------------------------------------------------
 
-def align(dimension: str, assets: Dict[str, dict]) -> Dict[str, dict]:
+def align(dimension: str, assets: dict[str, dict]) -> dict[str, dict]:
     """把单维度各本书的资产对齐为统一字段结构。
 
     缺失字段补 None；commercial-obs 做归一化（buildup_length 抽字数、
@@ -833,11 +835,11 @@ def align(dimension: str, assets: Dict[str, dict]) -> Dict[str, dict]:
     return {book: copy.deepcopy(a) for book, a in assets.items()}
 
 
-def _align_commercial(assets: Dict[str, dict]) -> Dict[str, dict]:
+def _align_commercial(assets: dict[str, dict]) -> dict[str, dict]:
     """commercial-obs 字段归一化（§3.2）。"""
-    aligned: Dict[str, dict] = {}
+    aligned: dict[str, dict] = {}
     for book, asset in assets.items():
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         for field in COMMERCIAL_FIELDS:
             out[field] = _normalize_commercial_field(asset, field)
         aligned[book] = out
@@ -921,23 +923,23 @@ def _extract_payoff_types_from_asset(asset: dict) -> Any:
     return None
 
 
-def _align_voice(assets: Dict[str, dict]) -> Dict[str, dict]:
+def _align_voice(assets: dict[str, dict]) -> dict[str, dict]:
     """voice-card 对齐：保证 5 个聚合 key 存在（缺失补 None）。"""
-    aligned: Dict[str, dict] = {}
+    aligned: dict[str, dict] = {}
     for book, asset in assets.items():
-        out: Dict[str, Any] = {}
+        out: dict[str, Any] = {}
         for key in VOICE_AGG_KEYS:
             out[key] = copy.deepcopy(asset.get(key))
         aligned[book] = out
     return aligned
 
 
-def _align_craft(assets: Dict[str, dict]) -> Dict[str, dict]:
+def _align_craft(assets: dict[str, dict]) -> dict[str, dict]:
     """craft-card 对齐：保证 craft_analysis 十维存在。"""
-    aligned: Dict[str, dict] = {}
+    aligned: dict[str, dict] = {}
     for book, asset in assets.items():
         analysis = asset.get("craft_analysis") or {}
-        out_analysis: Dict[str, Any] = {}
+        out_analysis: dict[str, Any] = {}
         for dim in CRAFT_DIMENSIONS:
             out_analysis[dim] = copy.deepcopy(analysis.get(dim))
         summary = asset.get("craft_summary") or {}
@@ -948,12 +950,12 @@ def _align_craft(assets: Dict[str, dict]) -> Dict[str, dict]:
     return aligned
 
 
-def _align_structure(assets: Dict[str, dict]) -> Dict[str, dict]:
+def _align_structure(assets: dict[str, dict]) -> dict[str, dict]:
     """structure-obs 对齐：保证 aggregate 关键字段存在。"""
-    aligned: Dict[str, dict] = {}
+    aligned: dict[str, dict] = {}
     for book, asset in assets.items():
         aggregate = asset.get("aggregate") or {}
-        out_agg: Dict[str, Any] = {}
+        out_agg: dict[str, Any] = {}
         for field in STRUCTURE_FIELDS:
             out_agg[field] = copy.deepcopy(aggregate.get(field))
         aligned[book] = {
@@ -967,7 +969,7 @@ def _align_structure(assets: Dict[str, dict]) -> Dict[str, dict]:
 # 聚合
 # ---------------------------------------------------------------------------
 
-def aggregate(dimension: str, aligned: Dict[str, dict]) -> List[AggregatedRule]:
+def aggregate(dimension: str, aligned: dict[str, dict]) -> list[AggregatedRule]:
     """把对齐后的单维度资产聚合为规则列表。
 
     Args:
@@ -1007,20 +1009,20 @@ def _kind_for_count(count: int) -> str:
 
 
 def _group_by_field(
-    rules: List[AggregatedRule],
-) -> Dict[str, List[AggregatedRule]]:
+    rules: list[AggregatedRule],
+) -> dict[str, list[AggregatedRule]]:
     """按 field 分组。"""
-    groups: Dict[str, List[AggregatedRule]] = defaultdict(list)
+    groups: dict[str, list[AggregatedRule]] = defaultdict(list)
     for r in rules:
         groups[r.field].append(r)
     return groups
 
 
 def _aggregate_voice(
-    aligned: Dict[str, dict], books: List[str]
-) -> List[AggregatedRule]:
+    aligned: dict[str, dict], books: list[str]
+) -> list[AggregatedRule]:
     """voice-card 聚合：5 个 key，banned 取交集，其余按子字段聚合。"""
-    rules: List[AggregatedRule] = []
+    rules: list[AggregatedRule] = []
 
     for key in VOICE_AGG_KEYS:
         if key == "banned":
@@ -1028,7 +1030,7 @@ def _aggregate_voice(
             continue
 
         # 对 key 下的叶子字段聚合。先收集所有叶子字段。
-        leaf_fields: Dict[str, Dict[str, Any]] = defaultdict(dict)
+        leaf_fields: dict[str, dict[str, Any]] = defaultdict(dict)
         for book in books:
             node = aligned.get(book, {}).get(key)
             if not isinstance(node, dict):
@@ -1050,9 +1052,9 @@ def _aggregate_voice(
     return rules
 
 
-def _iter_leaves(node: Any, prefix: str = "") -> List[tuple[str, Any]]:
+def _iter_leaves(node: Any, prefix: str = "") -> list[tuple[str, Any]]:
     """展开 dict 的叶子字段为 ``(dot_path, value)``。"""
-    result: List[tuple[str, Any]] = []
+    result: list[tuple[str, Any]] = []
     if isinstance(node, dict):
         for k, v in node.items():
             path = f"{prefix}.{k}" if prefix else k
@@ -1066,17 +1068,17 @@ def _iter_leaves(node: Any, prefix: str = "") -> List[tuple[str, Any]]:
 
 
 def _aggregate_banned(
-    aligned: Dict[str, dict], books: List[str]
-) -> List[AggregatedRule]:
+    aligned: dict[str, dict], books: list[str]
+) -> list[AggregatedRule]:
     """banned 聚合：三个子 key 各取交集（架构师拍板）。
 
     交集为空（三本无共同禁用项）时，降级为并集并标记 conflict，保留全部分歧
     来源，避免「必守空清单」误导。
     """
     sub_keys = ("never_used_words", "avoided_structures", "genre_taboos")
-    rules: List[AggregatedRule] = []
+    rules: list[AggregatedRule] = []
     for sub in sub_keys:
-        lists: Dict[str, Any] = {}
+        lists: dict[str, Any] = {}
         for book in books:
             banned = aligned.get(book, {}).get("banned") or {}
             lists[book] = banned.get(sub)
@@ -1106,19 +1108,19 @@ def _aggregate_banned(
 
 
 def _aggregate_craft(
-    aligned: Dict[str, dict], books: List[str]
-) -> List[AggregatedRule]:
+    aligned: dict[str, dict], books: list[str]
+) -> list[AggregatedRule]:
     """craft-card 聚合：十维 techniques 按归一化簇计数；summary 分字段。
 
     二期（任务 A）：技法不再按 name 精确匹配计数，而是先经同义词表 + 双条件
     字符 n-gram 相似度聚成 TechniqueCluster，再以簇为单位计数。簇内跨书
     books_count 正确累计；单元素簇 / 无法语义去重者保留各自来源（personal）。
     """
-    rules: List[AggregatedRule] = []
+    rules: list[AggregatedRule] = []
 
     for dim in CRAFT_DIMENSIONS:
         # 收集该维度所有书的所有 technique（含 name + skeleton + book）。
-        techniques: List[dict] = []
+        techniques: list[dict] = []
         for book in books:
             analysis = aligned.get(book, {}).get("craft_analysis") or {}
             dim_node = analysis.get(dim) or {}
@@ -1140,7 +1142,7 @@ def _aggregate_craft(
                 _aggregate_field(
                     dimension="craft-card",
                     field=f"craft_analysis.{dim}",
-                    book_vals={b: None for b in books},
+                    book_vals=dict.fromkeys(books),
                     books=books,
                     aggregator="median",
                 )
@@ -1172,7 +1174,7 @@ def _aggregate_craft(
 
     # craft_summary 字段聚合。
     for field_name in ("top_3_strengths", "unique_techniques", "reusable_patterns"):
-        vals: Dict[str, Any] = {}
+        vals: dict[str, Any] = {}
         for book in books:
             summary = aligned.get(book, {}).get("craft_summary") or {}
             vals[book] = summary.get(field_name)
@@ -1190,12 +1192,12 @@ def _aggregate_craft(
 
 
 def _aggregate_structure(
-    aligned: Dict[str, dict], books: List[str]
-) -> List[AggregatedRule]:
+    aligned: dict[str, dict], books: list[str]
+) -> list[AggregatedRule]:
     """structure-obs 聚合：aggregate 六个字段各自聚合。"""
-    rules: List[AggregatedRule] = []
+    rules: list[AggregatedRule] = []
     for field_name in STRUCTURE_FIELDS:
-        vals: Dict[str, Any] = {}
+        vals: dict[str, Any] = {}
         for book in books:
             agg = aligned.get(book, {}).get("aggregate") or {}
             vals[book] = agg.get(field_name)
@@ -1212,15 +1214,15 @@ def _aggregate_structure(
 
 
 def _merge_payoff_type_shares(
-    share_vals: Dict[str, Any], books: List[str]
-) -> List[dict]:
+    share_vals: dict[str, Any], books: list[str]
+) -> list[dict]:
     """跨书按 type 归并 payoff 份额：同一 type 取各书贡献份额的中位数。
 
     类型顺序按书籍顺序（``books``）保序去重；某本书对某 type 的份额为 None
     （不可解析）时不参与该 type 的中位数；无任何书贡献数值则该 type 记 None。
     """
-    ratios: Dict[str, List[float]] = {}
-    order: List[str] = []
+    ratios: dict[str, list[float]] = {}
+    order: list[str] = []
     for book in books:
         items = share_vals.get(book)
         if not isinstance(items, list):
@@ -1239,7 +1241,7 @@ def _merge_payoff_type_shares(
 
 
 def _aggregate_payoff_types(
-    aligned: Dict[str, dict], books: List[str]
+    aligned: dict[str, dict], books: list[str]
 ) -> AggregatedRule:
     """payoff_types 专项聚合：书内归一为占比 → 跨书按 type 取中位数。
 
@@ -1269,8 +1271,8 @@ def _aggregate_payoff_types(
 
 
 def _aggregate_commercial(
-    aligned: Dict[str, dict], books: List[str]
-) -> List[AggregatedRule]:
+    aligned: dict[str, dict], books: list[str]
+) -> list[AggregatedRule]:
     """commercial-obs 聚合：各字段按类型聚合。
 
     * payoff_density：归一化为 {per_chapter, per_thousand_words}，子字段取数值中位数；
@@ -1278,12 +1280,12 @@ def _aggregate_commercial(
     * payoff_types：书内归一为占比后跨书按 type 取中位数（Task 3.3）；
     * skeleton / dry_spell_tolerance / common_mistakes / paywall：字符串频次聚合。
     """
-    rules: List[AggregatedRule] = []
+    rules: list[AggregatedRule] = []
 
     # payoff_density 递归聚合两个数值子字段。
     pd_sub_fields = ("per_chapter", "per_thousand_words")
     for sub in pd_sub_fields:
-        vals: Dict[str, Any] = {}
+        vals: dict[str, Any] = {}
         for book in books:
             pd = aligned.get(book, {}).get("payoff_density")
             vals[book] = pd.get(sub) if isinstance(pd, dict) else None
@@ -1309,7 +1311,7 @@ def _aggregate_commercial(
             # Task 3.3：ratio 改为「书内占比 → 跨书按 type 中位数」，其余不变。
             rules.append(_aggregate_payoff_types(aligned, books))
             continue
-        vals: Dict[str, Any] = {}
+        vals: dict[str, Any] = {}
         for book in books:
             vals[book] = aligned.get(book, {}).get(field_name)
         rules.append(
@@ -1339,11 +1341,11 @@ def _is_empty(value: Any) -> bool:
 def _aggregate_field(
     dimension: str,
     field: str,
-    book_vals: Dict[str, Any],
-    books: List[str],
+    book_vals: dict[str, Any],
+    books: list[str],
     aggregator: str,
     explicit_value: Any = None,
-    explicit_count: Optional[int] = None,
+    explicit_count: int | None = None,
 ) -> AggregatedRule:
     """聚合单个字段，产出 AggregatedRule。
 
@@ -1434,14 +1436,14 @@ def _aggregate_field(
 # 冲突解决
 # ---------------------------------------------------------------------------
 
-def resolve_conflict(rules: List[AggregatedRule]) -> List[AggregatedRule]:
+def resolve_conflict(rules: list[AggregatedRule]) -> list[AggregatedRule]:
     """解决同一 field 的多值分歧。
 
     同 field 出现多条 hard/soft 规则且值不同时，标记 conflict=True 并保留多条
     （不强行合并）。同时分配稳定 id。
     """
     groups = _group_by_field(rules)
-    resolved: List[AggregatedRule] = []
+    resolved: list[AggregatedRule] = []
 
     for field_name, group in groups.items():
         # 仅统计 hard/soft 层（personal 不参与冲突判定）。
@@ -1463,14 +1465,14 @@ def resolve_conflict(rules: List[AggregatedRule]) -> List[AggregatedRule]:
 # ---------------------------------------------------------------------------
 
 def detect_blindspots(
-    dimension: str, raw_assets: Dict[str, dict], aligned: Dict[str, dict]
-) -> List[dict]:
+    dimension: str, raw_assets: dict[str, dict], aligned: dict[str, dict]
+) -> list[dict]:
     """诊断类型级盲区。
 
     对每本书，找出对齐后值为 None 的字段，产出盲区条目
     ``{book, dimension, field, note}``。
     """
-    blindspots: List[dict] = []
+    blindspots: list[dict] = []
     for book in sorted(aligned.keys()):
         for field_name, value in aligned[book].items():
             if value is None:
@@ -1525,15 +1527,15 @@ def score_confidence(rule: AggregatedRule) -> float:
 # ---------------------------------------------------------------------------
 
 def distill_genre(
-    genre: str, book_names: Optional[List[str]] = None
-) -> Dict[str, dict]:
+    genre: str, book_names: list[str] | None = None
+) -> dict[str, dict]:
     """编排蒸馏全流程，返回按维度分组的 distilled dict。
 
     Returns:
         ``{dimension: distilled_dict}``，distilled_dict 遵循 §3.1 schema。
     """
     assets = collect_assets(genre, book_names=book_names)
-    result: Dict[str, dict] = {}
+    result: dict[str, dict] = {}
 
     for dimension in DIMENSIONS:
         dim_assets = assets.get(dimension, {})
@@ -1579,7 +1581,7 @@ def _empty_distilled(genre: str, dimension: str) -> dict:
     )
 
 
-def _build_evidence(rule: AggregatedRule) -> List[dict]:
+def _build_evidence(rule: AggregatedRule) -> list[dict]:
     """从规则的来源明细构造 evidence 数组（可追溯证据）。
 
     保持自由结构（不新增 schema），每条证据包含：
@@ -1595,7 +1597,7 @@ def _build_evidence(rule: AggregatedRule) -> List[dict]:
 
     n = len(sources)
     per_source_conf = rule.confidence / n if n else 0.0
-    evidence: List[dict] = []
+    evidence: list[dict] = []
     for s in sources:
         # 来源 value 字符串化作为「引用」；value 为 None 时留空。
         quote = ""
@@ -1619,13 +1621,13 @@ def _build_evidence(rule: AggregatedRule) -> List[dict]:
 def _build_distilled(
     genre: str,
     dimension: str,
-    rules: List[AggregatedRule],
-    personal_rules: List[AggregatedRule],
-    blindspots: List[dict],
-    source_books: List[str],
+    rules: list[AggregatedRule],
+    personal_rules: list[AggregatedRule],
+    blindspots: list[dict],
+    source_books: list[str],
 ) -> dict:
     """组装符合 §3.1 schema 的 distilled dict。"""
-    serialized_rules: List[dict] = []
+    serialized_rules: list[dict] = []
     for rule in rules:
         serialized_rules.append(
             {

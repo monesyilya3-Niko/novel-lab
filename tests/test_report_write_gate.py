@@ -29,6 +29,7 @@ if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
 import _isolation  # noqa: E402
+
 from gui import config, db, services  # noqa: E402
 
 

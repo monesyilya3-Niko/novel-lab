@@ -24,7 +24,7 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # 确保项目根在 sys.path 上（直接 ``python gui/migrate.py`` 也可运行）。
 _ROOT = Path(__file__).resolve().parent.parent
@@ -63,7 +63,7 @@ BACKUP_KEEP = 3
 # 推断规则（§6.2 / 6.3 / 6.5）
 # ---------------------------------------------------------------------------
 
-def infer_book_id(stem: str) -> Optional[str]:
+def infer_book_id(stem: str) -> str | None:
     """从文件名反推 book_id（§6.3）。
 
     书卡去后缀取前缀；题材文风卡 / trope / 索引 / 跨书蒸馏卡 / 题材包返回 None。
@@ -90,7 +90,7 @@ def infer_book_id(stem: str) -> Optional[str]:
     return None
 
 
-def infer_kind(name: str, content: Dict[str, Any]) -> str:
+def infer_kind(name: str, content: dict[str, Any]) -> str:
     """文件名 + JSON 内容 → kind（§6.2 优先级从高到低）。
 
     trope-library 靠 ``tropes`` 键、genre-prose-card-index 靠 ``cards`` 键识别；
@@ -131,7 +131,7 @@ def infer_kind(name: str, content: Dict[str, Any]) -> str:
     return "trope"
 
 
-def infer_genre(name: str, content: Dict[str, Any]) -> Optional[str]:
+def infer_genre(name: str, content: dict[str, Any]) -> str | None:
     """推断 genre（§6.5），优先级从高到低：
 
     1. ``meta.genre`` 字段（最高优先，既有规则不变）。
@@ -165,7 +165,7 @@ def infer_genre(name: str, content: Dict[str, Any]) -> Optional[str]:
 # 扫描源目录
 # ---------------------------------------------------------------------------
 
-def scan_assets() -> List[Path]:
+def scan_assets() -> list[Path]:
     """扫描 assets/*.json（平铺）。"""
     root = config.ASSETS_ROOT
     if not root.is_dir():
@@ -173,7 +173,7 @@ def scan_assets() -> List[Path]:
     return sorted(root.glob("*.json"))
 
 
-def scan_reports() -> List[Path]:
+def scan_reports() -> list[Path]:
     """扫描 reports/*.md。"""
     root = config.REPORTS_DIR
     if not root.is_dir():
@@ -181,7 +181,7 @@ def scan_reports() -> List[Path]:
     return sorted(root.glob("*.md"))
 
 
-def scan_corpus() -> List[Path]:
+def scan_corpus() -> list[Path]:
     """扫描 corpus/*.txt（排除 raw/sampled/metrics/fanqie 子目录）。"""
     root = config.CORPUS_DIR
     if not root.is_dir():
@@ -193,7 +193,7 @@ def scan_corpus() -> List[Path]:
 # 备份 / 回滚
 # ---------------------------------------------------------------------------
 
-def prune_backups(keep: int = BACKUP_KEEP) -> List[Path]:
+def prune_backups(keep: int = BACKUP_KEEP) -> list[Path]:
     """备份保留策略：只保留最近 ``keep`` 个 ``*.bak-*``，删除更旧的。
 
     备份文件名形如 ``index.db.bak-{YYYYmmdd-HHMMSS}``，时间戳可直接字符串排序，
@@ -214,7 +214,7 @@ def prune_backups(keep: int = BACKUP_KEEP) -> List[Path]:
     if len(backups) <= keep:
         return []
     stale = backups[: len(backups) - keep] if keep > 0 else backups
-    removed: List[Path] = []
+    removed: list[Path] = []
     for old in stale:
         try:
             old.unlink()
@@ -223,11 +223,12 @@ def prune_backups(keep: int = BACKUP_KEEP) -> List[Path]:
             pass
     if removed:
         print(f"[migrate] 备份保留策略：清理最旧 {len(removed)} 个备份"
-              f"（保留最近 {keep} 个）: " + ", ".join(p.name for p in removed))
+              f"（保留最近 {keep} 个，目录={parent}）: "
+              + ", ".join(p.name for p in removed))
     return removed
 
 
-def backup() -> Optional[Path]:
+def backup() -> Path | None:
     """备份现有 index.db（若有）为 index.db.bak-{ts}，返回备份路径或 None。
 
     用 SQLite 原生 ``Connection.backup`` API 做在线备份，确保 WAL 未 checkpoint 的
@@ -236,7 +237,7 @@ def backup() -> Optional[Path]:
     备份后自动执行 ``prune_backups()``，保证 ``*.bak-*`` 收敛到最近 ``BACKUP_KEEP`` 个。
     """
     src = db.db_path()
-    dst: Optional[Path] = None
+    dst: Path | None = None
     if src.is_file():
         ts = time.strftime("%Y%m%d-%H%M%S")
         dst = src.with_name(f"index.db.bak-{ts}")
@@ -247,20 +248,83 @@ def backup() -> Optional[Path]:
     return dst
 
 
-def rollback() -> Optional[Path]:
-    """从最新备份恢复 index.db（覆盖当前库），返回恢复的备份路径或 None。"""
+def _server_is_running() -> bool:
+    """检查 GUI server 是否正在运行（B2：防止 rollback 脑裂）。
+
+    读 config.LOCK_PATH 的 pid，用 gui.server 的存活判定；
+    锁存在且 pid 存活 → True。
+    """
+    from gui.server import _pid_is_alive, _read_lock_pid
+
+    lock_path = config.LOCK_PATH
+    if not lock_path.is_file():
+        return False
+    pid = _read_lock_pid(lock_path)
+    return pid is not None and _pid_is_alive(pid)
+
+
+def rollback() -> Path | None:
+    """从最新备份恢复 index.db（覆盖当前库），返回恢复的备份路径或 None。
+
+    B1：恢复前校验备份完整性，恢复后校验线上库；任一步失败拒绝覆盖。
+    B2：server 运行时拒绝执行，防止跨进程脑裂。
+    """
+    if _server_is_running():
+        raise RuntimeError(
+            "GUI 服务正在运行，拒绝执行 rollback（会导致数据脑裂）。"
+            "请先停止服务后再试。"
+        )
     src = db.db_path()
     backups = sorted(src.parent.glob("index.db.bak-*"))
     if not backups:
         return None
     latest = backups[-1]
+    # B1：先校验备份，坏备份拒绝恢复。
+    db._verify_backup(latest)
     db.close()  # 先关闭连接，避免 Windows 文件锁。
-    # 若当前库存在，先移除（连同 WAL/SHM）。
-    for suffix in ("", "-wal", "-shm"):
-        p = Path(str(src) + suffix)
-        if p.is_file():
-            p.unlink(missing_ok=True)
-    shutil.copy2(latest, src)
+    # B1 原子恢复：先复制到临时文件并校验，通过后再原子替换。
+    # 若复制中途失败（磁盘满/权限），原库仍在，不会丢数据。
+    tmp = src.parent / f".{src.name}.tmp-restore"
+    try:
+        shutil.copy2(latest, tmp)
+        db._verify_backup(tmp)
+        # P0-2 修复（2026-09-29）：旧实现"先删旧库再 rename"不是原子的——
+        # unlink 成功后若 rename 失败（如 Windows 杀毒软件占用），当前库已消失
+        # 且 finally 还会删掉 tmp，只剩旧备份，备份后产生的数据永久丢失。
+        # 新顺序：当前库（含 WAL/SHM）先改名到废弃名，再把 tmp 改名为 src；
+        # 任何一步失败都能从废弃名恢复，成功后才删废弃名。
+        import uuid
+        tag = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
+        old_files: list[tuple[Path, Path]] = []
+        for suffix in ("", "-wal", "-shm"):
+            p = Path(str(src) + suffix)
+            if p.is_file():
+                dep = Path(str(p) + f".deprecated-{tag}")
+                p.rename(dep)
+                old_files.append((p, dep))
+        try:
+            tmp.rename(src)
+        except OSError:
+            for p, dep in old_files:
+                try:
+                    dep.rename(p)
+                except OSError:
+                    pass
+            raise
+        for _, dep in old_files:
+            try:
+                dep.unlink(missing_ok=True)
+            except OSError:
+                pass
+    finally:
+        # 清理残留临时文件（成功时已被 rename，失败时删掉半成品）
+        if tmp.exists():
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+    # B1：恢复后校验线上库。
+    db._verify_backup(src)
     # 重建连接指向恢复后的库（下次 get_conn 会因 _conn_path 已清空而重连）。
     db._reset_conn()
     return latest
@@ -270,16 +334,43 @@ def rollback() -> Optional[Path]:
 # 实体入库（UPSERT，幂等）
 # ---------------------------------------------------------------------------
 
-def _rel_path(fp: Path) -> str:
-    """相对化路径（相对 ROOT_DIR），回退为 <目录名>/<文件名>。"""
+def rel_path(fp: Path) -> str:
+    """相对化路径（相对 ROOT_DIR），回退为 <目录名>/<文件名>。
+
+    用户数据目录（%LOCALAPPDATA%/暮冬念春 等）永不在 ROOT_DIR 下，
+    直接 fp.relative_to(config.ROOT_DIR) 在生产环境必抛 ValueError。
+    """
     try:
         return str(fp.relative_to(config.ROOT_DIR))
     except ValueError:
         return f"{fp.parent.name}/{fp.name}"
 
 
-def _upsert_book(conn: Any, book_id: str, title: str, source_path: Optional[str],
-                 genre: Optional[str], status: str) -> None:
+def resolve_rel_path(rel: str) -> Path:
+    """rel_path 的逆操作：把库里存的相对路径还原为真实文件位置。
+
+    rel_path 对 ROOT_DIR 之外（用户数据目录下）的 assets/reports/corpus
+    存的是 ``<目录名>/<文件名>`` 回退形式；若调用方直接 ``ROOT_DIR / rel``
+    解析，会读到仓库副本（可能过期）甚至不存在的文件。这里按目录名前缀
+    映射回真实根目录（ASSETS_ROOT / REPORTS_DIR / CORPUS_DIR）。
+    不以三者开头的真相对路径仍按 ROOT_DIR 解析，保持向后兼容。
+    """
+    parts = Path(rel).parts
+    if len(parts) >= 2:
+        base = {"assets": config.ASSETS_ROOT,
+                "reports": config.REPORTS_DIR,
+                "corpus": config.CORPUS_DIR}.get(parts[0])
+        if base is not None:
+            return base.joinpath(*parts[1:])
+    return config.ROOT_DIR / rel
+
+
+# 兼容旧名
+_rel_path = rel_path
+
+
+def _upsert_book(conn: Any, book_id: str, title: str, source_path: str | None,
+                 genre: str | None, status: str) -> None:
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     conn.execute(
         """
@@ -296,8 +387,8 @@ def _upsert_book(conn: Any, book_id: str, title: str, source_path: Optional[str]
 
 
 def _upsert_asset(conn: Any, asset_key: str, kind: str, name: str, path: str,
-                  book_id: Optional[str], genre: Optional[str], size: Optional[int],
-                  mtime: Optional[float], meta_json: str) -> None:
+                  book_id: str | None, genre: str | None, size: int | None,
+                  mtime: float | None, meta_json: str) -> None:
     """资产 UPSERT（幂等）。链式 ``ON CONFLICT``（SQLite 3.35.0+）覆盖两个唯一约束：
 
     1. ``asset_key`` 冲突（``kind:stem`` 相同）→ 更新非键列，重复迁移不重复插行。
@@ -342,8 +433,8 @@ def _upsert_asset(conn: Any, asset_key: str, kind: str, name: str, path: str,
     )
 
 
-def _upsert_report(conn: Any, report_key: str, rtype: str, book_id: Optional[str],
-                   path: str, title: Optional[str], char_count: Optional[int]) -> None:
+def _upsert_report(conn: Any, report_key: str, rtype: str, book_id: str | None,
+                   path: str, title: str | None, char_count: int | None) -> None:
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     conn.execute(
         """
@@ -368,7 +459,7 @@ GENRE_KIND_ENUM = ("genre_pack", "prose_card", "book")
 GENRE_KIND_PRIORITY = {"genre_pack": 3, "book": 2, "prose_card": 1}
 
 
-def _sanitize_genre_kind(kind: Optional[str]) -> Optional[str]:
+def _sanitize_genre_kind(kind: str | None) -> str | None:
     """把资产 kind 映射为 genres.kind 的**合法枚举值**；非法/不相关返回 None。
 
     L1 修复核心：调用方传入的资产 kind（voice/commercial/craft/structure/trope）
@@ -379,7 +470,7 @@ def _sanitize_genre_kind(kind: Optional[str]) -> Optional[str]:
     return None
 
 
-def _upsert_genre(conn: Any, name: str, display_name: Optional[str], kind: Optional[str]) -> None:
+def _upsert_genre(conn: Any, name: str, display_name: str | None, kind: str | None) -> None:
     """题材登记：``genres.kind`` 只允许「题材包优先」的合法枚举写入（L1 修复）。
 
     策略（防后写覆盖）：
@@ -423,7 +514,7 @@ def _report_char_count(fp: Path) -> int:
     return len("".join(text.split()))
 
 
-def _load_json(fp: Path) -> Dict[str, Any]:
+def _load_json(fp: Path) -> dict[str, Any]:
     """读 JSON，失败返回空 dict（不阻断迁移，宁多勿丢靠兜底 kind）。"""
     try:
         data = json.loads(fp.read_text(encoding="utf-8"))
@@ -436,7 +527,7 @@ def _load_json(fp: Path) -> Dict[str, Any]:
 # 主迁移流程
 # ---------------------------------------------------------------------------
 
-def run_migrate() -> Dict[str, Any]:
+def run_migrate() -> dict[str, Any]:
     """建库→迁移→扫描实体→UPSERT→对账。返回统计 dict。
 
     幂等：asset_key/book_id/report_key 均 UNIQUE + ON CONFLICT UPDATE，重复跑不重复插。
@@ -470,7 +561,7 @@ def run_migrate() -> Dict[str, Any]:
 
     all_corpus_book_ids = {fp.stem for fp in corpus_files}
 
-    unrecognized: List[str] = []
+    unrecognized: list[str] = []
 
     with db.tx() as conn:
         # 1) 书：已拆书（status=done）+ 已导入未拆书（status=idle，D4）。
@@ -486,7 +577,7 @@ def run_migrate() -> Dict[str, Any]:
 
         # 2) 资产卡。
         # 同时收集「单书卡 → genre」，供 books.genre 回填（中文书/英文书同理）。
-        book_genre_from_voice: Dict[str, str] = {}
+        book_genre_from_voice: dict[str, str] = {}
         for fp in asset_files:
             content = _load_json(fp)
             kind = infer_kind(fp.name, content)
@@ -554,7 +645,7 @@ def run_migrate() -> Dict[str, Any]:
     return result
 
 
-def check() -> Dict[str, Any]:
+def check() -> dict[str, Any]:
     """只读对账：库 vs 源目录 diff，返回缺失/多余清单（不写库）。"""
     asset_files = scan_assets()
     report_files = scan_reports()
@@ -582,7 +673,7 @@ def check() -> Dict[str, Any]:
     }
 
 
-def prune(dry_run: bool = False) -> Dict[str, Any]:
+def prune(dry_run: bool = False) -> dict[str, Any]:
     """删除「路径已不存在」的索引行（assets / reports），修复库与磁盘的永久漂移。
 
     2026-09-23 新增（总工排查）：``run_migrate()`` 只有 UPSERT，**从不删除**已消失
@@ -635,7 +726,7 @@ def prune(dry_run: bool = False) -> Dict[str, Any]:
 # CLI 入口
 # ---------------------------------------------------------------------------
 
-def _print_result(result: Dict[str, Any]) -> None:
+def _print_result(result: dict[str, Any]) -> None:
     print("[migrate] 迁移完成：")
     print(f"  migrated      = {result.get('migrated')}")
     print(f"  assets        = {result.get('assets')} (磁盘 {result.get('assets_on_disk')})")
@@ -685,7 +776,7 @@ def sync_asset(fp: Path) -> None:
             book_id=book_id, genre=genre, size=size, mtime=mtime, meta_json=meta_json)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="novel-lab GUI 数据迁移 CLI")
     parser.add_argument("--check", action="store_true", help="只读对账，不写库")
     parser.add_argument("--prune", action="store_true",
@@ -694,7 +785,28 @@ def main(argv: Optional[List[str]] = None) -> int:
                         help="配合 --prune：只统计将删除的行，不写库")
     parser.add_argument("--rollback", action="store_true", help="从最新备份恢复 index.db")
     parser.add_argument("--backup", action="store_true", help="仅备份现有 index.db")
+    parser.add_argument("--sync-builtins", action="store_true",
+                        help="增量同步随包内置资产到用户数据目录（只补缺失，永不覆盖）")
     args = parser.parse_args(argv)
+
+    if args.sync_builtins:
+        from gui import builtin_sync
+        result = builtin_sync.sync()
+        if result.get("noop"):
+            print("[migrate] 随包 assets 目录缺失，跳过同步")
+            return 0
+        print(f"[migrate] 内置资产同步：随包 {result['shipped_total']} / "
+              f"用户目录 {result['runtime_total']}")
+        print(f"  本次补齐: {result['copied'] or '无（已是最新）'}")
+        if result.get("reindexed"):
+            print(f"  已入库 SQLite（UI 即刻可见）: {result['reindexed']}")
+        if result["modified"]:
+            print(f"  未覆盖（疑似用户修改，需人工裁决）: {result['modified']}")
+        if result.get("upgradable"):
+            print(f"  官方旧版（有新版，可手动更新）: {result['upgradable']}")
+        if result["extra"]:
+            print(f"  用户自有（不动）: {len(result['extra'])} 个")
+        return 0
 
     if args.backup:
         p = backup()
