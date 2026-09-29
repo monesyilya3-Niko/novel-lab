@@ -1,0 +1,47 @@
+name: 构建 Windows 安装包
+
+# 用途：Linux 构建机因缺 wine 打不出 NSIS 安装器（electron-builder 硬性要求），
+# 真正的 .exe 安装器只能在 Windows 上构建。本 workflow 在云端 Windows runner
+# 上跑 `npm run dist`，产物为 NSIS 安装器。
+#
+# 触发：Actions 页面手动 Run workflow，或 API dispatch：
+#   gh-api POST /repos/OWNER/REPO/actions/workflows/build-installer.yml/dispatches \
+#     '{"ref":"feat/enterprise-hardening"}'
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建 NSIS 安装器
+        # predist 钩子自动执行：fetch-python-win.py（准备 embeddable Python，
+        # runner 上 python 命令可用）+ sync_backend.py（同步后端 296 文件，
+        # 含 python-win/；缺失则 fail fast，不产残缺包）
+        run: npm run dist
+
+      - name: 上传安装器
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: desktop/release/*-Setup-*-win64.exe
+          if-no-files-found: error
