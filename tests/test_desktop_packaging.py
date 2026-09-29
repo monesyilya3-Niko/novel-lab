@@ -78,6 +78,31 @@ class TestDesktopPackagingManifest(unittest.TestCase):
         self.assertIn("sync_backend.py", predist, "package.json 缺少 predist 同步钩子")
         self.assertIn("fetch-python-win.py", predist, "package.json predist 未准备 python-win")
 
+    def test_dev_files_excluded(self):
+        """背景3（2026-09-29 安装包开箱审计）：云端 exe 经解剖发现
+        gui/web/src（前端源码）、gui/web/e2e、vite/eslint 等构建配置、
+        scripts/*_isolated.sh 曾被打进安装包。安装版运行时只需要
+        gui/web/dist，这些开发期文件不得进包（体积 + 源码暴露）。"""
+        for rel in [
+            "gui/web/src",
+            "gui/web/e2e",
+            "gui/web/package.json",
+            "gui/web/package-lock.json",
+            "gui/web/vite.config.ts",
+            "gui/web/tsconfig.json",
+            "gui/web/eslint.config.js",
+            "gui/web/playwright.config.ts",
+            "gui/web/index.html",
+            "scripts/e2e_isolated.sh",
+            "scripts/perf_isolated.sh",
+        ]:
+            self.assertFalse((BACKEND / rel).exists(),
+                             f"开发期文件不应进安装包: {rel}")
+        # 运行时真正需要的必须还在
+        self.assertTrue((BACKEND / "gui" / "web" / "dist" / "index.html").is_file())
+        self.assertTrue((BACKEND / "gui" / "server.py").is_file() or
+                        (BACKEND / "gui" / "__init__.py").is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

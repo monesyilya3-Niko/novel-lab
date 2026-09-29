@@ -145,7 +145,7 @@ git config core.hooksPath .githooks
 ## 7. 数据真实性红线
 
 - 所有资产/报告数字**以实测磁盘为准**，不得臆造或沿用旧口径
-- 当前实测口径（2026-09-29）：资产 **72** / 报告 **12** / 书 **9**（已拆 7，磁盘语料 2）/ 测试 **1237** / API 端点 **81** / 版本 **2.0.1**（管理员系统 11 个 /api/admin/* 路由 + 16 个测试：会话管理、CSRF 防护、审计过滤、限流记录过期清理、CLI 重置密码；新增 GET /api/tropes 桥段库 + POST /api/writing/projects 新建项目）
+- 当前实测口径（2026-09-29）：资产 **72** / 报告 **12** / 书 **9**（已拆 7，磁盘语料 2）/ 测试 **1238** / API 端点 **81** / 版本 **2.0.1**（管理员系统 11 个 /api/admin/* 路由 + 16 个测试：会话管理、CSRF 防护、审计过滤、限流记录过期清理、CLI 重置密码；新增 GET /api/tropes 桥段库 + POST /api/writing/projects 新建项目）
 - 第三方衍生资产必须携带 `provenance.source / license / copyright` 三要素，并在 `THIRD_PARTY_NOTICES.md` 逐张登记（`validate.py` 硬校验 + `tests/test_third_party_notices.py` 守卫）；许可证原文须以逐字副本存于 `LICENSES/<上游>/`
 - ⚠️ 历史文档中的「17 资产 / 33 测试 / 3 本书 / 68 资产 / 272 测试 / 353/373/648 测试 / 44 端点」等均为**过时或错误口径**
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**

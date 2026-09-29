@@ -38,6 +38,39 @@ def _fix_windows_console() -> None:
 _fix_windows_console()
 
 
+# 安装包排除：开发期文件，不随包发布。
+# 背景（2026-09-29 安装包开箱审计）：云端构建的 exe 经 7z 解剖发现，
+# gui/web/src（前端源码）、gui/web/e2e（Playwright 用例）、vite/eslint 等
+# 配置文件、scripts/*_isolated.sh（开发期隔离脚本）都被打进了安装包。
+# 安装版运行时只需要 gui/web/dist（预构建前端），这些纯属体积与源码暴露。
+EXCLUDE_REL_DIRS = {
+    Path("gui/web/src"),
+    Path("gui/web/e2e"),
+}
+EXCLUDE_REL_FILES = {
+    Path("gui/web/package.json"),
+    Path("gui/web/package-lock.json"),
+    Path("gui/web/vite.config.ts"),
+    Path("gui/web/tsconfig.json"),
+    Path("gui/web/eslint.config.js"),
+    Path("gui/web/playwright.config.ts"),
+    Path("gui/web/postcss.config.js"),
+    Path("gui/web/tailwind.config.ts"),
+    Path("gui/web/.prettierrc.json"),
+    Path("gui/web/.gitignore"),
+    Path("gui/web/index.html"),  # vite 开发入口；运行时只 serves dist/index.html
+    Path("scripts/e2e_isolated.sh"),
+    Path("scripts/perf_isolated.sh"),
+}
+
+
+def _excluded(rel_from_root: Path) -> bool:
+    """rel_from_root 为相对仓库根的路径；命中排除表则不进安装包。"""
+    if rel_from_root in EXCLUDE_REL_FILES:
+        return True
+    return any(d in rel_from_root.parents for d in EXCLUDE_REL_DIRS)
+
+
 def sync_dir(src: Path, dst: Path, label: str) -> int:
     """同步目录，返回复制的文件数。"""
     if not src.exists():
@@ -53,6 +86,8 @@ def sync_dir(src: Path, dst: Path, label: str) -> int:
             continue
         if item.is_file():
             rel = item.relative_to(src)
+            if _excluded(item.relative_to(ROOT)):
+                continue
             target = dst / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item, target)
@@ -69,6 +104,10 @@ def main() -> int:
     total = 0
     total += sync_dir(ROOT / "gui", BACKEND / "gui", "gui/")
     total += sync_dir(ROOT / "scripts", BACKEND / "scripts", "scripts/")
+    # 模型配置：repo 根 config/ -> backend/config/（config.py 注释"随包发布"，
+    # asset_index._model_configured 按 CONFIG_DIR 实时读取；漏同步则安装版
+    # 永远显示"未配置模型"。2026-09-29 安装包开箱审计发现缺失，补上）
+    total += sync_dir(ROOT / "config", BACKEND / "config", "config/")
     # 内置数据资产：repo 根 assets/ -> backend/assets/（首次启动迁移到用户目录）
     total += sync_dir(ROOT / "assets", BACKEND / "assets", "assets/")
     # 语料与报告：corpus/、reports/ 同理
