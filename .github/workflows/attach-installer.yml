@@ -6,8 +6,9 @@ name: attach-installer
 #
 # 注意：不要用 `gh release upload` 传中文文件名——GitHub 会把 CJK 字符从
 # multipart 文件名里剥掉（实测 "暮冬念春-Setup-2.0.1-win64.exe" 变成
-# "-Setup-2.0.1-win64.exe"）。改用 uploads API + ?name=（percent-encoded）
-# 显式指定资产名，可保留中文。
+# "-Setup-2.0.1-win64.exe"）。连 uploads API 的 ?name= 参数（已做
+# percent-encoding）也会被服务端剥掉 CJK 字符。结论：GitHub Release 资产名
+# 只支持 ASCII，这里统一用拼音命名。
 
 on:
   workflow_dispatch:
@@ -35,17 +36,18 @@ jobs:
           run-id: ${{ inputs.build_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload to release (API, explicit name)
+      - name: Upload to release (API, explicit ASCII name)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           FILE="暮冬念春-Setup-2.0.1-win64.exe"
+          ASSET_NAME="mudong-nianchun-Setup-2.0.1-win64.exe"
           ls -la "$FILE"
           sha256sum "$FILE"
           RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases/tags/${{ inputs.tag }}" --jq .id)
-          NAME=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$FILE")
-          echo "uploading as: $FILE (encoded: $NAME) to release $RELEASE_ID"
+          NAME=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$ASSET_NAME")
+          echo "uploading $FILE as asset: $ASSET_NAME to release $RELEASE_ID"
           curl -sS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Content-Type: application/octet-stream" \
@@ -55,7 +57,9 @@ jobs:
           python3 - <<'EOF'
           import json
           d = json.load(open("upload_result.json"))
-          assert d.get("name") == "暮冬念春-Setup-2.0.1-win64.exe", f"name mangled: {d.get('name')}"
+          assert d.get("name") == "mudong-nianchun-Setup-2.0.1-win64.exe", f"name unexpected: {d.get('name')}"
           assert d.get("size") == 93262745, f"size mismatch: {d.get('size')}"
-          print("OK:", d["name"], d["size"], "bytes")
+          assert d.get("digest") == "sha256:4f8d60974dc1bcce27dde98bf8c3ff0f900e9f4f35aa590e8a9596b099137b6f", "digest mismatch"
+          print("OK:", d["name"], d["size"], "bytes", d["digest"])
+          print("download:", d["browser_download_url"])
           EOF
