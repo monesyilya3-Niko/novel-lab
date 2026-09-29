@@ -3,8 +3,11 @@
 这是全项目唯一 import ``sqlite3`` 并接触 ``index.db`` 文件的地方（铁律三边界）。
 
 设计要点（见 DESIGN_gui_persistence §1.3 / §2）：
-- 进程级单连接：``check_same_thread=False`` 让单连接跨线程共享，靠 SQLite 自身
-  锁串行化写；``ThreadingHTTPServer`` 多线程并发下由 WAL 提升并发读写。
+- 每线程独立连接（不是进程级单连接）：``check_same_thread=False`` 允许任意线程
+  关闭连接；连接按 ``threading.get_ident()`` 隔离存放。原因见下文
+  “连接管理：每线程独立连接”注释——共享单连接时 sqlite3 的连接级事务语义会
+  导致跨线程丢写/错写。``ThreadingHTTPServer`` 多线程并发下由 WAL 提升并发读写，
+  写冲突时 ``busy_timeout=5000`` 等待锁释放。
 - ``tx()`` 事务上下文：所有写路径统一走 ``with tx():``，失败回滚。
 - ``apply_migrations()``：按 ``migrations/*.sql`` 文件名序号顺序执行缺失版本，
   记录到 ``schema_migrations`` 表，每条迁移在单事务内执行。
