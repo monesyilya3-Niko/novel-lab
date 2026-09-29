@@ -39,8 +39,16 @@ def _fix_windows_console() -> None:
 _fix_windows_console()
 
 
+def _embed_url(vstr: str) -> str:
+    return f"https://www.python.org/ftp/python/{vstr}/python-{vstr}-embed-amd64.zip"
+
+
 def _latest_312() -> str | None:
-    """从 python.org FTP 目录页解析出最新的 3.12.x 版本号。"""
+    """从 python.org FTP 目录页找出"确有 embed-amd64.zip 可下载"的最新 3.12.x。
+
+    注意：不能只取版本号最大的——实测 3.12.11+ 的目录里只有源码包，
+    Windows 二进制（embed-amd64.zip）并未发布，直接拼 URL 会 404。
+    因此按版本从新到旧逐个 HEAD 探测，第一个存在的才算。"""
     with urllib.request.urlopen(FTP_INDEX, timeout=30) as resp:
         html = resp.read().decode("utf-8", "replace")
     versions: set[tuple[int, int, int]] = set()
@@ -48,9 +56,15 @@ def _latest_312() -> str | None:
         v = (int(m.group(1)), int(m.group(2)), int(m.group(3)))
         if v[:2] == WANT_MAJOR_MINOR:
             versions.add(v)
-    if not versions:
-        return None
-    return ".".join(str(x) for x in sorted(versions)[-1])
+    for v in sorted(versions, reverse=True):
+        vstr = ".".join(str(x) for x in v)
+        try:
+            req = urllib.request.Request(_embed_url(vstr), method="HEAD")
+            with urllib.request.urlopen(req, timeout=30):
+                return vstr
+        except OSError:
+            continue
+    return None
 
 
 def main() -> int:
@@ -63,9 +77,9 @@ def main() -> int:
         print(f"错误：无法访问 {FTP_INDEX}（{exc}）；请检查网络后重试", file=sys.stderr)
         return 1
     if not vstr:
-        print("错误：FTP 目录页中未找到 3.12.x 版本", file=sys.stderr)
+        print("错误：FTP 上没有找到带 embed-amd64.zip 的 3.12.x 版本", file=sys.stderr)
         return 1
-    url = f"https://www.python.org/ftp/python/{vstr}/python-{vstr}-embed-amd64.zip"
+    url = _embed_url(vstr)
     print(f"下载 {url} ...")
     TARGET.mkdir(parents=True, exist_ok=True)
     try:
