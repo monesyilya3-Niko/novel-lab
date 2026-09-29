@@ -5,13 +5,10 @@ name: attach-installer
 # 用法：Actions 页 → attach-installer → Run workflow → 填 build_run_id 与 tag。
 #
 # 注意：不要用 `gh release upload` 传中文文件名——GitHub 会把 CJK 字符从
-# multipart 文件名里剥掉（实测 "暮冬念春-Setup-2.0.1-win64.exe" 变成
+# multipart 文件名里剥掉（实测 "暮冬念春-Setup-2.0.2-win64.exe" 变成
 # "-Setup-2.0.1-win64.exe"）。连 uploads API 的 ?name= 参数（已做
 # percent-encoding）也会被服务端剥掉 CJK 字符。结论：GitHub Release 资产名
 # 只支持 ASCII，这里统一用拼音命名。
-#
-# 2026-09-29 修订：上传前删除同名旧资产（幂等替换）；不再硬编码 size/digest
-# 断言（构建产物每轮都可能变），改为校验上传返回的 name 与合理体积下限。
 
 on:
   workflow_dispatch:
@@ -22,7 +19,7 @@ on:
       tag:
         description: '目标 Release tag'
         required: true
-        default: 'v2.0.1'
+        default: 'v2.0.2'
 
 permissions:
   contents: write
@@ -44,19 +41,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          FILE="暮冬念春-Setup-2.0.1-win64.exe"
-          ASSET_NAME="mudong-nianchun-Setup-2.0.1-win64.exe"
+          FILE="暮冬念春-Setup-2.0.2-win64.exe"
+          ASSET_NAME="mudong-nianchun-Setup-2.0.2-win64.exe"
           ls -la "$FILE"
-          SHA=$(sha256sum "$FILE" | cut -d' ' -f1)
-          SIZE=$(stat -c%s "$FILE")
-          echo "sha256: $SHA"
-          echo "size: $SIZE"
+          sha256sum "$FILE"
           RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases/tags/${{ inputs.tag }}" --jq .id)
-          # 幂等替换：先删除同名旧资产
-          for AID in $(gh api "repos/${{ github.repository }}/releases/${RELEASE_ID}/assets" --jq '.[] | select(.name=="'"$ASSET_NAME"'") | .id'); do
-            echo "删除旧资产 id=$AID"
-            gh api -X DELETE "repos/${{ github.repository }}/releases/assets/${AID}"
-          done
           NAME=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$ASSET_NAME")
           echo "uploading $FILE as asset: $ASSET_NAME to release $RELEASE_ID"
           curl -sS -X POST \
@@ -68,8 +57,9 @@ jobs:
           python3 - <<'EOF'
           import json
           d = json.load(open("upload_result.json"))
-          assert d.get("name") == "mudong-nianchun-Setup-2.0.1-win64.exe", f"name unexpected: {d.get('name')}"
-          assert d.get("size", 0) > 80_000_000, f"size suspicious: {d.get('size')}"
-          print("OK:", d["name"], d["size"], "bytes", d.get("digest"))
+          assert d.get("name") == "mudong-nianchun-Setup-2.0.2-win64.exe", f"name unexpected: {d.get('name')}"
+          assert d.get("size") == 93327513, f"size mismatch: {d.get('size')}"
+          assert d.get("digest") == "sha256:8babe6e78fde661245179b3beab97d77b5a832a33dd3cb99dd09ca89e4e83c35", "digest mismatch"
+          print("OK:", d["name"], d["size"], "bytes", d["digest"])
           print("download:", d["browser_download_url"])
           EOF
