@@ -4,12 +4,15 @@ name: 构建 Windows 安装包
 # 真正的 .exe 安装器只能在 Windows 上构建。本 workflow 在云端 Windows runner
 # 上跑 `npm run dist`，产物为 NSIS 安装器。
 #
-# 触发：Actions 页面手动 Run workflow，或 API dispatch：
-#   gh-api POST /repos/OWNER/REPO/actions/workflows/build-installer.yml/dispatches \
-#     '{"ref":"feat/enterprise-hardening"}'
+# 触发：推送到 feat/enterprise-hardening 分支即自动构建；
+# 也可在 Actions 页面手动 Run workflow（需 workflow 已合入默认分支）。
 
 on:
+  # 手动触发（workflow 合并进默认分支后可用）
   workflow_dispatch:
+  # 推送到本分支即自动构建安装器
+  push:
+    branches: [feat/enterprise-hardening]
 
 permissions:
   contents: read
