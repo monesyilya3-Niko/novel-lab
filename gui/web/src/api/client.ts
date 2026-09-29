@@ -454,6 +454,46 @@ export const writingApi = {
   score: (body: Record<string, unknown>) => post<import('../types').ScoreResult>('/writing/score', body),
   assemble: (body: Record<string, unknown>) => post<Record<string, unknown>>('/writing/assemble', body),
   assembleCandidates: () => get<Record<string, unknown>[]>('/writing/assemble-candidates'),
+  // v2.0.2 写作增值功能：大纲 / 人物卡 / 便签 / 统计 / 导出
+  outlines: (project: string) => get<OutlineItem[]>(`/writing/outlines?project=${encodeURIComponent(project)}`),
+  createOutline: (body: Record<string, unknown>) => post<OutlineItem>('/writing/outlines', body),
+  updateOutline: (id: number, body: Record<string, unknown>) => put<OutlineItem>(`/writing/outlines/${id}`, body),
+  deleteOutline: (id: number) => del<{ deleted: boolean }>(`/writing/outlines/${id}`),
+  characters: (project: string) => get<CharacterCard[]>(`/writing/characters?project=${encodeURIComponent(project)}`),
+  createCharacter: (body: Record<string, unknown>) => post<CharacterCard>('/writing/characters', body),
+  updateCharacter: (id: number, body: Record<string, unknown>) => put<CharacterCard>(`/writing/characters/${id}`, body),
+  deleteCharacter: (id: number) => del<{ deleted: boolean }>(`/writing/characters/${id}`),
+  notes: (project: string) => get<NoteItem[]>(`/writing/notes?project=${encodeURIComponent(project)}`),
+  createNote: (body: Record<string, unknown>) => post<NoteItem>('/writing/notes', body),
+  updateNote: (id: number, body: Record<string, unknown>) => put<NoteItem>(`/writing/notes/${id}`, body),
+  deleteNote: (id: number) => del<{ deleted: boolean }>(`/writing/notes/${id}`),
+  stats: (project: string, days = 30) =>
+    get<WritingStats>(`/writing/stats?project=${encodeURIComponent(project)}&days=${days}`),
+  exportTxt: (project: string) =>
+    get<{ filename: string; content: string; chapters: number; words: number }>(
+      `/writing/export?project=${encodeURIComponent(project)}`),
+}
+
+export interface OutlineItem {
+  id: number; project: string; kind: 'volume' | 'chapter'; title: string
+  summary: string; status: 'planned' | 'writing' | 'done'; sortOrder: number
+  createdAt: string; updatedAt: string
+}
+
+export interface CharacterCard {
+  id: number; project: string; name: string; role: string
+  description: string; extra: string; createdAt: string; updatedAt: string
+}
+
+export interface NoteItem {
+  id: number; project: string; title: string; content: string
+  createdAt: string; updatedAt: string
+}
+
+export interface WritingStats {
+  project: string; todayWords: number; todayChapters: number
+  totalWords: number; totalChapters: number; streakDays: number
+  history: { date: string; words: number; chapters: number }[]
 }
 
 // 质检

@@ -324,6 +324,16 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
     return {k: row[k] for k in row.keys()}
 
 
+def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    """把 sqlite3.Row 转为普通 dict（供各服务层使用的公开入口）。"""
+    return _row_to_dict(row)
+
+
+def rows_to_dicts(rows: Any) -> list[dict[str, Any]]:
+    """把 Row 序列转为普通 dict 列表（供各服务层使用的公开入口）。"""
+    return [_row_to_dict(r) for r in rows]
+
+
 def _db_ready() -> bool:
     """判断 schema 是否已初始化（``assets`` 表存在即视为就绪）。
 

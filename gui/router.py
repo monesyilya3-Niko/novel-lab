@@ -371,6 +371,97 @@ def _h_writing_assemble_candidates(_params: dict[str, Any], _body: dict[str, Any
     return ok(writing_service.assemble_candidates())
 
 
+# --- 写作增值功能（v2.0.2）：大纲 / 人物卡 / 便签 / 统计 / 导出 ---
+
+def _h_writing_outlines_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.list_outlines(params.get("project") or ""))
+
+
+def _h_writing_outline_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    return ok(writing_extra.create_outline(
+        b.get("project") or "", kind=b.get("kind") or "chapter",
+        title=b.get("title") or "", summary=b.get("summary") or "",
+        status=b.get("status") or "planned",
+        sort_order=int(b.get("sort_order") or 0)))
+
+
+def _h_writing_outline_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.update_outline(int(params["oid"]), **(body or {})))
+
+
+def _h_writing_outline_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    writing_extra.delete_outline(int(params["oid"]))
+    return ok({"deleted": True})
+
+
+def _h_writing_characters_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.list_characters(params.get("project") or ""))
+
+
+def _h_writing_character_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    return ok(writing_extra.create_character(
+        b.get("project") or "", b.get("name") or "",
+        role=b.get("role") or "", description=b.get("description") or "",
+        extra=b.get("extra") if isinstance(b.get("extra"), dict) else None))
+
+
+def _h_writing_character_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.update_character(int(params["cid"]), **(body or {})))
+
+
+def _h_writing_character_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    writing_extra.delete_character(int(params["cid"]))
+    return ok({"deleted": True})
+
+
+def _h_writing_notes_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.list_notes(params.get("project") or ""))
+
+
+def _h_writing_note_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    return ok(writing_extra.create_note(
+        b.get("project") or "", title=b.get("title") or "",
+        content=b.get("content") or ""))
+
+
+def _h_writing_note_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.update_note(int(params["nid"]), **(body or {})))
+
+
+def _h_writing_note_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    writing_extra.delete_note(int(params["nid"]))
+    return ok({"deleted": True})
+
+
+def _h_writing_stats(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    try:
+        days = int(params.get("days") or 30)
+    except (TypeError, ValueError):
+        days = 30
+    return ok(writing_extra.get_stats(params.get("project") or "", days=days))
+
+
+def _h_writing_export(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.export_project_txt(params.get("project") or ""))
+
+
 def _h_quality_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     b = body or {}
@@ -737,6 +828,20 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/writing/score$"), _h_writing_score),
     ("POST", re.compile(r"^/api/writing/assemble$"), _h_writing_assemble),
     ("GET", re.compile(r"^/api/writing/assemble-candidates$"), _h_writing_assemble_candidates),
+    ("GET", re.compile(r"^/api/writing/outlines$"), _h_writing_outlines_list),
+    ("POST", re.compile(r"^/api/writing/outlines$"), _h_writing_outline_create),
+    ("PUT", re.compile(r"^/api/writing/outlines/(?P<oid>\d+)$"), _h_writing_outline_update),
+    ("DELETE", re.compile(r"^/api/writing/outlines/(?P<oid>\d+)$"), _h_writing_outline_delete),
+    ("GET", re.compile(r"^/api/writing/characters$"), _h_writing_characters_list),
+    ("POST", re.compile(r"^/api/writing/characters$"), _h_writing_character_create),
+    ("PUT", re.compile(r"^/api/writing/characters/(?P<cid>\d+)$"), _h_writing_character_update),
+    ("DELETE", re.compile(r"^/api/writing/characters/(?P<cid>\d+)$"), _h_writing_character_delete),
+    ("GET", re.compile(r"^/api/writing/notes$"), _h_writing_notes_list),
+    ("POST", re.compile(r"^/api/writing/notes$"), _h_writing_note_create),
+    ("PUT", re.compile(r"^/api/writing/notes/(?P<nid>\d+)$"), _h_writing_note_update),
+    ("DELETE", re.compile(r"^/api/writing/notes/(?P<nid>\d+)$"), _h_writing_note_delete),
+    ("GET", re.compile(r"^/api/writing/stats$"), _h_writing_stats),
+    ("GET", re.compile(r"^/api/writing/export$"), _h_writing_export),
     # W15 阶段二：质检（M3）
     ("POST", re.compile(r"^/api/quality/check$"), _h_quality_check),
     ("POST", re.compile(r"^/api/quality/book$"), _h_quality_book),

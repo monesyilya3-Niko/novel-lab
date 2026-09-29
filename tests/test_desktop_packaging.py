@@ -56,10 +56,14 @@ class TestDesktopPackagingManifest(unittest.TestCase):
         m = json.loads(fp.read_text(encoding="utf-8"))
         import gui
         self.assertEqual(m["version"], gui.__version__)
-        self.assertEqual(len(m["files"]), 72)
+        shipped = len(list((ROOT / "assets").glob("*.json")))
+        self.assertEqual(len(m["files"]), shipped,
+                         "manifest 文件数应与仓库 assets/ 实测一致")
 
     def test_assets_packaged(self):
-        self.assertEqual(len(list((BACKEND / "assets").glob("*.json"))), 72)
+        shipped = len(list((ROOT / "assets").glob("*.json")))
+        self.assertEqual(len(list((BACKEND / "assets").glob("*.json"))), shipped,
+                         "打包资产数应与仓库 assets/ 实测一致")
 
     def test_dist_packaged(self):
         self.assertTrue((BACKEND / "gui" / "web" / "dist" / "index.html").is_file())

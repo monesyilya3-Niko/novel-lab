@@ -584,6 +584,13 @@ def import_chapter(project: str, chapter_no: int, content: str,
         result["quality_verdict"] = qc.get("verdict", "?")
         result["pass_line"] = pass_line
 
+    # v2.0.2：码字统计（失败不阻断写作主流程）
+    try:
+        from gui import writing_extra
+        writing_extra.record_words(project, writing_extra.count_words(content), chapters=1)
+    except Exception:
+        pass
+
     return result
 
 
@@ -668,6 +675,9 @@ def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> Non
 
         # 落盘最佳稿
         chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, best_content or "")
+        # v2.0.2：码字统计（失败不阻断）
+        from gui import writing_extra
+        writing_extra.record_words(project, writing_extra.count_words(best_content or ""), chapters=1)
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id]["status"] = "done"
             _WRITING_TASKS[task_id]["chapter_path"] = migrate.rel_path(chapter_path)

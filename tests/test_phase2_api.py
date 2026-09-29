@@ -64,12 +64,13 @@ def _dispatch(method, path, body=None, query=None):
 
 
 class TestRouteRegistration(unittest.TestCase):
-    def test_14_new_routes_registered(self):
+    def test_writing_quality_routes_registered(self):
         # 2026-09-29：POST /api/writing/projects（新建写作项目）加入后 13→14。
+        # 2026-09-30：写作创作页新增 14 条路由（大纲/人物/便签/统计/导出），14→28。
         from gui import router
         new_routes = [r for r in router.ROUTES
                       if '/api/writing/' in r[1].pattern or '/api/quality/' in r[1].pattern]
-        self.assertEqual(len(new_routes), 14, f"Expected 14 routes, got {len(new_routes)}")
+        self.assertEqual(len(new_routes), 28, f"Expected 28 routes, got {len(new_routes)}")
 
 
 class TestWritingEndpoints(unittest.TestCase):

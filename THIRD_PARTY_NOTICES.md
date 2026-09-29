@@ -11,6 +11,7 @@
 | 上游项目 | 许可证 | 版权持有人 | 衍生资产 | 许可证副本 |
 | --- | --- | --- | --- | --- |
 | `zenstory-ai/oh-story-claudecode` | MIT | oh-story-claudecode (2025-2026) | genre-prose-card × 32 ＋ genre-pack（二次泛化）× 6 | `LICENSES/oh-story-claudecode/LICENSE` |
+| novel-lab 自主原创（AI 辅助种子卡） | MIT | novel-lab (2026) | genre-prose-card × 14 | 本仓库原创，无上游副本 |
 
 ## 2. oh-story-claudecode
 
@@ -74,7 +75,33 @@
 | `assets/xuanyi-lingyi-genre-pack.json` | `genre-xuanyi-lingyi` | 悬疑灵异 | `assets/genre-prose-card-genre-xuanyi-lingyi.json` | 2026-09-29 |
 | `assets/zhanshen-zhuixu-genre-pack.json` | `genre-zhanshen-zhuixu` | 战神赘婿 | `assets/genre-prose-card-genre-zhanshen-zhuixu.json` | 2026-09-29 |
 
-## 3. 修改说明
+## 3. novel-lab 自主原创种子卡（非第三方衍生）
+
+2026-09-30 新增 14 张题材文风卡为本项目 AI 辅助**原创种子卡**，非从第三方上游衍生：
+
+- **来源**：`meta.provenance.source = "novel-lab-agent-authored"`（非 oh-story-claudecode）
+- **许可证**：MIT；**版权声明**：Copyright (c) 2026 novel-lab (agent-authored original seed)
+- **置信度**：0.4（低值，来源自报）；`evidence` 明确标注"未经同题材样本拆书实测"
+- **内容**：每卡 5–7 个关键词、3 条开篇钩子公式、4 条避雷项、200–400 字示例开篇（均为原创写作指导文本，不含第三方小说原文片段）
+
+| 资产文件 | meta.id | 题材 | 转换时间 |
+| --- | --- | --- | --- |
+| `assets/genre-prose-card-genre-dushi-shenyi.json` | `genre-dushi-shenyi` | 都市神医 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-dushi-bingwang.json` | `genre-dushi-bingwang` | 都市兵王 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-dushi-xitong.json` | `genre-dushi-xitong` | 都市系统 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-wuxia-chuantong.json` | `genre-wuxia-chuantong` | 传统武侠 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-kehuan-xingji.json` | `genre-kehuan-xingji` | 科幻星际 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-lishi-chuanyue.json` | `genre-lishi-chuanyue` | 历史穿越 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-xuanyi-daomu.json` | `genre-xuanyi-daomu` | 悬疑盗墓 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-xuanyi-xingzhen.json` | `genre-xuanyi-xingzhen` | 悬疑刑侦 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-qingchun-xiaoyuan.json` | `genre-qingchun-xiaoyuan` | 青春校园 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-youxi-wangyou.json` | `genre-youxi-wangyou` | 游戏网游 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-wuxianliu.json` | `genre-wuxianliu` | 无限流 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-meishi.json` | `genre-meishi` | 美食文 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-zhongtian.json` | `genre-zhongtian` | 种田文 | 2026-09-30T01:50:00+08:00 |
+| `assets/genre-prose-card-genre-dianjing.json` | `genre-dianjing` | 电竞文 | 2026-09-30T01:50:00+08:00 |
+
+## 4. 修改说明
 
 上游内容进入本仓库时经过结构与语义转换，非原样复制：
 
@@ -83,17 +110,17 @@
 - 2026-09-27 补写 `meta.provenance.copyright`（本次 MIT 归因整改）
 - 题材文风卡在本仓库定位为**软约束种子**：不套用 genre-pack 的量化硬校验，仅要求 `meta.kind`、`meta.id` 命名规范、`language_rules`、`prose.sections` 存在
 
-## 4. `provenance.verified` 为何仍为 false
+## 5. `provenance.verified` 为何仍为 false
 
 `verified` 的语义是**逐条内容级事实核验**（该题材统计是否成立、指导是否准确），不是「许可证是否核验」。许可证已于 2026-09-27 完成核验（见第 2 节），但内容级核验尚未逐张完成，因此 `verified` 保持 false。
 `validate.py` 对该字段有约束：genre-prose-card 的 `verified` 若为 true 会触发警告，防止把「许可证已核实」误读为「内容已核实」而放松质量门禁。
 
-## 5. 未纳入第三方声明的内容及理由
+## 6. 未纳入第三方声明的内容及理由
 
 - **拆书产物**（`*-craft-card.json` / `voice-card` / `structure-obs` / `commercial-obs` / `distilled`）：由用户自有本地书样本统计派生，上游归属见各资产自身 `meta`
 - **`prose.sections` 各节**：为原创性写作指导文本（实测每节 37–84 字的提示性描述），不含第三方小说的逐字原文片段，因此不触发小说版权面
 - **`provenance.evidence`**：仅为样本量与统计特征描述（可用本数、抽样数、段落中位字数、对话占比），属事实性数据，不构成受版权保护的表达
 
-## 6. 责任声明
+## 7. 责任声明
 
 本文件为合规归因记录，不构成法律意见。若上游许可证发生变更，或计划对外分发并需逐文件标注版权，应重新评估归因方式。

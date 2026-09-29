@@ -316,13 +316,21 @@ class TestRetrieveTropes(unittest.TestCase):
             )
 
     def test_genre_other_returns_only_universal(self):
-        """指定一个非 campus-redemption 的题材时，只应返回 universal（无该题材专属）。"""
+        """指定一个非 campus-redemption 的题材时，只返回 universal + 该题材专属。
+
+        2026-09-30 更新：资产已新增 36 个题材专属桥段（含 xianxia 专属），
+        此处改为验证铁律一过滤——xianxia 查询只返回 universal 与 xianxia 专属，
+        不得混入其它题材（如 gongdou）专属桥段。
+        """
         results = RETRIEVE.retrieve_tropes("打脸爽点", genre="xianxia", top_k=50)
         self.assertTrue(len(results) > 0)
+        scopes = {t.get("genre_scope") for t in results}
+        self.assertIn("xianxia", scopes, "应包含 xianxia 专属桥段")
         for t in results:
-            self.assertEqual(
-                t.get("genre_scope"), "universal",
-                f"无 xianxia 专属桥段时不应返回其它专属桥段: {t.get('id')}",
+            self.assertIn(
+                t.get("genre_scope"),
+                ("universal", "xianxia"),
+                f"指定 xianxia 时不应返回其它题材专属桥段: {t.get('id')}",
             )
 
     def test_top_k_limits_results(self):

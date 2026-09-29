@@ -36,6 +36,13 @@ VALIDATE = _load("validate")
 
 UPSTREAM = "zenstory-ai/oh-story-claudecode"
 COPYRIGHT = "Copyright (c) 2025-2026 oh-story-claudecode"
+# 2026-09-30：14 张自主原创种子卡的已知来源（非第三方衍生，见 THIRD_PARTY_NOTICES.md §3）。
+AGENT_SOURCE = "novel-lab-agent-authored"
+AGENT_COPYRIGHT = "Copyright (c) 2026 novel-lab (agent-authored original seed)"
+KNOWN_ATTRIBUTIONS = frozenset({
+    (UPSTREAM, "MIT", COPYRIGHT),
+    (AGENT_SOURCE, "MIT", AGENT_COPYRIGHT),
+})
 LICENSE_COPY = ROOT / "LICENSES" / "oh-story-claudecode" / "LICENSE"
 NOTICES = ROOT / "THIRD_PARTY_NOTICES.md"
 
@@ -122,7 +129,7 @@ class TestProvenanceFields(unittest.TestCase):
         for path in PROSE_FILES:
             prov = (_card(path).get("meta") or {}).get("provenance") or {}
             got = (prov.get("source"), prov.get("license"), prov.get("copyright"))
-            if got != (UPSTREAM, "MIT", COPYRIGHT):
+            if got not in KNOWN_ATTRIBUTIONS:
                 drift.append((path.name, got))
         self.assertEqual(drift, [], f"归因取值不一致: {drift}")
 
