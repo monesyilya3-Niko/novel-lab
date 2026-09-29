@@ -12,6 +12,7 @@ novel-lab P1 trope-library 桥段库回归测试（纯标准库 unittest，零�
   6. validate_trope_library(asset) 返回的 ERRORS 为空
   7. 全库不存在 contains_verbatim == true 的条目
   8. 每条 tropes[].id 非空且唯一（资产自洽补充校验）
+  9. 每个 prose 题材恰好 3 条专属桥段（2026-09-30 扩充后不变式）
 
 用法：
   python run_tests.py            # 自动 discover 本文件（pattern test_*.py）
@@ -179,6 +180,34 @@ class TestTropeLibrary(unittest.TestCase):
         self.assertEqual(
             len(ids), len(set(ids)),
             f"trope id 存在重复: {ids}",
+        )
+
+
+    # ------------------------------------------------------------------
+    # 9. 每个 prose 题材恰好 3 条专属桥段（2026-09-30：68→170 扩充后确立的不变式）
+    # ------------------------------------------------------------------
+    def test_each_prose_genre_has_exactly_three_dedicated_tropes(self):
+        from scripts.genre_registry import prose_genres
+        expected = set(prose_genres())
+        counts = {}
+        for t in self.asset.get("tropes", []):
+            gs = t.get("genre_scope")
+            if gs and gs != "universal":
+                counts[gs] = counts.get(gs, 0) + 1
+        missing = expected - set(counts)
+        self.assertFalse(
+            missing,
+            f"以下 prose 题材没有专属桥段: {sorted(missing)}",
+        )
+        extra = set(counts) - expected
+        self.assertFalse(
+            extra,
+            f"以下 genre_scope 不在 prose 题材注册表: {sorted(extra)}",
+        )
+        wrong = {g: c for g, c in counts.items() if c != 3}
+        self.assertFalse(
+            wrong,
+            f"以下题材专属桥段数不是 3: {wrong}",
         )
 
 

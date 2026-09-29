@@ -145,7 +145,7 @@ git config core.hooksPath .githooks
 ## 7. 数据真实性红线
 
 - 所有资产/报告数字**以实测磁盘为准**，不得臆造或沿用旧口径
-- 当前实测口径（2026-09-30）：资产 **86** / 报告 **12** / 书 **9**（已拆 7，磁盘语料 2）/ 测试 **1250** / API 端点 **95** / 版本 **2.0.2**（新增：写作创作页 14 路由——大纲/人物卡/灵感便签/码字统计/TXT 导出；新增 14 个题材 prose 卡，题材 32→46；新增 102 个题材专属桥段，桥段库 68→170（46 个 prose 题材各 3 条）；AI 生成流码字统计异常隔离 + record_words AST 静态回归测试；桥段数量徽标 total_count 契约修复；迁移 0002 新增 writing_outlines/characters/notes/daily_stats 四表；新桌面图标）
+- 当前实测口径（2026-09-30）：资产 **86** / 报告 **12** / 书 **9**（已拆 7，磁盘语料 2）/ 测试 **1251** / API 端点 **95** / 版本 **2.0.2**（新增：写作创作页 14 路由——大纲/人物卡/灵感便签/码字统计/TXT 导出；新增 14 个题材 prose 卡，题材 32→46；新增 102 个题材专属桥段，桥段库 68→170（46 个 prose 题材各 3 条）+ 每题材 3 条不变式回归测试；AI 生成流码字统计异常隔离 + record_words AST 静态回归测试；桥段数量徽标 total_count 契约修复；gui/web package-lock 根版本 2.0.1→2.0.2 对齐；迁移 0002 新增 writing_outlines/characters/notes/daily_stats 四表；新桌面图标）
 - 第三方衍生资产必须携带 `provenance.source / license / copyright` 三要素，并在 `THIRD_PARTY_NOTICES.md` 逐张登记（`validate.py` 硬校验 + `tests/test_third_party_notices.py` 守卫）；许可证原文须以逐字副本存于 `LICENSES/<上游>/`
 - ⚠️ 历史文档中的「17 资产 / 33 测试 / 3 本书 / 68 资产 / 272 测试 / 353/373/648 测试 / 44 端点」等均为**过时或错误口径**
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**
