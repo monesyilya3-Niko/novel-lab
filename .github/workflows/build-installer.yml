@@ -34,7 +34,9 @@ jobs:
         # 未入库，runner 上无此文件会导致 "unable to cache dependencies" 硬失败。
 
       - name: 安装依赖
-        run: npm ci
+        # 注：不用 npm ci——desktop/package-lock.json 被 .gitignore 忽略未入库，
+        # runner 上没有 lock 文件，npm ci 会硬失败；用 npm install 按语义版本解析。
+        run: npm install
 
       - name: 构建 NSIS 安装器
         # predist 钩子自动执行：fetch-python-win.py（准备 embeddable Python，
