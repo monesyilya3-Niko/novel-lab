@@ -24,6 +24,20 @@ ROOT = Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "desktop" / "backend"
 
 
+def _fix_windows_console() -> None:
+    """Windows 控制台默认编码（如 runner 的 cp1252）打不出中文会直接崩；
+    启动时把 stdout/stderr 切到 UTF-8，保证任何 locale 下打印中文都不
+    UnicodeEncodeError。非 Windows 下本就是 UTF-8，调用无影响。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
+_fix_windows_console()
+
+
 def sync_dir(src: Path, dst: Path, label: str) -> int:
     """同步目录，返回复制的文件数。"""
     if not src.exists():

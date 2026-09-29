@@ -25,6 +25,20 @@ FTP_INDEX = "https://www.python.org/ftp/python/"
 WANT_MAJOR_MINOR = (3, 12)
 
 
+def _fix_windows_console() -> None:
+    """Windows 控制台默认编码（如 runner 的 cp1252）打不出中文会直接崩；
+    启动时把 stdout/stderr 切到 UTF-8，保证任何 locale 下打印中文都不
+    UnicodeEncodeError。非 Windows 下本就是 UTF-8，调用无影响。"""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
+
+_fix_windows_console()
+
+
 def _latest_312() -> str | None:
     """从 python.org FTP 目录页解析出最新的 3.12.x 版本号。"""
     with urllib.request.urlopen(FTP_INDEX, timeout=30) as resp:
