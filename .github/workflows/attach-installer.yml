@@ -1,0 +1,46 @@
+name: attach-installer
+
+# 手动触发：把某次 Windows 构建 run 的安装包产物挂到指定 Release 上。
+# 解决浏览器/API 都无法上传 Release 附件的问题（GITHUB_TOKEN 在 CI 内可以）。
+# 用法：Actions 页 → attach-installer → Run workflow → 填 build_run_id 与 tag。
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: 'Windows 构建产物所在的 Actions run id'
+        required: true
+      tag:
+        description: '目标 Release tag'
+        required: true
+        default: 'v2.0.1'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify artifact
+        run: |
+          ls -la
+          sha256sum 暮冬念春-Setup-2.0.1-win64.exe
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.tag }}" 暮冬念春-Setup-2.0.1-win64.exe \
+            --clobber --repo "${{ github.repository }}"
+          echo "--- release assets ---"
+          gh release view "${{ inputs.tag }}" --repo "${{ github.repository }}" --json assets \
+            --jq '.assets[] | "\(.name)  \(.size) bytes"'
