@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  actions: write # setup-node 的 npm 缓存需要读写 Actions cache
 
 jobs:
   build-installer:
