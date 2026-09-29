@@ -17,7 +17,9 @@ win:
       arch: [x64]
   icon: build/icon.ico
   artifactName: 暮冬念春-Setup-${version}-win64.${ext}
-  signAndEditExecutable: false
+  # 注意：不要加 signAndEditExecutable: false —— 它会跳过 signAndEditResources，
+  # 连 win.icon 也不写，导致 exe 回退到 Electron 默认图标（v2.0.1/v2.0.2 首构建实锤）。
+  # 无证书时签名本就会被优雅跳过（"no signing info identified, signing is skipped"），无需此开关。
 nsis:
   oneClick: false
   perMachine: false

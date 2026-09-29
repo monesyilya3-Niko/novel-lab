@@ -110,3 +110,57 @@ class TestDesktopPackagingManifest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDesktopIconConfig(unittest.TestCase):
+    """背景4（2026-09-30 v2.0.2 安装包开箱审计实锤）：
+
+    v2.0.1 与 v2.0.2 首构建的安装包经 7-Zip 解剖，app/暮冬念春.exe 内嵌的是
+    Electron 默认图标——electron-builder.yml 里 ``win.signAndEditExecutable: false``
+    会让 WinPackager.signApp() 直接 return，跳过 signAndEditResources（写图标的那一步）。
+    该开关自首个桌面版提交就存在（本意是避开无证书签名报错），但无证书时签名
+    本就会被优雅跳过（"no signing info identified, signing is skipped"），此开关纯属误伤。
+    用户在 Win10 真机看到默认 Electron 图标，要求换掉。
+    """
+
+    YML = ROOT / "desktop" / "electron-builder.yml"
+
+    def _win_section(self) -> str:
+        text = self.YML.read_text(encoding="utf-8")
+        # 取 win: 节（到下一个顶级 key 为止的文本块）
+        lines = text.splitlines()
+        start = next(i for i, l in enumerate(lines) if l.startswith("win:"))
+        buf = []
+        for l in lines[start + 1:]:
+            if l and not l.startswith(" ") and not l.startswith("#"):
+                break
+            buf.append(l)
+        return "\n".join(buf)
+
+    def test_win_icon_points_to_real_ico(self):
+        """win.icon 必须指向真实存在的 .ico 文件。"""
+        win = self._win_section()
+        icon_line = next((l for l in win.splitlines()
+                          if l.strip().startswith("icon:")), None)
+        self.assertIsNotNone(icon_line, "electron-builder.yml 的 win 节缺失 icon 配置")
+        rel = icon_line.split(":", 1)[1].strip()
+        ico = ROOT / "desktop" / rel
+        self.assertTrue(ico.is_file(), f"win.icon 指向的文件不存在: {rel}")
+        # 至少是个合法的 ICO（ICONDIR 头）
+        head = ico.read_bytes()[:6]
+        self.assertEqual(head[:4], b"\x00\x00\x01\x00", f"{rel} 不是合法 ICO 文件")
+
+    def test_sign_and_edit_executable_not_disabled(self):
+        """禁止 win.signAndEditExecutable: false——它会连图标一起跳过。"""
+        win = self._win_section()
+        for l in win.splitlines():
+            s = l.strip()
+            if s.startswith("#"):
+                continue
+            if s.startswith("signAndEditExecutable:"):
+                val = s.split(":", 1)[1].strip().lower()
+                self.assertNotEqual(
+                    val, "false",
+                    "win.signAndEditExecutable: false 会跳过写图标，"
+                    "导致 exe 回退到 Electron 默认图标（见本类 docstring 背景4）",
+                )
