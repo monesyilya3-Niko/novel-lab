@@ -143,7 +143,7 @@ function createWindow() {
     minHeight: 640,
     title: '暮冬念春',
     autoHideMenuBar: true,
-    backgroundColor: '#FAF7F0',
+    backgroundColor: '#FFFFFF',
     show: false,
     webPreferences: {
       nodeIntegration: false,

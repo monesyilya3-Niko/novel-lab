@@ -26,7 +26,7 @@ npm run dist        # 产物在 release/
 ## 运行逻辑
 
 1. 主进程 spawn `resources/backend/python-win/python.exe gui/launch.py --no-browser`
-2. 从 stdout 正则解析 `[GUI] novel-lab 书籍分析服务已启动: http://...`
+2. 从 stdout 正则解析 `[GUI] 暮冬念春 服务已启动: http://...` 与 `[GUI] 握手令牌: ...`
 3. HTTP 轮询 `/api/overview` 确认就绪后打开 BrowserWindow
 4. 窗口关闭/退出时 taskkill 回收后端进程树；单实例锁防多开
 5. 未签名：Windows SmartScreen 会提示未知发布者，属预期（个人分发无证书）
