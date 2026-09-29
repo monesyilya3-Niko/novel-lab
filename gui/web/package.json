@@ -19,7 +19,7 @@
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^5.16.7",
-    "@mui/material": "^5.16.7",
+    "@mui/material": "^9.4.0",
     "@tanstack/react-virtual": "^3.10.8",
     "@tiptap/extension-character-count": "^3.31.3",
     "@tiptap/extension-placeholder": "^3.31.3",
