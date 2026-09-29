@@ -149,6 +149,7 @@ git config core.hooksPath .githooks
 - 第三方衍生资产必须携带 `provenance.source / license / copyright` 三要素，并在 `THIRD_PARTY_NOTICES.md` 逐张登记（`validate.py` 硬校验 + `tests/test_third_party_notices.py` 守卫）；许可证原文须以逐字副本存于 `LICENSES/<上游>/`
 - ⚠️ 历史文档中的「17 资产 / 33 测试 / 3 本书 / 68 资产 / 272 测试 / 353/373/648 测试 / 44 端点」等均为**过时或错误口径**
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**
+- Git Data API 推送教训（2026-09-30）：blob 创建后必须用 GET 验证内容再建 tree（曾推送过根版本仍为 2.0.1 的错误 blob）；tree 必须基于远端最新 commit 的 tree；推送后 fetch + reset --hard 对齐本地（API 创建的 commit SHA 与本地不同但 tree 一致属正常）
 
 ---
 
