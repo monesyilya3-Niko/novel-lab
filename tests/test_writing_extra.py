@@ -147,5 +147,53 @@ class WritingExtraTest(unittest.TestCase):
         self.assertIn("today_words", payload["data"])
 
 
+
+
+class WritingStatsHookIsolationTest(unittest.TestCase):
+    """回归：writing_service.py 里所有 record_words 调用必须被 try/except 包裹。
+
+    背景（2026-09-30 实锤）：手动写作流的挂钩有 try/except，但 AI 生成流
+    （_run_generate 落盘后）的挂钩没有——统计表一旦异常，章节已落盘但任务
+    状态永远到不了 done，用户看到任务卡死。统计失败绝不能阻断写作主流程。
+    """
+
+    def test_all_record_words_calls_are_guarded(self):
+        import ast
+        src = (Path(__file__).resolve().parent.parent
+               / "gui" / "writing_service.py").read_text(encoding="utf-8")
+        tree = ast.parse(src)
+
+        calls = []  # (lineno, 是否在 Try 内)
+
+        class Visitor(ast.NodeVisitor):
+            def __init__(self):
+                self._try_depth = 0
+
+            def visit_Try(self, node):
+                self._try_depth += 1
+                self.generic_visit(node)
+                self._try_depth -= 1
+
+            def visit_Call(self, node):
+                func = node.func
+                name = ""
+                if isinstance(func, ast.Attribute):
+                    name = func.attr
+                elif isinstance(func, ast.Name):
+                    name = func.id
+                if name == "record_words":
+                    calls.append((node.lineno, self._try_depth > 0))
+                self.generic_visit(node)
+
+        Visitor().visit(tree)
+        self.assertGreater(len(calls), 0, "writing_service.py 里没找到 record_words 调用")
+        for lineno, guarded in calls:
+            self.assertTrue(
+                guarded,
+                f"writing_service.py:{lineno} 的 record_words 调用不在 try/except 内，"
+                "统计异常会阻断写作主流程",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

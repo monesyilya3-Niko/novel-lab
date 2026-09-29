@@ -40,7 +40,7 @@ const T2 = trope('T-2', '英雄救美', '情感', ['xianxia'])
 
 beforeEach(() => {
 vi.clearAllMocks()
-listMock.mockResolvedValue({ totalCount: 2, tropes: [T1, T2]})
+listMock.mockResolvedValue({ total_count: 2, tropes: [T1, T2]})
 })
 
 describe('TropePanel', () => {

@@ -1,6 +1,6 @@
 // TropePanel：桥段库入口（放在「写作」页签内）。
 //
-// 浏览 32 条桥段 → 按分类筛选 / 按当前题材过滤适用 → 查看详情 →
+// 浏览桥段库 → 按分类筛选 / 按当前题材过滤适用 → 查看详情 →
 // 一键把桥段骨架写入「写作要点」（情节任务），不用手打复制。
 import { useEffect, useMemo, useState} from 'react'
 import Box from '@mui/material/Box'
@@ -75,7 +75,7 @@ tropeApi
 .list()
 .then((r) => {
 setTropes(r.tropes?? [])
-setTotalCount(r.totalCount?? 0)
+setTotalCount(r.total_count?? 0)
 setLoading(false)
 })
 .catch((e) => {

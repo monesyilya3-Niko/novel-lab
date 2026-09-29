@@ -551,7 +551,7 @@ export const assetApi = {
     del<Record<string, unknown>>(`/assets/${kind}/${encodeURIComponent(id)}`),
 }
 
-// 桥段库：只读，直读后端 assets/trope-library.json（32 条，见 /api/tropes）。
+// 桥段库：只读，直读后端 assets/trope-library.json（见 /api/tropes，返回 total_count）。
 export const tropeApi = {
   list: () => get<import('../types').TropeListResult>('/tropes'),
 }

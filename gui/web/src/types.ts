@@ -301,6 +301,8 @@ export interface Trope {
 }
 
 export interface TropeListResult {
-  totalCount: number
+  /** 后端字段名是 total_count（snake_case，见 gui/services.py::list_tropes），
+   *  2026-09-30 修过前端误读 totalCount 导致数量徽标恒为 0 的 bug。 */
+  total_count: number
   tropes: Trope[]
 }
