@@ -3,6 +3,11 @@ name: attach-installer
 # 手动触发：把某次 Windows 构建 run 的安装包产物挂到指定 Release 上。
 # 解决浏览器/API 都无法上传 Release 附件的问题（GITHUB_TOKEN 在 CI 内可以）。
 # 用法：Actions 页 → attach-installer → Run workflow → 填 build_run_id 与 tag。
+#
+# 注意：不要用 `gh release upload` 传中文文件名——GitHub 会把 CJK 字符从
+# multipart 文件名里剥掉（实测 "暮冬念春-Setup-2.0.1-win64.exe" 变成
+# "-Setup-2.0.1-win64.exe"）。改用 uploads API + ?name=（percent-encoded）
+# 显式指定资产名，可保留中文。
 
 on:
   workflow_dispatch:
@@ -30,17 +35,27 @@ jobs:
           run-id: ${{ inputs.build_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify artifact
-        run: |
-          ls -la
-          sha256sum 暮冬念春-Setup-2.0.1-win64.exe
-
-      - name: Upload to release
+      - name: Upload to release (API, explicit name)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ inputs.tag }}" 暮冬念春-Setup-2.0.1-win64.exe \
-            --clobber --repo "${{ github.repository }}"
-          echo "--- release assets ---"
-          gh release view "${{ inputs.tag }}" --repo "${{ github.repository }}" --json assets \
-            --jq '.assets[] | "\(.name)  \(.size) bytes"'
+          set -euo pipefail
+          FILE="暮冬念春-Setup-2.0.1-win64.exe"
+          ls -la "$FILE"
+          sha256sum "$FILE"
+          RELEASE_ID=$(gh api "repos/${{ github.repository }}/releases/tags/${{ inputs.tag }}" --jq .id)
+          NAME=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$FILE")
+          echo "uploading as: $FILE (encoded: $NAME) to release $RELEASE_ID"
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary "@${FILE}" \
+            "https://uploads.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets?name=${NAME}" \
+            | tee upload_result.json
+          python3 - <<'EOF'
+          import json
+          d = json.load(open("upload_result.json"))
+          assert d.get("name") == "暮冬念春-Setup-2.0.1-win64.exe", f"name mangled: {d.get('name')}"
+          assert d.get("size") == 93262745, f"size mismatch: {d.get('size')}"
+          print("OK:", d["name"], d["size"], "bytes")
+          EOF
