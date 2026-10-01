@@ -45,7 +45,7 @@ jobs:
         run: npm run dist
 
       - name: 上传安装器
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer
           path: desktop/release/*-Setup-*-win64.exe
