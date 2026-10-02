@@ -1,6 +1,6 @@
 {
   "version": "2.0.2",
-  "generated_at": "2026-09-30T04:16:24.036198+08:00",
+  "generated_at": "2026-10-02T17:57:23.053245+08:00",
   "files": {
     "Lord_of_the_Mysteries-commercial-obs.json": {
       "sha256": "d03d48a63142c9f1d75f88c52d112c477ba4f83d433b7a3f140ac102435bd09e",
@@ -307,11 +307,12 @@
       "previous_hashes": []
     },
     "trope-library.json": {
-      "sha256": "0eba5c580daa4cc0a72737b1b2ba6ab2e82fe767b8db39d79c385dad57aa1156",
+      "sha256": "07a303dfddc12cd62a6a1c84d7372a92a78f5f253f69ac78efe9535ba6718341",
       "previous_hashes": [
         "4b83423a9a5f598861b192a83fff1c569256f764f338e029d7c2badddb38da95",
         "b4a4650b168b18c8a8d030600f65b6270687815e7dcbf753b8b5b0cdb0a6a965",
-        "d9f0f0f4f36b72a721cc015f46dfcbe7a313361c56772a18a0ff4db298e97613"
+        "d9f0f0f4f36b72a721cc015f46dfcbe7a313361c56772a18a0ff4db298e97613",
+        "0eba5c580daa4cc0a72737b1b2ba6ab2e82fe767b8db39d79c385dad57aa1156"
       ]
     },
     "xianxia-genre-pack.json": {
