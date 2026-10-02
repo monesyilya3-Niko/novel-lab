@@ -1,6 +1,6 @@
 {
   "version": "2.0.2",
-  "generated_at": "2026-10-02T17:57:23.053245+08:00",
+  "generated_at": "2026-10-03T01:07:22.774133+08:00",
   "files": {
     "Lord_of_the_Mysteries-commercial-obs.json": {
       "sha256": "d03d48a63142c9f1d75f88c52d112c477ba4f83d433b7a3f140ac102435bd09e",
@@ -63,8 +63,10 @@
       "previous_hashes": []
     },
     "genre-prose-card-genre-dianjing.json": {
-      "sha256": "4e96131888ec64d943b70dd47792a01f0ddf9d901c915aa0621ae1374a5db227",
-      "previous_hashes": []
+      "sha256": "755a0b1c34adc2e3c066988bd3edf0837a098df0932d6676bff18faa08b0937f",
+      "previous_hashes": [
+        "4e96131888ec64d943b70dd47792a01f0ddf9d901c915aa0621ae1374a5db227"
+      ]
     },
     "genre-prose-card-genre-dushi-bingwang.json": {
       "sha256": "486e498b46493df04c7072926e0609252819169fb82b1d14ba114e5556e9299f",
@@ -131,8 +133,10 @@
       "previous_hashes": []
     },
     "genre-prose-card-genre-lishi-chuanyue.json": {
-      "sha256": "9563618b19df3973d92fd887f6d700cca842c40541055062b51e0bba90c2f8bb",
-      "previous_hashes": []
+      "sha256": "dde80f8e51f719b847463e005a002fc4431519a4dba6ea80f5eeab97fec2b130",
+      "previous_hashes": [
+        "9563618b19df3973d92fd887f6d700cca842c40541055062b51e0bba90c2f8bb"
+      ]
     },
     "genre-prose-card-genre-lishi-naodong.json": {
       "sha256": "680de01c8910a485a410be1165a9b9fbb38a91b530723c048939469704e7f0db",
@@ -143,8 +147,10 @@
       "previous_hashes": []
     },
     "genre-prose-card-genre-meishi.json": {
-      "sha256": "5ecc4f3f96dc787cb5e8900b9fef1a71c814289fc9344638c76d39dcedb2fb28",
-      "previous_hashes": []
+      "sha256": "8f35bbb6030190bdabe8f3ed5c720a8d91f5784d3d3e6fa164720a687ccf36aa",
+      "previous_hashes": [
+        "5ecc4f3f96dc787cb5e8900b9fef1a71c814289fc9344638c76d39dcedb2fb28"
+      ]
     },
     "genre-prose-card-genre-minguo-yanqing.json": {
       "sha256": "34bee0ac8f9c69a6aa80ce6eaed3c0ee9d04badebbd2e2f477f4e3307bfbb5ed",
@@ -175,12 +181,16 @@
       "previous_hashes": []
     },
     "genre-prose-card-genre-wuxia-chuantong.json": {
-      "sha256": "abb47e0aca6319e874753199e4105a9e782f7a1a7813d340f83e549a9f20b7c2",
-      "previous_hashes": []
+      "sha256": "ea470ece094a041a3bc5a6992f04dd369ceac0b24b91cc0913e1ba88e0071c30",
+      "previous_hashes": [
+        "abb47e0aca6319e874753199e4105a9e782f7a1a7813d340f83e549a9f20b7c2"
+      ]
     },
     "genre-prose-card-genre-wuxianliu.json": {
-      "sha256": "2ccc7922c39cda2a54748859cc0a213a1d7d24d7fe7e45affde52ca935b062b9",
-      "previous_hashes": []
+      "sha256": "e575ec42a3a8438b72d6d10c534dbebbad1e35d231ca21d950d5a0a820c42488",
+      "previous_hashes": [
+        "2ccc7922c39cda2a54748859cc0a213a1d7d24d7fe7e45affde52ca935b062b9"
+      ]
     },
     "genre-prose-card-genre-xianxia.json": {
       "sha256": "0a80ffe519a21004068c7bf5c0decec467e0c7c18c82ce99bca4d4b845501ced",
@@ -211,8 +221,10 @@
       "previous_hashes": []
     },
     "genre-prose-card-genre-xuanyi-daomu.json": {
-      "sha256": "7cfa6c5fde79813377963879e1eca09cd470c64a397c08fde29fcd89b34f49ad",
-      "previous_hashes": []
+      "sha256": "d031fec3648ae7dae31155ea84670d15592ecce3d889b28e6e0ef8c9edf80f7c",
+      "previous_hashes": [
+        "7cfa6c5fde79813377963879e1eca09cd470c64a397c08fde29fcd89b34f49ad"
+      ]
     },
     "genre-prose-card-genre-xuanyi-lingyi.json": {
       "sha256": "80ba7239e3c756a59456e84fab4dd8a2eaca2be74ad838d3840a29f53f9e2649",
@@ -231,8 +243,10 @@
       "previous_hashes": []
     },
     "genre-prose-card-genre-youxi-wangyou.json": {
-      "sha256": "6263005f3513914c655896574faa2f8c5aa23e0654b21a401a73c529dfc9f58e",
-      "previous_hashes": []
+      "sha256": "c1ce003ed16d7e92639cc80e3374a8982c1106b7a8fcafe8075e01fa7872e7ca",
+      "previous_hashes": [
+        "6263005f3513914c655896574faa2f8c5aa23e0654b21a401a73c529dfc9f58e"
+      ]
     },
     "genre-prose-card-genre-zhanshen-zhuixu.json": {
       "sha256": "4d4ffc1c2a3531ce74682aa39847810bb07f79d5c79bb93c1f6d47d099f9f7ec",
