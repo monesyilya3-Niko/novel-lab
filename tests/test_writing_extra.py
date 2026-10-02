@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _isolation  # noqa: E402
@@ -193,6 +194,79 @@ class WritingStatsHookIsolationTest(unittest.TestCase):
                 f"writing_service.py:{lineno} 的 record_words 调用不在 try/except 内，"
                 "统计异常会阻断写作主流程",
             )
+
+
+class RecordWordsFailureBehaviorTest(unittest.TestCase):
+    """行为级回归：record_words 抛异常时，写作任务仍必须进入 done。
+
+    AST 静态测试（WritingStatsHookIsolationTest）只保证"调用被 try/except
+    包裹"，本测试真正模拟码字统计表异常，验证 AI 生成流与手动入库流的
+    主流程都不受影响：章节已落盘，任务状态必须走到 done，不能卡死。
+    """
+
+    def setUp(self):
+        self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="wxhook_")))
+        self._iso.__enter__()
+        db.init_schema()
+        db.apply_migrations()
+        # 模拟统计表异常：record_words 每次调用都炸
+        self._boom = RuntimeError("统计表炸了（测试模拟）")
+        self._rec_patcher = patch.object(
+            writing_extra, "record_words", side_effect=self._boom)
+        self._rec_patcher.start()
+        self.addCleanup(self._rec_patcher.stop)
+
+    def tearDown(self):
+        from gui import writing_service
+        with writing_service._WRITING_LOCK:
+            writing_service._WRITING_TASKS.clear()
+        db.close()
+        self._iso.__exit__(None, None, None)
+
+    def _mock_llm_pipeline(self):
+        """打桩整条 AI 生成管线：首稿即达标，只走 1 个 attempt。"""
+        from gui import engine_adapter
+        p1 = patch.object(engine_adapter, "llm_chat",
+                          return_value={"text": "第一章正文。" * 200})
+        p2 = patch.object(engine_adapter, "score_text",
+                          return_value={"score": 95.0, "details": []})
+        p3 = patch.object(engine_adapter, "chapter_check",
+                          return_value={"score": 90, "issues": []})
+        p4 = patch.object(engine_adapter, "ensure_novel_structure",
+                          return_value=Path("novel"))
+        fake_chapter = Path("novel") / "chapters" / "chapter-001.txt"
+        p5 = patch.object(engine_adapter, "save_chapter",
+                          return_value=fake_chapter)
+        for p in (p1, p2, p3, p4, p5):
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_generate_reaches_done_when_record_words_raises(self):
+        from gui import writing_service
+        self._mock_llm_pipeline()
+        task_id = "w-test-behavior"
+        req = {"project": PROJ, "chapter_no": 1, "task": "测试要点",
+               "novel_name": PROJ, "genre_pack": None, "words": 2400,
+               "target_score": 90, "quality_target": 85, "pass_line": 85}
+        with writing_service._WRITING_LOCK:
+            writing_service._WRITING_TASKS[task_id] = {
+                "task_id": task_id, "status": "running", "mode": "llm",
+                "attempts": [], "score": None, "quality_score": None,
+            }
+        # 同步直调后台函数（与线程内执行路径一致）
+        writing_service._run_generate(task_id, {"meta": {}}, "system", req)
+        t = writing_service.task_state(task_id)
+        self.assertEqual(t["status"], "done",
+                         f"record_words 抛异常后任务状态应为 done，实际 {t['status']!r}")
+        self.assertIsNotNone(t["chapter_path"])
+        self.assertIn("完成", t["message"])
+
+    def test_import_chapter_ok_when_record_words_raises(self):
+        from gui import writing_service
+        self._mock_llm_pipeline()  # 复用 save_chapter / ensure_novel_structure 打桩
+        result = writing_service.import_chapter(PROJ, 1, "正文内容。" * 100)
+        self.assertEqual(result["chapter_no"], 1)
+        self.assertGreater(result["char_count"], 0)
 
 
 if __name__ == "__main__":
