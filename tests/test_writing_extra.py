@@ -11,7 +11,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+_TESTS_DIR = Path(__file__).resolve().parent
+_ROOT = _TESTS_DIR.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+sys.path.insert(0, str(_TESTS_DIR))
 import _isolation  # noqa: E402
 
 from gui import db, writing_extra  # noqa: E402

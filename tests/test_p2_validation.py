@@ -1,5 +1,11 @@
 """P2-B5/B6 回归测试：非法 chapter_num/batch_size 返回 400 而非 500。"""
+import sys
 import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from gui import router
 from gui.services import ServiceError
