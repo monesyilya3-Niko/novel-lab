@@ -13,7 +13,6 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest import mock
 
 _TESTS_DIR = Path(__file__).resolve().parent
 _ROOT = _TESTS_DIR.parent
@@ -22,7 +21,6 @@ if str(_ROOT) not in sys.path:
 sys.path.insert(0, str(_TESTS_DIR))
 import _isolation  # noqa: E402
 
-from gui import config  # noqa: E402
 from gui import services  # noqa: E402
 
 
