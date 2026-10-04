@@ -263,7 +263,10 @@ function GeneratePanel({ sel }: { sel: WritingAssetSelection }) {
         project, chapter_no: chapterNo, content: importContent, voice: voice || undefined,
         genre_pack: genrePack || undefined,
       })
-      setImportResult(JSON.stringify(r, null, 2))
+      const summary = r.overwrote
+        ? `第 ${r.chapter_no} 章已覆盖（本次 ${r.char_count} 字；字数统计只记增量）`
+        : `第 ${r.chapter_no} 章入库成功（${r.char_count} 字）`
+      setImportResult(`${summary}\n${JSON.stringify(r, null, 2)}`)
     } catch (e) {
       setImportResult(friendlyError(e))
     } finally {

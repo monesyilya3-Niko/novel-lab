@@ -222,6 +222,17 @@ export interface ScoreResult {
   passLine: number
 }
 
+export interface ImportChapterResult {
+  chapter_path: string
+  chapter_no: number
+  char_count: number
+  overwrote: boolean
+  consistency_score?: number
+  quality_score?: number
+  quality_verdict?: string
+  pass_line?: number
+}
+
 export interface QcIssue {
   type: string
   severity: 'critical' | 'high' | 'medium' | 'low'
