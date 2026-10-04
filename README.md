@@ -12,6 +12,9 @@ novel-lab 是一套本地优先（local-first）的网文创作辅助系统，�
 
 双形态交付：**CLI 引擎**（`novel.py`，20+ 中文子命令）+ **GUI 工作台**（浏览器访问 `http://127.0.0.1:8000/`）。
 
+> 🤖 **外部智能体调用**：Qoder / Cline / Claude / OpenCode / Antigravity 等桌面 Agent
+> 请先读 [docs/AGENT_API.md](docs/AGENT_API.md)——HTTP API 调用手册（资产发现、无模型降级、生成/入库/打分全流程）。
+
 | 亮色首页 | 暗色写作台 |
 |---|---|
 | ![亮色首页](docs/screenshots/home-light.png) | ![暗色写作台](docs/screenshots/writing-dark.png) |

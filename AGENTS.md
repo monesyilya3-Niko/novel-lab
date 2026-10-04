@@ -15,6 +15,9 @@
 
 双形态交付：**CLI 引擎**（`novel.py`，20+ 子命令）+ **GUI 工作台**（浏览器访问 `http://127.0.0.1:8000/`，Python 标准库常驻 + 预构建前端）。
 
+> 外部桌面智能体（Qoder / Cline / Claude / OpenCode / Antigravity）调用本项目时，
+> **优先使用 HTTP API**（CLI 仅作一次性备选），调用手册见 [docs/AGENT_API.md](docs/AGENT_API.md)。
+
 ---
 
 ## 1. 三条铁律（违反即视为 bug）
