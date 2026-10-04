@@ -18,6 +18,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+# 直接执行兼容：`python3 gui/server.py`（不走 `python -m gui.server`）时，
+# 脚本目录是 gui/ 而非仓库根，手动把仓库根加入 sys.path；-m 方式下已存在则 no-op。
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 from gui import admin, auto_backup, config, db, router, services
 from gui.logging_setup import get_logger, setup_logging
 from gui.services import ServiceError, unique_corpus_path as _unique_corpus_path

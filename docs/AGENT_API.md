@@ -11,10 +11,10 @@ cd <novel-lab 根目录>
 python3 -m gui.server --no-browser --port 8000
 # 输出 [GUI] novel-lab 书籍分析服务已启动: http://127.0.0.1:8000/
 # 端口被占时自动 +1（8000-8099）；单实例锁，重复启动会报错
+# 也支持直接执行：python3 gui/server.py --no-browser --port 8000
 ```
 
-注意：必须用 `python3 -m gui.server`（模块方式），直接 `python3 gui/server.py`
-会 `ModuleNotFoundError: gui`。用户数据目录默认 `~/.local/share/暮冬念春`
+用户数据目录默认 `~/.local/share/暮冬念春`
 （Windows: `%LOCALAPPDATA%\暮冬念春`），可经 `XUAN_DATA_DIR` 环境变量覆盖。
 
 ## 2. 鉴权
