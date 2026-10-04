@@ -96,9 +96,11 @@ curl -s $B/api/writing/tasks/w-xxxx
 ### 4.3 打分（纯算法，无需 LLM）
 
 ```bash
-# 一致性打分（voice-card 算法）
+# 一致性打分（voice-card 算法）+ 质量十二维；text 与 chapter_path 二选一
 curl -s -X POST $B/api/writing/score -H 'Content-Type: application/json' \
   -d '{"voice":"voice:chireng_chosen-voice-card","text":"正文……","label":"第1章"}'
+# → {"code":0,"data":{"consistency":{"score":92.5,"dims":{...},"details":[...]},
+#     "quality":{"score":88,...},"verdict":"PASS","pass_line":75}}
 # 章节入库时已自动打分；此接口用于单独对任意文本打分
 ```
 
@@ -153,7 +155,8 @@ curl -s -X POST $B/api/models -H 'Content-Type: application/json' \
   -d '{"id":"my-deepseek","protocol":"openai",
        "base_url":"https://api.deepseek.com/v1","model_name":"deepseek-chat",
        "api_key_env":"DEEPSEEK_API_KEY"}'
-# 密钥走环境变量名或密钥存储，不直接写明文 key
+# 密钥走环境变量名或密钥存储，不直接写明文 key；
+# 也可以：export OPENAI_API_KEY=... 或 python scripts/model_config.py key <id>
 ```
 
 ## 7. Agent 注意事项
