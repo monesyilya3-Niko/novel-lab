@@ -78,6 +78,17 @@ curl -s -X POST $B/api/writing/chapters -H 'Content-Type: application/json' \
 #     "quality_verdict":"PASS","pass_line":85}}
 ```
 
+### 4.1b 单独取写作 prompt（注入）
+
+```bash
+# 资产 → 写作 prompt，不启动生成任务；返回 prompt 全文 + 注入的资产维度
+curl -s -X POST $B/api/writing/inject -H 'Content-Type: application/json' \
+  -d '{"voice":"voice:chireng_chosen-voice-card","prose_card":"prose_card:xxx"}'
+# → {"code":0,"data":{"prompt":"……","char_count":3210,
+#     "injected_kinds":["voice","prose_card"],"meta":{...}}}
+# Agent 自己写正文时，用这个 prompt 当 system prompt
+```
+
 ### 4.2 有 LLM 时的一键生成
 
 ```bash
