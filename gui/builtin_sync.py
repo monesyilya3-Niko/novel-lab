@@ -88,8 +88,8 @@ def write_manifest() -> dict[str, Any]:
 
     扫描 ``assets/*.json``：新文件直接登记；已登记文件的 hash 若变化，
     把旧 current 追加进 ``previous_hashes``（官方旧版 hash 就此累积，
-    供 ``diff()`` 识别「官方旧版」）。幂等：无变化时重跑内容不变
-    （除 ``generated_at`` 外）。
+    供 ``diff()`` 识别「官方旧版」）。幂等：无变化时重跑**不写文件**，
+    直接返回现有 manifest（连 ``generated_at`` 都不变，避免假脏）。
     """
     src = shipped_dir()
     if src is None:
@@ -111,6 +111,11 @@ def write_manifest() -> dict[str, Any]:
                     and old_current not in prev):
                 prev.append(old_current)
         files[p.name] = {"sha256": new_hash, "previous_hashes": prev}
+    if old.get("version") == __version__ and old_files == files:
+        _log.info("manifest 无变化，跳过写入")
+        return {"version": __version__,
+                "generated_at": old.get("generated_at", ""),
+                "files": files}
     manifest = {
         "version": __version__,
         "generated_at": datetime.now().astimezone().isoformat(),

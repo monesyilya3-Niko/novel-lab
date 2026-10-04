@@ -278,6 +278,17 @@ class TestWriteManifest(unittest.TestCase):
         m3 = builtin_sync.write_manifest()
         self.assertEqual(m3["files"]["x.json"]["previous_hashes"], [old_hash])
 
+    def test_regen_without_changes_skips_write(self):
+        """无变化重跑：不写文件（字节不变），返回现有 manifest。"""
+        from gui import config
+        m1 = builtin_sync.write_manifest()
+        mp = config.ROOT_DIR / builtin_sync.MANIFEST_NAME
+        before = mp.read_bytes()
+        m2 = builtin_sync.write_manifest()
+        self.assertEqual(mp.read_bytes(), before)  # 文件未被触碰
+        self.assertEqual(m2["files"], m1["files"])
+        self.assertEqual(m2["generated_at"], m1["generated_at"])
+
     def test_load_manifest_rejects_broken(self):
         (config.ROOT_DIR / builtin_sync.MANIFEST_NAME).write_text("not json", encoding="utf-8")
         self.assertIsNone(builtin_sync.load_manifest())
