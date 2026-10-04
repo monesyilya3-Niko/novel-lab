@@ -158,6 +158,27 @@ class WritingExtraTest(unittest.TestCase):
         writing_service.import_chapter(PROJ, 1, "一" * 777)
         self.assertEqual(writing_extra.get_chapter_words(PROJ, 1), 777)
 
+    def test_concurrent_reimport_same_chapter(self):
+        """并发重复入库同一章节：20 线程同时入库，最终只记一次（防竞态）。"""
+        import threading
+
+        from gui import writing_service
+        errs: list = []
+
+        def worker():
+            try:
+                writing_service.import_chapter(PROJ, 1, "一" * 1000)
+            except Exception as exc:  # noqa: BLE001
+                errs.append(exc)
+
+        threads = [threading.Thread(target=worker) for _ in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errs, [])
+        self.assertEqual(self._today(), (1000, 1))
+
     # -- 导出 --
     def test_export_txt(self):
         from gui import config

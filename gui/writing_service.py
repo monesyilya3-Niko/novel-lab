@@ -28,6 +28,10 @@ _WRITING_TASKS: dict[str, dict[str, Any]] = {}
 # 非重入 Lock 会自死锁（与 quality_service._QUALITY_LOCK 同一事故口径）。
 _WRITING_LOCK = threading.RLock()
 
+# 章节落盘锁：import_chapter / _run_generate 的"快照旧章节→落盘→记账"三步必须原子化，
+# 否则并发重复入库同一章节时两个线程都快照到 old=None，字数与章节数重复累加。
+_CHAPTER_WRITE_LOCK = threading.RLock()
+
 _ACTIVE_STATUSES = frozenset({"pending", "running", "scoring", "rewriting"})
 _MAX_CONCURRENT_WRITING = 2
 _MAX_TERMINAL_TASKS = 50  # 终态任务最多保留 N 个
@@ -567,12 +571,20 @@ def import_chapter(project: str, chapter_no: int, content: str,
     voice_data = _load_asset_of_kind(voice, "voice") if voice else None
 
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
-    # 入库幂等：先快照旧章节字数；重复入库只记增量（改短则扣减），不重复累加章节数
+    # 入库幂等：快照→落盘→记账三步原子化（_CHAPTER_WRITE_LOCK），防并发重复入库竞态；
+    # 重复入库只记字数增量（改短则扣减），不重复累加章节数
     from gui import writing_extra
-    old_words = writing_extra.get_chapter_words(project, chapter_no)
-    is_new = old_words is None
-    chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
-    new_words = writing_extra.count_words(content)
+    with _CHAPTER_WRITE_LOCK:
+        old_words = writing_extra.get_chapter_words(project, chapter_no)
+        is_new = old_words is None
+        chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
+        new_words = writing_extra.count_words(content)
+        # v2.0.2：码字统计（失败不阻断写作主流程）
+        try:
+            writing_extra.record_words(project, new_words - (old_words or 0),
+                                       chapters=1 if is_new else 0)
+        except Exception:
+            pass
 
     result: dict[str, Any] = {
         "chapter_path": migrate.rel_path(chapter_path),
@@ -589,13 +601,6 @@ def import_chapter(project: str, chapter_no: int, content: str,
         result["quality_score"] = qc.get("score", 0)
         result["quality_verdict"] = qc.get("verdict", "?")
         result["pass_line"] = pass_line
-
-    # v2.0.2：码字统计（失败不阻断写作主流程）；重复入库记增量
-    try:
-        writing_extra.record_words(project, new_words - (old_words or 0),
-                                   chapters=1 if is_new else 0)
-    except Exception:
-        pass
 
     return result
 
@@ -679,21 +684,22 @@ def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> Non
                                        cons.get("details", []), qc.get("issues", []),
                                        voice_data, content)
 
-        # 落盘最佳稿
+        # 落盘最佳稿：快照→落盘→记账三步原子化（_CHAPTER_WRITE_LOCK），防并发竞态
         from gui import writing_extra
-        old_words = writing_extra.get_chapter_words(project, chapter_no)
-        is_new = old_words is None
-        chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, best_content or "")
-        # v2.0.2：码字统计（失败不阻断：统计表异常不得让已落盘的章节任务卡住）；
-        # 重复生成同一章节记增量，不重复累加章节数
-        try:
-            writing_extra.record_words(
-                project,
-                writing_extra.count_words(best_content or "") - (old_words or 0),
-                chapters=1 if is_new else 0,
-            )
-        except Exception:
-            pass
+        with _CHAPTER_WRITE_LOCK:
+            old_words = writing_extra.get_chapter_words(project, chapter_no)
+            is_new = old_words is None
+            chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, best_content or "")
+            # v2.0.2：码字统计（失败不阻断：统计表异常不得让已落盘的章节任务卡住）；
+            # 重复生成同一章节记增量，不重复累加章节数
+            try:
+                writing_extra.record_words(
+                    project,
+                    writing_extra.count_words(best_content or "") - (old_words or 0),
+                    chapters=1 if is_new else 0,
+                )
+            except Exception:
+                pass
         with _WRITING_LOCK:
             _WRITING_TASKS[task_id]["status"] = "done"
             _WRITING_TASKS[task_id]["chapter_path"] = migrate.rel_path(chapter_path)
