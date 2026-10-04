@@ -5,7 +5,7 @@ sys.path、test_p2_validation 完全没处理 sys.path，直接 `python3 tests/t
 报 ModuleNotFoundError: gui。统一约定：测试文件必须自行把仓库根目录加入
 sys.path（参考 test_writing_service.py），保证 run_tests.py 之外也能直跑。
 
-实现：为每个测试文件起子进程执行 `import <模块>`（8 并发），子进程 cwd 为
+实现：为每个测试文件起子进程执行 `import <模块>`（16 并发），子进程 cwd 为
 临时目录且不继承 PYTHONPATH——只走模块顶层执行（含 sys.path 装配与 import），
 不触发 `if __name__ == "__main__"`、不跑测试，快且无副作用。
 """
@@ -32,16 +32,20 @@ class DirectRunConventionTest(unittest.TestCase):
         def _check(f: Path) -> str | None:
             # 复刻 `python3 tests/test_xxx.py` 的 sys.path[0]（脚本所在目录），
             # 但不给仓库根目录：能 import 才算直跑合格。
+            # 子进程层面的意外（超时、启动失败）也转为失败条目，不抛错中断整批。
             code = (
                 "import sys; "
                 f"sys.path.insert(0, {str(TESTS_DIR)!r}); "
                 f"import {f.stem}"
             )
-            r = subprocess.run(
-                [sys.executable, "-c", code],
-                capture_output=True, text=True, timeout=60,
-                cwd=tmpdir, env=env,
-            )
+            try:
+                r = subprocess.run(
+                    [sys.executable, "-c", code],
+                    capture_output=True, text=True, timeout=60,
+                    cwd=tmpdir, env=env,
+                )
+            except Exception as exc:  # noqa: BLE001 — 超时等一律记为该文件失败
+                return f"{f.name}: subprocess failed: {type(exc).__name__}: {exc}"[:160]
             err = r.stderr or ""
             if (r.returncode != 0 or "ModuleNotFoundError" in err
                     or "ImportError" in err):
