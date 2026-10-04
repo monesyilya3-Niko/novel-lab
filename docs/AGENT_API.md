@@ -75,7 +75,9 @@ curl -s -X POST $B/api/writing/chapters -H 'Content-Type: application/json' \
        "voice":"voice:chireng_chosen-voice-card"}'
 # → {"code":0,"data":{"chapter_path":"arc-1/chapter-001.txt","chapter_no":1,
 #     "char_count":1234,"consistency_score":92.5,"quality_score":88,
-#     "quality_verdict":"PASS","pass_line":85}}
+#     "quality_verdict":"PASS","pass_line":85,"overwrote":false}}
+# overwrote=true 表示覆盖了已存在的章节；重复入库只记字数增量（改短则扣减），
+# 不重复累加章节数——入库本身是幂等的，无需 Agent 自行去重
 ```
 
 ### 4.1b 单独取写作 prompt（注入）
@@ -172,8 +174,8 @@ curl -s -X POST $B/api/models -H 'Content-Type: application/json' \
 
 ## 7. Agent 注意事项
 
-1. **写操作幂等性**：`import_chapter` 重复入库同一章节会覆盖落盘但**重复累加**
-   字数统计；Agent 应自行去重，或先查 `stats`。
+1. **写操作幂等性**：`import_chapter` / AI 生成重复落盘同一章节时，
+   字数统计只记增量（`overwrote=true`），不重复累加；无需 Agent 自行去重。
 2. **并发上限**：同时最多 2 个写作任务，超了返回 429。
 3. **项目名**：先 `GET /api/writing/projects` 确认存在再写；`default` 项目只读。
 4. **voice 必填**：`generate` 的 `voice` 不能为空且必须引用真实资产；

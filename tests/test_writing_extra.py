@@ -120,6 +120,44 @@ class WritingExtraTest(unittest.TestCase):
         # "标题正文一二三四" = 8；"第二章abcdef" = 9
         self.assertEqual(s["total_words"], 17)
 
+    # -- 重复入库幂等 --
+    def _today(self):
+        s = writing_extra.get_stats(PROJ, days=7)
+        return s["today_words"], s["today_chapters"]
+
+    def test_reimport_identical_is_noop(self):
+        from gui import writing_service
+        r1 = writing_service.import_chapter(PROJ, 1, "第一章正文。" * 200)
+        self.assertFalse(r1["overwrote"])
+        self.assertEqual(self._today(), (1200, 1))
+        r2 = writing_service.import_chapter(PROJ, 1, "第一章正文。" * 200)
+        self.assertTrue(r2["overwrote"])
+        self.assertEqual(self._today(), (1200, 1))  # 完全幂等：字数章节都不变
+
+    def test_reimport_longer_records_delta(self):
+        from gui import writing_service
+        writing_service.import_chapter(PROJ, 1, "一" * 1000)
+        writing_service.import_chapter(PROJ, 1, "一" * 1500)
+        self.assertEqual(self._today(), (1500, 1))  # 只记 +500，不重复加章节
+
+    def test_reimport_shorter_deducts(self):
+        from gui import writing_service
+        writing_service.import_chapter(PROJ, 1, "一" * 1000)
+        writing_service.import_chapter(PROJ, 1, "一" * 600)
+        self.assertEqual(self._today(), (600, 1))  # 改短扣减
+
+    def test_new_chapters_still_count(self):
+        from gui import writing_service
+        writing_service.import_chapter(PROJ, 1, "一" * 1000)
+        writing_service.import_chapter(PROJ, 2, "二" * 500)
+        self.assertEqual(self._today(), (1500, 2))
+
+    def test_get_chapter_words(self):
+        from gui import writing_service
+        self.assertIsNone(writing_extra.get_chapter_words(PROJ, 1))
+        writing_service.import_chapter(PROJ, 1, "一" * 777)
+        self.assertEqual(writing_extra.get_chapter_words(PROJ, 1), 777)
+
     # -- 导出 --
     def test_export_txt(self):
         from gui import config

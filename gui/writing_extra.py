@@ -297,10 +297,14 @@ def delete_note(note_id: int) -> None:
 # ---------------------------------------------------------------------------
 
 def record_words(project: str, words: int, chapters: int = 1) -> None:
-    """记录一次写作产出（章节入库 / AI 生成完成时调用）。失败只记日志，不阻断主流程。"""
+    """记录一次写作产出（章节入库 / AI 生成完成时调用）。失败只记日志，不阻断主流程。
+
+    words 可为负：重复入库同一章节时只记增量（改短了就扣减），保证统计幂等。
+    words 为 0 时直接返回（等价无操作；调用方传 chapters=0 即可表达"非新章节"）。
+    """
     try:
         project = _require_project(project)
-        words = max(0, int(words))
+        words = int(words)
         if words == 0:
             return
         with db.tx() as conn:
@@ -329,6 +333,20 @@ def _iter_chapter_files(project: str) -> list[tuple[int, Path]]:
             out.append((int(m.group(1)), fp))
     out.sort(key=lambda t: t[0])
     return out
+
+
+def get_chapter_words(project: str, chapter_no: int) -> int | None:
+    """返回已落盘章节的字数（count_words 口径）；章节不存在返回 None。
+
+    供入库幂等使用：重复入库同一章节时只记录字数增量，不重复累加。
+    """
+    for no, fp in _iter_chapter_files(project):
+        if no == chapter_no:
+            try:
+                return count_words(fp.read_text(encoding="utf-8"))
+            except OSError:
+                return 0
+    return None
 
 
 def get_stats(project: str, days: int = 30) -> dict[str, Any]:

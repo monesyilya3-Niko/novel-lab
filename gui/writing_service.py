@@ -567,11 +567,17 @@ def import_chapter(project: str, chapter_no: int, content: str,
     voice_data = _load_asset_of_kind(voice, "voice") if voice else None
 
     engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
+    # 入库幂等：先快照旧章节字数；重复入库只记增量（改短则扣减），不重复累加章节数
+    from gui import writing_extra
+    old_words = writing_extra.get_chapter_words(project, chapter_no)
+    is_new = old_words is None
     chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)
+    new_words = writing_extra.count_words(content)
 
     result: dict[str, Any] = {
         "chapter_path": migrate.rel_path(chapter_path),
         "chapter_no": chapter_no, "char_count": len(content),
+        "overwrote": not is_new,
     }
 
     if voice_data is not None:
@@ -584,10 +590,10 @@ def import_chapter(project: str, chapter_no: int, content: str,
         result["quality_verdict"] = qc.get("verdict", "?")
         result["pass_line"] = pass_line
 
-    # v2.0.2：码字统计（失败不阻断写作主流程）
+    # v2.0.2：码字统计（失败不阻断写作主流程）；重复入库记增量
     try:
-        from gui import writing_extra
-        writing_extra.record_words(project, writing_extra.count_words(content), chapters=1)
+        writing_extra.record_words(project, new_words - (old_words or 0),
+                                   chapters=1 if is_new else 0)
     except Exception:
         pass
 
@@ -674,11 +680,18 @@ def _run_generate(task_id: str, voice_data: dict, system: str, req: dict) -> Non
                                        voice_data, content)
 
         # 落盘最佳稿
+        from gui import writing_extra
+        old_words = writing_extra.get_chapter_words(project, chapter_no)
+        is_new = old_words is None
         chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, best_content or "")
-        # v2.0.2：码字统计（失败不阻断：统计表异常不得让已落盘的章节任务卡住）
+        # v2.0.2：码字统计（失败不阻断：统计表异常不得让已落盘的章节任务卡住）；
+        # 重复生成同一章节记增量，不重复累加章节数
         try:
-            from gui import writing_extra
-            writing_extra.record_words(project, writing_extra.count_words(best_content or ""), chapters=1)
+            writing_extra.record_words(
+                project,
+                writing_extra.count_words(best_content or "") - (old_words or 0),
+                chapters=1 if is_new else 0,
+            )
         except Exception:
             pass
         with _WRITING_LOCK:
