@@ -30,9 +30,27 @@ python3 -m gui.server --no-browser --port 8000
 - 响应信封统一为 JSON：`{"code": 0, "data": {...}, "message": ""}`。
   `code != 0` 即失败，看 `message`（如 `400 非法资产引用`、`404 资产不存在`、
   `429 写作任务已达上限`）。
+- **非 ASCII 查询参数必须 percent-encode**（服务端按标准解码；裸传中文会乱码
+  导致 404）。curl 用法：`curl -G "$B/api/writing/export" --data-urlencode "project=我的书"`；
+  Python 用 `urllib.parse.quote`。项目 JSON body 不受影响。
 - 资产引用格式为 `<kind>:<id>`，如 `"voice:chireng_chosen-voice-card"`，
   对应资产目录下 `<id>.json`。kind 错配（如拿蒸馏卡当 voice）会 400。
 - 项目名禁 `default`（CLI 只读）、禁 `/ \ ..` 等。
+
+### 3.1 发现可用资产
+
+```bash
+# kind 取值：voice / structure / commercial / craft / genre_pack / prose_card / trope
+curl -s "$B/api/assets?kind=voice&limit=50" | python3 -c "
+import json,sys
+for it in json.load(sys.stdin)['data']['items']:
+    print(it['id'])"   # 直接可用作 voice 参数，如 voice:chireng_chosen-voice-card
+
+# 单个资产详情：注意 id 必须带 kind: 前缀（与列表返回的 id 字段完全一致）
+curl -s "$B/api/assets/voice/voice:Lord_of_the_Mysteries-voice-card" \
+  | python3 -c "import json,sys; d=json.load(sys.stdin)['data'];
+print(d['kind'], d['name'], 'keys:', list(d['content'].keys()))"
+```
 
 ## 4. 核心工作流
 
@@ -91,7 +109,7 @@ curl -s $B/api/writing/projects                                  # 项目列表
 curl -s -X POST $B/api/writing/projects -H 'Content-Type: application/json' \
   -d '{"name":"我的书"}'                                          # 新建项目
 
-curl -s "$B/api/writing/outlines?project=我的书"                  # 大纲列表
+curl -s -G $B/api/writing/outlines --data-urlencode "project=我的书"  # 大纲列表
 curl -s -X POST $B/api/writing/outlines -H 'Content-Type: application/json' \
   -d '{"project":"我的书","kind":"chapter","title":"第1章","summary":"入学"}'
 curl -s -X PUT $B/api/writing/outlines/1 -H 'Content-Type: application/json' \
@@ -106,8 +124,14 @@ curl -s -X DELETE $B/api/writing/outlines/1
 ### 4.5 统计与导出
 
 ```bash
-curl -s "$B/api/writing/stats?project=我的书&days=7"   # today_words/today_chapters/history
-curl -s "$B/api/writing/export?project=我的书" -o book.txt  # 全书导出 TXT
+curl -s -G "$B/api/writing/stats" --data-urlencode "project=我的书" --data-urlencode "days=7"
+# → {"code":0,"data":{"project":"我的书","today_words":1234,"today_chapters":1,...}}
+
+curl -s -G "$B/api/writing/export" --data-urlencode "project=我的书" \
+  | python3 -c "import json,sys; d=json.load(sys.stdin)['data'];
+print(d['filename'], d['chapters'], '章', d['words'], '字')"
+# → {"code":0,"data":{"filename":"我的书-全书导出-2026-10-04.txt",
+#     "content":"第1章\n\n正文……\n","chapters":1,"words":1234}}
 ```
 
 ## 5. CLI 备选（不起服务时）
