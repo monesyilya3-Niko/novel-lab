@@ -137,7 +137,7 @@ export default function WorkbenchNav({ active, onChange }: WorkbenchNavProps) {
       <Box sx={{ flex: 1 }} />
       <Box sx={{ px: 2.5, pb: 1 }}>
         <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: '0.1em' }}>
-          v2.0.2
+          v2.0.3
         </Typography>
       </Box>
     </Box>
