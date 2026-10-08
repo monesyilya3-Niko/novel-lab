@@ -83,7 +83,7 @@ NOVEL_DIR      = novel-lab/novel/
 
 ### 运行方式
 ```bash
-python run_tests.py          # 全量（基线 951 用例，2026-09-27）
+python run_tests.py          # 全量门禁（用例数只认 §7 的权威口径行，别在此处另写一份）
 ```
 
 ### 隔离要求（血泪教训）
@@ -165,6 +165,15 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
 - ⚠️ 历史文档中的「17 资产 / 33 测试 / 3 本书 / 68 资产 / 272 测试 / 353/373/648 测试 / 44 端点」等均为**过时或错误口径**
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**
 - Git Data API 推送教训（2026-09-30）：blob 创建后必须用 GET 验证内容再建 tree（曾推送过根版本仍为 2.0.1 的错误 blob）；tree 必须基于远端最新 commit 的 tree；推送后 fetch + reset --hard 对齐本地（API 创建的 commit SHA 与本地不同但 tree 一致属正常）
+
+### 发布与版本禁令（用户下达，长期有效；2026-10-08 从桌面交接文档收编进本文件）
+
+- **未经用户明确点头，不得**：改版本号、打 tag、建 Release、发版。v2.0.3 是用户批准后才做的。
+- 版本号单一真相源是 `gui/__init__.py::__version__`，`tests/test_version_consistency.py` 强制 7 处一致；改版本后必须重建前端 dist（`cd gui/web && npm run build`）。
+- 打 tag / 建 Release 会触发 `release.yml` 直接产出对外发布物，属**不可逆的对外动作**，一律等用户点头，不得以"流程已跑通"为由自行执行。
+- 以下两件事此前只写在桌面《novel-lab-项目交接文档》里，仓库内没有副本，故收编于此（文档丢失即等于约束丢失）：
+  - Release 资产上传曾遇到 `custom.github` 凭证对 `uploads.github.com` 返回 401（对 `api.github.com` 正常），当时改用浏览器网页端上传成功。**本机实测状态**：`gh auth status` 已通过（账号 monesyilya3-Niko，token scopes 含 `repo`/`workflow`），下次发版可先试 `gh release upload`；该路径**尚未实机验证**（验证需真实 Release，不在授权范围内）。
+  - 桌面安装产物**未做代码签名**（2026-10-08 对 v2.0.3 资产实测 `Get-AuthenticodeSignature` = `NotSigned`），Windows SmartScreen 必然弹"未知发布者"，用户侧需要手动"更多信息 → 仍要运行"。
 
 ---
 
