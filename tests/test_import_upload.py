@@ -180,6 +180,113 @@ class TestUploadFilenameSafety(unittest.TestCase):
             self.assertEqual(ctx.exception.code, 400)
 
 
+class TestImportPathEndpoint(unittest.TestCase):
+    """POST /api/import（JSON 传路径）的准入（2026-10-08 撤掉项目根墙）。
+
+    M8 曾要求"导入路径必须在项目目录内"，但用户要拆的书本来就放在项目外，
+    和质检那句"路径放不进去"是同一条墙。这里钉住新契约：路径随便指，
+    能读到的只有正文——非 .txt、目录、不存在一律拒。
+    复用 TestImportUploadEndToEnd 的真实 HTTP + 隔离路径骨架。
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory(prefix="import_path_")
+        self.addCleanup(self._tmp.cleanup)
+        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._iso.__enter__()
+        self.addCleanup(lambda: self._iso.__exit__(None, None, None))
+
+        # 稿子放在**另一个**临时目录：确保它既不在项目根、也不在隔离根内
+        self._ext = tempfile.TemporaryDirectory(prefix="import_ext_")
+        self.addCleanup(self._ext.cleanup)
+        self.ext_dir = Path(self._ext.name)
+
+        self._httpd = ThreadingHTTPServer(("127.0.0.1", 0), gui_server._Handler)
+        self._httpd.daemon_threads = True
+        self._thread = threading.Thread(target=self._httpd.serve_forever, daemon=True)
+        self._thread.start()
+        self.addCleanup(self._shutdown)
+        self.port = self._httpd.server_address[1]
+
+    def _shutdown(self):
+        self._httpd.shutdown()
+        self._httpd.server_close()
+        self._thread.join(timeout=5)
+        from gui import db
+        db.close()
+
+    def _get(self, path: str) -> tuple[int, dict]:
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
+        conn.request("GET", path)
+        resp = conn.getresponse()
+        data = json.loads(resp.read().decode("utf-8"))
+        conn.close()
+        return resp.status, data
+
+    def _chapter_text(self, book_id: str, no: int) -> str:
+        # book_id 里有中文，请求行必须是 ASCII（http.client 直接 encode('ascii')）
+        from urllib.parse import quote
+        status, data = self._get(f"/api/book/{quote(book_id, safe='')}/chapter/{no}")
+        self.assertEqual(status, 200, data)
+        return json.dumps(data, ensure_ascii=False)
+
+    def _post(self, payload: dict) -> tuple[int, dict]:
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
+        body = json.dumps(payload).encode("utf-8")
+        conn.request("POST", "/api/import", body=body,
+                     headers={"Content-Type": "application/json",
+                              "Content-Length": str(len(body))})
+        resp = conn.getresponse()
+        data = json.loads(resp.read().decode("utf-8"))
+        conn.close()
+        return resp.status, data
+
+    def test_import_from_outside_project_root(self):
+        from gui import config
+        fp = self.ext_dir / "外部稿.txt"
+        fp.write_bytes(BOOK_TXT)
+        status, data = self._post({"path": str(fp)})
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["code"], 0)
+        self.assertEqual(data["data"]["total_chapters"], 2)
+        # 路径式导入是"就地引用"原文件（上传式才归一化落 corpus/），
+        # 所以这里断言的是引用到了项目外的真实路径，而不是副本落在哪。
+        self.assertEqual(str(Path(data["data"]["source_path"]).resolve()),
+                         str(fp.resolve()))
+
+    def test_gbk_book_imports(self):
+        # 拆书导入侧早就 UTF-8→GBK 两段解；这条钉住"GBK 整本也能拆"，
+        # 并且章节内容解对了（不是静默替换成乱码再切章）
+        fp = self.ext_dir / "gbk整本.txt"
+        fp.write_bytes(BOOK_TXT.decode().encode("gbk"))
+        status, data = self._post({"path": str(fp)})
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["data"]["total_chapters"], 2)
+        got = self._chapter_text(data["data"]["book_id"], 1)
+        self.assertIn("这是第一章正文内容。", got)
+
+    def test_non_text_suffix_refused(self):
+        from gui import config
+        secret = config.STATE_ROOT / "index.db"
+        secret.parent.mkdir(parents=True, exist_ok=True)
+        secret.write_bytes(b"SQLite format 3\x00")
+        status, data = self._post({"path": str(secret)})
+        self.assertEqual(status, 400, data)
+        self.assertIn(".txt", data["message"])
+
+    def test_directory_refused(self):
+        status, data = self._post({"path": str(self.ext_dir)})
+        self.assertIn(status, (400, 404), data)
+
+    def test_missing_file_404(self):
+        status, data = self._post({"path": str(self.ext_dir / "没有这本书.txt")})
+        self.assertEqual(status, 404, data)
+
+    def test_non_string_path_is_400_not_500(self):
+        status, data = self._post({"path": 12345})
+        self.assertEqual(status, 400, data)
+
+
 class TestImportUploadEndToEnd(unittest.TestCase):
     """真实 HTTP 服务 + 隔离路径的上传导入。"""
 

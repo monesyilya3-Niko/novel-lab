@@ -41,12 +41,12 @@ def _h_import(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     path = (body or {}).get("path", "")
     if not path:
         raise ServiceError("缺少 path 参数", 400)
-    # M8：API 层限制导入路径在项目根内，防止任意文件读取（纵深防御）。
-    from gui import config as _config
-    resolved = Path(path).resolve()
-    root = _config.ROOT_DIR.resolve()
-    if not resolved.is_relative_to(root):
-        raise ServiceError("导入路径必须在项目目录内", 403)
+    if not isinstance(path, str):
+        raise ServiceError("path 必须为字符串", 400)
+    # M8 在这里加过"导入路径必须在项目目录内"的墙（防任意文件读取）。2026-10-08 撤掉：
+    # 用户要拆的书本来就放在项目外，那句 403 和质检的"路径放不进去"是同一句话。
+    # 任意文件读取的防线改落在内容上——services.import_book 走 _secure_read_text：
+    # 只收 .txt、不跟随符号链接、非常规文件拒绝、100MB 封顶。
     batch_size = _safe_batch_size((body or {}).get("batch_size"))
     return ok(services.import_book(path, batch_size))
 

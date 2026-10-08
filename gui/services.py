@@ -280,7 +280,9 @@ def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
     """读 txt → 切章 → 切批 → 生成 book_id → 建状态文件 → 返回 Book。
 
     返回的 Book 章节列表只含批次元信息（不含正文），正文按需由 chapter 接口返回。
-    路径安全校验由路由层（router._h_import）负责，本函数保持对内部调用友好。
+    读取与准入都由 :func:`_secure_read_text` 负责（后缀 / 符号链接 / 常规文件 /
+    体积），路由层不再判目录（2026-10-08：用户要拆的书本来就在项目外）。
+    导入是**就地引用** ``path``，不复制进 corpus/——原文件被移走后透明重载会 404。
     """
     src = Path(path)
     text = _secure_read_text(path)

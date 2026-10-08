@@ -263,19 +263,21 @@ def read_text_file(path: Path) -> str:
     先按 UTF-8 解，失败退 GBK——与 ``gui/services._secure_read_text``（拆书导入）
     的解码口径一致。国内用户的 `.txt` 相当一部分是 GBK/GB2312，只认 UTF-8 会让
     整本质检在真稿上报"解码失败"，看上去像路径问题，其实是编码问题。
+
+    措辞用"正文文件"而不是"章节文件"：这个入口也用于整本书（`--book`）。
     """
     try:
         data = path.read_bytes()
     except OSError as exc:
-        raise OSError(f"章节文件读取失败: {path} — {exc}") from exc
+        raise OSError(f"正文文件读取失败: {path} — {exc}") from exc
     try:
         return data.decode("utf-8")
-    except UnicodeError as first:
+    except UnicodeError:
         try:
             return data.decode("gbk")
         except UnicodeError as exc:
             raise UnicodeError(
-                f"章节文件编码无法识别（仅支持 UTF-8 / GBK）: {path} — {exc}") from exc
+                f"正文文件编码无法识别（仅支持 UTF-8 / GBK）: {path} — {exc}") from exc
 
 
 def _first_alias(aliases: dict):

@@ -77,6 +77,32 @@ print(d['kind'], d['name'], 'keys:', list(d['content'].keys()))"
 
 ## 4. 核心工作流
 
+### 4.0 拆书第一步：导入一本书
+
+两种导入方式，**落盘语义不同**（以下响应为 2026-10-08 实测原文）：
+
+```bash
+# A) 路径式：直接把硬盘上的稿子交给服务（2026-10-08 起不再要求位于项目目录内）
+curl -s -X POST $B/api/import -H 'Content-Type: application/json' \
+  -d '{"path":"D:/写作/我的外部书.txt","batch_size":2048}'
+# → {"code":0,"data":{"book_id":"我的外部书-9e36abf4","title":"我的外部书",
+#     "source_path":"D:\\写作\\我的外部书.txt","total_chapters":2,
+#     "chapters":[{"index":1,"title":"第1章 楔子","batch_count":1,
+#                  "batches":[{"chapter_index":1,"batch_index":0,
+#                              "char_start":0,"char_end":10,"status":"pending"}]}, …]},
+#     "message":""}
+
+# B) 上传式：浏览器/脚本提交文件本体，正文归一化复制进 corpus/
+curl -s -X POST $B/api/import-upload -F "file=@D:/写作/我的外部书.txt"
+```
+
+- **路径式是就地引用**：服务只记下 `source_path`，不复制。稿子被移走或改名后，
+  内存缓存淘汰再触发透明重载会 404。要长期留存请用上传式（或自己先复制进 `corpus/`）。
+- **只收 `.txt`**，符号链接与目录一律拒（403/400），上限 100MB。
+- 编码：UTF-8 优先、失败退 GBK；两种都解不了返回 400 并带上文件路径。
+- 非 ASCII 的 `book_id` 在后续请求里必须 percent-encode（见 §3 通用约定）。
+- 导入之后的分析与报告端点不在本手册内，以 `gui/router.py` 的 `ROUTES` 表为准（§7 第 5 条）。
+
 ### 4.1 无 LLM 时的推荐流程（降级协作）
 
 无模型时 `POST /api/writing/generate` **不会报错**，而是返回降级指引
