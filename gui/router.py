@@ -313,6 +313,20 @@ def _safe_int(value: Any, default: int, field: str) -> int:
         raise ServiceError(f"{field} 必须为整数", 400) from exc
 
 
+def _safe_chapter_no(value: Any, field: str) -> int:
+    """章节序号必须是**精确整数**。
+
+    `_safe_int` 会把 2.5 静默截断成 2——而章节号是要落盘成 `chapter-002.txt`
+    并参与字数记账的，静默截断等于让用户第 2 章的内容被"第 2.5 章"覆盖掉。
+    bool 同理：`true` 不该变成第 1 章。
+    """
+    if isinstance(value, bool):
+        raise ServiceError(f"{field} 必须为整数", 400)
+    if isinstance(value, float) and not value.is_integer():
+        raise ServiceError(f"{field} 必须为整数", 400)
+    return _safe_int(value, 0, field)
+
+
 def _safe_batch_size(value: Any) -> int | None:
     """P2-B6：batch_size 非法值返回 400 而非透传导致 500。"""
     if value is None:
@@ -328,7 +342,8 @@ def _h_writing_generate(_params: dict[str, Any], body: dict[str, Any]) -> dict[s
     b = body or {}
     return ok(writing_service.generate(
         voice=b.get("voice", ""), project=b.get("project", ""),
-        chapter_no=_safe_int(b.get("chapter_no"), 0, "chapter_no"), task=b.get("task", ""),
+        chapter_no=_safe_chapter_no(b.get("chapter_no"), "chapter_no"),
+        task=b.get("task", ""),
         novel_name=b.get("novel_name"), prompt=b.get("prompt"),
         genre_pack=b.get("genre_pack"), words=_safe_int(b.get("words"), 2400, "words"),
         target_score=_safe_int(b.get("target_score"), 90, "target_score"),
@@ -345,7 +360,8 @@ def _h_writing_import_chapter(_params: dict[str, Any], body: dict[str, Any]) -> 
     from gui import writing_service
     b = body or {}
     return ok(writing_service.import_chapter(
-        project=b.get("project", ""), chapter_no=_safe_int(b.get("chapter_no"), 0, "chapter_no"),
+        project=b.get("project", ""),
+        chapter_no=_safe_chapter_no(b.get("chapter_no"), "chapter_no"),
         content=b.get("content", ""), novel_name=b.get("novel_name"),
         voice=b.get("voice"), genre_pack=b.get("genre_pack")))
 
@@ -631,7 +647,8 @@ def _h_format_chapter(_params: dict[str, Any], body: dict[str, Any]) -> dict[str
     from gui import platform_service
     b = body or {}
     return ok(platform_service.format_chapter(
-        b.get("platform_id", ""), _safe_int(b.get("chapter_num"), 1, "chapter_num"),
+        b.get("platform_id", ""),
+        _safe_chapter_no(b.get("chapter_num"), "chapter_num"),
         b.get("title", ""), b.get("content", "")))
 
 

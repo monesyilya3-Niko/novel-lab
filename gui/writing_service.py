@@ -466,6 +466,10 @@ def generate(voice: str, project: str, chapter_no: int, task: str,
     project = _sanitize_project(project)
     if chapter_no < 1:
         raise ServiceError("chapter_no 必须 ≥ 1", 400)
+    if chapter_no > _MAX_CHAPTER_NO:
+        # 章节号会直接拼成 chapter-%03d.txt 并成为记账/导出的排序键；
+        # 10^20 这种值写得进去，但之后列目录、导出、统计都会被它拖乱。
+        raise ServiceError(f"chapter_no 过大（最多 {_MAX_CHAPTER_NO}）", 400)
 
     voice_data = _load_asset_of_kind(voice, "voice")
     novel_dir = config.NOVEL_DIR / project
@@ -555,6 +559,9 @@ def task_state(task_id: str) -> dict[str, Any]:
         return copy.deepcopy(t)
 
 
+_MAX_CHAPTER_NO = 100_000
+
+
 def import_chapter(project: str, chapter_no: int, content: str,
                    novel_name: str | None = None, voice: str | None = None,
                    genre_pack: str | None = None) -> dict[str, Any]:
@@ -562,6 +569,10 @@ def import_chapter(project: str, chapter_no: int, content: str,
     project = _sanitize_project(project)
     if chapter_no < 1:
         raise ServiceError("chapter_no 必须 ≥ 1", 400)
+    if chapter_no > _MAX_CHAPTER_NO:
+        # 章节号会直接拼成 chapter-%03d.txt 并成为记账/导出的排序键；
+        # 10^20 这种值写得进去，但之后列目录、导出、统计都会被它拖乱。
+        raise ServiceError(f"chapter_no 过大（最多 {_MAX_CHAPTER_NO}）", 400)
     if not content or not content.strip():
         raise ServiceError("content 不能为空", 400)
 

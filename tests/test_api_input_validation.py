@@ -82,6 +82,15 @@ class TestDirtyBodiesGet400(unittest.TestCase):
         ("/api/assets", {"name": 1, "kind": "voice-card", "content": {}}, "资产名"),
         ("/api/style/save", {"name": 1, "style_card": {}}, "字符串"),
         ("/api/style/apply", {"style_name": "不存在", "base_prompt": 5}, "字符串"),
+        # 章节序号：静默截断会让"第 2.5 章"覆盖掉真正的第 2 章
+        ("/api/writing/chapters",
+         {"project": "极端", "chapter_no": 2.5, "content": "正文" * 200}, "整数"),
+        ("/api/writing/chapters",
+         {"project": "极端", "chapter_no": True, "content": "正文" * 200}, "整数"),
+        ("/api/writing/chapters",
+         {"project": "极端", "chapter_no": 10 ** 20, "content": "正文" * 200}, "过大"),
+        ("/api/platform/format",
+         {"platform_id": "qidian", "chapter_num": 1.5, "title": "t", "content": "c"}, "整数"),
     ]
 
     def test_every_dirty_body_is_4xx_not_500(self):
