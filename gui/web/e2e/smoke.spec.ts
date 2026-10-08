@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 test.describe('GUI 冒烟', () => {
   test('首页加载：标题 + KPI 卡 + 饼图渲染', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'novel-lab 全功能工作台' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '暮冬念春工作台' })).toBeVisible()
     await expect(page.getByText('已拆书')).toBeVisible()
     await expect(page.getByText('资产总数')).toBeVisible()
     // 饼图（P1-F2：不仅查容器，还要查 canvas 真实渲染且有尺寸）
@@ -49,7 +49,7 @@ test.describe('GUI 冒烟', () => {
     }
     expect(await page.evaluate(() => window.localStorage.getItem('novellab.theme-mode'))).toBe('dark')
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'novel-lab 全功能工作台' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '暮冬念春工作台' })).toBeVisible()
     expect(await page.evaluate(() => window.localStorage.getItem('novellab.theme-mode'))).toBe('dark')
   })
 })

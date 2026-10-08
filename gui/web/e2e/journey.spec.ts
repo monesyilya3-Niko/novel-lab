@@ -55,7 +55,7 @@ async function fetchGenres(baseURL: string): Promise<string[]> {
 async function importBookViaUI(page: Page, name: string): Promise<string> {
   const fp = makeBookFile(name)
   await page.goto('/')
-  await page.getByRole('button', { name: '分析', exact: true }).first().click()
+  await page.getByRole('button', { name: '分析拆书', exact: true }).first().click()
   const fileInput = page.locator('input[type="file"]').first()
   await expect(fileInput).toBeAttached({ timeout: 10_000 })
   const [resp] = await Promise.all([
@@ -75,7 +75,7 @@ test.describe('用户旅程', () => {
     const before = await bookCount(baseURL!)
     const fp = makeBookFile(uniqueName('journey'))
     await page.goto('/')
-    await page.getByRole('button', { name: '分析', exact: true }).first().click()
+    await page.getByRole('button', { name: '分析拆书', exact: true }).first().click()
     const fileInput = page.locator('input[type="file"]').first()
     await expect(fileInput).toBeAttached({ timeout: 10_000 })
     await fileInput.setInputFiles(fp)
@@ -94,6 +94,14 @@ test.describe('P0-4 题材必填链路', () => {
       data: { id: 'e2e-dummy', protocol: 'openai', base_url: 'http://127.0.0.1:9', model_name: 'dummy' },
     })
     expect([200, 409], 'dummy 模型应创建成功或已存在').toContain(r.status())
+  })
+
+  test.afterAll(async ({ request }) => {
+    // 必须收尾：模型配置写在 `ROOT_DIR/config/models.json`（CONFIG_DIR 不随
+    // XUAN_DATA_DIR 走），所以对着本地开发服务跑这个文件时，不退干净就会把
+    // e2e-dummy 写进**被 git 跟踪的** config/models.json —— 2026-10-08 实机踩到。
+    const r = await request.delete('/api/models/e2e-dummy')
+    expect([200, 404], 'dummy 模型应删除成功或本就不存在').toContain(r.status())
   })
 
   test('未选题材时一键分析禁用', async ({ page }) => {
@@ -179,7 +187,7 @@ test.describe('P0-4 题材必填链路', () => {
   test('题材接口失败时显示错误提示', async ({ page }) => {
     await page.route('**/api/genres', (route) => route.abort())
     await page.goto('/')
-    await page.getByRole('button', { name: '分析', exact: true }).first().click()
+    await page.getByRole('button', { name: '分析拆书', exact: true }).first().click()
     await expect(page.getByText('题材列表加载失败，请刷新重试')).toBeVisible({ timeout: 10_000 })
   })
 })

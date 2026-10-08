@@ -23,7 +23,7 @@ test.beforeEach(async ({ page, baseURL }) => {
 
 test('空库首访显示引导向导，三步走完后不再出现', async ({ page }) => {
   // 步骤 1：欢迎
-  await expect(page.getByText('欢迎使用 novel-lab')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('欢迎使用暮冬念春')).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: '下一步' }).click()
 
   // 步骤 2：导入并拆书（CTA 为「去导入」，点击进入下一步）
@@ -35,19 +35,19 @@ test('空库首访显示引导向导，三步走完后不再出现', async ({ pa
   await page.getByRole('button', { name: '开始使用' }).click()
 
   // 向导关闭且已持久化标记
-  await expect(page.getByText('欢迎使用 novel-lab')).toBeHidden({ timeout: 10_000 })
+  await expect(page.getByText('欢迎使用暮冬念春')).toBeHidden({ timeout: 10_000 })
   const flag = await page.evaluate(() => window.localStorage.getItem('novellab.onboarded'))
   expect(flag).toBe('1')
 
   // 刷新后不再弹出
   await page.reload()
-  await expect(page.getByText('欢迎使用 novel-lab')).toBeHidden({ timeout: 15_000 })
+  await expect(page.getByText('欢迎使用暮冬念春')).toBeHidden({ timeout: 15_000 })
 })
 
 test('空库首访可随时跳过引导', async ({ page }) => {
-  await expect(page.getByText('欢迎使用 novel-lab')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('欢迎使用暮冬念春')).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: '跳过' }).click()
-  await expect(page.getByText('欢迎使用 novel-lab')).toBeHidden({ timeout: 10_000 })
+  await expect(page.getByText('欢迎使用暮冬念春')).toBeHidden({ timeout: 10_000 })
   const flag = await page.evaluate(() => window.localStorage.getItem('novellab.onboarded'))
   expect(flag).toBe('1')
 })
