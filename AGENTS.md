@@ -178,6 +178,8 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
 ### 发布物溯源与真机实测（2026-10-08，Windows 10 19045）
 
 - **溯源方法（有效，下次发版照做）**：`gh run download <run-id> -n windows-installer` 取 CI artifact，与 Release 资产逐字节比 SHA-256。已用此法证明 v2.0.3 的 Release 资产与 run `37496901677`（提交 `d10cd72`）的构建产物**完全相同**（`78370d75…5e0765`，93,401,448 字节）。
+- ⚠️ **安装器不是可复现构建**：`desktop/package-lock.json` 入库后依赖版本已锁定，但同一提交在 CI 上构建两次，产物**字节不同**（2026-10-08 实测：均 93,404,140 字节，SHA-256 分别 `e60dba1c…` 与 `08d5fe94…`）——NSIS / electron-builder 会嵌入时间戳一类的构建期差异。
+  因此溯源只能比"**产出该发布物的那一次 run**"的 artifact，**不要**用"重新构建一个来对哈希"的方式去判断发布物有没有被改动，那样必然对不上。
 - **产物名 ≠ 上传名**：`desktop/electron-builder.yml` 的 `artifactName` 产出的文件是 `暮冬念春-Setup-<ver>-win64.exe`；v2.0.3 上传时被人工改名成了 `novel-lab-Setup-…`。到 artifact 里找包要按 yml 的名字找，别信历史文档里的文件名（CI 的 `path: desktop/release/*-Setup-*-win64.exe` 两种名字都吃得下）。
 - **真机安装实测**：提权安装走 `/allusers` → `C:\Program Files\novel-lab-desktop`；exe `ProductVersion 2.0.3.0`；随包含 `gui/ scripts/ assets/ config/ reports/ python-win/`，`assets-manifest.json` 版本与资产数（86）与 §7 口径一致；`http://127.0.0.1:8000/` 返回 200。**用户数据不在安装目录**，在 `%LOCALAPPDATA%\暮冬念春`（`index.db` + `.lock` + 备份 + `corpus` + `assets`），全用户安装下权限正常。
 - **真机卸载实测**：卸载注册表项、公共桌面与开始菜单快捷方式均清除，8000 端口不再监听，`%LOCALAPPDATA%\暮冬念春` 按设计保留（已验证：拷贝该目录后用同一套后端代码起服务，能读出 6 本书 / 25 个资产 / 14 张 prose 卡）。残留两处：安装目录剩**空目录**壳（NSIS 不删根目录，轻微，卸载前后都在）；`%LOCALAPPDATA%\novel-lab-desktop-updater\installer.exe` 89.1 MB（electron-updater 下载的整包，NSIS 卸载原本完全不碰）。
