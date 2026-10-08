@@ -14,6 +14,11 @@ python3 -m gui.server --no-browser --port 8000
 # 也支持直接执行：python3 gui/server.py --no-browser --port 8000
 ```
 
+> **Windows 上把 `python3` 换成 `python`**（本文其余示例同理，不再逐处标注）。
+> 实测：本机 `python3` 命中 `WindowsApps\python3.exe` 商店别名，`-V` 无任何输出、退出码 49，
+> `python3 -c "print('ok')"` 也一样静默——照抄本文命令会得到"什么都没发生"的假成功。
+> 解释器名按平台替换：macOS/Linux 用 `python3`，Windows 用 `python`。
+
 用户数据目录默认 `~/.local/share/暮冬念春`
 （Windows: `%LOCALAPPDATA%\暮冬念春`），可经 `XUAN_DATA_DIR` 环境变量覆盖。
 
@@ -23,6 +28,24 @@ python3 -m gui.server --no-browser --port 8000
 - 设置了时：请求头 `X-Auth-Token: <token>`，或查询参数 `?auth=<token>`。
 - CSRF：只校验带 `Origin`/`Referer` 的浏览器请求；Agent（curl/HTTP 库，
   无 Origin 头）不受影响，可直接发 POST/PUT/DELETE。
+
+### 2.1 Electron 握手令牌（桌面安装版必读；2026-10-08 实机复现）
+
+同一个 `--no-browser` 标志，在两个入口的行为**不一样**（下表均为实测，不是读代码猜的）：
+
+| 启动方式 | `/api/*` 是否要握手令牌 | 实测证据 |
+|---|---|---|
+| §1 的命令：`python -m gui.server --no-browser --port 8123` | **不要**。不带、带错、带对都返回 200 | `gui/server.py::main()` 只用该标志决定是否弹浏览器，从不生成 `handshake_token` |
+| 桌面安装版「暮冬念春」2.0.3（`gui/launch.py` 起的服务） | **必须要** `X-Handshake-Token` | 对 `http://127.0.0.1:8000/api/overview` 等端点的无令牌请求，全部返回 `403 {"message":"握手失败：非法客户端"}`；令牌由 `gui/launch.py` 生成、打印在 stdout，Electron 主进程用正则 `\[GUI\] 握手令牌:` 解析（`desktop/main.js`） |
+
+对调用方的实际含义：
+
+- **自己起后端（推荐，照 §1 做）**：不涉及握手，只管 `NOVEL_LAB_TOKEN` 那一层。
+- **想连用户已经开着的桌面版**：拿不到令牌——它只在 Electron 主进程 stdout 里，图形界面下用户看不到。
+  别去猜或爆破；改为自己起一个实例，并用 `XUAN_DATA_DIR` 指向独立目录，免得和运行中的实例抢同一份数据。
+- 若确实持有令牌（例如用户从控制台贴给你）：请求头 `X-Handshake-Token: <token>`；
+  SSE 端点 `/api/events` 发不了自定义头，等效写法是查询参数 `?handshake_token=<token>`。
+- 静态文件（`/`、前端资源）**豁免**握手，只有 `/api` 与 `/api/*` 受管控。
 
 ## 3. 通用约定
 
