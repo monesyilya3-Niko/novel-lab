@@ -44,12 +44,17 @@ class TestOverviewAPI(unittest.TestCase):
             # R1：STATE_JSON_DIR 必须与 STATE_ROOT 成对隔离，否则 list_books_summary
             # 会读到真实 gui/state/ 的历史残留，导致 total_books 断言失真。
             "STATE_JSON_DIR": config.STATE_JSON_DIR,
+            # 派生常量是 STATE_ROOT 的导入期快照，patch STATE_ROOT 带不动，一起重定向。
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
         }
         config.ASSETS_ROOT = cls._tmp / "assets"
         config.REPORTS_DIR = cls._tmp / "reports"
         config.CORPUS_DIR = cls._tmp / "corpus"
         config.CONFIG_DIR = cls._tmp / "config"
         config.STATE_ROOT = cls._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = cls._tmp / "gui" / "state"
 
         for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,

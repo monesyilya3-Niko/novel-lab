@@ -82,6 +82,7 @@ class TestTokenAuth(unittest.TestCase):
         cls._orig_token = config.API_TOKEN
         cls._orig_state_root = config.STATE_ROOT
         cls._orig_state_json_dir = config.STATE_JSON_DIR
+        cls._orig_db_path = config.DB_PATH
         cls._tmp = Path(tempfile.mkdtemp(prefix="auth_qa_"))
         config.LOCK_PATH = cls._tmp / ".lock"
         config.API_TOKEN = cls.TOKEN
@@ -89,6 +90,8 @@ class TestTokenAuth(unittest.TestCase):
         # 建库（gui_state/index.db）。2026-09-28 干净安装复测发现此前未隔离，
         # 真实 gui_state/ 落下 index.db。STATE_JSON_DIR 成对隔离（R1）。
         config.STATE_ROOT = cls._tmp / "gui_state"
+        # DB_PATH 是 STATE_ROOT 的导入期快照，跟看真实数据目录，成对重定向。
+        config.DB_PATH = config.STATE_ROOT / "index.db"
         config.STATE_JSON_DIR = cls._tmp / "gui" / "state"
         # 隔离：起真实服务会触发 auto_backup（真实 gui_state 备份+剪枝），替换为 no-op
         cls._orig_bk = (server_mod.auto_backup.startup_backup,
@@ -112,6 +115,7 @@ class TestTokenAuth(unittest.TestCase):
         config.LOCK_PATH = cls._orig_lock
         config.API_TOKEN = cls._orig_token
         config.STATE_ROOT = cls._orig_state_root
+        config.DB_PATH = cls._orig_db_path
         config.STATE_JSON_DIR = cls._orig_state_json_dir
         _isolation.remove_tree(cls._tmp)
 

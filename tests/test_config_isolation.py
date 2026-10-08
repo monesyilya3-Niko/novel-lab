@@ -235,11 +235,7 @@ class TestHandPatchedDataPaths(unittest.TestCase):
     KNOWN_DEBT = {
         "test_asset_index.py": 7,
         "test_builtin_sync.py": 8,
-        "test_db.py": 2,
-        "test_gui_backend.py": 2,
         "test_migrate.py": 8,
-        "test_overview_api.py": 2,
-        "test_p2_hardening.py": 2,
     }
 
     def _is_patch_line(self, line: str) -> bool:

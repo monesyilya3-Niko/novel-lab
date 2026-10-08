@@ -37,7 +37,11 @@ class TestDb(unittest.TestCase):
     def setUpClass(cls):
         cls._tmp = Path(tempfile.mkdtemp(prefix="db_qa_"))
         cls._orig_state_root = config.STATE_ROOT
+        # DB_PATH / LOCK_PATH 是 STATE_ROOT 的导入期快照，不一起重定向就会指向真实数据目录。
+        cls._orig_derived = {"DB_PATH": config.DB_PATH, "LOCK_PATH": config.LOCK_PATH}
         config.STATE_ROOT = cls._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
         db._reset_conn()
 
@@ -45,6 +49,8 @@ class TestDb(unittest.TestCase):
     def tearDownClass(cls):
         db.close()
         config.STATE_ROOT = cls._orig_state_root
+        for name, value in cls._orig_derived.items():
+            setattr(config, name, value)
         db._reset_conn()
         _isolation.remove_tree(cls._tmp)
 

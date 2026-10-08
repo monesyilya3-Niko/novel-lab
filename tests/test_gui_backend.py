@@ -39,16 +39,25 @@ _TMP = None
 _ORIG_STATE_ROOT = None
 _ORIG_STATE_JSON_DIR = None
 _ORIG_ASSETS_ROOT = None
+_ORIG_DB_PATH = None
+_ORIG_LOCK_PATH = None
 
 
 def setUpModule():
-    """进入本模块测试前：成对重定向三个数据路径常量到临时目录。"""
+    """进入本模块测试前：成对重定向数据路径常量到临时目录。"""
     global _TMP, _ORIG_STATE_ROOT, _ORIG_STATE_JSON_DIR, _ORIG_ASSETS_ROOT
+    global _ORIG_DB_PATH, _ORIG_LOCK_PATH
     _TMP = tempfile.mkdtemp(prefix="gui_qa_")
     _ORIG_STATE_ROOT = config.STATE_ROOT
     _ORIG_STATE_JSON_DIR = config.STATE_JSON_DIR
     _ORIG_ASSETS_ROOT = config.ASSETS_ROOT
+    _ORIG_DB_PATH = config.DB_PATH
+    _ORIG_LOCK_PATH = config.LOCK_PATH
     config.STATE_ROOT = Path(_TMP) / "gui_state"
+    # DB_PATH / LOCK_PATH 是 STATE_ROOT 的导入期快照，patch STATE_ROOT 带不动它们：
+    # 不一起重定向，读到的就是用户真实数据目录里的库和锁。
+    config.DB_PATH = config.STATE_ROOT / "index.db"
+    config.LOCK_PATH = config.STATE_ROOT / ".lock"
     # R1：STATE_JSON_DIR 必须与 STATE_ROOT 成对隔离。save_state 把 JSON 写进
     # STATE_JSON_DIR，漏 patch 会让全部夹具落进真实 gui/state/ 并跨轮累积。
     config.STATE_JSON_DIR = Path(_TMP) / "gui" / "state"
@@ -62,6 +71,8 @@ def tearDownModule():
     config.STATE_ROOT = _ORIG_STATE_ROOT
     config.STATE_JSON_DIR = _ORIG_STATE_JSON_DIR
     config.ASSETS_ROOT = _ORIG_ASSETS_ROOT
+    config.DB_PATH = _ORIG_DB_PATH
+    config.LOCK_PATH = _ORIG_LOCK_PATH
     if _TMP:
         # 用 _isolation.remove_tree：它会先关掉开在这棵目录里的 SQLite 连接再删。
         # 以前这里写死 shutil.rmtree(..., ignore_errors=True) 并注释"回收失败不影响
