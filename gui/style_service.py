@@ -32,7 +32,9 @@ def _ensure_styles_dir() -> Path:
 
 
 def _sanitize_name(name: str) -> str:
-    """校验风格名：非空、无路径分隔符。"""
+    """校验风格名：必须是字符串、非空、无路径分隔符。"""
+    if not isinstance(name, str):
+        raise ServiceError("风格名必须为字符串", 400)
     if not name or not name.strip():
         raise ServiceError("风格名不能为空", 400)
     n = name.strip()

@@ -63,6 +63,8 @@ _EXTERNAL_SCRATCH_PREFIX = "qc-external-"
 _EXTERNAL_MAX_FILE_BYTES = 50 * 1024 * 1024
 _EXTERNAL_MAX_FILES = 2000
 _EXTERNAL_MAX_BYTES = 200 * 1024 * 1024
+#: 外部目录允许遍历的子目录数上限（防 target 填错成整盘/系统目录）。
+_EXTERNAL_MAX_DIRS = 2000
 
 
 def _external_scratch_task_dir(p: Path) -> Path | None:
@@ -186,7 +188,14 @@ def _copy_external_chapter_dir(root: Path, scratch_dir: Path) -> Path:
         shutil.rmtree(scratch_dir, ignore_errors=True)
         raise ServiceError(msg, 400)
 
+    walked_dirs = 0
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+        walked_dirs += 1
+        if walked_dirs > _EXTERNAL_MAX_DIRS:
+            # target 被填成 C:\Windows 或整个用户目录时，光走盘就要几十分钟，
+            # 还会在深层子目录上撞 MAX_PATH。书稿目录不会有几千个子目录。
+            _abort(f"目录子项过多（超过 {_EXTERNAL_MAX_DIRS} 个目录），"
+                   f"请把 target 指向书稿目录而不是整个磁盘：{root}")
         rel_dir = Path(dirpath).relative_to(root)
         if any(part.casefold() in excluded for part in rel_dir.parts):
             dirnames[:] = []
@@ -212,8 +221,13 @@ def _copy_external_chapter_dir(root: Path, scratch_dir: Path) -> Path:
                     f"外部目录超出上限（最多 {_EXTERNAL_MAX_FILES} 个章节文件、"
                     f"{_EXTERNAL_MAX_BYTES // 1048576}MB）：{root}")
             dest = dest_root / rel
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dest)
+            try:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src, dest)
+            except OSError as exc:
+                # 深层路径撞 MAX_PATH / 目标盘满 / 源文件被占用：都得变成
+                # 400 并清掉半份副本，而不是 FileNotFoundError 冒到路由层变 500。
+                _abort(f"复制章节失败: {rel}（{exc}）")
             copied += 1
             total_bytes += size
 
@@ -297,6 +311,10 @@ def check(target: str | None = None, text: str | None = None,
     """单章双维度检查：质量 12 维 + 一致性 5 维。"""
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
+    if text is not None and not isinstance(text, str):
+        # 再往下第一句就要遍历 text；请求体里塞个数字会变成 500，
+        # 用户只看到"内部错误"，不知道是 text 这个参数错了。
+        raise ServiceError("text 必须为字符串", 400)
     if target:
         fp = resolve_chapter_target(target)
         if fp.is_dir():
@@ -353,6 +371,10 @@ def book(target: str | None = None, text: str | None = None,
     """全书质检（重复/连贯/凑字数/乱编/AI味）。"""
     if not target and not text:
         raise ServiceError("需要 target 或 text", 400)
+    if text is not None and not isinstance(text, str):
+        # 再往下第一句就要遍历 text；请求体里塞个数字会变成 500，
+        # 用户只看到"内部错误"，不知道是 text 这个参数错了。
+        raise ServiceError("text 必须为字符串", 400)
 
     # 资产内容契约：voice 只接受 voice 卡。校验必须在 _materialize_text 建 scratch
     # **之前**完成——否则校验抛 400 时清理用的 try/finally 尚未进入，每次调用都会

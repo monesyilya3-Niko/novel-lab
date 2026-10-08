@@ -58,7 +58,11 @@ def _active_writing_count() -> int:
 
 
 def _sanitize_project(project: str) -> str:
-    """校验项目名：非空、无 / \\ .. 与控制字符；非法 → ServiceError(400)。"""
+    """校验项目名：必须是字符串、非空、无 / \\ .. 与控制字符；非法 → ServiceError(400)。"""
+    if not isinstance(project, str):
+        # /api/writing/* 的 project 来自请求体；传数字时下面 .strip() 会抛
+        # AttributeError，用户端只收到一句"内部错误"，看不出是哪个参数错了。
+        raise ServiceError("project 必须为字符串", 400)
     if not project or not project.strip():
         raise ServiceError("project 不能为空", 400)
     p = project.strip()
@@ -200,6 +204,10 @@ def create_project(name: str) -> dict[str, Any]:
     - 同名目录已存在 → 409（不覆盖已有项目数据）。
     - ``state.json`` 经 ``_atomic_write_json`` 原子写入。
     """
+    if not isinstance(name, str):
+        # 请求体里 name 传成数字时，下面 (name or "").strip() 会 AttributeError
+        # 冒到路由层变成没有信息量的 500。
+        raise ServiceError("项目名必须为字符串", 400)
     clean = (name or "").strip()
     if not clean:
         raise ServiceError("项目名不能为空", 400)

@@ -237,6 +237,8 @@ def delete_asset(kind: str, asset_id: str) -> dict[str, Any]:
 
 def create_asset(name: str, kind: str, content: dict[str, Any]) -> dict[str, Any]:
     """新建资产。"""
+    if not isinstance(name, str):
+        raise ServiceError(f"非法资产名: {name}", 400)
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00")):
         raise ServiceError(f"非法资产名: {name}", 400)
     if not content or not isinstance(content, dict):

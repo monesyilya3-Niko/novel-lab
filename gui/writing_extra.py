@@ -45,6 +45,8 @@ def _today_str() -> str:
 
 def _require_project(project: str) -> str:
     """项目名校验（与 writing_service._sanitize_project 同规则）。"""
+    if not isinstance(project, str):
+        raise ServiceError("project 必须为字符串", 400)
     if not project or not project.strip():
         raise ServiceError("project 不能为空", 400)
     p = project.strip()
