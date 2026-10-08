@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
 import sys
 import tempfile
 import unittest
@@ -330,5 +331,76 @@ class TestAccessLogMasking(unittest.TestCase):
         joined = chr(10).join(cap.messages)
         self.assertIn("auth=***", joined, f"日志里没有脱敏结果：{joined}")
         self.assertNotIn("SECRET", joined, f"令牌明文出现在日志里：{joined}")
+
+
+class TestHandshakeGate(unittest.TestCase):
+    """Electron 握手令牌的准入（2026-10-08，对应 docs/AGENT_API.md §2.1）。
+
+    手册承诺"事件流发不了自定义头，可用 ?handshake_token= 传令牌，与请求头等效"。
+    这种承诺没有回归断言就会悄悄烂掉，所以在这里把"谁能用查询参数"逐条钉住。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        from gui import server as server_mod
+
+        cls._tmp = Path(tempfile.mkdtemp(prefix="hs_gate_"))
+        cls._iso = _isolation.isolate_paths(cls._tmp)
+        cls._iso.__enter__()
+        # 起真实服务会触发启动备份 + 每请求跨天备份，这里只关心门禁，全部 no-op
+        # （与 TestTokenAuth 同一套处理，避免在临时库里白跑 SQLite 在线备份）。
+        cls._orig_bk = (server_mod.auto_backup.startup_backup,
+                        server_mod.auto_backup.daily_backup_if_due)
+        server_mod.auto_backup.startup_backup = lambda: None
+        server_mod.auto_backup.daily_backup_if_due = lambda: None
+        # 端口由内核分配，避开并行 worker 抢固定端口的假失败。
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+        cls.token = "HANDSHAKE-TOKEN-for-test-only"
+        cls.srv = server_mod.GuiServer(preferred_port=port, handshake_token=cls.token)
+        _host, cls.port = cls.srv.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        from gui import server as server_mod
+
+        cls.srv.shutdown()
+        server_mod.auto_backup.startup_backup, server_mod.auto_backup.daily_backup_if_due = cls._orig_bk
+        cls._iso.__exit__(None, None, None)
+        _isolation.remove_tree(cls._tmp)
+
+    def _status(self, path: str, headers: dict[str, str] | None = None):
+        url = f"http://127.0.0.1:{self.port}{path}"
+        req = urllib.request.Request(url, headers=headers or {})
+        try:
+            with urllib.request.urlopen(req, timeout=4) as r:
+                return r.status
+        except urllib.error.HTTPError as exc:
+            return exc.code
+
+    def test_sse_and_api_gate_matrix(self):
+        # `?handshake_token=` 是给 EventSource（发不了自定义头）开的豁免，
+        # 作用域严格限制在 /api/events（见 `_check_auth` 的 `path == "/api/events"`
+        # 分支）。普通 API 若也认查询参数，等于多开一条令牌泄漏通道
+        # ——查询串会进访问日志、Referer、浏览器历史，而自定义头不会。
+        self.assertEqual(self._status("/api/events"), 403, "SSE 无令牌应被拒")
+        self.assertEqual(self._status("/api/events?handshake_token=WRONG"), 403,
+                         "SSE 错令牌应被拒")
+        self.assertEqual(self._status("/api/events?handshake_token=" + self.token), 200,
+                         "SSE 用查询参数带正确令牌应放行（与 §2.1 的承诺一致）")
+        self.assertEqual(self._status("/api/overview"), 403, "普通 API 无令牌应被拒")
+        self.assertEqual(
+            self._status("/api/overview", {"X-Handshake-Token": self.token}), 200,
+            "普通 API 用 X-Handshake-Token 头应放行",
+        )
+        self.assertEqual(self._status("/api/overview?handshake_token=" + self.token), 403,
+                         "查询参数豁免只适用于 /api/events，普通 API 不认")
+
+    def test_static_root_is_exempt(self):
+        # 令牌由 main.js 拼在 `/?handshake=` 上交给前端，静态入口本身不校验。
+        self.assertEqual(self._status("/"), 200, "静态入口不应受握手门禁")
+
+
 if __name__ == "__main__":
     unittest.main()

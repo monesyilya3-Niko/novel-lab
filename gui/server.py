@@ -69,8 +69,8 @@ def announce_initial_password(initial_pw: str) -> Path | None:
     _log.warning("=" * 60)
     try:
         # STATE_ROOT 在极端时序下可能还没建出来，这里自己兜底而不是假设启动顺序。
-            hint_fp.parent.mkdir(parents=True, exist_ok=True)
-            hint_fp.write_text(hint_text, encoding="utf-8")
+        hint_fp.parent.mkdir(parents=True, exist_ok=True)
+        hint_fp.write_text(hint_text, encoding="utf-8")
     except OSError as exc:
         _log.warning("写入初始密码指引文件失败: %s", exc)
         # 指引文件写不出来时，日志是唯一还能把密码交出去的路径，只能在此破例。

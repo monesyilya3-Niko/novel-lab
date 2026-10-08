@@ -42,8 +42,10 @@ jobs:
 
       - name: 构建 NSIS 安装器
         # predist 钩子自动执行：fetch-python-win.py（准备 embeddable Python，
-        # runner 上 python 命令可用）+ sync_backend.py（同步后端 296 文件，
-        # 含 python-win/；缺失则 fail fast，不产残缺包）
+        # runner 上 python 命令可用）+ sync_backend.py（把后端与随包资源同步进
+        # desktop/backend/，含 python-win/；缺失则 fail fast，不产残缺包）。
+        # 文件数不写在这里：资产与报告增删（甚至新增一个 gui/*.py）都会让任何
+        # 手抄的数字立刻过期，sync_backend.py 运行时会自己打印实际数量。
         run: npm run dist
 
       - name: 上传安装器
