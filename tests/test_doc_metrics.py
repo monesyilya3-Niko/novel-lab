@@ -40,9 +40,11 @@ if str(ROOT) not in sys.path:
 AGENTS_MD = ROOT / "AGENTS.md"
 TESTS_DIR = ROOT / "tests"
 
-# 「当前实测口径（YYYY-MM-DD）：资产 **65** / 报告 **12** / 书 **8**（已拆 6）
+# 「- 当前实测口径（YYYY-MM-DD）：资产 **65** / 报告 **12** / 书 **8**（已拆 6）
 #  / 测试 **876** / API 端点 **65** / 版本 **1.1.2**」
-_METRIC_LINE_RE = re.compile(r"当前实测口径.*$", re.M)
+# 锚定到列表项：正文里任何"提到这个短语"的句子都不该顶掉真正的口径行
+# （2026-10-08 实测踩过：§4 补了一句解释文字，search() 抓到它，报的是"缺 tests 字段"这种误导性失败）。
+_METRIC_LINE_RE = re.compile(r"^- 当前实测口径.*$", re.M)
 _TEST_RE = re.compile(r"测试\s*\*\*(\d+)\*\*")
 _ENDPOINT_RE = re.compile(r"API\s*端点\s*\*\*(\d+)\*\*")
 _VERSION_RE = re.compile(r"版本\s*\*\*([0-9]+\.[0-9]+\.[0-9]+)\*\*")
@@ -64,14 +66,24 @@ def _actual_version() -> str:
     return gui.__version__
 
 
-def _stated_metrics() -> dict:
-    text = AGENTS_MD.read_text(encoding="utf-8")
-    line_match = _METRIC_LINE_RE.search(text)
-    assert line_match, (
-        "AGENTS.md 未找到「当前实测口径」行；该行是文档数字的单一权威位置，"
-        "不得删除或改名。"
+def _metric_line(text: str) -> str:
+    """取 AGENTS.md 的权威口径行；多义或缺失都当场失败（不得静默取第一条）。"""
+    matches = _METRIC_LINE_RE.findall(text)
+    assert matches, (
+        "AGENTS.md 未找到「- 当前实测口径」行；该行是文档数字的单一权威位置，"
+        "不得删除、改名或改成非列表项。"
     )
-    line = line_match.group(0)
+    assert len(matches) == 1, (
+        f"AGENTS.md 出现 {len(matches)} 条「当前实测口径」行，"
+        "会造成双真相源，请只保留 §7 那一条。"
+    )
+    return matches[0]
+
+
+def _stated_metrics(text: str | None = None) -> dict:
+    if text is None:
+        text = AGENTS_MD.read_text(encoding="utf-8")
+    line = _metric_line(text)
     out = {}
     for key, rx in (("tests", _TEST_RE), ("endpoints", _ENDPOINT_RE), ("version", _VERSION_RE)):
         m = rx.search(line)
@@ -86,6 +98,25 @@ class TestDocMetricsMatchReality(unittest.TestCase):
     def test_metric_line_is_parseable(self):
         stated = _stated_metrics()
         self.assertEqual(set(stated), {"tests", "endpoints", "version"})
+
+    def test_prose_mention_does_not_shadow_metric_line(self):
+        """别处只是"提到"这个说法时，不得顶掉权威行的解析（2026-10-08 实修回归）。"""
+        real = AGENTS_MD.read_text(encoding="utf-8")
+        line = _metric_line(real)
+        polluted = real.replace(
+            "## 4. 测试规范",
+            "## 4. 测试规范\n\n（下文提到「当前实测口径」这个说法，但它不是数据行）",
+            1,
+        )
+        self.assertNotEqual(polluted, real, "构造的污染文本没生效，用例失去意义")
+        self.assertEqual(_metric_line(polluted), line)
+        self.assertEqual(_stated_metrics(polluted), _stated_metrics(real))
+
+    def test_metric_line_is_unique(self):
+        """口径行必须只有一条——多写一份就是双真相源，正是要防的事故形态。"""
+        real = AGENTS_MD.read_text(encoding="utf-8")
+        self.assertEqual(len(_METRIC_LINE_RE.findall(real)), 1)
+        self.assertRaises(AssertionError, _metric_line, real + "\n- 当前实测口径（2099-01-01）：测试 **1**\n")
 
     def test_test_baseline_matches_actual(self):
         stated = int(_stated_metrics()["tests"])
