@@ -25,18 +25,20 @@ jobs:
         shell: pwsh
         working-directory: desktop
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
-        # 注：不启用 npm cache——desktop/package-lock.json 被 .gitignore 忽略、
-        # 未入库，runner 上无此文件会导致 "unable to cache dependencies" 硬失败。
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+        # 注：启用 npm 缓存的前提是 desktop/package-lock.json 已入库（旧写法里它被
+        # .gitignore 忽略，runner 上没有 lock，开缓存会 "unable to cache dependencies" 硬失败）。
 
       - name: 安装依赖
-        # 注：不用 npm ci——desktop/package-lock.json 被 .gitignore 忽略未入库，
-        # runner 上没有 lock 文件，npm ci 会硬失败；用 npm install 按语义版本解析。
-        run: npm install
+        # 用 npm ci 而不是 npm install：依赖版本由仓库里的 lockfile 决定，
+        # 不再随每次 runner 解析漂移（旧写法每次可能装到不同的 Electron / electron-builder）。
+        run: npm ci
 
       - name: 构建 NSIS 安装器
         # predist 钩子自动执行：fetch-python-win.py（准备 embeddable Python，
@@ -45,7 +47,7 @@ jobs:
         run: npm run dist
 
       - name: 上传安装器
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-installer
           path: desktop/release/*-Setup-*-win64.exe

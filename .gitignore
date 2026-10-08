@@ -79,4 +79,4 @@ desktop/build/python-embed.zip
 desktop/build/python-win/
 desktop/node_modules/
 desktop/release/
-desktop/package-lock.json
+# desktop/package-lock.json 改为入库：它不是可再生产物，而是"这次装了哪些版本依赖"的唯一凭据
