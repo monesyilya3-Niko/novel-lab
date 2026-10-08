@@ -18,9 +18,14 @@ const isPackaged = app.isPackaged
 const BACKEND_DIR = isPackaged
   ? path.join(process.resourcesPath, 'backend')
   : path.join(__dirname, '..')
+// 开发模式下的解释器名：Windows 上 `python3` 是 Microsoft Store 别名，
+// 实测 spawn 它得到退出码 9009 且零输出（2026-10-08），后端根本不启动，
+// 界面只能干等到超时。可用 NOVEL_LAB_PYTHON 显式指定（与 .githooks/pre-commit 同约定）。
+// 打包态走 resources/backend/python-win/python.exe，与此无关。
 const PYTHON_EXE = isPackaged
   ? path.join(BACKEND_DIR, 'python-win', 'python.exe')
-  : 'python3'
+  : (process.env.NOVEL_LAB_PYTHON
+    || (process.platform === 'win32' ? 'python' : 'python3'))
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
