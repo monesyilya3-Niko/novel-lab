@@ -211,6 +211,7 @@ class TestAdminDeleteBook(_AdminBase):
     def test_delete_book_db_failure_rolls_back(self):
         """DB 事务失败 → 500，文件原样不动（不出现半删状态）。"""
         from unittest import mock
+
         from gui import db
         self._init()
         self._make_book("dbf1")

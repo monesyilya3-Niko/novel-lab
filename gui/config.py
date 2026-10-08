@@ -92,7 +92,6 @@ def _migrate_legacy_state(target: Path) -> None:
     标记机制：迁移成功后在 dest 内写 `.migration-complete`；迁移为幂等合并，
     中断或 marker 丢失后重跑只会补拷缺失文件，永不删除目标已有数据。
     """
-    import shutil
     # 旧版 xuan 用户目录 -> 暮冬念春（品牌改名迁移）
     _old_xuan_dir = None
     if sys.platform == "win32":

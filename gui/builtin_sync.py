@@ -74,7 +74,7 @@ def load_manifest() -> dict[str, Any] | None:
     files = data.get("files")
     if not isinstance(files, dict):
         return None
-    for name, entry in files.items():
+    for _name, entry in files.items():
         if not isinstance(entry, dict) or not isinstance(entry.get("sha256"), str):
             return None
         prev = entry.get("previous_hashes", [])

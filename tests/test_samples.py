@@ -23,9 +23,9 @@ _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
 
-from gui import router, services  # noqa: E402
-
 from _isolation import isolate_paths  # noqa: E402
+
+from gui import router, services  # noqa: E402
 
 _TMP = None
 _ISOLATION_EXIT = None

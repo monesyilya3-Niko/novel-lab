@@ -26,7 +26,8 @@ if str(_REPO_ROOT) not in sys.path:
 
 from gui import admin, auto_backup, config, db, router, services
 from gui.logging_setup import get_logger, setup_logging
-from gui.services import ServiceError, unique_corpus_path as _unique_corpus_path
+from gui.services import ServiceError
+from gui.services import unique_corpus_path as _unique_corpus_path
 from gui.sse import broker
 
 _log = get_logger("server")

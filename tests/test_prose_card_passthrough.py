@@ -68,6 +68,7 @@ class TestProseCardPassthrough(unittest.TestCase):
     def test_prose_card_reaches_prompt(self):
         """端到端：真实 inject() 下 prose_card 进入 injected_kinds。"""
         import json
+
         from gui import config, writing_service
         assets = config.ROOT_DIR / "assets"
         assets.mkdir(parents=True, exist_ok=True)

@@ -220,9 +220,9 @@ def needs_password_change(username: str) -> bool:
         try:
             data = _load_admin()
         except AdminCorruptError as exc:
-            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500) from exc
         except AdminReadError as exc:
-            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500) from exc
     return bool(data) and data.get("username") == username and bool(data.get("must_change_password"))
 
 def _check_rate_limit(ip: str) -> None:
@@ -254,9 +254,9 @@ def authenticate(username: str, password: str, ip: str) -> dict[str, Any]:
         try:
             data = _load_admin()
         except AdminCorruptError as exc:
-            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500) from exc
         except AdminReadError as exc:
-            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500) from exc
         # 用户名用 UTF-8 bytes 常量时间比较（str 版 compare_digest 遇非 ASCII 会抛异常）。
         # 无论用户名是否存在都执行同等成本的 PBKDF2：不存在时用固定 dummy salt/hash，
         # 消除"用户存在 vs 不存在"的时序差异，防账号枚举。
@@ -359,9 +359,9 @@ def reset_password() -> str:
         try:
             data = _load_admin()
         except AdminCorruptError as exc:
-            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500) from exc
         except AdminReadError as exc:
-            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500) from exc
         if not data:
             raise ServiceError("管理员账号不存在，请先启动服务完成初始化", 404)
         new_salt = secrets.token_bytes(16)
@@ -382,9 +382,9 @@ def change_password(username: str, old_password: str, new_password: str, ip: str
         try:
             data = _load_admin()
         except AdminCorruptError as exc:
-            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件已损坏: {exc}", 500) from exc
         except AdminReadError as exc:
-            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500)
+            raise ServiceError(f"管理员凭证文件读取失败: {exc}", 500) from exc
         if not data or username != data.get("username"):
             raise ServiceError("账号不存在", 404)
         salt = bytes.fromhex(data["salt"])
@@ -460,8 +460,8 @@ def _parse_time_bound(value: str | datetime | None) -> datetime | None:
     elif isinstance(value, str):
         try:
             dt = datetime.fromisoformat(value)
-        except ValueError:
-            raise ServiceError(f"非法时间参数: {value!r}", 400)
+        except ValueError as exc:
+            raise ServiceError(f"非法时间参数: {value!r}", 400) from exc
     else:
         raise ServiceError(f"非法时间参数类型: {type(value).__name__}", 400)
     if dt.tzinfo is None:
@@ -765,7 +765,7 @@ def _delete_book_locked(book_id: str, username: str, ip: str) -> dict[str, Any]:
         else:
             skipped.append("SQLite 未就绪：库中无该书记录可删")
     except Exception as e:  # noqa: BLE001 - db.tx() 已回滚，此处只负责上报
-        raise ServiceError(f"删除数据库记录失败（事务已回滚，文件未动）: {e}", 500)
+        raise ServiceError(f"删除数据库记录失败（事务已回滚，文件未动）: {e}", 500) from e
 
     # 3) corpus 原文：仅当解析后位于 CORPUS_DIR 内才删。
     src = (state or {}).get("source_path", "")

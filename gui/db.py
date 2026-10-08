@@ -550,12 +550,12 @@ def _verify_backup(dst: Path) -> None:
     try:
         chk = sqlite3.connect(str(dst))
     except sqlite3.Error as e:
-        raise RuntimeError(f"备份文件无法打开：{e}")
+        raise RuntimeError(f"备份文件无法打开：{e}") from e
     try:
         try:
             row = chk.execute("PRAGMA integrity_check").fetchone()
         except sqlite3.Error as e:
-            raise RuntimeError(f"备份完整性校验失败：{e}")
+            raise RuntimeError(f"备份完整性校验失败：{e}") from e
         if not row or row[0] != "ok":
             raise RuntimeError(f"备份完整性校验失败：{row}")
         # 关键表存在性抽查

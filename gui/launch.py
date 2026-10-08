@@ -63,8 +63,9 @@ def main(argv: list[str] | None = None) -> int:
 
     _ensure_sys_path()
 
-    from gui.server import GuiServer
     import secrets
+
+    from gui.server import GuiServer
 
     # Electron 模式（--no-browser）：生成身份握手 token，防止端口被抢占伪造。
     handshake_token = secrets.token_urlsafe(32) if args.no_browser else None
