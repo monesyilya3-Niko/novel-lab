@@ -1,8 +1,9 @@
 #!/bin/sh
 # novel-lab 提交前守卫（pre-commit）
 # ---------------------------------------------------------------------------
-# 作用：提交前运行全量回归测试（python run_tests.py）。红测试一律阻止提交，
-#       避免把失败状态固化进版本库。
+# 作用：提交前先跑 ruff check（CI 每个分支都跑，本地不跑就会把 lint 失败留到 CI），
+#       再运行全量回归测试（python run_tests.py）。红测试一律阻止提交，
+#       避免把失败状态固化进版本库。本机没有 ruff 时只警告、不拦。
 #       测试通过后，再对本次**暂存**的 assets/*.json 逐个跑 schema 校验
 #       （python scripts/validate.py）。REJECT（返回码 1）阻止提交，WARN（2）仅提示。
 #
@@ -68,6 +69,35 @@ if ! PYTHON=$(resolve_python); then
     echo "  [pre-commit] 未找到任何可用的 Python 解释器，无法运行测试。" >&2
     echo "  请安装 Python 到 PATH，或设置 NOVEL_LAB_PYTHON 指向解释器。" >&2
     echo "  临时绕过：git commit --no-verify" >&2
+    echo "============================================================" >&2
+    exit 1
+fi
+
+# --- ruff：CI 每个分支都跑 `ruff check .`，本地守卫不跑就会把 lint 失败留到 CI ----
+# 2026-10-08 实测踩过一次：本地只跑测试就提交，推送后 ubuntu 三条腿同时红在 F401。
+# ruff 缺失时只警告不拦（CI 仍是权威门禁），避免把"没装可选工具"变成"提交不了"。
+run_ruff() {
+    if command -v ruff >/dev/null 2>&1; then
+        echo "[pre-commit] Lint：ruff check ."
+        ruff check . && return 0
+        return 1
+    fi
+    if "$PYTHON" -m ruff --version >/dev/null 2>&1; then
+        echo "[pre-commit] Lint：$PYTHON -m ruff check ."
+        "$PYTHON" -m ruff check . && return 0
+        return 1
+    fi
+    echo "[pre-commit] 警告：本机没有 ruff，跳过 Lint（CI 仍会检查，可能推送后才发现）。" >&2
+    echo "[pre-commit] 装一次即可：pip install ruff（CI 锁定的版本见 .github/workflows/ci.yml 的 RUFF_VERSION）。" >&2
+    return 0
+}
+
+if ! run_ruff; then
+    echo "" >&2
+    echo "============================================================" >&2
+    echo "  [pre-commit] Lint 未通过，提交已阻止。" >&2
+    echo "  可自动修复的部分：ruff check . --fix" >&2
+    echo "  确需临时绕过：git commit --no-verify" >&2
     echo "============================================================" >&2
     exit 1
 fi
