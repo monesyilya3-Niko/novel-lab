@@ -120,14 +120,26 @@ git config core.hooksPath .githooks
 
 | 项 | 值 |
 |---|---|
-| 项目根 | `C:\Users\monesy\niko\novel-lab` |
+| 项目根（唯一权威工作副本） | `C:\Users\monesy\workspace\projects\novel-lab` |
 | 主解释器 | `C:/Users/monesy/.niko/binaries/python/versions/3.13.12/python.exe` |
 | 解释器版本 | **实际 3.13.14**（目录名 3.13.12 是历史 artifact，属正常） |
 | 项目 venv | `C:/Users/monesy/.niko/binaries/python/envs/default`（3.13.14，含 fontTools / numpy / Pillow，仅番茄抓书用） |
-| Node | `C:/Users/monesy/.niko/binaries/node/versions/22.22.2-2`（v22.22.2 + npm 10.9.7） |
-| npm 镜像 | `https://registry.npmmirror.com`（官方源慢） |
-| pip 镜像 | `https://mirrors.aliyun.com/pypi/simple/`（**清华源当前 403 不可用**） |
-| GitHub | 直连可用；备用镜像 `ghfast.top` |
+| Node | `C:/Program Files/nodejs`（实测 v24.21.0 + npm 11.19.0） |
+| npm 镜像 | 实测 `~/.npmrc` 为 `https://registry.npmjs.org/`（官方源本机 `npm ci` 实测可用；旧的 npmmirror 口径已过时） |
+| pip 镜像 | 实测 `pip config list` 为空（未配置镜像，走默认源） |
+| GitHub | 直连可用（2026-10-08 实测 `git push` 到 origin 成功）；备用镜像 `ghfast.top` |
+
+#### ⚠️ 本机有第二个 novel-lab 克隆（2026-10-08 实测确认）
+
+`C:\Users\monesy\niko\novel-lab` 是**迁移前的旧副本**：分支 `master`、最后提交 `edfae04`（2026-09-23）、
+工作区停留在 2026-09-24，68 个文件未提交。它的已提交历史已完整包含于权威副本（`git cat-file -e edfae04` 可验），
+但工作区里留着**从未进过任何分支的草稿**（`APP_PLAN.md`、`electron/`、`skills/`，以及 6 个未入库的 React 组件：
+AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCenter / QuickStartLoop）。
+
+规矩：
+- **只在权威副本开发**。旧副本里改文件、提交，会得到一份 2026-09-23 的陈旧产物。
+- **不要删除旧副本**。上述草稿未受版本控制保护，删掉即永久丢失；要清理必须先确认它们已被取代。
+- 旧副本的组件草稿若日后需要，从磁盘取回并在新前端结构下重写，不要整目录覆盖 `gui/web/src`。
 
 ### Windows / Git Bash 坑（来自 RULES.md 第七节）
 1. **路径**：`/c/xxx` 传给 Python 会被当字面路径 → 用 `C:/xxx` 或先 `cd`
