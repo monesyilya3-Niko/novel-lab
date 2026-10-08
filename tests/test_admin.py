@@ -666,16 +666,33 @@ class TestAuthenticateTimingAndUnicode(_AdminBase):
             with self.assertRaises(ServiceError, msg=f"user={bad_user!r}"):
                 admin.authenticate(bad_user, "whatever", "127.0.0.1")
 
-    def test_wrong_username_still_costly(self):
-        """错误用户名也应执行完整 PBKDF2（用时间下界粗验，不做精确等值断言）。"""
+    def test_wrong_username_costs_same_as_wrong_password(self):
+        """不存在的用户必须和"存在的用户 + 错密码"一样贵，否则时序可用于枚举账号。
+
+        原来这条写死"耗时 > 50ms"，2026-10-08 在 ubuntu runner 上实测 0.044s 就误红：
+        绝对毫秒阈值量的是机器快慢，不是它声称要守的性质。改成同一台机器上两条路径互相对照，
+        再留一个很低的绝对下界，只用来抓"直接 return"这种退化。
+        """
         import time
         self._init()
-        t0 = time.monotonic()
-        with self.assertRaises(ServiceError):
-            admin.authenticate("nonexistent-user", "whatever", "127.0.0.1")
-        dt = time.monotonic() - t0
-        # 200k 轮 PBKDF2-SHA256 通常 > 50ms；若实现退化为直接返回会远小于此
-        self.assertGreater(dt, 0.05, f"错误用户名登录过快({dt:.3f}s)，疑似跳过 PBKDF2")
+
+        def cost(user: str) -> float:
+            t0 = time.monotonic()
+            with self.assertRaises(ServiceError):
+                admin.authenticate(user, "wrong-password", "127.0.0.1")
+            return time.monotonic() - t0
+
+        # 先测不存在用户，避免存在用户的失败计数触发限流影响对照
+        t_absent = cost("nonexistent-user")
+        t_present = cost("admin")
+
+        self.assertGreater(t_present, 0.01, f"存在用户耗时 {t_present:.4f}s，疑似跳过 PBKDF2")
+        self.assertGreater(t_absent, 0.01, f"不存在用户耗时 {t_absent:.4f}s，疑似跳过 PBKDF2")
+        ratio = t_absent / t_present
+        self.assertGreater(ratio, 0.4,
+                           f"不存在用户只花存在用户的 {ratio:.2f} 倍，疑似提前返回（枚举侧信道）")
+        self.assertLess(ratio, 2.5,
+                        f"不存在用户明显更慢（{ratio:.2f}x），两条路径的时序特征不一致")
 
 
 class TestInitialPasswordHandoff(_AdminBase):
