@@ -14,9 +14,31 @@ import CircularProgress from '@mui/material/CircularProgress'
 import LinearProgress from '@mui/material/LinearProgress'
 import Chip from '@mui/material/Chip'
 import { qualityApi, assetApi, subscribeTaskEvents } from '../api/client'
+import { hasDesktopBridge, pickPath, type PickKind } from '../desktopBridge'
 import type { QualityTaskState, QcReportItem } from '../types'
 import { friendlyError } from '../api/client'
 import QcVisuals from './QcVisuals'
+
+/**
+ * 桌面版（Electron）才出现的"选择…"按钮。
+ *
+ * 浏览器里的网页拿不到真实路径（这也是导入功能走 multipart 上传的原因），
+ * 所以非桌面环境下这个按钮干脆不渲染，而不是渲染一个点了没反应的。
+ */
+function PathPickerButton({ kind, onPicked }: { kind: PickKind; onPicked: (path: string) => void }) {
+  if (!hasDesktopBridge()) return null
+  return (
+    <Button
+      variant="outlined"
+      onClick={async () => {
+        const picked = await pickPath(kind)
+        if (picked) onPicked(picked)
+      }}
+    >
+      {kind === 'dir' ? '选择目录…' : '选择文件…'}
+    </Button>
+  )
+}
 
 const VERDICT_LABELS: Record<string, string> = {
   PASS: '通过',
@@ -121,6 +143,7 @@ function CheckPanel() {
       <Typography variant="h6" gutterBottom>单章检查</Typography>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
         <TextField label="章节路径（或粘贴文本）" value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 280 }} size="small" />
+        <PathPickerButton kind="file" onPicked={setTarget} />
         <TextField select label="voice-card（可选）" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
           <MenuItem value="">无</MenuItem>
           {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
@@ -229,6 +252,7 @@ function BookQualityPanel() {
       <Typography variant="h6" gutterBottom>全书质检</Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField label="章节目录路径" value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 320 }} size="small" />
+        <PathPickerButton kind="dir" onPicked={setTarget} />
         <Button variant="contained" onClick={doBook} disabled={!target.trim() || loading}>
           {loading ? <CircularProgress size={20} /> : '质检'}
         </Button>
@@ -314,6 +338,7 @@ function QcPanel() {
       <Typography variant="h6" gutterBottom>QC 综合质检（四层十二维）</Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
         <TextField label="章节目录路径" value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 320 }} size="small" />
+        <PathPickerButton kind="dir" onPicked={setTarget} />
         <Button variant="contained" onClick={doQc} disabled={!target.trim() || running}>
           {running ? <CircularProgress size={20} /> : '开始 QC'}
         </Button>

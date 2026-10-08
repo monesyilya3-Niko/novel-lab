@@ -5,6 +5,7 @@ directories:
   buildResources: build
 files:
   - main.js
+  - preload.js
   - package.json
 extraResources:
   - from: backend

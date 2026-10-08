@@ -108,6 +108,56 @@ class TestDesktopPackagingManifest(unittest.TestCase):
                         (BACKEND / "gui" / "__init__.py").is_file())
 
 
+
+class TestDesktopPathPicker(unittest.TestCase):
+    """桌面版"选择路径"桥必须真的进包。
+
+    这条链路有三个环节可以各自单独断掉，而且断掉的症状都是"页面里那个按钮
+    干脆不出现"——前端逻辑没报错、后端也没报错，装机用户只会觉得功能消失了：
+
+    1. electron-builder 的 `files` 是白名单，漏了 preload.js 就注入不了桥；
+    2. main.js 的 webPreferences 没接 preload，或 handler 名与 preload 不一致；
+    3. 前端源码写了但 dist 没重建（本仓库按设计提交预构建产物）。
+
+    所以三段都要有断言，而不是只测第 1 段。
+    """
+
+    def test_preload_in_builder_files_allowlist(self):
+        yml = (ROOT / "desktop" / "electron-builder.yml").read_text(encoding="utf-8")
+        files_block = yml.split("files:")[1].split("extraResources:")[0]
+        self.assertIn("preload.js", files_block,
+                      "electron-builder.yml 的 files 白名单漏了 preload.js，装机版不会有桥")
+
+    def test_preload_exposes_only_pick_path(self):
+        preload = ROOT / "desktop" / "preload.js"
+        self.assertTrue(preload.is_file(), "缺少 desktop/preload.js")
+        text = preload.read_text(encoding="utf-8")
+        self.assertEqual(text.count("exposeInMainWorld"), 1, "桥应当只注册一次")
+        self.assertRegex(
+            text, r"exposeInMainWorld\(\s*'novelLab',\s*\{\s*pickPath",
+            "桥只能暴露 pickPath；把 ipcRenderer 交出去等于给页面发任意 IPC 的能力")
+
+    def test_main_process_wires_bridge_and_validates_kind(self):
+        main = (ROOT / "desktop" / "main.js").read_text(encoding="utf-8")
+        self.assertIn("preload: path.join(__dirname, 'preload.js')", main,
+                      "webPreferences 没接 preload.js")
+        self.assertIn("ipcMain.handle('novel-lab:pick-path'", main,
+                      "主进程没有注册选择器 handler（通道名须与 preload 一致）")
+        # kind 只认 dir / file 两个枚举值，其余一律当没选：渲染层能要的只是一个路径
+        self.assertIn("kind !== 'dir' && kind !== 'file'", main)
+        self.assertIn("openDirectory", main)
+        self.assertIn("openFile", main)
+        # 上下文隔离与沙箱是这个桥能安全存在的前提，不能被顺手关掉
+        self.assertIn("contextIsolation: true", main)
+        self.assertIn("sandbox: true", main)
+        self.assertIn("nodeIntegration: false", main)
+
+    def test_built_dist_consumes_the_bridge(self):
+        """前端改了但没重建 dist 时，这条会红（dist 按设计入库，装机版只认 dist）。"""
+        dist = ROOT / "gui" / "web" / "dist"
+        hits = [f for f in dist.rglob("*.js") if "novelLab" in f.read_text(encoding="utf-8")]
+        self.assertTrue(hits, "dist 里没有桥引用——前端源码改了但没跑 npm run build")
+
 if __name__ == "__main__":
     unittest.main()
 

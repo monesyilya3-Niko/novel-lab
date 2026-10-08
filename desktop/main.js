@@ -3,7 +3,7 @@
 // 后端零依赖（纯标准库），随包携带 Windows embeddable Python，用户机器无需装 Python。
 'use strict'
 
-const { app, BrowserWindow, dialog, shell } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron')
 const { spawn } = require('child_process')
 const path = require('path')
 const http = require('http')
@@ -136,6 +136,26 @@ function saveWindowState(win) {
   } catch (_) { /* 保存失败不影响运行 */ }
 }
 
+// 原生路径选择器。质检/拆书的"章节路径"填的是用户硬盘上的真实路径，手打
+// 一长串 Windows 路径（反斜杠、盘符、中文目录）既是"有些路径放不进去"这类反馈的
+// 来源之一，也容易填错。这里只把路径字符串交回页面，之后的准入仍由后端
+// gui/text_access 判定——主进程不是安全边界，别在这里加"允许哪些目录"的白名单。
+// 只认两种枚举值，其它输入一律当作没选：渲染层能要求的仅仅是一个路径。
+ipcMain.handle('novel-lab:pick-path', async (_event, kind) => {
+  if (kind !== 'dir' && kind !== 'file') return null
+  const options = kind === 'dir'
+    ? { title: '选择章节目录', properties: ['openDirectory'] }
+    : {
+        title: '选择章节文件',
+        properties: ['openFile'],
+        filters: [{ name: '正文', extensions: ['txt', 'md'] }],
+      }
+  const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
+  const res = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options)
+  if (res.canceled || !res.filePaths.length) return null
+  return res.filePaths[0]
+})
+
 function createWindow() {
   // 窗口状态持久化：记住用户调整后的大小/位置，下次启动恢复。
   const winState = loadWindowState()
@@ -154,6 +174,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      // 沙箱下 preload 仍可用 contextBridge + ipcRenderer（Electron 官方支持的子集），
+      // 因此不需要为了桥而关掉 sandbox。
+      preload: path.join(__dirname, 'preload.js'),
     },
   })
   // 关闭/退出前保存窗口状态（防崩溃丢失：resize/move 即时保存）。
