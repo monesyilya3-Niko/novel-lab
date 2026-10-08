@@ -72,6 +72,35 @@ class TestDialogueMetric(unittest.TestCase):
         self.assertIn("对话与叙述平衡", joined)
 
 
+
+class TestSentenceMetric(unittest.TestCase):
+    """切句口径必须与引擎一致（省略号 / 分号 / 换行都是句边界）。"""
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="style_s_"))
+        self._iso = _isolation.isolate_paths(self._tmp)
+        self._iso.__enter__()
+
+    def tearDown(self):
+        self._iso.__exit__(None, None, None)
+
+    def test_sentence_count_matches_engine_split(self):
+        from gui import engine_adapter
+        card = style_service.analyze_style(DIALOGUE_HEAVY, "句数测试")
+        self.assertEqual(card["metrics"]["sentence_count"],
+                         len(engine_adapter.split_sentences(DIALOGUE_HEAVY)))
+
+    def test_ellipsis_and_newline_end_a_sentence(self):
+        # 旧口径只切 。！？!?，一段用省略号和换行断句的稿子会被算成一整句
+        nl = chr(10)
+        text = ("他停顿了一下……没有说话；" + nl
+                + "窗外雨声很大；" + nl
+                + "她终于开口……只说了两个字。" + nl) * 12
+        card = style_service.analyze_style(text, "省略号")
+        self.assertGreaterEqual(card["metrics"]["sentence_count"], 36)
+        self.assertLess(card["metrics"]["avg_sentence_length"], 15)
+
+
 class TestStylePersistence(unittest.TestCase):
     def setUp(self):
         self._tmp = Path(tempfile.mkdtemp(prefix="style_p_"))

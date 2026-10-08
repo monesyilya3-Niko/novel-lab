@@ -65,9 +65,8 @@ def analyze_style(text: str, name: str = "") -> dict[str, Any]:
     if not text or len(text.strip()) < 100:
         raise ServiceError("文本太短，至少需要 100 字", 400)
 
-    # 句长分析
-    sentences = re.split(r'[。！？!?]', text)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    # 句长分析：切句口径走引擎的 metrics.SENT_RE（见 engine_adapter.split_sentences）
+    sentences = engine_adapter.split_sentences(text)
     sent_lengths = [len(s) for s in sentences]
     avg_sent_len = sum(sent_lengths) / len(sent_lengths) if sent_lengths else 0
 

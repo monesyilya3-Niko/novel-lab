@@ -201,6 +201,17 @@ def compute_metrics(text: str) -> dict[str, Any]:
     return _get_metrics().compute(text)
 
 
+def split_sentences(text: str) -> list[str]:
+    """按引擎口径切句：``metrics.SENT_RE``（。！？!?…;； 与换行都算句边界）。
+
+    gui 层不要自己写 ``[。！？!?]``：那样会漏掉省略号、分号和换行，同一篇稿子
+    在文风卡和引擎报告里得到两个不同的句数/句长（style_service 就因此把
+    140 句读成 100 句，平均句长 5.6 读成 8.4）。
+    """
+    parts = _get_metrics().SENT_RE.split(text)
+    return [s.strip() for s in parts if s.strip()]
+
+
 def dialogue_char_count(text: str) -> int:
     """引号内字符数（近似对白字数），口径唯一来源是 ``scripts/metrics``。
 
