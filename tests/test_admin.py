@@ -676,3 +676,55 @@ class TestAuthenticateTimingAndUnicode(_AdminBase):
         dt = time.monotonic() - t0
         # 200k 轮 PBKDF2-SHA256 通常 > 50ms；若实现退化为直接返回会远小于此
         self.assertGreater(dt, 0.05, f"错误用户名登录过快({dt:.3f}s)，疑似跳过 PBKDF2")
+
+
+class TestInitialPasswordHandoff(_AdminBase):
+    """初始密码的交付路径（2026-10-08）。
+
+    旧实现把明文密码写进服务端日志，而 gui.log 会随轮转长期留存——等于把凭据
+    另存一份没人负责清理的副本。现在密码只进数据目录下的指引文件（改密后自动
+    删除），日志只指路；只有指引文件写不出来时才退回日志。
+    """
+
+    PW = "S3cret-初始密码-xyz"
+
+    def test_hint_file_gets_password_and_log_does_not(self):
+        from gui import server
+
+        with self.assertLogs("novellab.server", level="WARNING") as captured:
+            fp = server.announce_initial_password(self.PW)
+        self.assertIsNotNone(fp, "指引文件写成功时应返回其路径")
+        self.assertIn(self.PW, fp.read_text(encoding="utf-8"),
+                      "指引文件必须带密码，否则用户无从登录")
+        joined = "\n".join(captured.output)
+        self.assertNotIn(self.PW, joined, f"初始密码不应进日志：{joined}")
+        self.assertIn(admin.ADMIN_HINT_FILE_NAME, joined, "日志应指向指引文件名")
+
+    def test_hint_filename_has_single_source(self):
+        """文件名只能有一处定义：写侧和删侧各写一份字面量，早晚有一天对不上。"""
+        literal = '"admin-初始密码.txt"'
+        hits = []
+        for fp in sorted((ROOT / "gui").glob("*.py")):
+            for n, line in enumerate(fp.read_text(encoding="utf-8").splitlines(), 1):
+                if literal in line and "ADMIN_HINT_FILE_NAME =" not in line:
+                    hits.append(f"{fp.name}:{n}")
+        self.assertEqual(hits, [], f"指引文件名出现第二处字面量：{hits}")
+        self.assertEqual(admin.ADMIN_HINT_FILE_NAME, "admin-初始密码.txt")
+
+    def test_falls_back_to_log_when_hint_unwritable(self):
+        from gui import server
+
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        blocker = config.STATE_ROOT / "blocked"
+        blocker.write_text("我是文件，不是目录", encoding="utf-8")
+        saved = config.STATE_ROOT
+        try:
+            # STATE_ROOT 指向一个"文件下面的路径"，写指引文件必然 OSError
+            config.STATE_ROOT = blocker / "sub"
+            with self.assertLogs("novellab.server", level="WARNING") as captured:
+                fp = server.announce_initial_password(self.PW)
+        finally:
+            config.STATE_ROOT = saved
+        self.assertIsNone(fp, "写失败必须返回 None")
+        joined = "\n".join(captured.output)
+        self.assertIn(self.PW, joined, "指引文件写不出来时，日志是唯一还能交付密码的通道")

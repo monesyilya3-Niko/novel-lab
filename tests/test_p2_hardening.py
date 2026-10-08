@@ -259,5 +259,72 @@ class TestAutoBackup(unittest.TestCase):
             self.tearDown_fake(migrate)
 
 
+class TestAccessLogMasking(unittest.TestCase):
+    """访问日志脱敏（2026-10-08 实机发现）。
+
+    桌面版把身份握手令牌交给前端走 `/?handshake=`，SSE 只能用 `?handshake_token=`；
+    旧脱敏只覆盖 `auth=`，所以真令牌会**明文写进 gui.log**。另外旧替换串里混着一个
+    旧脱敏只覆盖 auth=，所以真令牌会**明文写进 gui.log**。另外旧替换串里混着一个 SOH 控制字节
+    """
+
+    def test_credential_params_masked_and_others_kept(self):
+        from gui import server
+
+        cases = [
+            ("GET /api/books?auth=T1&limit=5 HTTP/1.1",
+             "GET /api/books?auth=***&limit=5 HTTP/1.1"),
+            ("GET /api/events?task_id=q1&handshake_token=HTOK HTTP/1.1",
+             "GET /api/events?task_id=q1&handshake_token=*** HTTP/1.1"),
+            ("GET /?handshake=H1 HTTP/1.1",
+             "GET /?handshake=*** HTTP/1.1"),
+            ("GET /api/x?author=Bob HTTP/1.1",
+             "GET /api/x?author=Bob HTTP/1.1"),
+            ("GET /api/x?Auth=MIX&b=2 HTTP/1.1",
+             "GET /api/x?Auth=***&b=2 HTTP/1.1"),
+        ]
+        for src, want in cases:
+            with self.subTest(src=src):
+                self.assertEqual(server._mask_sensitive_query(src), want)
+
+    def test_no_control_bytes_in_masked_line(self):
+        from gui import server
+
+        out = server._mask_sensitive_query("GET /x?auth=SECRET&y=2 HTTP/1.1")
+        bad = [c for c in out if ord(c) < 32 and c != " "]
+        self.assertEqual(bad, [], f"日志行混进控制字符：{out!r}")
+
+    def test_handler_path_uses_the_masker(self):
+        """走真正的 _Handler.log_message，确认接线没断（只测纯函数会漏掉这一步）。"""
+        import logging
+
+        from gui import server
+
+        class _Capturing(logging.Handler):
+            def __init__(self):
+                super().__init__()
+                self.messages = []
+
+            def emit(self, record):
+                self.messages.append(record.getMessage())
+
+        class _Stub:
+            def address_string(self):
+                return "127.0.0.1"
+
+            log_message = server._Handler.log_message
+
+        logger = logging.getLogger("novellab.server")
+        cap = _Capturing()
+        old_level = logger.level
+        logger.setLevel(logging.INFO)
+        logger.addHandler(cap)
+        try:
+            _Stub().log_message("%s %s", "GET /api/books?auth=SECRET&limit=5 HTTP/1.1", "200")
+        finally:
+            logger.removeHandler(cap)
+            logger.setLevel(old_level)
+        joined = chr(10).join(cap.messages)
+        self.assertIn("auth=***", joined, f"日志里没有脱敏结果：{joined}")
+        self.assertNotIn("SECRET", joined, f"令牌明文出现在日志里：{joined}")
 if __name__ == "__main__":
     unittest.main()

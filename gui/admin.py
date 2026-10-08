@@ -45,6 +45,7 @@ VERSION = "1.1.2"
 
 ADMIN_FILE_NAME = "admin.json"
 AUDIT_FILE_NAME = "admin_audit.jsonl"
+ADMIN_HINT_FILE_NAME = "admin-初始密码.txt"
 SESSION_COOKIE = "nl_admin_session"
 SESSION_TTL_SECONDS = 12 * 3600
 _PBKDF2_ITERATIONS = 200_000
@@ -398,7 +399,7 @@ def change_password(username: str, old_password: str, new_password: str, ip: str
         _save_admin(data)
         # P1-2：改密成功后删除初始密码指引明文文件（若存在）。
         try:
-            _admin_file().parent.joinpath("admin-初始密码.txt").unlink(missing_ok=True)
+            _admin_file().parent.joinpath(ADMIN_HINT_FILE_NAME).unlink(missing_ok=True)
         except OSError:
             pass
         # 密码变更后吊销该用户全部会话（防旧会话残留）。
