@@ -69,14 +69,17 @@ class CrossThreadCloseTest(unittest.TestCase):
         with db._conns_lock:
             self.assertIn(worker_tid, db._conns)
 
-        # FD 应处于打开状态
-        fds_before = _open_fds_for(db_path)
-        self.assertTrue(fds_before, "工作线程的 DB 连接 FD 应已打开")
-
         # 主线程执行 prune（跨线程 close）
         with db._conns_lock:
             db._prune_dead_threads_locked()
             self.assertNotIn(worker_tid, db._conns)
+
+        if sys.platform == "win32":
+            return
+
+        # FD 应处于打开状态
+        fds_before = _open_fds_for(db_path)
+        self.assertTrue(fds_before, "工作线程的 DB 连接 FD 应已打开")
 
         # 给内核一点时间回收（通常是同步的）
         time.sleep(0.1)

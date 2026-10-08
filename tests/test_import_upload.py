@@ -201,6 +201,9 @@ class TestImportUploadEndToEnd(unittest.TestCase):
         self._httpd.shutdown()
         self._httpd.server_close()
         self._thread.join(timeout=5)
+        # 必须显式清理，否则 Windows 会报 [WinError 32] 无法删除临时目录
+        from gui import db
+        db.close()
 
     def _post(self, raw: bytes, ctype: str) -> tuple[int, dict]:
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)

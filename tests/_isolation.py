@@ -110,6 +110,10 @@ def isolate_paths(tmp_root: Path) -> Iterator[dict[str, Path]]:
     finally:
         for name, value in saved.items():
             setattr(config, name, value)
+        # Windows 上为了防止 cleanup() 时 SQLite 连接未释放导致 WinError 32，
+        # 在隔离结束时自动清空所有连接。
+        from gui import db
+        db._reset_conn()
 
 
 def snapshot_real_state_json_dir() -> frozenset:
