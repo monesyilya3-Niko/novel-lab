@@ -431,8 +431,10 @@ def main():
         if not ch_path.exists():
             sys.exit(f"文件不存在: {ch_path}")
         try:
-            text = ch_path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError) as exc:
+            import chapter_loader
+
+            text = chapter_loader.read_text_file(ch_path)
+        except (UnicodeError, OSError) as exc:
             sys.exit(f"读取章节失败: {exc}")
 
         # 1. 章节质量

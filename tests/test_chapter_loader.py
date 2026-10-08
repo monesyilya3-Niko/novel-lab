@@ -486,5 +486,49 @@ class TestBackendIntegration(unittest.TestCase):
             self.assertEqual(logic_check._load_texts(Path(tmp) / "不存在"), {})
 
 
+class TestChapterEncoding(unittest.TestCase):
+    """章节文件的编码口径（2026-10-08）。
+
+    用户反馈"路径放不进去"里有一部分其实是"文件读不进来"：国内稿子大量是
+    GBK/GB2312，而引擎只按 UTF-8 解，整本书的质检会在真稿上报解码失败。
+    导入侧（gui/services）一直是 UTF-8→GBK 两段解，这里把读盘侧对齐到同一口径。
+    """
+
+    def test_gbk_chapters_load(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "第001章.txt").write_bytes("第一章　旧键盘".encode("gbk"))
+            (root / "第002章.txt").write_bytes("第二章　新键盘".encode("gbk"))
+            self.assertEqual(
+                chapter_loader.load_chapter_texts(root),
+                {1: "第一章　旧键盘", 2: "第二章　新键盘"})
+
+    def test_mixed_utf8_and_gbk_in_one_dir(self):
+        # 同一本书里两种编码并存是常态（网上下的 + 本地另存的），不能要求整本统一
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "第001章.txt").write_text("第一章 UTF", encoding="utf-8")
+            (root / "第002章.txt").write_bytes("第二章 GBK".encode("gbk"))
+            self.assertEqual(
+                chapter_loader.load_chapter_texts(root), {1: "第一章 UTF", 2: "第二章 GBK"})
+
+    def test_undecodable_error_names_the_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = Path(tmp) / "第9章.txt"
+            bad.write_bytes(b"\xff\xfe\x00\x01\x02")
+            with self.assertRaises(UnicodeError) as cm:
+                chapter_loader.load_chapter_texts(Path(tmp))
+            msg = str(cm.exception)
+            self.assertIn("第9章.txt", msg)
+            self.assertIn("GBK", msg)
+
+    def test_read_failure_names_the_file(self):
+        # 读盘失败（目录当文件传）也必须带上路径，否则用户不知道哪章坏了
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(OSError) as cm:
+                chapter_loader.read_text_file(Path(tmp))
+            self.assertIn(str(Path(tmp)), str(cm.exception))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

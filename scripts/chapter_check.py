@@ -30,6 +30,7 @@ import re
 import sys
 from pathlib import Path
 
+import chapter_loader
 from metrics import dialogue_char_count
 
 # ---------------------------------------------------------------------------
@@ -696,7 +697,7 @@ def main():
     if not ch_path.exists():
         sys.exit(f"文件不存在: {ch_path}")
 
-    text = ch_path.read_text(encoding="utf-8")
+    text = chapter_loader.read_text_file(ch_path)
     gp = None
     if args.genre_pack:
         gp = json.loads(Path(args.genre_pack).read_text(encoding="utf-8"))

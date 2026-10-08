@@ -27,6 +27,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
+import chapter_loader
 import compliance as comp
 import normalize as norm
 import validate as validate_mod
@@ -373,7 +374,8 @@ def main():
     # 避免 pass2 归一化重新带入原文台词导致 compliance REJECT。
     book_path = ROOT / "corpus" / f"{name}.txt"
     if book_path.exists():
-        voice, cleaned = _clean_verbatim(voice, book_path.read_text(encoding="utf-8"))
+        voice, cleaned = _clean_verbatim(
+            voice, chapter_loader.read_text_file(book_path))
         if cleaned:
             print(f"  ⚠ 已清洗 {cleaned} 处原文引用（corpus/{name}.txt）")
     # 2026-09-21 总工重构：四类资产**先组装到内存**，校验全通过后才落盘。

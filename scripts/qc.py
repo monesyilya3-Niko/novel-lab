@@ -408,7 +408,7 @@ def _dim_banned(texts: dict, asset: dict, book_path: str) -> DimensionScore:
     score = 100.0
     if book_path:
         try:
-            book_text = Path(book_path).read_text(encoding="utf-8")
+            book_text = chapter_loader.read_text_file(Path(book_path))
             ngram = compliance.build_ngram_index(book_text)
             errors, warns = compliance.scan_asset(asset, ngram)
             for e in errors:

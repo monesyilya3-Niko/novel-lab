@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+import chapter_loader
 import compliance as compliance_mod
 import metrics as metrics_mod
 import normalize as norm
@@ -29,7 +30,7 @@ def run_book(src: Path, genre: str, model_id: str | None, dry_run: bool) -> dict
     print(f"\n{'='*56}\n▶ 拆书: {name}（{genre}）\n{'='*56}")
 
     # 1. 采样
-    text = src.read_text(encoding="utf-8")
+    text = chapter_loader.read_text_file(src)
     chapters = sampler.split_chapters(text)
     if len(chapters) < 5:
         print(f"  ✗ 章节过少（{len(chapters)}），跳过")

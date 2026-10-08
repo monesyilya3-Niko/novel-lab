@@ -17,6 +17,8 @@ import re
 from collections import Counter
 from pathlib import Path
 
+import chapter_loader
+
 CJK_RE = re.compile(r'[\u4e00-\u9fff]+')
 SENT_RE = re.compile(r'[。！？!?…;；\n]')
 # 四类成对引号：开引号 → 对应闭引号。
@@ -236,7 +238,7 @@ def main():
     files = list(p.glob("*.txt")) if p.is_dir() else [p]
     all_metrics = {}
     for f in files:
-        all_metrics[f.stem] = compute(f.read_text(encoding="utf-8"))
+        all_metrics[f.stem] = compute(chapter_loader.read_text_file(f))
 
     out = args.out or (p.parent / f"{p.stem}_metrics.json" if not p.is_dir() else "metrics.json")
     Path(out).write_text(json.dumps(all_metrics, ensure_ascii=False, indent=2), encoding="utf-8")

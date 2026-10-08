@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+import chapter_loader
 import compliance as comp
 
 
@@ -61,7 +62,7 @@ def main():
 
     asset_path = Path(args.asset)
     asset = json.loads(asset_path.read_text(encoding="utf-8"))
-    book = Path(args.book).read_text(encoding="utf-8")
+    book = chapter_loader.read_text_file(Path(args.book))
     ngram = comp.build_ngram_index(book)
 
     changes = []

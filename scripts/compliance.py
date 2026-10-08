@@ -19,6 +19,8 @@ import re
 import sys
 from pathlib import Path
 
+import chapter_loader
+
 WINDOW = 12          # 连续匹配判定长度
 QUOTE_WARN = 20      # 引号内原文片段警告阈值
 
@@ -128,7 +130,7 @@ def main():
     args = ap.parse_args()
 
     asset = load_json(Path(args.asset))
-    book_text = Path(args.book).read_text(encoding="utf-8")
+    book_text = chapter_loader.read_text_file(Path(args.book))
     ngram = build_ngram_index(book_text)
     print(f"[i] 原文已建索引: {len(ngram):,} 个 {WINDOW}-gram 窗口")
 

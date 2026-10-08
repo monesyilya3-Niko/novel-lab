@@ -250,9 +250,11 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> dict[str, Any]:
 
     for i, fp in enumerate(chapter_files, 1):
         try:
-            content = fp.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError) as exc:
-            _log.warning(f"导出跳过无法读取的章节 {fp.name}: {exc}")
+            # 走 text_access 而不是 Path.read_text：国内稿子大量是 GBK，
+            # 只按 UTF-8 解会让整章被静默跳过，导出的书凭空少一章。
+            content = text_access.read_text(fp, field="book_dir")
+        except ServiceError as exc:
+            _log.warning(f"导出跳过无法读取的章节 {fp.name}: {exc.message}")
             continue
 
         # 提取标题（第一行）

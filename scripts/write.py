@@ -23,6 +23,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
+import chapter_loader
 import llm_client
 
 
@@ -82,7 +83,7 @@ def run_consistency(voice_path: Path, ch_file: Path) -> None:
     try:
         vc_data = json.loads(voice_path.read_text(encoding="utf-8"))
         score, details, _ = consistency.score_text(
-            vc_data, ch_file.read_text(encoding="utf-8"), label=ch_file.name)
+            vc_data, chapter_loader.read_text_file(ch_file), label=ch_file.name)
         print(f"  一致性打分: {score:.1f}/100" + ("  ✅ PASS" if score >= 75 else "  ⚠️ 未达 75，建议改写"))
         for d in details:
             print(f"    {d}")

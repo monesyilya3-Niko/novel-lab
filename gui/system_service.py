@@ -112,11 +112,7 @@ def compliance_scan(voice: str | None = None,
         # 防任意文件读取的责任落到 text_access：只认正文后缀、拒符号链接、限体积。
         book_text = ""
         if book_path:
-            src_fp = text_access.text_file(book_path, field="book_path")
-            try:
-                book_text = src_fp.read_text(encoding="utf-8")
-            except (UnicodeDecodeError, OSError) as exc:
-                raise ServiceError(f"读取原文失败: {exc}", 400) from exc
+            book_text = text_access.read_text(book_path, field="book_path")
 
         # 调用 compliance.scan_asset（需要 ngram 索引）
         # 铁律：scripts/ 只经 engine_adapter 触碰。

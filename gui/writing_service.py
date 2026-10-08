@@ -313,11 +313,7 @@ def score(voice: str, text: str | None = None, chapter_path: str | None = None,
     if chapter_path:
         # HIGH：目录边界不限（2026-10-08，用户稿子常在 novel/ 之外），
         # 由 text_access 保证只读得到正文文件本身。
-        fp = text_access.text_file(chapter_path, field="chapter_path")
-        try:
-            text = fp.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError) as exc:
-            raise ServiceError(f"读取章节失败: {exc}", 400) from exc
+        text = text_access.read_text(chapter_path, field="chapter_path")
 
     voice_data = _load_asset_of_kind(voice, "voice")
     cons = engine_adapter.score_text(voice_data, text, label=label)

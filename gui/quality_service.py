@@ -309,8 +309,9 @@ def check(target: str | None = None, text: str | None = None,
         except OSError as exc:
             raise ServiceError(f"读取章节失败: {exc}", 400) from exc
         try:
-            text = fp.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError) as exc:
+            # 走引擎侧的统一解码（UTF-8 → GBK）：只认 UTF-8 会把大量真稿判成"读不了"
+            text = engine_adapter.read_chapter_text(fp)
+        except (UnicodeError, OSError) as exc:
             raise ServiceError(f"读取章节失败: {exc}", 400) from exc
         finally:
             _cleanup_external_copy(fp)  # P1-5：外部隔离副本用后即删

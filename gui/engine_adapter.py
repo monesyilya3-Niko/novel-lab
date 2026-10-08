@@ -588,6 +588,18 @@ def chapter_scan_rules() -> tuple[str, frozenset[str]]:
     return "*.txt", frozenset(EXCLUDED_DIR_NAMES)
 
 
+def read_chapter_text(path: str | Path) -> str:
+    """读正文文件，编码按 UTF-8 → GBK 两段解（口径在 scripts/chapter_loader）。
+
+    GUI 不该自己 ``Path.read_text(encoding="utf-8")``：用户的 `.txt` 相当一部分是
+    GBK/GB2312，只认 UTF-8 会让质检在真稿上报"读取章节失败"，看上去像路径被禁。
+    解码规则只有一份，按铁律从本模块出口。
+    """
+    from scripts.chapter_loader import read_text_file
+
+    return read_text_file(Path(path))
+
+
 # --- 全书质检（book_quality.py）---
 
 def book_quality_check(chapter_dir: str, voice_card_path: str | None = None,

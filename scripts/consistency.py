@@ -7,6 +7,8 @@ import json
 import sys
 from pathlib import Path
 
+import chapter_loader
+
 # 直陈式情绪词（出现即扣分）
 DIRECT_EMOTION = ["很愤怒", "很生气", "感到难过", "非常开心", "很伤心", "感到害怕",
                   "很紧张", "很幸福", "很沮丧", "很兴奋", "很失落", "很委屈"]
@@ -235,7 +237,7 @@ def check_imagery(text, imagery):
 def consistency_check(voice_card_path: str, chapter_path: str):
     """主函数：一致性打分。"""
     voice_card = json.loads(Path(voice_card_path).read_text(encoding="utf-8"))
-    chapter_text = Path(chapter_path).read_text(encoding="utf-8")
+    chapter_text = chapter_loader.read_text_file(Path(chapter_path))
     voices = voice_card.get("dialogue", {}).get("character_voices", [])
     emotion = voice_card.get("emotion_handling", {})
     narration = voice_card.get("narration", {})

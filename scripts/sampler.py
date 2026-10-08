@@ -14,6 +14,8 @@ import json
 import re
 from pathlib import Path
 
+import chapter_loader
+
 # 章节标题识别：第X章 / 第X回 / 第X节 / 第X卷 / Chapter N
 CHAPTER_RE = re.compile(
     r'^\s*(第[一二三四五六七八九十百千零0-9]+[章回节卷]|Chapter\s*\d+|CHAPTER\s*\d+)\b'
@@ -174,7 +176,7 @@ def main():
     args = ap.parse_args()
 
     src = Path(args.book)
-    text = src.read_text(encoding="utf-8")
+    text = chapter_loader.read_text_file(src)
     chapters = split_chapters(text)
     sel = select(chapters)
     slices = build_slices(chapters, sel)

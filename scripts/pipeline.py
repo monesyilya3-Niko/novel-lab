@@ -27,6 +27,7 @@ import re
 import sys
 from pathlib import Path
 
+import chapter_loader
 import compliance as compliance_mod
 import llm_client
 import metrics as metrics_mod
@@ -340,7 +341,7 @@ def main():
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. 采样
-    text = src.read_text(encoding="utf-8")
+    text = chapter_loader.read_text_file(src)
     chapters = sampler.split_chapters(text)
     if len(chapters) < 5:
         sys.exit(f"章节过少（{len(chapters)}），无法有效拆解")
@@ -717,7 +718,7 @@ def _run_distill_hook(genre: str) -> None:
 def run_compliance(asset_path: Path, book_path: Path) -> int:
     """合规扫描封装：返回退出码（0 通过 / 1 拒绝 / 2 警告）。"""
     asset = json.loads(asset_path.read_text(encoding="utf-8"))
-    book_text = book_path.read_text(encoding="utf-8")
+    book_text = chapter_loader.read_text_file(book_path)
     ngram = compliance_mod.build_ngram_index(book_text)
     errs, warns = compliance_mod.scan_asset(asset, ngram)
     print(f"      {asset_path.name}: 硬错误 {len(errs)} / 警告 {len(warns)}")

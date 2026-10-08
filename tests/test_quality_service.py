@@ -156,6 +156,24 @@ class TestExternalDirectory(unittest.TestCase):
         self.assertEqual(list(fp.rglob("*.md")), [])
         self.assertIn(fp.parent.name, {p.name for p in (config.STATE_ROOT / "scratch").iterdir()})
 
+    def test_gbk_and_utf8_same_file_score_identically(self):
+        """同一份正文的 GBK 与 UTF-8 版本必须得同一个质检分。
+
+        引擎读盘只认 UTF-8 时，GBK 稿子在 check() 里直接 400"读取章节失败"，
+        用户读到的措辞像"这个路径放不进去"，实际是编码问题。这条 A/B 同时钉住
+        "能读"（不抛）与"读对"（两种编码分数一致），只断言不抛是拦不住
+        解码解坏、静默丢字的。
+        """
+        text = "第一章正文，重复一段以凑够字数。" * 40
+        utf = self.ext / "utf稿.txt"
+        gbk = self.ext / "gbk稿.txt"
+        utf.write_text(text, encoding="utf-8")
+        gbk.write_bytes(text.encode("gbk"))
+        a = quality_service.check(target=str(utf))
+        b = quality_service.check(target=str(gbk))
+        self.assertEqual(a["quality"]["score"], b["quality"]["score"])
+        self.assertGreater(a["quality"]["score"], 0)
+
     def test_symlinked_chapter_not_copied(self):
         base = self.ext / "我的书"
         outside = self.ext / "秘密.txt"

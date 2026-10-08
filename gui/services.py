@@ -242,67 +242,38 @@ def unique_corpus_path(name: str) -> Path:
 # 导入
 # ---------------------------------------------------------------------------
 
+_IMPORT_SUFFIXES = frozenset({".txt"})
+_IMPORT_MAX_BYTES = 100 * 1024 * 1024
+# 拆书导入的对外措辞与状态码是既有契约（tests/test_deepwater_regressions.py 认它），
+# 实现换成 text_access 后逐条显式覆盖，不让"重构"顺手改掉用户看到的错误信息。
+_IMPORT_MESSAGES = {
+    "suffix": ("首版仅支持 .txt 导入", 400),
+    "symlink": ("不允许导入符号链接", 403),
+    "irregular": ("只能导入常规文件", 400),
+    "oversize": ("文件超过 100MB 上限", 400),
+    "missing": ("文件无法打开: {path}", 404),
+    "unreadable": ("文件读取失败: {path}", 500),
+    "decode": ("文件编码无法识别（仅支持 UTF-8 / GBK）", 400),
+}
+
+
 def _secure_read_text(path: str) -> str:
-    """TOCTOU 安全读取文本文件。
+    """TOCTOU 安全读取文本文件（实现见 ``gui/text_access.py``，策略在此声明）。
 
-    - O_NOFOLLOW：符号链接直接拒绝（errno.ELOOP），不跟随；
-    - fstat 验证为常规文件（防 FIFO/设备文件）；
-    - 打开后所有检查基于 fd，不再重解析路径，消除检查-使用竞态。
-    - Windows 无 O_NOFOLLOW/O_NONBLOCK：降级为打开后 islink 尽力检查
-      （Windows 建符号链接需提权，实际风险低；不崩溃优先）。
+    与打分 / 合规 / 投稿导出共用同一条读取通道：`os.open` 时带 O_NOFOLLOW，
+    随后用 `fstat` 在同一 fd 上判常规文件与体积，全程不重解析路径；
+    Windows 没有 O_NOFOLLOW，退化为打开后 `islink` 尽力检查。
+    拆书只收 `.txt`、上限 100MB，与正文打分（`.txt`/`.md`、8MB）不同。
     """
-    import errno
-    import os
-    import stat
+    from gui import text_access
 
-    if Path(path).suffix.lower() != ".txt":
-        raise ServiceError("首版仅支持 .txt 导入", 400)
-    flags = os.O_RDONLY
-    has_nofollow = hasattr(os, "O_NOFOLLOW")
-    if has_nofollow:
-        flags |= os.O_NOFOLLOW
-    if hasattr(os, "O_NONBLOCK"):
-        # O_NONBLOCK：防 FIFO 打开时阻塞；后续 fstat 会拒绝非常规文件
-        flags |= os.O_NONBLOCK
-    try:
-        fd = os.open(path, flags)
-    except OSError as exc:
-        if exc.errno == errno.ELOOP:
-            raise ServiceError("不允许导入符号链接", 403) from exc
-        raise ServiceError(f"文件无法打开: {path}", 404) from exc
-    # 无 O_NOFOLLOW 平台（Windows）的尽力而为检查：打开后仍是链接则拒绝。
-    # 有 TOCTOU 窗口，但在该平台上无更好原语；建链接需提权，风险可接受。
-    if not has_nofollow:
-        try:
-            if os.path.islink(path):
-                os.close(fd)
-                raise ServiceError("不允许导入符号链接", 403)
-        except ServiceError:
-            raise
-        except OSError:
-            pass
-    try:
-        st = os.fstat(fd)
-        if not stat.S_ISREG(st.st_mode):
-            raise ServiceError("只能导入常规文件", 400)
-        if st.st_size > 100 * 1024 * 1024:
-            raise ServiceError("文件超过 100MB 上限", 400)
-    except ServiceError:
-        os.close(fd)
-        raise
-    try:
-        with os.fdopen(fd, "rb") as f:
-            data = f.read()
-        # fd 已由 fdopen 接管关闭
-    except OSError as exc:
-        raise ServiceError(f"文件读取失败: {path}", 500) from exc
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError:
-        try:
-            return data.decode("gbk")
-        except UnicodeDecodeError as exc:
-            raise ServiceError("文件编码无法识别（仅支持 UTF-8 / GBK）", 400) from exc
+    return text_access.read_text(
+        path,
+        field="导入文件",
+        suffixes=_IMPORT_SUFFIXES,
+        max_bytes=_IMPORT_MAX_BYTES,
+        messages=_IMPORT_MESSAGES,
+    )
 
 
 def import_book(path: str, batch_size: int | None = None) -> dict[str, Any]:
