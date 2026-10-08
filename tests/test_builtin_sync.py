@@ -44,6 +44,9 @@ class TestBuiltinSync(unittest.TestCase):
     def setUpClass(cls):
         cls._orig = {"ROOT_DIR": config.ROOT_DIR, "ASSETS_ROOT": config.ASSETS_ROOT,
                      "STATE_ROOT": config.STATE_ROOT,
+                     # 派生常量是 STATE_ROOT 的导入期快照，一起保存才能成对还原。
+                     "DB_PATH": config.DB_PATH,
+                     "LOCK_PATH": config.LOCK_PATH,
                      "STATE_JSON_DIR": config.STATE_JSON_DIR}
         cls._tmp = Path(tempfile.mkdtemp(prefix="builtin_sync_"))
         cls.shipped = cls._tmp / "repo" / "assets"
@@ -55,6 +58,8 @@ class TestBuiltinSync(unittest.TestCase):
         # sync() 会把补齐的文件重索引进 SQLite：STATE_ROOT 也隔离到 tmp，
         # 避免污染开发库；db 在连接时实时解析 STATE_ROOT。
         config.STATE_ROOT = cls._tmp / "state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = cls._tmp / "state"
         config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
         db._reset_conn()
@@ -161,6 +166,9 @@ class _ManifestFixture(unittest.TestCase):
     def setUpClass(cls):
         cls._orig = {"ROOT_DIR": config.ROOT_DIR, "ASSETS_ROOT": config.ASSETS_ROOT,
                      "STATE_ROOT": config.STATE_ROOT,
+                     # 派生常量是 STATE_ROOT 的导入期快照，一起保存才能成对还原。
+                     "DB_PATH": config.DB_PATH,
+                     "LOCK_PATH": config.LOCK_PATH,
                      "STATE_JSON_DIR": config.STATE_JSON_DIR}
         cls._tmp = Path(tempfile.mkdtemp(prefix="builtin_manifest_"))
         cls.repo = cls._tmp / "repo"
@@ -171,6 +179,8 @@ class _ManifestFixture(unittest.TestCase):
         config.ROOT_DIR = cls.repo
         config.ASSETS_ROOT = cls.runtime
         config.STATE_ROOT = cls._tmp / "state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = cls._tmp / "state"
         config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
         db._reset_conn()
@@ -309,6 +319,9 @@ class TestSyncRefreshSqlite(unittest.TestCase):
     def setUp(self):
         self._orig = {"ROOT_DIR": config.ROOT_DIR, "ASSETS_ROOT": config.ASSETS_ROOT,
                       "STATE_ROOT": config.STATE_ROOT,
+                      # 派生常量是 STATE_ROOT 的导入期快照，一起保存才能成对还原。
+                      "DB_PATH": config.DB_PATH,
+                      "LOCK_PATH": config.LOCK_PATH,
                       "STATE_JSON_DIR": config.STATE_JSON_DIR}
         self._tmp = Path(tempfile.mkdtemp(prefix="sync_sqlite_"))
         self.shipped = self._tmp / "repo" / "assets"
@@ -321,6 +334,8 @@ class TestSyncRefreshSqlite(unittest.TestCase):
         config.ASSETS_ROOT = self._tmp / "user" / "assets"
         config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
         config.STATE_ROOT = self._tmp / "state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = self._tmp / "state"
         config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
         db._reset_conn()
@@ -363,12 +378,17 @@ class TestRealWorldExpansion(unittest.TestCase):
     def setUp(self):
         self._orig = {"ROOT_DIR": config.ROOT_DIR, "ASSETS_ROOT": config.ASSETS_ROOT,
                       "STATE_ROOT": config.STATE_ROOT,
+                      # 派生常量是 STATE_ROOT 的导入期快照，一起保存才能成对还原。
+                      "DB_PATH": config.DB_PATH,
+                      "LOCK_PATH": config.LOCK_PATH,
                       "STATE_JSON_DIR": config.STATE_JSON_DIR}
         self._tmp = Path(tempfile.mkdtemp(prefix="real_expand_"))
         config.ROOT_DIR = ROOT  # 真实仓库根：读真实 assets/ 与真实 manifest。
         config.ASSETS_ROOT = self._tmp / "user" / "assets"
         config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
         config.STATE_ROOT = self._tmp / "state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = self._tmp / "state"
         config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
         db._reset_conn()

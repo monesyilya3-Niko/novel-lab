@@ -230,13 +230,10 @@ class TestHandPatchedDataPaths(unittest.TestCase):
         "test_zz_state_dir_leak_guard.py": "真实目录泄漏守卫，要读真实路径才能判断有没有被写",
     }
     WINDOW = 8  # 同一 patch 点上下 8 行内必须出现派生常量的 patch
-    # 存量债登记（2026-10-08 立规时实测的每文件违规 patch 点数）。
-    # 只许减少不许增加：新写的 patch 点必须一次到位；清掉一个点就把数字改小。
-    KNOWN_DEBT = {
-        "test_asset_index.py": 7,
-        "test_builtin_sync.py": 8,
-        "test_migrate.py": 8,
-    }
+    # 存量债登记（2026-10-08 立规时 10 个文件共 31 处违规）。
+    # 当日已全部还清 → 现在是**零容忍**：任何新 patch 点都必须同步重定向派生常量。
+    # 数量只许降不许升；除非出现有明确理由的新债，否则这里应保持为空。
+    KNOWN_DEBT: dict[str, int] = {}
 
     def _is_patch_line(self, line: str) -> bool:
         return bool(re.search(r"config\.STATE_ROOT\s*=", line)) or '"STATE_ROOT"' in line

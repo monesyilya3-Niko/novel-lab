@@ -159,20 +159,22 @@ class TestMigrateFlow(unittest.TestCase):
             "REPORTS_DIR": config.REPORTS_DIR,
             "CORPUS_DIR": config.CORPUS_DIR,
             "STATE_ROOT": config.STATE_ROOT,
+            # R2：DB_PATH / LOCK_PATH 由 STATE_ROOT 在导入期派生，patch STATE_ROOT 带不动
+            # 它们；不一起隔离时 migrate._server_is_running() 会去读真实用户数据目录的
+            # .lock——桌面版「暮冬念春」一开着，rollback 就误判"服务运行中"而拒绝执行
+            # （2026-10-08 实机踩到：全量门禁因此变红）。
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
             # R1：STATE_JSON_DIR 与 STATE_ROOT 必须成对隔离，避免夹具落到真实 gui/state/。
             "STATE_JSON_DIR": config.STATE_JSON_DIR,
-            # R2：LOCK_PATH 是 config.py 里的导入期常量（STATE_ROOT / ".lock"），
-            # patch STATE_ROOT 带不动它。不隔离时 migrate._server_is_running() 会去读
-            # 真实用户数据目录的 .lock——桌面版「暮冬念春」一开着，rollback 就误判
-            # "服务运行中"而拒绝执行（2026-10-08 实机踩到：全量门禁因此变红）。
-            "LOCK_PATH": config.LOCK_PATH,
         }
         config.ASSETS_ROOT = cls._tmp / "assets"
         config.REPORTS_DIR = cls._tmp / "reports"
         config.CORPUS_DIR = cls._tmp / "corpus"
         config.STATE_ROOT = cls._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = cls._tmp / "gui_state"
-        config.LOCK_PATH = cls._tmp / "gui_state" / ".lock"
         for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
                   config.STATE_ROOT, config.STATE_JSON_DIR):
             d.mkdir(parents=True, exist_ok=True)
@@ -467,6 +469,8 @@ class TestBackupRetention(unittest.TestCase):
         self._tmp = Path(tempfile.mkdtemp(prefix="migrate_bak_"))
         self._orig_state = config.STATE_ROOT
         config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
         db._reset_conn()
 
@@ -539,6 +543,9 @@ class TestMigrateLegacyKindUpgrade(unittest.TestCase):
             "CORPUS_DIR": config.CORPUS_DIR,
             "CONFIG_DIR": config.CONFIG_DIR,
             "STATE_ROOT": config.STATE_ROOT,
+            # 派生常量是 STATE_ROOT 的导入期快照，一起保存才能成对还原。
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
             # STATE_JSON_DIR 与 STATE_ROOT 成对隔离，避免夹具落到真实 gui/state/。
             "STATE_JSON_DIR": config.STATE_JSON_DIR,
         }
@@ -547,6 +554,8 @@ class TestMigrateLegacyKindUpgrade(unittest.TestCase):
         config.CORPUS_DIR = self._tmp / "corpus"
         config.CONFIG_DIR = self._tmp / "config"
         config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = self._tmp / "gui_state"
         for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
                   config.CONFIG_DIR, config.STATE_ROOT, config.STATE_JSON_DIR):
@@ -645,6 +654,9 @@ class TestSyncAssetKeyConvention(unittest.TestCase):
             "CORPUS_DIR": config.CORPUS_DIR,
             "CONFIG_DIR": config.CONFIG_DIR,
             "STATE_ROOT": config.STATE_ROOT,
+            # 派生常量是 STATE_ROOT 的导入期快照，一起保存才能成对还原。
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
             "STATE_JSON_DIR": config.STATE_JSON_DIR,
         }
         config.ASSETS_ROOT = self._tmp / "assets"
@@ -652,6 +664,8 @@ class TestSyncAssetKeyConvention(unittest.TestCase):
         config.CORPUS_DIR = self._tmp / "corpus"
         config.CONFIG_DIR = self._tmp / "config"
         config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
         config.STATE_JSON_DIR = self._tmp / "gui_state"
         for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
                   config.CONFIG_DIR, config.STATE_ROOT, config.STATE_JSON_DIR):
