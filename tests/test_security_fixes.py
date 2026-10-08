@@ -3,7 +3,7 @@
 
 覆盖：
 1. get_book_results book_id 路径穿越 -> 未导入 book_id 直接 404，不再拼接路径
-2. export_book_for_platform book_dir 越界 -> 项目根外 403
+2. export_book_for_platform book_dir -> 目录不设界，只认正文
 3. CORS Origin: null 不再放行
 4. distill_status genre 白名单
 5. secret_store 落盘权限 0o600（POSIX）
@@ -35,19 +35,44 @@ class TestBookIdTraversal(unittest.TestCase):
 
 
 class TestExportBookDirContainment(unittest.TestCase):
-    def test_outside_root_403(self):
+    """book_dir 的任意目录读取防护（2026-10-08 判据变更，防护目标不变）。
+
+    旧实现按路径前缀判"越界"→ 403，代价是用户放在项目外的稿子也进不来。
+    现在目录不设界，防护落到内容上：非正文后缀、符号链接、体积上限一律读不到，
+    命中它们的请求仍然报错。这里断言的是"读不到别的东西"，不是"路径在哪"。
+    细则见 ``tests/test_text_access.py``。
+    """
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        from pathlib import Path
+        self.tmp = Path(tempfile.mkdtemp(prefix="sec_export_"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def test_secret_like_dir_refused(self):
+        # 模拟 /etc 这类敏感目录：有文件，但没有一个是正文
+        from gui import platform_service
+        (self.tmp / "passwd").write_text("root:x:0:0", encoding="utf-8")
+        (self.tmp / "index.db").write_bytes(b"SQLite format 3")
+        with self.assertRaises(ServiceError) as cm:
+            platform_service.export_book_for_platform("qidian", str(self.tmp))
+        self.assertEqual(cm.exception.code, 400)
+
+    def test_missing_dir_is_404(self):
         from gui import platform_service
         with self.assertRaises(ServiceError) as cm:
-            platform_service.export_book_for_platform("qidian", "/etc")
-        self.assertEqual(cm.exception.code, 403)
+            platform_service.export_book_for_platform("qidian", str(self.tmp / "不存在"))
+        self.assertEqual(cm.exception.code, 404)
 
-    def test_parent_escape_403(self):
+    def test_parent_escape_no_longer_special(self):
         from gui import config, platform_service
         evil = str(config.ROOT_DIR.parent / "etc")
-        with self.assertRaises(ServiceError) as cm:
+        try:
             platform_service.export_book_for_platform("qidian", evil)
-        # /etc 不存在或越界：403（越界）或 404（不存在但在根内）
-        self.assertIn(cm.exception.code, (403, 404))
+        except ServiceError as exc:
+            # 项目根之外不再是"越界"，只剩"不存在(404)/没有正文(400)"两种真实结论
+            self.assertIn(exc.code, (400, 404))
 
 
 class TestCorsNullOrigin(unittest.TestCase):

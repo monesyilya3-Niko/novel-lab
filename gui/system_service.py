@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from gui import config, engine_adapter
+from gui import config, engine_adapter, text_access
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
 
@@ -108,19 +108,13 @@ def compliance_scan(voice: str | None = None,
         except (json.JSONDecodeError, OSError) as exc:
             raise ServiceError(f"资产文件损坏: {exc}", 500) from exc
 
-        # HIGH：book_path 约束在允许根内（防任意文件读取）。
-        # 允许根 = 项目根 + 用户数据目录下的书籍/语料目录（CORPUS_DIR、NOVEL_DIR
-        # 位于用户数据目录，不在 ROOT_DIR 内，旧检查会误伤合法文件）。
+        # HIGH：book_path 可以指向用户硬盘上的任意位置（2026-10-08 放宽目录边界），
+        # 防任意文件读取的责任落到 text_access：只认正文后缀、拒符号链接、限体积。
         book_text = ""
         if book_path:
-            bp = Path(book_path).resolve()
-            _allowed = {config.ROOT_DIR.resolve(), config.CORPUS_DIR.resolve(), config.NOVEL_DIR.resolve()}
-            if not any(bp.is_relative_to(r) for r in _allowed):
-                raise ServiceError("book_path 必须在项目目录或用户数据目录内", 400)
-            if not bp.is_file():
-                raise ServiceError(f"原文不存在: {book_path}", 404)
+            src_fp = text_access.text_file(book_path, field="book_path")
             try:
-                book_text = bp.read_text(encoding="utf-8")
+                book_text = src_fp.read_text(encoding="utf-8")
             except (UnicodeDecodeError, OSError) as exc:
                 raise ServiceError(f"读取原文失败: {exc}", 400) from exc
 

@@ -4,9 +4,10 @@
 """
 from __future__ import annotations
 
-from pathlib import Path
+import re
 from typing import Any
 
+from gui import text_access
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
 
@@ -181,6 +182,13 @@ def check_chapter_compliance(platform_id: str, chapter_text: str,
     }
 
 
+#: 章节标题自带的章号前缀（"第1章"、"第三十二章 "、"Chapter 3：" …）。
+_CHAPTER_PREFIX_RE = re.compile(
+    r"^\s*(?:第\s*[0-9零〇一二三四五六七八九十百千万两]{1,8}\s*[章节回]"
+    r"|chapter\s*[0-9]+)\s*[:：、.·\-—]?\s*",
+    re.IGNORECASE)
+
+
 def format_chapter(platform_id: str, chapter_num: int, title: str,
                    content: str) -> dict[str, Any]:
     """按平台格式化章节。"""
@@ -190,10 +198,25 @@ def format_chapter(platform_id: str, chapter_num: int, title: str,
         raise ServiceError("title 必须为字符串", 400)
     if not isinstance(content, str):
         raise ServiceError("content 必须为字符串", 400)
+    # 章号会直接拼进投稿标题，0 或负数会产出"第-3章 …"这种能一路贴到编辑眼前的垃圾
+    if not isinstance(chapter_num, int) or isinstance(chapter_num, bool) or chapter_num < 1:
+        raise ServiceError("chapter_num 必须为正整数", 400)
     p = PLATFORMS[platform_id]
 
-    # 格式化标题
-    formatted_title = p["chapter_format"].format(num=chapter_num, title=title)
+    # 格式化标题：只有模板自己会补 {num} 时才剥掉原标题的章号前缀，
+    # 否则"第1章 初见"会变成"第1章 第1章 初见"（2026-10-08 实测到的重复前缀）。
+    # 知乎模板是纯 "{title}"，不剥——剥了就把章号整个丢了。
+    fmt = p["chapter_format"]
+    m = _CHAPTER_PREFIX_RE.match(title) if "{num}" in fmt else None
+    if m is None:
+        formatted_title = fmt.format(num=chapter_num, title=title)
+    else:
+        bare = title[m.end():].strip()
+        # 标题只有章号（"第1章"）或空：前者原样保留，后者补一个光秃秃的章号。
+        formatted_title = fmt.format(num=chapter_num, title=bare) if bare else (
+            title.strip() or f"第{chapter_num}章")
+    # 空标题会让模板留下"第1章 "这种尾巴，导出稿里看着像手没擦干净。
+    formatted_title = formatted_title.rstrip()
 
     # 组装完整章节
     full_chapter = f"{formatted_title}\n\n{content}"
@@ -217,21 +240,9 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> dict[str, Any]:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
     p = PLATFORMS[platform_id]
 
-    # 安全：book_dir 直接 glob 读取，约束在允许根内（防任意目录读取）。
-    # 允许根 = 项目根 + 用户数据目录下的书籍/语料目录（NOVEL_DIR、CORPUS_DIR
-    # 位于用户数据目录，不在 ROOT_DIR 内，旧检查会误伤合法目录）。
-    from gui import config as _config
-    book_path = Path(book_dir).resolve()
-    _allowed = {_config.ROOT_DIR.resolve(), _config.NOVEL_DIR.resolve(), _config.CORPUS_DIR.resolve()}
-    if not any(book_path.is_relative_to(r) for r in _allowed):
-        raise ServiceError("书籍目录必须在项目目录或用户数据目录内", 403)
-    if not book_path.is_dir():
-        raise ServiceError(f"章节目录不存在: {book_dir}", 404)
-
-    # 收集章节文件
-    chapter_files = sorted(book_path.glob("*.txt")) + sorted(book_path.glob("*.md"))
-    if not chapter_files:
-        raise ServiceError(f"目录中没有章节文件: {book_dir}", 400)
+    # book_dir 自 2026-10-08 起不再限制目录（用户稿子常在项目外），
+    # 可读范围改由 text_access 按内容收紧：正文扩展名 + 非符号链接 + 体积上限。
+    chapter_files = text_access.text_files_in(book_dir, field="book_dir")
 
     chapters = []
     total_chars = 0

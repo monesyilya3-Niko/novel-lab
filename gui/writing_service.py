@@ -14,7 +14,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from gui import config, engine_adapter, migrate
+from gui import config, engine_adapter, migrate, text_access
 from gui.logging_setup import get_logger
 from gui.services import ServiceError, assert_asset_kind
 
@@ -311,12 +311,9 @@ def score(voice: str, text: str | None = None, chapter_path: str | None = None,
     if not text and not chapter_path:
         raise ServiceError("需要 text 或 chapter_path", 400)
     if chapter_path:
-        # HIGH：路径必须在 NOVEL_DIR 内
-        fp = Path(chapter_path).resolve()
-        if not fp.is_relative_to(config.NOVEL_DIR.resolve()):
-            raise ServiceError("chapter_path 必须在 novel/ 目录内", 400)
-        if not fp.is_file():
-            raise ServiceError(f"章节文件不存在: {chapter_path}", 404)
+        # HIGH：目录边界不限（2026-10-08，用户稿子常在 novel/ 之外），
+        # 由 text_access 保证只读得到正文文件本身。
+        fp = text_access.text_file(chapter_path, field="chapter_path")
         try:
             text = fp.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError) as exc:

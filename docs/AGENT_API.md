@@ -132,7 +132,8 @@ curl -s $B/api/writing/tasks/w-xxxx
 ### 4.3 打分（纯算法，无需 LLM）
 
 ```bash
-# 一致性打分（voice-card 算法）+ 质量十二维；text 与 chapter_path 二选一
+# 一致性打分（voice-card 算法）+ 质量十二维；text 与 chapter_path 二选一。
+# chapter_path 不再要求位于 novel/ 内（2026-10-08），本机任意路径的 .txt/.md 都可以
 curl -s -X POST $B/api/writing/score -H 'Content-Type: application/json' \
   -d '{"voice":"voice:chireng_chosen-voice-card","text":"正文……","label":"第1章"}'
 # → {"code":0,"data":{"consistency":{"score":92.5,"dims":{...},"details":[...]},
@@ -210,6 +211,44 @@ curl -s "$B/api/quality/reports"                        # 历史质检报告清�
 - 外部路径的隔离副本落在 `<用户数据目录>/scratch/qc-external-*/`，任务结束即回收；
   **不要**去那儿读文件，用任务状态里的 `report_json` / `report_md`。
 
+### 4.7 平台投稿格式（起点 / 番茄 / 晋江 / 七猫 / 知乎盐言）
+
+以下请求与响应都是 2026-10-08 实测原文（`platform_id` 换成 `fanqie` 等即可）。
+
+```bash
+curl -s $B/api/platform/list
+# → {"code":0,"data":{"platforms":[{"id":"qidian","name":"起点中文网",
+#     "chapter_min_chars":2000,"chapter_max_chars":5000,
+#     "supports_serialization":true,"genre_count":14}, …]}}
+
+# 单章过审自检：注意这里的键是 chapter_text / chapter_title
+curl -s -X POST $B/api/platform/check -H 'Content-Type: application/json'   -d '{"platform_id":"qidian","chapter_title":"第1章","chapter_text":"她推开门……"}'
+# → {"code":0,"data":{"platform":"起点中文网","platform_id":"qidian",
+#     "char_count":300,"title_length":3,"compliant":false,
+#     "issues":[{"type":"word_count","severity":"error",
+#                "message":"字数 300 不足，起点中文网 要求最少 2000 字"}],
+#     "requirements":{"min_chars":2000,"max_chars":5000,"title_max_len":30}}}
+
+# 排版：这里的键是 title / content（与 check 不对称，别记混）
+curl -s -X POST $B/api/platform/format -H 'Content-Type: application/json'   -d '{"platform_id":"qidian","chapter_num":1,"title":"第1章 初见","content":"她推开门……"}'
+# → {"code":0,"data":{"formatted_title":"第1章 初见",   # 标题自带章号时不会重复
+#     "full_chapter":"第1章 初见
+
+她推开门……",
+#     "char_count":22,"content_char_count":10, …}}
+
+# 整本书导出：book_dir 可以是本机任意目录（2026-10-08 起）
+curl -s -X POST $B/api/platform/export -H 'Content-Type: application/json'   -d '{"platform_id":"qidian","book_dir":"D:/写作/我的书"}'
+# → {"code":0,"data":{"platform_id":"qidian","total_chapters":2,"total_chars":16,
+#     "non_compliant_chapters":2,"export_ready":false,
+#     "chapters":[{"num":1,"title":"第1章 初见","char_count":10,
+#                  "compliant":false,"issues":[…]}, …]}}
+```
+
+- `export_ready` 只有在**每章都过审**时才为 `true`；`non_compliant_chapters` 是没过审的章数。
+- 章数与 `num` 来自目录内文件排序（只扫一层，不递归子目录）。
+- `chapter_num` 不传默认为 `1`；非整数返回 **400**（`chapter_num 必须为整数`）；`<= 0` 返回 **400**，不会导出"第-3章"这种标题。
+
 ## 5. CLI 备选（不起服务时）
 
 ```bash
@@ -242,3 +281,8 @@ curl -s -X POST $B/api/models -H 'Content-Type: application/json' \
 4. **voice 必填**：`generate` 的 `voice` 不能为空且必须引用真实资产；
    `import_chapter` 的 `voice` 可选（不传则只落盘不打分）。
 5. **不要猜测端点**：本手册之外的路径以 `gui/router.py` 的 `ROUTES` 表为准。
+6. **正文路径的准入规则**（`chapter_path` / `book_path` / `book_dir` / 质检 `target`）：
+   目录不设界，内容设界——只认 `.txt` / `.md`，符号链接一律拒，超限返回 400
+   （打分与投稿导出：单文件 8MB、目录 2000 个 / 累计 64MB；质检副本另按
+   单文件 50MB、目录 2000 个 / 累计 200MB，见 §4.6）。想读别的文件请走文件系统，
+   这台服务的 HTTP 接口只会给你正文。
