@@ -32,6 +32,26 @@ npm run dist        # 产物在 release/；predist 会自动准备后端资源
      corpus/、reports/、assets-manifest.json、python-win/、前端 dist）。
   任一步失败都会中断构建，不会产出缺少后端/缺少 Python 运行时的坏安装包。
 
+## 本地开发运行（不装、不出包）
+
+```sh
+cd desktop
+npm install
+NOVEL_LAB_PYTHON="C:/path/to/python.exe" npm start
+```
+
+- **开发模式必须显式给解释器**：不设时 Windows 分支用 `python`、非 Windows 用 `python3`，
+  而 Windows 上的 `python3` 是 Microsoft Store 别名，spawn 它得到退出码 9009 且零输出，
+  后端根本不启动，界面只能干等到超时（2026-10-08 实测并修掉了写死 `python3` 的旧逻辑）。
+  打包版与此无关，固定用 `resources/backend/python-win/python.exe`。
+- **想拿真实数据验证又怕写脏**：同时设 `XUAN_DATA_DIR=<空目录>`，服务会把
+  `gui_state/`、`corpus/`、`novel/` 全落在那个目录里，不碰
+  `%LOCALAPPDATA%\暮冬念春`。首页仍会显示随包资产与报告数（它们来自仓库内的
+  `assets/` 与 `reports/`），"已拆书"归零就说明数据目录确实被换掉了。
+- **桌面版与浏览器版的唯一功能差别**在前端一处判据：`window.novelLab` 是否存在
+  （由 `preload.js` 注入）。浏览器里拿不到真实文件路径，所以"选择文件…/选择目录…"
+  按钮干脆不渲染，而不是摆一个点了没反应的。
+
 ## 运行逻辑
 
 1. 主进程 spawn `resources/backend/python-win/python.exe gui/launch.py --no-browser`
