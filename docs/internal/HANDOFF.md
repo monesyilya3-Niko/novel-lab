@@ -2,7 +2,7 @@
 
 > **用途**：新会话/新协作者的完整上下文。先读本文件 + `PROJECT_SUMMARY.md` + `AGENTS.md` 即可接手。
 > **最后更新**：2026-09-18（总工收尾第三轮优化 + 连续打分后实测）
-> **项目路径**：`C:\Users\monesy\niko\novel-lab`
+> **项目路径**：`C:\Users\monesy\workspace\projects\novel-lab`（唯一权威工作副本；C:\Users\monesy\niko\novel-lab 是迁移前的陈旧副本，勿在其中开发，见 AGENTS.md §5）
 
 ---
 
@@ -128,9 +128,9 @@ $PY run_tests.py       # 全量（当前 909 OK）
 
 | 项 | 值 |
 |---|---|
-| 项目根 | `C:\Users\monesy\niko\novel-lab` |
+| 项目根 | `C:\Users\monesy\workspace\projects\novel-lab`（唯一权威工作副本；`C:\Users\monesy\niko\novel-lab` 是迁移前的陈旧副本，勿在其中开发，见 AGENTS.md §5） |
 | Python | `C:/Users/monesy/.niko/binaries/python/versions/3.13.12/python.exe`（实际 3.13.14） |
-| Node | `C:/Users/monesy/.niko/binaries/node/versions/22.22.2-2` |
+| Node | `C:/Program Files/nodejs`（实测 v24.21.0 + npm 11.19.0；旧口径 `C:/Users/monesy/.niko/binaries/node/versions/22.22.2-2` 本机已不存在） |
 | Inno Setup | `%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe` |
 | pip 镜像 | 阿里云 |
 | npm 镜像 | `registry.npmmirror.com` |

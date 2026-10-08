@@ -1,7 +1,7 @@
 # novel-lab 项目总结文档
 
 > **版本**：2026-09-21（v1.1.2，检测口径重标定 + realistic-romance 入库）
-> **项目路径**：`C:\Users\monesy\niko\novel-lab`
+> **项目路径**：`C:\Users\monesy\workspace\projects\novel-lab`（唯一权威工作副本；C:\Users\monesy\niko\novel-lab 是迁移前的陈旧副本，勿在其中开发，见 AGENTS.md §5）
 > **用途**：新会话直接参考本文件即可了解全部结构与用法；历史沿革见 HANDOFF.md
 > **诚实声明**：本文件数字基于 2026-09-23 实测（测试 909 OK / 资产 65 / 报告 4）；未实测部分明确标注
 
@@ -77,7 +77,7 @@
 
 ```bash
 PY="C:/Users/monesy/.niko/binaries/python/versions/3.13.12/python.exe"
-cd "C:/Users/monesy/niko/novel-lab"
+cd "C:\Users\monesy\workspace\projects\novel-lab"
 ```
 
 ### 4.2 CLI 常用命令
