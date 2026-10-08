@@ -180,8 +180,23 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
 - **溯源方法（有效，下次发版照做）**：`gh run download <run-id> -n windows-installer` 取 CI artifact，与 Release 资产逐字节比 SHA-256。已用此法证明 v2.0.3 的 Release 资产与 run `37496901677`（提交 `d10cd72`）的构建产物**完全相同**（`78370d75…5e0765`，93,401,448 字节）。
 - **产物名 ≠ 上传名**：`desktop/electron-builder.yml` 的 `artifactName` 产出的文件是 `暮冬念春-Setup-<ver>-win64.exe`；v2.0.3 上传时被人工改名成了 `novel-lab-Setup-…`。到 artifact 里找包要按 yml 的名字找，别信历史文档里的文件名（CI 的 `path: desktop/release/*-Setup-*-win64.exe` 两种名字都吃得下）。
 - **真机安装实测**：提权安装走 `/allusers` → `C:\Program Files\novel-lab-desktop`；exe `ProductVersion 2.0.3.0`；随包含 `gui/ scripts/ assets/ config/ reports/ python-win/`，`assets-manifest.json` 版本与资产数（86）与 §7 口径一致；`http://127.0.0.1:8000/` 返回 200。**用户数据不在安装目录**，在 `%LOCALAPPDATA%\暮冬念春`（`index.db` + `.lock` + 备份 + `corpus` + `assets`），全用户安装下权限正常。
-- **真机卸载实测**：卸载注册表项、公共桌面与开始菜单快捷方式均清除，8000 端口不再监听，`%LOCALAPPDATA%\暮冬念春` 按设计保留（已验证：拷贝该目录后用同一套后端代码起服务，能读出 6 本书 / 25 个资产 / 14 张 prose 卡）。残留两处：安装目录剩**空目录**壳（NSIS 未删根，轻微）；`%LOCALAPPDATA%\novel-lab-desktop-updater\installer.exe` 89.1 MB（已由 `desktop/build/installer.nsh` 的 `customUnInstall` 修掉，**待下次真机卸载复验**）。
+- **真机卸载实测**：卸载注册表项、公共桌面与开始菜单快捷方式均清除，8000 端口不再监听，`%LOCALAPPDATA%\暮冬念春` 按设计保留（已验证：拷贝该目录后用同一套后端代码起服务，能读出 6 本书 / 25 个资产 / 14 张 prose 卡）。残留两处：安装目录剩**空目录**壳（NSIS 不删根目录，轻微，卸载前后都在）；`%LOCALAPPDATA%\novel-lab-desktop-updater\installer.exe` 89.1 MB（electron-updater 下载的整包，NSIS 卸载原本完全不碰）。
+  - 后者已由 `desktop/build/installer.nsh` 的 `customUnInstall` 修掉，并做了真机前后对照：同一台机器上，旧包卸载后该目录仍在（89MB）；用带该脚本的构建产物静默装到 `%LOCALAPPDATA%\Programs\` 再静默卸载 → 目录**已清除**，`%LOCALAPPDATA%\暮冬念春` 仍完整保留 17 项，且程序未被启动过。注意：逐字节搜安装包里的路径字符串是**无效验证**（NSIS 脚本块被压缩，新包只比旧包大 14 字节），只有实跑卸载才算证明。
 - **桌面版在跑时跑测试**：`migrate._server_is_running()` 读 `config.LOCK_PATH`（`config.py` 的导入期常量，patch `STATE_ROOT` 带不动它）。任何手工隔离路径的测试都必须一并隔离 `LOCK_PATH`，否则用户的桌面版一开，全量门禁误红（2026-10-08 实修，见提交 `dc2b716`）。
+
+#### 安装包改动的复验方法（不需要用户点 UAC）
+
+`perMachine: false` + 不提权时，NSIS 会**静默装进当前用户目录**，Agent 可以自己跑完整装卸循环：
+
+```bash
+"<安装包路径>" /S                      # 装到 %LOCALAPPDATA%\Programs\novel-lab-desktop
+"%LOCALAPPDATA%\Programs\novel-lab-desktop\Uninstall 暮冬念春.exe" /S   # 卸载
+```
+
+卸载后必查三项：`%LOCALAPPDATA%\暮冬念春`（用户数据，必须完整保留）、
+`%LOCALAPPDATA%\novel-lab-desktop-updater`（缓存，应被清掉）、`tasklist` 里程序是否被误启动（不应有）。
+测完把测试留下的空目录删掉即可；**绝不要**在这条路径上点版本号、打 tag、发 Release。
+（上面两条命令已按原样实跑验证：仅 `/S` 即可静默装到用户目录，卸载清掉 updater 缓存，用户数据 17 项无损。）
 
 ---
 
