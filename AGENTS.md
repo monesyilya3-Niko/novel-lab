@@ -175,6 +175,14 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
   - Release 资产上传曾遇到 `custom.github` 凭证对 `uploads.github.com` 返回 401（对 `api.github.com` 正常），当时改用浏览器网页端上传成功。**本机实测状态**：`gh auth status` 已通过（账号 monesyilya3-Niko，token scopes 含 `repo`/`workflow`），下次发版可先试 `gh release upload`；该路径**尚未实机验证**（验证需真实 Release，不在授权范围内）。
   - 桌面安装产物**未做代码签名**（2026-10-08 对 v2.0.3 资产实测 `Get-AuthenticodeSignature` = `NotSigned`），Windows SmartScreen 必然弹"未知发布者"，用户侧需要手动"更多信息 → 仍要运行"。
 
+### 发布物溯源与真机实测（2026-10-08，Windows 10 19045）
+
+- **溯源方法（有效，下次发版照做）**：`gh run download <run-id> -n windows-installer` 取 CI artifact，与 Release 资产逐字节比 SHA-256。已用此法证明 v2.0.3 的 Release 资产与 run `37496901677`（提交 `d10cd72`）的构建产物**完全相同**（`78370d75…5e0765`，93,401,448 字节）。
+- **产物名 ≠ 上传名**：`desktop/electron-builder.yml` 的 `artifactName` 产出的文件是 `暮冬念春-Setup-<ver>-win64.exe`；v2.0.3 上传时被人工改名成了 `novel-lab-Setup-…`。到 artifact 里找包要按 yml 的名字找，别信历史文档里的文件名（CI 的 `path: desktop/release/*-Setup-*-win64.exe` 两种名字都吃得下）。
+- **真机安装实测**：提权安装走 `/allusers` → `C:\Program Files\novel-lab-desktop`；exe `ProductVersion 2.0.3.0`；随包含 `gui/ scripts/ assets/ config/ reports/ python-win/`，`assets-manifest.json` 版本与资产数（86）与 §7 口径一致；`http://127.0.0.1:8000/` 返回 200。**用户数据不在安装目录**，在 `%LOCALAPPDATA%\暮冬念春`（`index.db` + `.lock` + 备份 + `corpus` + `assets`），全用户安装下权限正常。
+- **真机卸载实测**：卸载注册表项、公共桌面与开始菜单快捷方式均清除，8000 端口不再监听，`%LOCALAPPDATA%\暮冬念春` 按设计保留（已验证：拷贝该目录后用同一套后端代码起服务，能读出 6 本书 / 25 个资产 / 14 张 prose 卡）。残留两处：安装目录剩**空目录**壳（NSIS 未删根，轻微）；`%LOCALAPPDATA%\novel-lab-desktop-updater\installer.exe` 89.1 MB（已由 `desktop/build/installer.nsh` 的 `customUnInstall` 修掉，**待下次真机卸载复验**）。
+- **桌面版在跑时跑测试**：`migrate._server_is_running()` 读 `config.LOCK_PATH`（`config.py` 的导入期常量，patch `STATE_ROOT` 带不动它）。任何手工隔离路径的测试都必须一并隔离 `LOCK_PATH`，否则用户的桌面版一开，全量门禁误红（2026-10-08 实修，见提交 `dc2b716`）。
+
 ---
 
 ## 8. 相关文档索引
