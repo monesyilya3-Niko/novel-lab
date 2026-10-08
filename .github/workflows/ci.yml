@@ -109,11 +109,19 @@ jobs:
       - name: Type check + build
         run: npm run build
       - name: E2E smoke (Playwright)
+        working-directory: gui/web
+        run: |
+          # 必须用仓库锁定的 playwright 装浏览器：在仓库根跑 `npx playwright install`
+          # 会因根目录没有 playwright 包而从 registry 抓最新版（2026-10-08 实测装了
+          # playwright@1.64.0 / chromium v1248），而测试用的是 gui/web 里锁定的
+          # @playwright/test@1.63.0（要 v1243），于是所有用例在 launch 时
+          # "Executable doesn't exist" 全灭。
+          npx playwright install chromium
+      - name: 跑 E2E smoke（隔离副本 + 独立端口）
         working-directory: .
         run: |
           # 隔离运行：rsync 工作树副本 → 独立端口 → 跑 Playwright → 删副本。
           # 禁止在 checkout 上直接起服务（会污染 gui_state/、corpus/、assets/）。
-          npx playwright install chromium
           bash scripts/e2e_isolated.sh
       - name: E2E onboarding（空库，独立隔离运行）
         working-directory: .
