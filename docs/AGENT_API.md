@@ -172,6 +172,44 @@ print(d['filename'], d['chapters'], '章', d['words'], '字')"
 #     "content":"第1章\n\n正文……\n","chapters":1,"words":1234}}
 ```
 
+### 4.6 质检（单章 / 全书 / QC 综合）
+
+三个 POST + 两个 GET。**`target` 支持 `novel/` 与 `corpus/` 之外的任意本机路径，
+单文件和整个目录都可以**（2026-10-08 起；此前外部目录会被一句"请先放入 novel/"挡掉）。
+目录按章节加载器的规则采集 `*.txt`，跳过 `备份 / _备份 / backup / .git / build / dist`
+这些子目录，非 `.txt` 一律不进质检。上限：单章 50MB、单目录 2000 个 `.txt` / 累计 200MB；
+超限或目录里没有 `.txt` 时返回 400 并说明原因（不会留下半份副本）。
+
+```bash
+# 单章检查（同步、纯算法、不耗 LLM）：body 支持 target|text、voice、genre_pack
+curl -s -X POST "$B/api/quality/check" -H 'Content-Type: application/json' \
+  -d '{"target":"C:/书稿/我的书/第001章.txt"}'
+# → data.quality = {score, max_score, verdict, details[逐维打分明细]}
+#   实测：660 字单章 → score 46.0 / verdict FAIL（字数严重不足、对话占比 0…）
+
+# 全书质检（同步）：body 支持 target|text、voice；target 可给目录
+curl -s -X POST "$B/api/quality/book" -H 'Content-Type: application/json' \
+  -d '{"target":"C:/书稿/我的书"}'
+# 实测（2 章的外部目录）→ data = {"total_chapters":2,"total_issues":3,
+#   "severity":{"high":2,"medium":1},"types":{"intra_chapter_repeat":2,
+#   "excessive_environment":1},"verdict":"WARN","issues":[…]}
+
+# QC 综合（异步长任务，四层十二维）：body 另有 genre_pack/asset/book/novel_dir/llm_hook
+curl -s -X POST "$B/api/quality/qc" -H 'Content-Type: application/json' \
+  -d '{"target":"C:/书稿/我的书"}'
+# → {"task_id":"q-eaef25e5c090","status":"running","target":"…"}
+curl -s "$B/api/quality/tasks/q-eaef25e5c090"
+# 实测终态 → {"status":"done","verdict":"WARN","total_score":82.1,
+#             "layers":[{"layer":"L1","label":"剧情层","score":66.7,…}],
+#             "report_json":"…","report_md":"…"}        # 相对 reports/qc/ 的路径
+curl -s "$B/api/quality/reports"                        # 历史质检报告清单
+```
+
+- 质检并发上限 2，第三个任务返回 **429**（与生成任务各自的额度独立）。
+- `llm_hook=true` 透传给引擎的 `enable_llm_hook`，默认关闭（纯算法层）。
+- 外部路径的隔离副本落在 `<用户数据目录>/scratch/qc-external-*/`，任务结束即回收；
+  **不要**去那儿读文件，用任务状态里的 `report_json` / `report_md`。
+
 ## 5. CLI 备选（不起服务时）
 
 ```bash

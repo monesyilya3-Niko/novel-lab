@@ -575,6 +575,19 @@ def resolve_thresholds(genre_pack: dict | None = None) -> tuple[int, int]:
     return _get_chapter_check().resolve_thresholds(genre_pack)
 
 
+# --- 章节扫描口径（单一来源：scripts/chapter_loader）---
+
+def chapter_scan_rules() -> tuple[str, frozenset[str]]:
+    """返回 (章节文件通配符, 排除目录名集合)。
+
+    给需要"按章节加载器的规则挑文件"的调用方用（目前是质检的外部目录隔离复制），
+    避免在 gui 层复制一份 ``*.txt`` 与排除名单造成口径漂移——铁律要求 scripts/
+    只能经本模块触碰，所以规则也从这里出口。
+    """
+    from scripts.chapter_loader import EXCLUDED_DIR_NAMES
+    return "*.txt", frozenset(EXCLUDED_DIR_NAMES)
+
+
 # --- 全书质检（book_quality.py）---
 
 def book_quality_check(chapter_dir: str, voice_card_path: str | None = None,

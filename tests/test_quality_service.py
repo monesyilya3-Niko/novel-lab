@@ -106,9 +106,10 @@ class TestResolveChapterTarget(unittest.TestCase):
         self.assertEqual(cm.exception.code, 404)
 
     def test_path_traversal_rejected(self):
-        # 绝对路径在项目外
-        with self.assertRaises(ServiceError):
-            quality_service.resolve_chapter_target("C:/Windows/System32")
+        # 相对路径带 ..：只在 NOVEL_DIR / CORPUS_DIR 内查找，越不出去。
+        with self.assertRaises(ServiceError) as cm:
+            quality_service.resolve_chapter_target("../../etc/passwd")
+        self.assertEqual(cm.exception.code, 404)
 
     def test_valid_relative_path(self):
         fp = quality_service.resolve_chapter_target("testproj/chapters/chapter-001.txt")
@@ -117,6 +118,100 @@ class TestResolveChapterTarget(unittest.TestCase):
     def test_valid_dir(self):
         fp = quality_service.resolve_chapter_target("testproj/chapters")
         self.assertTrue(fp.is_dir())
+
+
+class TestExternalDirectory(unittest.TestCase):
+    """novel/corpus 之外的路径：以前只有单文件能进质检，目录被一句"请先放进 novel/"挡死。"""
+
+    def setUp(self):
+        self.ext = Path(tempfile.mkdtemp(prefix="qc_ext_"))
+        (self.ext / "我的书").mkdir()
+        base = self.ext / "我的书"
+        (base / "第001章.txt").write_text("第一章正文，重复一段以凑够字数。" * 40, encoding="utf-8")
+        sub = base / "卷一"
+        sub.mkdir()
+        (sub / "第002章.txt").write_text("第二章正文。" * 40, encoding="utf-8")
+        # 加载器不认的三类：非 .txt、被排除的备份目录、符号链接文件
+        (base / "设定.md").write_text("不该被复制", encoding="utf-8")
+        bak = base / "备份"
+        bak.mkdir()
+        (bak / "第001章.txt").write_text("备份副本，不该被复制", encoding="utf-8")
+        self.scratch_before = _scratch_entries()
+
+    def tearDown(self):
+        shutil.rmtree(self.ext, ignore_errors=True)
+
+    def _mk_symlink(self, target: Path, link: Path) -> bool:
+        try:
+            link.symlink_to(target)
+            return True
+        except (OSError, NotImplementedError):
+            return False  # Windows 无符号链接权限
+
+    def test_external_dir_copied_with_loader_rules(self):
+        fp = quality_service.resolve_chapter_target(str(self.ext / "我的书"))
+        self.assertTrue(fp.is_dir())
+        names = sorted(p.name for p in fp.rglob("*.txt"))
+        self.assertEqual(names, ["第001章.txt", "第002章.txt"])
+        self.assertEqual(list(fp.rglob("*.md")), [])
+        self.assertIn(fp.parent.name, {p.name for p in (config.STATE_ROOT / "scratch").iterdir()})
+
+    def test_symlinked_chapter_not_copied(self):
+        base = self.ext / "我的书"
+        outside = self.ext / "秘密.txt"
+        outside.write_text("不该通过链接进来", encoding="utf-8")
+        if not self._mk_symlink(outside, base / "第003章.txt"):
+            self.skipTest("本机无法创建符号链接（Windows 权限）")
+        fp = quality_service.resolve_chapter_target(str(base))
+        self.assertNotIn("第003章.txt", [p.name for p in fp.rglob("*.txt")])
+
+    def test_cleanup_removes_whole_task_dir(self):
+        """嵌套目录副本必须整棵回收，否则 scratch 永久泄漏。"""
+        fp = quality_service.resolve_chapter_target(str(self.ext / "我的书"))
+        task_dir = fp.parent  # scratch/qc-external-xxxx/
+        self.assertTrue(quality_service._is_external_scratch_copy(fp))
+        quality_service._cleanup_external_copy(fp)
+        self.assertFalse(task_dir.exists())
+        # 只回收这一份副本，不能把 scratch 根目录一起端掉（别的任务还在用）
+        self.assertTrue((config.STATE_ROOT / "scratch").is_dir())
+
+    def test_dir_without_chapters_rejected_with_actionable_message(self):
+        empty = self.ext / "空目录"
+        empty.mkdir()
+        (empty / "readme.md").write_text("没有 txt", encoding="utf-8")
+        with self.assertRaises(ServiceError) as cm:
+            quality_service.resolve_chapter_target(str(empty))
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("没有可质检的章节文件", str(cm.exception))
+        self.assertEqual(_scratch_entries(), self.scratch_before)
+
+    def test_file_count_cap_leaves_no_partial_copy(self):
+        many = self.ext / "多章"
+        many.mkdir()
+        for i in range(6):
+            (many / f"第{i:03d}章.txt").write_text("正文" * 30, encoding="utf-8")
+        orig = quality_service._EXTERNAL_MAX_FILES
+        quality_service._EXTERNAL_MAX_FILES = 3
+        try:
+            with self.assertRaises(ServiceError) as cm:
+                quality_service.resolve_chapter_target(str(many))
+            self.assertIn("超出上限", str(cm.exception))
+            self.assertEqual(_scratch_entries(), self.scratch_before)
+        finally:
+            quality_service._EXTERNAL_MAX_FILES = orig
+
+    def test_single_file_still_isolated(self):
+        fp = quality_service.resolve_chapter_target(str(self.ext / "我的书" / "第001章.txt"))
+        self.assertTrue(fp.is_file())
+        self.assertTrue(quality_service._is_external_scratch_copy(fp))
+        quality_service._cleanup_external_copy(fp)
+        self.assertFalse(fp.parent.exists())
+
+    def test_external_dir_full_book_qc_runs(self):
+        """端到端：外部目录直接喂 book()，不再要求先搬进 novel/。"""
+        result = quality_service.book(target=str(self.ext / "我的书"))
+        self.assertIsInstance(result, dict)
+        self.assertEqual(_scratch_entries(), self.scratch_before)
 
 
 class TestMaterializeText(unittest.TestCase):
