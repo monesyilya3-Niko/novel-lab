@@ -152,12 +152,18 @@ class TestMigrateFlow(unittest.TestCase):
             "STATE_ROOT": config.STATE_ROOT,
             # R1：STATE_JSON_DIR 与 STATE_ROOT 必须成对隔离，避免夹具落到真实 gui/state/。
             "STATE_JSON_DIR": config.STATE_JSON_DIR,
+            # R2：LOCK_PATH 是 config.py 里的导入期常量（STATE_ROOT / ".lock"），
+            # patch STATE_ROOT 带不动它。不隔离时 migrate._server_is_running() 会去读
+            # 真实用户数据目录的 .lock——桌面版「暮冬念春」一开着，rollback 就误判
+            # "服务运行中"而拒绝执行（2026-10-08 实机踩到：全量门禁因此变红）。
+            "LOCK_PATH": config.LOCK_PATH,
         }
         config.ASSETS_ROOT = cls._tmp / "assets"
         config.REPORTS_DIR = cls._tmp / "reports"
         config.CORPUS_DIR = cls._tmp / "corpus"
         config.STATE_ROOT = cls._tmp / "gui_state"
         config.STATE_JSON_DIR = cls._tmp / "gui_state"
+        config.LOCK_PATH = cls._tmp / "gui_state" / ".lock"
         for d in (config.ASSETS_ROOT, config.REPORTS_DIR, config.CORPUS_DIR,
                   config.STATE_ROOT, config.STATE_JSON_DIR):
             d.mkdir(parents=True, exist_ok=True)
