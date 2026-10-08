@@ -190,16 +190,15 @@ class TestImportPathEndpoint(unittest.TestCase):
     """
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="import_path_")
-        self.addCleanup(self._tmp.cleanup)
-        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._tmp = Path(tempfile.mkdtemp(prefix="import_path_"))
+        self.addCleanup(_isolation.remove_tree, self._tmp)
+        self._iso = _isolation.isolate_paths(self._tmp)
         self._iso.__enter__()
         self.addCleanup(lambda: self._iso.__exit__(None, None, None))
 
         # 稿子放在**另一个**临时目录：确保它既不在项目根、也不在隔离根内
-        self._ext = tempfile.TemporaryDirectory(prefix="import_ext_")
-        self.addCleanup(self._ext.cleanup)
-        self.ext_dir = Path(self._ext.name)
+        self.ext_dir = Path(tempfile.mkdtemp(prefix="import_ext_"))
+        self.addCleanup(_isolation.remove_tree, self.ext_dir)
 
         self._httpd = ThreadingHTTPServer(("127.0.0.1", 0), gui_server._Handler)
         self._httpd.daemon_threads = True
@@ -290,9 +289,11 @@ class TestImportUploadEndToEnd(unittest.TestCase):
     """真实 HTTP 服务 + 隔离路径的上传导入。"""
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory(prefix="upload_e2e_")
-        self.addCleanup(self._tmp.cleanup)
-        self._iso = _isolation.isolate_paths(Path(self._tmp.name))
+        self._tmp = Path(tempfile.mkdtemp(prefix="upload_e2e_"))
+        # addCleanup 是 LIFO：先注册回收，最后才执行，确保 db.close() 与
+        # isolate_paths 退出都已跑完
+        self.addCleanup(_isolation.remove_tree, self._tmp)
+        self._iso = _isolation.isolate_paths(self._tmp)
         self._iso.__enter__()
         self.addCleanup(lambda: self._iso.__exit__(None, None, None))
 
