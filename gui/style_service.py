@@ -5,12 +5,13 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import time
 from pathlib import Path
 from typing import Any
 
-from gui import config
+from gui import config, engine_adapter
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
 
@@ -42,11 +43,25 @@ def _sanitize_name(name: str) -> str:
     return n
 
 
+def _number(value: Any, default: float) -> float:
+    """取指标数值：风格卡是磁盘上的 JSON，用户手改过一个字段就可能变成字符串，
+    直接拿去和阈值比较会在 `str < int` 上抛 TypeError（表现为 500）。
+    非数值一律退回默认值，让建议仍然可用。
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    return float(value)
+
+
 def analyze_style(text: str, name: str = "") -> dict[str, Any]:
     """分析文本风格特征，返回结构化风格卡。
 
     提取维度：句长分布 / 对话密度 / 情绪词密度 / 标点习惯 / 段落节奏 / 常用词
     """
+    # 服务层不信任调用方：/api/style/analyze 的 text 来自请求体，
+    # 传成数字或对象时下面第一句就会 TypeError 变成 500（用户只看到"内部错误"）。
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
     if not text or len(text.strip()) < 100:
         raise ServiceError("文本太短，至少需要 100 字", 400)
 
@@ -56,8 +71,12 @@ def analyze_style(text: str, name: str = "") -> dict[str, Any]:
     sent_lengths = [len(s) for s in sentences]
     avg_sent_len = sum(sent_lengths) / len(sent_lengths) if sent_lengths else 0
 
-    # 对话密度
-    dialogue_chars = sum(len(m.group(1)) for m in re.finditer(r'["「]([^"」]*)["」]', text))
+    # 对话密度：口径走引擎的 metrics.dialogue_char_count。
+    # 这里原来是自己写的 `[“「]...[”」]` 正则，只认 ASCII 引号和直角引号，
+    # 中文弯引号 “…” 整段漏计——本仓库正文绝大多数用弯引号，实测一段
+    # 对白占 17% 的稿子被读成 4%，apply_style_prompt 于是给出"对话密度较低、
+    # 以叙述为主"的反向建议。
+    dialogue_chars = engine_adapter.dialogue_char_count(text)
     dialogue_ratio = dialogue_chars / len(text) if text else 0
 
     # 情绪词密度（常见情绪词）
@@ -126,12 +145,19 @@ def _rel_or_name(fp: Path) -> str:
 def save_style(name: str, style_card: dict[str, Any]) -> dict[str, Any]:
     """保存风格卡到资产目录。"""
     n = _sanitize_name(name)
-    _ensure_styles_dir()
-    fp = _styles_dir() / f"{n}.json"
+    if not isinstance(style_card, dict):
+        raise ServiceError("style_card 必须为 JSON 对象", 400)
+    d = _ensure_styles_dir()
+    fp = d / f"{n}.json"
     if fp.exists():
         raise ServiceError(f"风格已存在: {n}", 409)
     style_card["name"] = n
-    fp.write_text(json.dumps(style_card, ensure_ascii=False, indent=2), encoding="utf-8")
+    # 原子写（tmp + os.replace）：直接 write_text 时进程被杀会留下半份 JSON，
+    # 之后 list_styles 只会 warn 并跳过它，用户看到的是"风格卡凭空消失"。
+    tmp = d / f".{n}.json.tmp"
+    tmp.write_text(json.dumps(style_card, ensure_ascii=False, indent=2) + "\n",
+                   encoding="utf-8")
+    os.replace(tmp, fp)
     return {"name": n, "path": _rel_or_name(fp), "saved": True}
 
 
@@ -180,13 +206,15 @@ def apply_style_prompt(style_name: str, base_prompt: str) -> dict[str, Any]:
 
     基于风格卡的指标，生成风格指导段落并追加到 base_prompt。
     """
+    if not isinstance(base_prompt, str):
+        raise ServiceError("base_prompt 必须为字符串", 400)
     style = get_style(style_name)
     metrics = style.get("metrics", {})
 
     # 根据指标生成风格指导
     guidance = []
 
-    avg_sent = metrics.get("avg_sentence_length", 20)
+    avg_sent = _number(metrics.get("avg_sentence_length"), 20)
     if avg_sent < 15:
         guidance.append("- 句子偏短，保持简洁有力的节奏")
     elif avg_sent > 40:
@@ -194,7 +222,7 @@ def apply_style_prompt(style_name: str, base_prompt: str) -> dict[str, Any]:
     else:
         guidance.append(f"- 句长适中（平均 {avg_sent} 字），保持自然节奏")
 
-    dialogue_ratio = metrics.get("dialogue_ratio", 0.2)
+    dialogue_ratio = _number(metrics.get("dialogue_ratio"), 0.2)
     if dialogue_ratio > 0.3:
         guidance.append("- 对话密度较高，多用对话推进剧情")
     elif dialogue_ratio < 0.1:
@@ -202,7 +230,7 @@ def apply_style_prompt(style_name: str, base_prompt: str) -> dict[str, Any]:
     else:
         guidance.append(f"- 对话占比约 {dialogue_ratio*100:.0f}%，对话与叙述平衡")
 
-    emotion_density = metrics.get("emotion_density", 5)
+    emotion_density = _number(metrics.get("emotion_density"), 5)
     if emotion_density > 10:
         guidance.append("- 情绪词密度高，注重情感表达")
     elif emotion_density < 3:
@@ -210,7 +238,7 @@ def apply_style_prompt(style_name: str, base_prompt: str) -> dict[str, Any]:
     else:
         guidance.append(f"- 情绪表达适中（每千字约 {emotion_density:.0f} 个情绪词）")
 
-    short_para = metrics.get("short_paragraph_ratio", 0.3)
+    short_para = _number(metrics.get("short_paragraph_ratio"), 0.3)
     if short_para > 0.4:
         guidance.append("- 短段落较多，节奏明快")
     else:
