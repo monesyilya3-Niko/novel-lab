@@ -21,6 +21,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import asset_index, config, router  # noqa: E402
 from gui.services import ServiceError  # noqa: E402
@@ -88,6 +91,7 @@ class TestOverviewAPI(unittest.TestCase):
         # 还原单例（重新扫描真实目录）。
         asset_index.index = asset_index.AssetIndex(ttl_seconds=5)
         asset_index.index.invalidate()
+        _isolation.remove_tree(cls._tmp)
 
     # ------------------------------------------------------------------
     # 工具

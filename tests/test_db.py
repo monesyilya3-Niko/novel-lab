@@ -19,6 +19,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import config, db  # noqa: E402
 
@@ -43,6 +46,7 @@ class TestDb(unittest.TestCase):
         db.close()
         config.STATE_ROOT = cls._orig_state_root
         db._reset_conn()
+        _isolation.remove_tree(cls._tmp)
 
     def tearDown(self):
         # 每测清空表，保证独立性。

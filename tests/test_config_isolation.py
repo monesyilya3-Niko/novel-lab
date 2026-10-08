@@ -170,5 +170,47 @@ class TestRuntimePathFollowsConfig(unittest.TestCase):
         )
 
 
+class TestTempTreeRemoval(unittest.TestCase):
+    """临时目录回收守卫（2026-10-08）。
+
+    背景：`isolate_paths()` 与十余个测试模块建完 `mkdtemp` 就再不管，实测旧代码每跑
+    一轮全量在 %TEMP% 留 **72** 个目录，累计已堆到 3400+。现在回收由
+    ``_isolation.remove_tree`` 统一负责，这三条用例钉住它的核心承诺。
+    """
+
+    def test_isolate_paths_removes_its_tmp_root(self):
+        root = Path(tempfile.mkdtemp(prefix="guard_iso_"))
+        with _isolation.isolate_paths(root):
+            deep = root / "state_root" / "nested"
+            deep.mkdir(parents=True, exist_ok=True)
+            (deep / "y.txt").write_text("内容", encoding="utf-8")
+        self.assertFalse(root.exists(), "isolate_paths 退出后临时根必须整棵回收")
+
+    def test_remove_tree_releases_open_sqlite_handle(self):
+        """Windows 上没释放的 SQLite 句柄会让 rmtree 整棵失败——必须先按路径关连接。"""
+        root = Path(tempfile.mkdtemp(prefix="guard_db_"))
+        saved_root, saved_db = config.STATE_ROOT, config.DB_PATH
+        try:
+            config.STATE_ROOT = root / "state_root"
+            config.DB_PATH = config.STATE_ROOT / "index.db"
+            config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+            db.init_schema()
+            self.assertTrue(config.DB_PATH.is_file(), "夹具应已在临时根里建库")
+            _isolation.remove_tree(root)
+        finally:
+            config.STATE_ROOT, config.DB_PATH = saved_root, saved_db
+            db._reset_conn()
+        self.assertFalse(root.exists(), "带着打开连接的临时目录也必须删得掉")
+
+    def test_remove_tree_is_nested_safe_and_idempotent(self):
+        root = Path(tempfile.mkdtemp(prefix="guard_nest_"))
+        deep = root / "a" / "b" / "c"
+        deep.mkdir(parents=True)
+        (deep / "f.txt").write_text("x", encoding="utf-8")
+        _isolation.remove_tree(root)
+        self.assertFalse(root.exists())
+        _isolation.remove_tree(root)  # 目录已不存在：静默返回，不抛
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

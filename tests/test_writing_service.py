@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-import shutil
 import sys
 import tempfile
 import unittest
@@ -16,6 +15,9 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import config, writing_service  # noqa: E402
 from gui.services import ServiceError  # noqa: E402
@@ -93,7 +95,8 @@ def tearDownModule():
     for name, value in _SAVED.items():
         setattr(config, name, value)
     if _TMP:
-        shutil.rmtree(_TMP, ignore_errors=True)
+        # 会先释放开在这棵目录里的 SQLite 连接再删（rmtree+ignore_errors 曾每轮留一个）。
+        _isolation.remove_tree(_TMP)
 
 
 def _assert_kind_mismatch(tc: unittest.TestCase, exc: BaseException,
@@ -255,7 +258,8 @@ class TestListProjects(unittest.TestCase):
 
         import gui.config as gconfig
         from tests import _isolation  # noqa: F401  — ensure package importable
-        missing = Path(tempfile.mkdtemp()) / "novel-missing"
+        missing_parent = Path(tempfile.mkdtemp())
+        missing = missing_parent / "novel-missing"
         assert not missing.exists()
         old = gconfig.NOVEL_DIR
         try:
@@ -265,6 +269,8 @@ class TestListProjects(unittest.TestCase):
             self.assertIn("default", ids)
         finally:
             gconfig.NOVEL_DIR = old
+            _isolation.remove_tree(missing_parent)
+            _isolation.remove_tree(missing_parent)
 
     def test_project_dir_detected(self):
         proj = config.NOVEL_DIR / "myproj_ls"

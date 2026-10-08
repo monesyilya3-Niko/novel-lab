@@ -28,6 +28,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import builtin_sync, config, db  # noqa: E402
 
@@ -72,6 +75,7 @@ class TestBuiltinSync(unittest.TestCase):
         for k, v in cls._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _isolation.remove_tree(cls._tmp)
 
     def _reset_runtime(self):
         """恢复用户目录夹具到初始态（b 一致 / c 被改过 / d 自有，无 a）。"""
@@ -203,6 +207,7 @@ class _ManifestFixture(unittest.TestCase):
         for k, v in cls._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _isolation.remove_tree(cls._tmp)
 
     def _reset_runtime(self):
         self.runtime.mkdir(parents=True, exist_ok=True)
@@ -254,6 +259,7 @@ class TestWriteManifest(unittest.TestCase):
 
     def tearDown(self):
         config.ROOT_DIR = self._orig["ROOT_DIR"]
+        _isolation.remove_tree(self._tmp)
 
     def test_generate_covers_all_files(self):
         m = builtin_sync.write_manifest()
@@ -325,6 +331,7 @@ class TestSyncRefreshSqlite(unittest.TestCase):
         for k, v in self._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _isolation.remove_tree(self._tmp)
 
     def _asset_rows(self) -> int:
         conn = db.get_conn()
@@ -378,6 +385,7 @@ class TestRealWorldExpansion(unittest.TestCase):
         for k, v in self._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _isolation.remove_tree(self._tmp)
 
     def test_65_to_86(self):
         r = builtin_sync.diff()

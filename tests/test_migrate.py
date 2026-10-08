@@ -27,6 +27,15 @@ if str(ROOT) not in sys.path:
 
 from gui import asset_index, config, db, migrate  # noqa: E402
 
+_TESTS_DIR = ROOT / "tests"
+if str(_TESTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TESTS_DIR))
+
+# 临时目录回收统一走 _isolation.remove_tree（Windows 安全：句柄未释放时逐文件兜底）。
+# 本模块的 4 个 mkdtemp 以前**从来没被删过**——2026-10-08 实测 %TEMP% 里攒了
+# 576 个 migrate_bak_/migrate_upgrade_/migrate_sync_/migrate_qa_ 目录。
+from _isolation import remove_tree as _rm_tmp  # noqa: E402
+
 
 class TestMigrateInfer(unittest.TestCase):
     """推断规则单元测试（无需建目录）。"""
@@ -207,6 +216,7 @@ class TestMigrateFlow(unittest.TestCase):
         for k, v in cls._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _rm_tmp(cls._tmp)
 
     def _n(self, table: str) -> int:
         return db.get_conn().execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()["n"]
@@ -464,6 +474,7 @@ class TestBackupRetention(unittest.TestCase):
         db.close()
         config.STATE_ROOT = self._orig_state
         db._reset_conn()
+        _rm_tmp(self._tmp)
 
     def _make_baks(self, stamps) -> None:
         for ts in stamps:
@@ -547,6 +558,7 @@ class TestMigrateLegacyKindUpgrade(unittest.TestCase):
         for k, v in self._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _rm_tmp(self._tmp)
 
     def _n(self, table: str) -> int:
         return db.get_conn().execute(f"SELECT COUNT(*) AS n FROM {table}").fetchone()["n"]
@@ -651,6 +663,7 @@ class TestSyncAssetKeyConvention(unittest.TestCase):
         for k, v in self._orig.items():
             setattr(config, k, v)
         db._reset_conn()
+        _rm_tmp(self._tmp)
 
     def _seed(self) -> None:
         for fname, content in self._FILES:

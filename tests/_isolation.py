@@ -5,7 +5,8 @@ R1 回归防线（根因：``STATE_JSON_DIR`` 新增后，多个测试只 patch 
 
 - ``DATA_PATH_CONSTANTS``：**必须被测试隔离**的 config 路径常量登记表；
 - ``discover_data_path_constants()``：内省 config，自动发现所有项目内 Path 常量；
-- ``isolate_paths()``：上下文管理器，成对重定向全部登记常量并还原；
+- ``isolate_paths()``：上下文管理器，成对重定向全部登记常量、还原并删除临时根；
+- ``remove_tree()``：Windows 安全的临时目录回收（teardown 复用）；
 - ``snapshot_real_state_json_dir()``：真实 ``gui/state/`` 快照，供泄漏守卫比对。
 
 新增 config 路径常量而忘记登记时，``tests/test_config_isolation.py`` 会失败——
@@ -17,6 +18,8 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import os
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -96,7 +99,7 @@ def discover_data_path_constants() -> dict[str, Path]:
 
 @contextlib.contextmanager
 def isolate_paths(tmp_root: Path) -> Iterator[dict[str, Path]]:
-    """把全部 ``DATA_PATH_CONSTANTS`` 重定向到 ``tmp_root/<常量名小写>``，退出还原。
+    """把全部 ``DATA_PATH_CONSTANTS`` 重定向到 ``tmp_root/<常量名小写>``，退出还原并删除。
 
     Yields:
         重定向前的原值映射（便于断言还原正确）。
@@ -114,6 +117,73 @@ def isolate_paths(tmp_root: Path) -> Iterator[dict[str, Path]]:
         # 在隔离结束时自动清空所有连接。
         from gui import db
         db._reset_conn()
+        # 连接释放之后才能删：以前 isolate_paths 从不回收它接管的 tmp_root，
+        # 每跑一轮就留一撮 wxextra_/b3_/concw_/lru_ 目录（2026-10-08 实测 %TEMP%
+        # 里光本项目测试残留就有 3000+ 个）。
+        remove_tree(tmp_root)
+
+
+def _close_conns_under(root: Path) -> None:
+    """只关闭"数据库文件确实开在 root 之内"的连接。
+
+    Windows 上未释放的 SQLite 句柄会让整棵目录删不掉（[WinError 32]）；而直接全局
+    ``db.close()`` 会波及同一进程里并行进行中的其它用例，所以按
+    ``PRAGMA database_list`` 报出的真实文件路径逐个判定。
+    """
+    try:
+        from gui import db as _db
+    except Exception:  # pragma: no cover - 精简环境下没有 db 模块
+        return
+    if not (hasattr(_db, "_conns") and hasattr(_db, "_conns_lock")):
+        return
+    # 全程持 _conns_lock：只关"文件在 root 之内"的那几个，并从登记表里摘掉。
+    # 不能用 db._reset_conn()——它关的是全部连接，会误伤同进程里别的在用例。
+    with _db._conns_lock:
+        for tid, conn in list(_db._conns.items()):
+            try:
+                row = conn.execute("PRAGMA database_list").fetchone()
+                file_path = Path(row[2]).resolve() if row and row[2] else None
+            except Exception:
+                continue
+            if file_path is None or not file_path.is_relative_to(root):
+                continue
+            try:
+                conn.close()
+            except Exception:
+                pass
+            _db._conns.pop(tid, None)
+
+
+def remove_tree(path: Path | str) -> None:
+    """删除临时目录树，绝不抛错（供测试 teardown 复用）。
+
+    先释放开在该目录内的 SQLite 连接，再整棵删；rmtree 失败时逐文件兜底——
+    残留目录会让人误以为"测试还在写真实数据"。
+    """
+    p = Path(path)
+    if not p.exists():
+        return
+    _close_conns_under(p)
+    try:
+        shutil.rmtree(p)
+        return
+    except OSError:
+        pass
+    for dirpath, dirnames, filenames in os.walk(p, topdown=False):
+        for name in filenames:
+            try:
+                Path(dirpath, name).unlink()
+            except OSError:
+                pass
+        for name in dirnames:
+            try:
+                Path(dirpath, name).rmdir()
+            except OSError:
+                pass
+    try:
+        p.rmdir()
+    except OSError:
+        pass
 
 
 def snapshot_real_state_json_dir() -> frozenset:

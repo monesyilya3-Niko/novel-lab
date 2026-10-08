@@ -20,6 +20,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import asset_index, config, state_store  # noqa: E402
 
@@ -89,6 +92,7 @@ class TestAssetIndex(unittest.TestCase):
     def tearDownClass(cls):
         for k, v in cls._orig.items():
             setattr(config, k, v)
+        _isolation.remove_tree(cls._tmp)
 
     def test_scan_counts(self):
         data = self.idx.scan(force=True)
@@ -220,6 +224,7 @@ class TestListBooksSummary(unittest.TestCase):
     def tearDownClass(cls):
         for k, v in cls._orig.items():
             setattr(config, k, v)
+        _isolation.remove_tree(cls._tmp)
 
     def setUp(self):
         # 造两个状态文件。

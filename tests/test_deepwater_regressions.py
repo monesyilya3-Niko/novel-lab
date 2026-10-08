@@ -28,6 +28,7 @@ class LruEvictionTest(unittest.TestCase):
     def setUp(self):
         self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="lru_")))
         self._iso.__enter__()
+        self._book_dirs: list[Path] = []
         # 清空缓存状态
         services._BOOKS.clear()
         services._BOOK_INDEX.clear()
@@ -36,9 +37,14 @@ class LruEvictionTest(unittest.TestCase):
         services._BOOKS.clear()
         services._BOOK_INDEX.clear()
         self._iso.__exit__(None, None, None)
+        # book_ 临时目录在 isolate_paths 之外，得自己收（以前每建一本留一个）。
+        for d in self._book_dirs:
+            _isolation.remove_tree(d)
 
     def _make_book_file(self, name: str, content: str) -> str:
-        p = Path(tempfile.mkdtemp(prefix="book_")) / f"{name}.txt"
+        tmp = Path(tempfile.mkdtemp(prefix="book_"))
+        self._book_dirs.append(tmp)
+        p = tmp / f"{name}.txt"
         p.write_text(content, encoding="utf-8")
         return str(p)
 

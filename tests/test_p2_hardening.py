@@ -22,6 +22,9 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import (
     config,  # noqa: E402
@@ -44,6 +47,7 @@ class TestLoggingSetup(unittest.TestCase):
         for h in list(root.handlers):
             root.removeHandler(h)
             h.close()
+        _isolation.remove_tree(self._tmp)
 
     def test_setup_creates_file_and_writes(self):
         log = logging_setup.setup_logging()
@@ -109,6 +113,7 @@ class TestTokenAuth(unittest.TestCase):
         config.API_TOKEN = cls._orig_token
         config.STATE_ROOT = cls._orig_state_root
         config.STATE_JSON_DIR = cls._orig_state_json_dir
+        _isolation.remove_tree(cls._tmp)
 
     def _get(self, path: str, headers: dict | None = None) -> int:
         req = urllib.request.Request(f"http://127.0.0.1:{self.port}{path}", headers=headers or {})
@@ -159,6 +164,10 @@ class TestSecretStore(unittest.TestCase):
         import secret_store
         self.ss = secret_store
         self._tmp = Path(tempfile.mkdtemp(prefix="secrets_qa_"))
+
+    def tearDown(self):
+        # DPAPI 落盘的 .secrets.bin 在这里，以前整个目录从不回收。
+        _isolation.remove_tree(self._tmp)
 
     def test_roundtrip(self):
         data = {"m1": "sk-测试密钥", "m2": "key-2"}
@@ -219,6 +228,7 @@ class TestAutoBackup(unittest.TestCase):
 
     def tearDown_fake(self, migrate):
         migrate.backup = self._orig
+        _isolation.remove_tree(self._tmp_backup_path.parent)
 
     def test_startup_backup_registers_date(self):
         migrate = self.setUp_fake()

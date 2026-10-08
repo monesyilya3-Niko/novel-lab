@@ -21,6 +21,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import config, router, services  # noqa: E402
 from gui.services import ServiceError  # noqa: E402
@@ -53,6 +56,7 @@ class TestListTropes(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         config.ASSETS_ROOT = cls._orig
+        _isolation.remove_tree(cls._tmp)
 
     def _write(self, data) -> Path:
         fp = self._tmp / "trope-library.json"

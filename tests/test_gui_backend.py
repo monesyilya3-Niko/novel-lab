@@ -10,7 +10,6 @@
 """
 from __future__ import annotations
 
-import shutil
 import sys
 import tempfile
 import unittest
@@ -19,6 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _isolation  # noqa: E402
 
 from gui import config, engine_adapter, router, services, state_store  # noqa: E402
 
@@ -61,9 +63,10 @@ def tearDownModule():
     config.STATE_JSON_DIR = _ORIG_STATE_JSON_DIR
     config.ASSETS_ROOT = _ORIG_ASSETS_ROOT
     if _TMP:
-        # ignore_errors：Windows 上隔离库文件句柄可能仍被占用，回收失败不影响
-        # 正确性（config 已还原），只影响临时目录是否残留。
-        shutil.rmtree(_TMP, ignore_errors=True)
+        # 用 _isolation.remove_tree：它会先关掉开在这棵目录里的 SQLite 连接再删。
+        # 以前这里写死 shutil.rmtree(..., ignore_errors=True) 并注释"回收失败不影响
+        # 正确性"——失败就是每跑一轮留一个 gui_qa_ 目录，从来没人回收它。
+        _isolation.remove_tree(_TMP)
         _TMP = None
 
 

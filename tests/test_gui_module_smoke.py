@@ -43,7 +43,9 @@ class TestLaunchSmoke(unittest.TestCase):
         import io
 
         orig = config.DIST_DIR
-        config.DIST_DIR = Path(tempfile.mkdtemp()) / "no_such_dist"
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(_isolation.remove_tree, tmp)
+        config.DIST_DIR = tmp / "no_such_dist"
         buf = io.StringIO()
         try:
             with contextlib.redirect_stdout(buf):
