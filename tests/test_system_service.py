@@ -25,7 +25,11 @@ def setUpModule():
     _SAVED["ROOT_DIR"] = config.ROOT_DIR
     config.ROOT_DIR = Path(_TMP)
     for name in ("STATE_ROOT", "STATE_JSON_DIR", "ASSETS_ROOT", "NOVEL_DIR",
-                 "CORPUS_DIR", "REPORTS_DIR"):
+                 "CORPUS_DIR", "REPORTS_DIR",
+                 # system_service 真的读 config.DB_PATH（健康页报库大小与路径），而
+                 # DB_PATH 是 STATE_ROOT 的导入期快照：不一起重定向，这里量到的就是
+                 # 用户真实数据目录里的 index.db。
+                 "DB_PATH", "LOCK_PATH"):
         _SAVED[name] = getattr(config, name)
         setattr(config, name, config.ROOT_DIR / name.lower())
     config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)

@@ -27,7 +27,9 @@ def setUpModule():
     _SAVED["ROOT_DIR"] = config.ROOT_DIR
     config.ROOT_DIR = Path(_TMP)
     for name in ("STATE_ROOT", "STATE_JSON_DIR", "ASSETS_ROOT", "NOVEL_DIR",
-                 "CORPUS_DIR", "REPORTS_DIR"):
+                 "CORPUS_DIR", "REPORTS_DIR",
+                 # 派生常量是导入期快照，patch STATE_ROOT 带不动，必须一起重定向。
+                 "DB_PATH", "LOCK_PATH"):
         _SAVED[name] = getattr(config, name)
         setattr(config, name, config.ROOT_DIR / name.lower())
     config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)

@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import sys
 import tempfile
 import unittest
@@ -210,6 +211,81 @@ class TestTempTreeRemoval(unittest.TestCase):
         _isolation.remove_tree(root)
         self.assertFalse(root.exists())
         _isolation.remove_tree(root)  # 目录已不存在：静默返回，不抛
+
+
+class TestHandPatchedDataPaths(unittest.TestCase):
+    """手工 patch ``config.STATE_ROOT`` 的测试模块，必须把派生常量一起 patch。
+
+    ``DB_PATH`` / ``LOCK_PATH`` 在 config.py 里是 ``STATE_ROOT`` 的**导入期快照**
+    （`gui/config.py:150,152`），只 patch STATE_ROOT 带不动它们，读这两个常量的代码
+    会指向真实用户数据目录。今天已被咬两次：``migrate._server_is_running()`` 读真实
+    ``.lock`` 让全量门禁在桌面版开着时误红；``system_service`` 读真实 ``DB_PATH`` 报库大小。
+    走 ``_isolation.isolate_paths()`` 的模块按登记表自动覆盖，故豁免。
+    """
+
+    DERIVED = ("DB_PATH", "LOCK_PATH")
+    # 守卫/泄漏检测模块本身不是"依赖隔离的用例"，它们读登记表与真实目录正是职责所在。
+    EXEMPT_WITH_REASON = {
+        "test_module_config_snapshot.py": "AST 扫描导入期快照的守卫，提到常量名即其职责",
+        "test_zz_state_dir_leak_guard.py": "真实目录泄漏守卫，要读真实路径才能判断有没有被写",
+    }
+    WINDOW = 8  # 同一 patch 点上下 8 行内必须出现派生常量的 patch
+    # 存量债登记（2026-10-08 立规时实测的每文件违规 patch 点数）。
+    # 只许减少不许增加：新写的 patch 点必须一次到位；清掉一个点就把数字改小。
+    KNOWN_DEBT = {
+        "test_asset_index.py": 7,
+        "test_builtin_sync.py": 8,
+        "test_db.py": 2,
+        "test_gui_backend.py": 2,
+        "test_migrate.py": 8,
+        "test_overview_api.py": 2,
+        "test_p2_hardening.py": 2,
+    }
+
+    def _is_patch_line(self, line: str) -> bool:
+        return bool(re.search(r"config\.STATE_ROOT\s*=", line)) or '"STATE_ROOT"' in line
+
+    def test_state_root_patch_sites_cover_derived_constants(self):
+        """每一处改 STATE_ROOT 的地方，邻近必须一起改 DB_PATH / LOCK_PATH。
+
+        按"每一处"而不是"每个文件"判定：一个文件里多个测试类各 patch 各的，
+        文件级粒度会放过漏掉的那几个类。存量违规进 KNOWN_DEBT 记账，
+        数量只许降不许升（升了就红，等于新增违规）。
+        """
+        offenders: dict[str, int] = {}
+        details = []
+        for fp in sorted(_TESTS_DIR.glob("test_*.py")):
+            if fp.name in self.EXEMPT_WITH_REASON:
+                continue
+            text = fp.read_text(encoding="utf-8")
+            if "isolate_paths" in text:
+                continue
+            lines = text.splitlines()
+            for n, line in enumerate(lines, start=1):
+                if not self._is_patch_line(line):
+                    continue
+                window = "\n".join(lines[max(0, n - 1 - self.WINDOW):n - 1 + self.WINDOW])
+                missing = [name for name in self.DERIVED
+                           if not (re.search(rf"config\.{name}\s*=", window)
+                                   or f'"{name}"' in window)]
+                if missing:
+                    offenders[fp.name] = offenders.get(fp.name, 0) + 1
+                    details.append(f"{fp.name}:{n} 缺 {missing}")
+        grown = {f: c for f, c in offenders.items() if c > self.KNOWN_DEBT.get(f, 0)}
+        self.assertEqual(
+            grown, {},
+            "新增违规：以下 patch 点改了 config.STATE_ROOT 却没在附近一起改派生常量"
+            "（DB_PATH / LOCK_PATH 是 STATE_ROOT 的导入期快照，带不动它，读侧会指向真实"
+            "用户数据目录）。补法：紧跟一行 "
+            "`config.DB_PATH = config.STATE_ROOT / \"index.db\"` 与 "
+            "`config.LOCK_PATH = config.STATE_ROOT / \".lock\"`（还原侧同步），"
+            "或整体改用 _isolation.isolate_paths()。明细：" + "; ".join(details),
+        )
+        paid_down = {f: n for f, n in self.KNOWN_DEBT.items() if offenders.get(f, 0) < n}
+        self.assertEqual(
+            paid_down, {},
+            f"存量债已减少，请同步调小 KNOWN_DEBT（鼓励顺手清掉）：{paid_down}",
+        )
 
 
 if __name__ == "__main__":
