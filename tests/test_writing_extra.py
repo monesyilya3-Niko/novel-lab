@@ -120,6 +120,43 @@ class WritingExtraTest(unittest.TestCase):
         # "标题正文一二三四" = 8；"第二章abcdef" = 9
         self.assertEqual(s["total_words"], 17)
 
+    def test_stats_reads_gbk_chapter(self):
+        """用户把稿子按 chapter-NNN.txt 摆进 novel/ 是常见操作，GBK 编码不能算漏。
+
+        旧实现 ``read_text(encoding="utf-8")`` 在这里直接抛 UnicodeDecodeError，
+        码字统计/导出/入库记账全变 500，而且不带文件名。
+        """
+        from gui import config
+        chdir = config.NOVEL_DIR / PROJ / "chapters" / "arc-1"
+        chdir.mkdir(parents=True)
+        (chdir / "chapter-001.txt").write_text("标题\n\n正文一二三四", encoding="utf-8")
+        (chdir / "chapter-002.txt").write_bytes("第二章\n\n正文一二三四".encode("gbk"))
+        s = writing_extra.get_stats(PROJ, days=7)
+        self.assertEqual(s["total_chapters"], 2)
+        # "标题正文一二三四"=8 + "第二章正文一二三四"=9；GBK 那章不许算成 0
+        self.assertEqual(s["total_words"], 17)
+
+    def test_export_reads_gbk_chapter(self):
+        from gui import config
+        chdir = config.NOVEL_DIR / PROJ / "chapters" / "arc-1"
+        chdir.mkdir(parents=True)
+        (chdir / "chapter-001.txt").write_text("第001章 相遇\n\n雪落下来的时候。", encoding="utf-8")
+        (chdir / "chapter-002.txt").write_bytes("第002章 离别\n\n他没有回头。".encode("gbk"))
+        r = writing_extra.export_project_txt(PROJ)
+        self.assertEqual(r["chapters"], 2)
+        self.assertIn("他没有回头", r["content"])
+
+    def test_undecodable_chapter_error_names_the_file(self):
+        from gui import config
+        chdir = config.NOVEL_DIR / PROJ / "chapters" / "arc-1"
+        chdir.mkdir(parents=True)
+        bad = chdir / "chapter-009.txt"
+        bad.write_bytes(b"\xff\xfe\x00\x01\x02")
+        with self.assertRaises(ServiceError) as cm:
+            writing_extra.get_stats(PROJ, days=7)
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("chapter-009.txt", cm.exception.message)
+
     # -- 重复入库幂等 --
     def _today(self):
         s = writing_extra.get_stats(PROJ, days=7)

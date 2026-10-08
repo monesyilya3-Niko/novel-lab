@@ -16,7 +16,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from gui import config, db
+from gui import config, db, engine_adapter
 from gui.logging_setup import get_logger
 from gui.services import ServiceError
 
@@ -320,6 +320,21 @@ def record_words(project: str, words: int, chapters: int = 1) -> None:
         _log.warning("码字统计记录失败（已忽略）: %s", exc)
 
 
+def _read_chapter(fp: Path) -> str:
+    """读章节文件，编码口径与引擎一致（UTF-8 → GBK）。
+
+    原来这里是 ``fp.read_text(encoding="utf-8")``：章节文件正常都由本应用写（UTF-8），
+    但用户把稿子按 ``chapter-NNN.txt`` 摆进 novel/ 是常见操作，GBK 文件会让码字统计、
+    导出、入库幂等记账直接抛 UnicodeDecodeError → 一路变成 500，而且不带文件名，
+    用户根本不知道是哪一章坏了。
+    """
+    try:
+        return engine_adapter.read_chapter_text(fp)
+    except UnicodeError as exc:
+        raise ServiceError(
+            f"章节文件编码无法识别（仅支持 UTF-8 / GBK）：{fp.name}", 400) from exc
+
+
 def _iter_chapter_files(project: str) -> list[tuple[int, Path]]:
     """按章节号排序列出章节文件。"""
     novel_dir = _novel_dir(project)
@@ -343,7 +358,7 @@ def get_chapter_words(project: str, chapter_no: int) -> int | None:
     for no, fp in _iter_chapter_files(project):
         if no == chapter_no:
             try:
-                return count_words(fp.read_text(encoding="utf-8"))
+                return count_words(_read_chapter(fp))
             except OSError:
                 return 0
     return None
@@ -384,7 +399,7 @@ def get_stats(project: str, days: int = 30) -> dict[str, Any]:
     total_chapters = 0
     for _no, fp in _iter_chapter_files(project):
         try:
-            total_words += count_words(fp.read_text(encoding="utf-8"))
+            total_words += count_words(_read_chapter(fp))
             total_chapters += 1
         except OSError:
             continue
@@ -413,7 +428,7 @@ def export_project_txt(project: str) -> dict[str, Any]:
     parts: list[str] = []
     for no, fp in files:
         try:
-            content = fp.read_text(encoding="utf-8").strip()
+            content = _read_chapter(fp).strip()
         except OSError:
             continue
         if not content:

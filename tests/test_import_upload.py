@@ -242,7 +242,6 @@ class TestImportPathEndpoint(unittest.TestCase):
         return resp.status, data
 
     def test_import_from_outside_project_root(self):
-        from gui import config
         fp = self.ext_dir / "外部稿.txt"
         fp.write_bytes(BOOK_TXT)
         status, data = self._post({"path": str(fp)})
