@@ -935,6 +935,21 @@ def _h_essence_analyze_macro(_params: dict[str, Any], body: dict[str, Any]) -> d
         total_chars=res["total_chars"],
         meta=res,
     )
+    if b.get("auto_save_assets", True):
+        for sa in res.get("suggestedAssets", []):
+            try:
+                essence_service.create_asset(
+                    book_id=book_id,
+                    category=sa.get("category", "style"),
+                    title=sa.get("title", f"《{title}》精华资产"),
+                    summary=sa.get("summary", ""),
+                    content=sa.get("content", ""),
+                    tags=f"{genre},{platform}",
+                    genre=genre,
+                    platform=platform,
+                )
+            except Exception:
+                pass
     return ok({"book_id": book_id, **res})
 
 

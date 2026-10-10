@@ -234,40 +234,40 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">总解析章节</Typography>
-                <Typography variant="h6">{result.totalChapters} 章</Typography>
+                <Typography variant="h6">{result.totalChapters ?? 0} 章</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">总精读字数</Typography>
-                <Typography variant="h6">{result.totalChars.toLocaleString()} 字</Typography>
+                <Typography variant="h6">{(result.totalChars ?? 0).toLocaleString()} 字</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">平均章字数</Typography>
-                <Typography variant="h6">{result.avgChapterLen} 字</Typography>
+                <Typography variant="h6">{result.avgChapterLen ?? 0} 字</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">对白占比</Typography>
-                <Typography variant="h6" color={result.dialogueRatio >= 0.25 && result.dialogueRatio <= 0.45 ? 'success.main' : 'warning.main'}>
-                  {(result.dialogueRatio * 100).toFixed(1)}%
+                <Typography variant="h6" color={(result.dialogueRatio ?? 0) >= 0.25 && (result.dialogueRatio ?? 0) <= 0.45 ? 'success.main' : 'warning.main'}>
+                  {((result.dialogueRatio ?? 0) * 100).toFixed(1)}%
                 </Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">高潮节奏周期</Typography>
-                <Typography variant="h6">{result.rhythmClimaxInterval} 章/次</Typography>
+                <Typography variant="h6">{result.rhythmClimaxInterval ?? 5} 章/次</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
                 <Typography variant="caption" color="text.secondary">AI 味指数 (0-10)</Typography>
-                <Typography variant="h6" color={result.aiSlopScore < 3.0 ? 'success.main' : 'error.main'}>
-                  {result.aiSlopScore} 分
+                <Typography variant="h6" color={(result.aiSlopScore ?? 0) < 3.0 ? 'success.main' : 'error.main'}>
+                  {result.aiSlopScore ?? 1.5} 分
                 </Typography>
               </Paper>
             </Grid>
