@@ -1186,3 +1186,27 @@ def get_dialogues() -> dict[str, Any]:
         return json.loads(fp.read_text(encoding="utf-8"))
     except Exception as exc:
         raise ServiceError(f"台词金句库损坏: {exc}", 500) from exc
+
+
+def get_characters() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "character-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "character-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "characters": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"人设弧光库损坏: {exc}", 500) from exc
+
+
+def get_emotions() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "emotion-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "emotion-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "emotions": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"情绪五感库损坏: {exc}", 500) from exc

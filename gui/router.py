@@ -885,6 +885,14 @@ def _h_tools_dialogues(_params: dict[str, Any], _body: dict[str, Any]) -> dict[s
     return ok(services.get_dialogues())
 
 
+def _h_tools_characters(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_characters())
+
+
+def _h_tools_emotions(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_emotions())
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -1010,6 +1018,8 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/tools/shuangdians$"), _h_tools_shuangdians),
     ("GET", re.compile(r"^/api/tools/worlds$"), _h_tools_worlds),
     ("GET", re.compile(r"^/api/tools/dialogues$"), _h_tools_dialogues),
+    ("GET", re.compile(r"^/api/tools/characters$"), _h_tools_characters),
+    ("GET", re.compile(r"^/api/tools/emotions$"), _h_tools_emotions),
 ]
 
 

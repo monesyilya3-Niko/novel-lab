@@ -833,6 +833,38 @@ export interface DialogueItem {
   speechProfileTip: string
 }
 
+export interface CharacterPersonaItem {
+  id: string
+  name: string
+  roleType: string
+  genre: string
+  surfaceMask: string
+  hiddenContrast: string
+  coreMotivation: string
+  fatalFlaw: string
+  antiCollapseRule: string
+  catchphrase: string
+  arcProgression: string
+}
+
+export interface SensoryBreakdown {
+  vision: string
+  physiology: string
+  touchAndTemp: string
+  soundAndSilence: string
+}
+
+export interface EmotionItem {
+  id: string
+  emotionScene: string
+  category: string
+  aiClicheExample: string
+  sensoryBreakdown: SensoryBreakdown
+  environmentalResonance: string
+  masterProseSample: string
+  writingRhythmTip: string
+}
+
 export const toolsApi = {
   generateNames: (params?: NameGenerateParams) => {
     const q = new URLSearchParams()
@@ -849,4 +881,6 @@ export const toolsApi = {
   getShuangdians: () => get<{ totalCount: number; shuangdians: ShuangdianItem[] }>('/tools/shuangdians'),
   getWorlds: () => get<{ totalCount: number; worlds: WorldSystemItem[] }>('/tools/worlds'),
   getDialogues: () => get<{ totalCount: number; dialogues: DialogueItem[] }>('/tools/dialogues'),
+  getCharacters: () => get<{ totalCount: number; characters: CharacterPersonaItem[] }>('/tools/characters'),
+  getEmotions: () => get<{ totalCount: number; emotions: EmotionItem[] }>('/tools/emotions'),
 }

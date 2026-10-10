@@ -297,6 +297,39 @@ class TestToolsServicesAndRoutes(unittest.TestCase):
         self.assertEqual(resp["code"], 0)
         self.assertIn("dialogues", resp["data"])
 
+        # 9. GET /api/tools/characters
+        resp, _ = router.dispatch("GET", "/api/tools/characters", {}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("characters", resp["data"])
+
+        # 10. GET /api/tools/emotions
+        resp, _ = router.dispatch("GET", "/api/tools/emotions", {}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("emotions", resp["data"])
+
+
+class TestCharacterAndEmotionServices(unittest.TestCase):
+    """人物反差库与情绪通感库的服务层测试。"""
+
+    def test_get_characters(self):
+        res = services.get_characters()
+        self.assertIn("characters", res)
+        chars = res["characters"]
+        self.assertGreaterEqual(len(chars), 12)
+        sample = chars[0]
+        for field in ("id", "name", "role_type", "surface_mask", "hidden_contrast", "core_motivation", "fatal_flaw", "anti_collapse_rule", "catchphrase", "arc_progression"):
+            self.assertIn(field, sample)
+
+    def test_get_emotions(self):
+        res = services.get_emotions()
+        self.assertIn("emotions", res)
+        emotions = res["emotions"]
+        self.assertGreaterEqual(len(emotions), 10)
+        sample = emotions[0]
+        for field in ("id", "emotion_scene", "category", "ai_cliche_example", "sensory_breakdown", "environmental_resonance", "master_prose_sample", "writing_rhythm_tip"):
+            self.assertIn(field, sample)
+        for s_field in ("vision", "physiology", "touch_and_temp", "sound_and_silence"):
+            self.assertIn(s_field, sample["sensory_breakdown"])
 
 
 if __name__ == "__main__":

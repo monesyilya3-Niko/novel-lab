@@ -93,6 +93,44 @@ vi.mock('../api/client', () => ({
         },
       ],
     }),
+    getCharacters: vi.fn().mockResolvedValue({
+      totalCount: 1,
+      characters: [
+        {
+          id: 'CHR-001',
+          name: '苟道长生·守阁假杂役真剑祖',
+          roleType: '主角型',
+          genre: '仙侠修真',
+          surfaceMask: '宗门藏经阁九品洒扫杂役',
+          hiddenContrast: '三千年前纯阳剑祖转世',
+          coreMotivation: '苟到飞升尽头得大逍遥',
+          fatalFlaw: '严重迫害妄想症',
+          antiCollapseRule: '非生死关头绝不暴露底牌',
+          catchphrase: '道友切莫动怒，贫道这就告退……',
+          arcProgression: '冷眼旁观 → 布局三界 → 一剑荡平诡异',
+        },
+      ],
+    }),
+    getEmotions: vi.fn().mockResolvedValue({
+      totalCount: 1,
+      emotions: [
+        {
+          id: 'EMT-001',
+          emotionScene: '窒息杀意与无形压迫',
+          category: '杀机与气场',
+          aiClicheExample: '反派非常愤怒，身上释放出强大的杀气',
+          sensoryBreakdown: {
+            vision: '瞳孔骤然凝缩如针尖',
+            physiology: '颈后寒毛根根炸立',
+            touchAndTemp: '四周空气仿佛瞬间凝结成铅水',
+            soundAndSilence: '整座大殿只剩下粗重紊乱的喘息声',
+          },
+          environmentalResonance: '狂风无风自止，厅堂火苗压成幽蓝色',
+          masterProseSample: '那人甚至没有抬手。他只是静静站在阶前，垂着眼帘。',
+          writingRhythmTip: '先抑后扬，严禁用抽象形容词',
+        },
+      ],
+    }),
   },
   friendlyError: (e: unknown) => String(e),
 }))
@@ -151,6 +189,26 @@ describe('InspirationWorkbench', () => {
       expect(screen.getByText('宗门死斗·生死看淡一剑封喉')).toBeDefined()
       expect(screen.getByText('话太多。拔剑。')).toBeDefined()
       expect(screen.getByText(/你居然敢挑战我/)).toBeDefined()
+    })
+  })
+
+  it('切换到爆款人设矩阵 (反差弧光)', async () => {
+    render(<InspirationWorkbench />)
+    fireEvent.click(screen.getByText('爆款人设矩阵 (反差弧光)'))
+    await waitFor(() => {
+      expect(screen.getByText('苟道长生·守阁假杂役真剑祖')).toBeDefined()
+      expect(screen.getByText(/宗门藏经阁九品洒扫杂役/)).toBeDefined()
+      expect(screen.getByText(/三千年前纯阳剑祖转世/)).toBeDefined()
+    })
+  })
+
+  it('切换到情绪高潮演出 (五感通感)', async () => {
+    render(<InspirationWorkbench />)
+    fireEvent.click(screen.getByText('情绪高潮演出 (五感通感)'))
+    await waitFor(() => {
+      expect(screen.getByText('窒息杀意与无形压迫')).toBeDefined()
+      expect(screen.getByText(/那人甚至没有抬手/)).toBeDefined()
+      expect(screen.getByText(/瞳孔骤然凝缩如针尖/)).toBeDefined()
     })
   })
 })

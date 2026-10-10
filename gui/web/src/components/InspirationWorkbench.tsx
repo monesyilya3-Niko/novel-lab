@@ -22,6 +22,8 @@ import {
   type ShuangdianItem,
   type WorldSystemItem,
   type DialogueItem,
+  type CharacterPersonaItem,
+  type EmotionItem,
 } from '../api/client'
 
 export default function InspirationWorkbench() {
@@ -31,13 +33,15 @@ export default function InspirationWorkbench() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Paper sx={{ p: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={subTab} onChange={(_, v) => setSubTab(v)}>
+          <Tabs value={subTab} onChange={(_, v) => setSubTab(v)} variant="scrollable" scrollButtons="auto">
             <Tab label="起名工坊 (离线智能)" />
             <Tab label="开篇钩子库 (黄金三章)" />
             <Tab label="金手指机制库 (12大外挂)" />
             <Tab label="爽点打脸设计 (三段闭环)" />
             <Tab label="世界观体系 (力量阶梯)" />
             <Tab label="名场面台词库 (反AI对话)" />
+            <Tab label="爆款人设矩阵 (反差弧光)" />
+            <Tab label="情绪高潮演出 (五感通感)" />
           </Tabs>
         </Box>
 
@@ -47,6 +51,8 @@ export default function InspirationWorkbench() {
         {subTab === 3 && <ShuangdianLibrarySection />}
         {subTab === 4 && <WorldLibrarySection />}
         {subTab === 5 && <DialogueLibrarySection />}
+        {subTab === 6 && <CharacterLibrarySection />}
+        {subTab === 7 && <EmotionLibrarySection />}
       </Paper>
     </Box>
   )
@@ -756,6 +762,223 @@ function DialogueLibrarySection() {
                   }
                 >
                   复制台词与动作
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+
+      <Snackbar
+        open={Boolean(copied)}
+        autoHideDuration={2000}
+        onClose={() => setCopied('')}
+        message={copied}
+      />
+    </Box>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 7. 爆款人设反差矩阵与人物高光弧光库
+// ---------------------------------------------------------------------------
+
+function CharacterLibrarySection() {
+  const [characters, setCharacters] = useState<CharacterPersonaItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    toolsApi
+      .getCharacters()
+      .then((res) => {
+        setCharacters(res.characters || [])
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const copyCharacter = (c: CharacterPersonaItem) => {
+    const text = `【角色模型】：${c.name}（${c.roleType} · ${c.genre}）\n【表面标签】：${c.surfaceMask}\n【隐藏反差】：${c.hiddenContrast}\n【核心欲望】：${c.coreMotivation}\n【致命弱点】：${c.fatalFlaw}\n【防崩铁律】：${c.antiCollapseRule}\n【高光口头禅】：${c.catchphrase}\n【成长弧光】：${c.arcProgression}`
+    navigator.clipboard.writeText(text)
+    setCopied(`已复制人设卡: ${c.name}`)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        爆款人设反差矩阵：提炼 12 大成熟立体的网文角色原型，以表面伪装 vs 隐藏反差构筑张力，防脸谱化、降智与人设崩塌。
+      </Typography>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 2 }}>
+        {characters.map((c) => (
+          <Card key={c.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {c.name}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <Chip size="small" label={c.roleType} color="primary" />
+                  <Chip size="small" label={c.genre} variant="outlined" />
+                </Box>
+              </Box>
+
+              <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  <strong>【表面标签】</strong> {c.surfaceMask}
+                </Typography>
+                <Typography variant="caption" color="secondary.main" display="block" sx={{ mt: 0.5, fontWeight: 600 }}>
+                  <strong>【隐藏反差】</strong> {c.hiddenContrast}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography variant="caption" color="text.primary">
+                  <strong>【核心欲望】</strong> {c.coreMotivation}
+                </Typography>
+                <Typography variant="caption" color="warning.main">
+                  <strong>【致命弱点】</strong> {c.fatalFlaw}
+                </Typography>
+                <Typography variant="caption" color="error.main">
+                  <strong>【防崩铁律】</strong> {c.antiCollapseRule}
+                </Typography>
+                <Typography variant="caption" color="info.main">
+                  <strong>【高光动作】</strong> {c.catchphrase}
+                </Typography>
+                <Typography variant="caption" color="success.main">
+                  <strong>【成长轨迹】</strong> {c.arcProgression}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button size="small" variant="outlined" onClick={() => copyCharacter(c)}>
+                  复制完整人设卡
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+
+      <Snackbar
+        open={Boolean(copied)}
+        autoHideDuration={2000}
+        onClose={() => setCopied('')}
+        message={copied}
+      />
+    </Box>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 8. 情绪高潮演出与五感通感描写库
+// ---------------------------------------------------------------------------
+
+function EmotionLibrarySection() {
+  const [emotions, setEmotions] = useState<EmotionItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    toolsApi
+      .getEmotions()
+      .then((res) => {
+        setEmotions(res.emotions || [])
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const copyProse = (e: EmotionItem) => {
+    const text = `【高潮演出】：${e.emotionScene}\n【正文范例】：\n${e.masterProseSample}\n【五感细节】：\n视觉：${e.sensoryBreakdown.vision}\n生理：${e.sensoryBreakdown.physiology}\n触觉：${e.sensoryBreakdown.touchAndTemp}\n听觉：${e.sensoryBreakdown.soundAndSilence}\n环境：${e.environmentalResonance}\n【节拍秘籍】：${e.writingRhythmTip}`
+    navigator.clipboard.writeText(text)
+    setCopied(`已复制情绪范例: ${e.emotionScene}`)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        情绪高潮演出与五感通感库：专治网文 AI 味直白喊情绪（他很愤怒/我好难过），以微表情、心跳冷汗、环境共鸣将情绪演出来。
+      </Typography>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 2 }}>
+        {emotions.map((e) => (
+          <Card key={e.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {e.emotionScene}
+                </Typography>
+                <Chip size="small" label={e.category} color="secondary" />
+              </Box>
+
+              <Box sx={{ bgcolor: 'error.50', borderLeft: 3, borderColor: 'error.main', p: 1, borderRadius: '0 4px 4px 0' }}>
+                <Typography variant="caption" color="error.dark" fontWeight={700} display="block">
+                  ❌ AI直白喊情绪（反例）：
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
+                  {e.aiClicheExample}
+                </Typography>
+              </Box>
+
+              <Box sx={{ bgcolor: 'success.50', borderLeft: 3, borderColor: 'success.main', p: 1, borderRadius: '0 4px 4px 0' }}>
+                <Typography variant="caption" color="success.dark" fontWeight={700} display="block">
+                  ✅ 顶级网文高潮演出正文（示范）：
+                </Typography>
+                <Typography variant="body2" fontWeight={500} color="text.primary">
+                  {e.masterProseSample}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>【视觉微表情】</strong> {e.sensoryBreakdown.vision}
+                </Typography>
+                <Typography variant="caption" color="primary.main">
+                  <strong>【生理本能反应】</strong> {e.sensoryBreakdown.physiology}
+                </Typography>
+                <Typography variant="caption" color="info.main">
+                  <strong>【触觉与温感】</strong> {e.sensoryBreakdown.touchAndTemp}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>【听觉与空白】</strong> {e.sensoryBreakdown.soundAndSilence}
+                </Typography>
+                <Typography variant="caption" color="warning.main">
+                  <strong>【环境通感渲染】</strong> {e.environmentalResonance}
+                </Typography>
+                <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
+                  <strong>【节拍秘籍】</strong> {e.writingRhythmTip}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button size="small" variant="outlined" onClick={() => copyProse(e)}>
+                  复制范例与五感细节
                 </Button>
               </Box>
             </CardContent>

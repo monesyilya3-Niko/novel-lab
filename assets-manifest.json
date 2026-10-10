@@ -1,6 +1,6 @@
 {
   "version": "2.0.3",
-  "generated_at": "2026-10-10T09:48:43.493830-06:00",
+  "generated_at": "2026-10-10T10:30:27.315387-06:00",
   "files": {
     "campus-redemption-commercial-obs-distilled.json": {
       "sha256": "d0f053c82318c2e5ea10371e76ee739bb49656bedcd416f25bec9160a650af85",
@@ -20,6 +20,10 @@
     },
     "campus-redemption-voice-card-distilled.json": {
       "sha256": "b4753f3d192bee7afe791dc7bcb3cb1081cd2b6168f4b512dd0fb66e82361f6b",
+      "previous_hashes": []
+    },
+    "character-library.json": {
+      "sha256": "8acb17f2fdbfced2a9dbb5ba23f198c94060c28223c408be805567cf01b254cd",
       "previous_hashes": []
     },
     "chireng_chosen-commercial-obs.json": {
@@ -72,6 +76,10 @@
     },
     "dushi-xiuzhen-genre-pack.json": {
       "sha256": "8076832812072fdca29b45fcd67fe6daa1f94a5f13006b91186c5f3ceaaa3915",
+      "previous_hashes": []
+    },
+    "emotion-library.json": {
+      "sha256": "9aeceeec96c654a2b7482e2ba00941f5b07abcc20eabe4b43713137ace44bc22",
       "previous_hashes": []
     },
     "genre-prose-card-genre-dianjing.json": {
