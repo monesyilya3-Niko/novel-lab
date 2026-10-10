@@ -415,6 +415,18 @@ def _h_writing_outline_delete(params: dict[str, Any], _body: dict[str, Any]) -> 
     return ok({"deleted": True})
 
 
+def _h_writing_outlines_reorder(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    project = b.get("project")
+    order_ids = b.get("order_ids")
+    if not isinstance(project, str) or not project:
+        raise ServiceError("project 必须为非空字符串", 400)
+    if not isinstance(order_ids, list):
+        raise ServiceError("order_ids 必须为列表", 400)
+    return ok(writing_extra.reorder_outlines(project, order_ids))
+
+
 def _h_writing_characters_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
     return ok(writing_extra.list_characters(params.get("project") or ""))
@@ -475,7 +487,17 @@ def _h_writing_stats(params: dict[str, Any], _body: dict[str, Any]) -> dict[str,
 
 def _h_writing_export(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    return ok(writing_extra.export_project_txt(params.get("project") or ""))
+    fmt = params.get("format") or params.get("fmt") or "txt"
+    return ok(writing_extra.export_project(params.get("project") or "", fmt=fmt))
+
+
+def _h_writing_deslop(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import deslop_service
+    b = body or {}
+    text = b.get("text")
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    return ok(deslop_service.analyze_deslop(text))
 
 
 def _h_quality_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
@@ -847,6 +869,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/writing/assemble-candidates$"), _h_writing_assemble_candidates),
     ("GET", re.compile(r"^/api/writing/outlines$"), _h_writing_outlines_list),
     ("POST", re.compile(r"^/api/writing/outlines$"), _h_writing_outline_create),
+    ("POST", re.compile(r"^/api/writing/outlines/reorder$"), _h_writing_outlines_reorder),
     ("PUT", re.compile(r"^/api/writing/outlines/(?P<oid>\d+)$"), _h_writing_outline_update),
     ("DELETE", re.compile(r"^/api/writing/outlines/(?P<oid>\d+)$"), _h_writing_outline_delete),
     ("GET", re.compile(r"^/api/writing/characters$"), _h_writing_characters_list),
@@ -859,6 +882,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("DELETE", re.compile(r"^/api/writing/notes/(?P<nid>\d+)$"), _h_writing_note_delete),
     ("GET", re.compile(r"^/api/writing/stats$"), _h_writing_stats),
     ("GET", re.compile(r"^/api/writing/export$"), _h_writing_export),
+    ("POST", re.compile(r"^/api/writing/deslop$"), _h_writing_deslop),
     # W15 阶段二：质检（M3）
     ("POST", re.compile(r"^/api/quality/check$"), _h_quality_check),
     ("POST", re.compile(r"^/api/quality/book$"), _h_quality_book),

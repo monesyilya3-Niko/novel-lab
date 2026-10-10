@@ -12,8 +12,8 @@ novel-lab 是一套本地优先（local-first）的网文创作辅助系统，�
 
 双形态交付：**CLI 引擎**（`novel.py`，20+ 中文子命令）+ **GUI 工作台**（浏览器访问 `http://127.0.0.1:8000/`）。
 
-> 🤖 **外部智能体调用**：Qoder / Cline / Claude / OpenCode / Antigravity 等桌面 Agent
-> 请先读 [docs/AGENT_API.md](docs/AGENT_API.md)——HTTP API 调用手册（资产发现、无模型降级、生成/入库/打分全流程）。
+> 📖 **人类作者指南**：请阅读 [docs/USER_GUIDE.md](docs/USER_GUIDE.md) —— 详尽的使用手册、创作全流程图解、可视化大盘说明与快捷键指南。  
+> 🤖 **外部智能体调用**：Qoder / Cline / Claude / OpenCode / Antigravity 等桌面 Agent 请读 [docs/AGENT_API.md](docs/AGENT_API.md) —— HTTP RESTful API 集成手册与 Python SDK。
 
 | 亮色首页 | 暗色写作台 |
 |---|---|
@@ -36,7 +36,9 @@ novel-lab 是一套本地优先（local-first）的网文创作辅助系统，�
 |---|---|
 | 拆书引擎 | TXT 全本 → 分层采样 → 量化 → 五遍扫描 → 归一化 → 结构化资产 |
 | 资产体系 | 文风卡 / 笔法卡 / 结构观测 / 商业观测 / 题材包 / 蒸馏资产 / 文风卡库 / 桥段库 |
-| 写作台 | 资产注入 → system prompt → 生成 → 一致性/质量双维度改写循环 |
+| 写作工作台 | 创作者全景大盘（速率折线/情绪波形/爽点雷达）+ 细纲原子重排 + 人物卡树 + 双栏审校对比 |
+| 润色与去 AI 味 | 6 大维度纯算法诊断（假大空修辞、直白情绪喊话、极端程度词、口癖词、「让」字句、同构排比） |
+| 出版级规范导出 | Word (.docx) 纯标准库 OpenXML 构建带扉页排版 + Markdown (.md) + 纯文本 (.txt) 一键下载 |
 | 质检台 | 单章检查（12 维 100 分制）+ 全书质检（6 类）+ QC 四层十二维 |
 | 题材隔离 | 不同题材的资产/配置严格隔离，聚合与注入全链路校验 |
 
@@ -75,7 +77,7 @@ python -m gui.launch
 
 ```
 前端  Vite + React + MUI + ECharts（预构建产物入库，用户免装 Node）
-  │  HTTP REST + SSE（65 个端点）
+  │  HTTP REST + SSE（97 个端点，详见 AGENTS.md §7）
 后端  Python 纯标准库（http.server + sqlite3，零第三方依赖）
   │  同进程 engine_adapter
 引擎  scripts/ 32 个纯标准库脚本（pipeline / qc / distill / write / report …）

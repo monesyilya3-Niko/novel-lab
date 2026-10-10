@@ -63,7 +63,7 @@ export const ink = {
 
 export const fontStack = {
   serif: '"Noto Serif SC", "Songti SC", "SimSun", serif',
-  sans: '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif',
+  sans: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
   mono: '"JetBrains Mono", "SF Mono", Consolas, monospace',
 } as const
 
@@ -74,6 +74,24 @@ export const card = {
   borderRadius: 12,
   boxShadow: '0 1px 2px rgba(16, 16, 20, 0.04)',
 } as const
+
+/** 玻璃拟态卡片（Glassmorphism） */
+export const glassCard = (isDark = false) => ({
+  backgroundColor: isDark ? 'rgba(20, 20, 23, 0.72)' : 'rgba(255, 255, 255, 0.82)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)'}`,
+  borderRadius: 14,
+  boxShadow: isDark
+    ? '0 8px 32px rgba(0, 0, 0, 0.36)'
+    : '0 8px 28px rgba(16, 24, 40, 0.05)',
+})
+
+/** 微渐变背景（Ambient Mesh Gradient） */
+export const ambientGradient = (isDark = false) =>
+  isDark
+    ? 'radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.06) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(5, 150, 105, 0.04) 0px, transparent 50%)'
+    : 'radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.035) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(244, 244, 245, 0.8) 0px, transparent 50%)'
 
 /** 卡片悬浮效果：上浮 + 阴影加深 */
 export const cardHover = {

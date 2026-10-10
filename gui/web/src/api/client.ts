@@ -123,6 +123,7 @@ async function typedRequest<T>(
   path: string,
   body?: unknown,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  retryCount: number = 0,
 ): Promise<T> {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), timeoutMs)
@@ -137,6 +138,13 @@ async function typedRequest<T>(
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: ctrl.signal,
     })
+  } catch (err) {
+    // 幂等 GET 请求遇到瞬时网络异常（如服务短暂重启），重试一次
+    if (method === 'GET' && retryCount < 1 && err instanceof TypeError) {
+      await new Promise((r) => setTimeout(r, 200))
+      return typedRequest<T>(method, path, body, timeoutMs, retryCount + 1)
+    }
+    throw err
   } finally {
     clearTimeout(timer)
   }
@@ -459,6 +467,8 @@ export const writingApi = {
   createOutline: (body: Record<string, unknown>) => post<OutlineItem>('/writing/outlines', body),
   updateOutline: (id: number, body: Record<string, unknown>) => put<OutlineItem>(`/writing/outlines/${id}`, body),
   deleteOutline: (id: number) => del<{ deleted: boolean }>(`/writing/outlines/${id}`),
+  reorderOutlines: (project: string, orderIds: number[]) =>
+    post<OutlineItem[]>('/writing/outlines/reorder', { project, order_ids: orderIds }),
   characters: (project: string) => get<CharacterCard[]>(`/writing/characters?project=${encodeURIComponent(project)}`),
   createCharacter: (body: Record<string, unknown>) => post<CharacterCard>('/writing/characters', body),
   updateCharacter: (id: number, body: Record<string, unknown>) => put<CharacterCard>(`/writing/characters/${id}`, body),
@@ -470,8 +480,43 @@ export const writingApi = {
   stats: (project: string, days = 30) =>
     get<WritingStats>(`/writing/stats?project=${encodeURIComponent(project)}&days=${days}`),
   exportTxt: (project: string) =>
-    get<{ filename: string; content: string; chapters: number; words: number }>(
-      `/writing/export?project=${encodeURIComponent(project)}`),
+    get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}`),
+  export: (project: string, format: 'txt' | 'md' | 'docx' = 'txt') =>
+    get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}&format=${format}`),
+  deslop: (text: string) =>
+    post<DeslopResult>('/writing/deslop', { text }),
+}
+
+export interface ExportResult {
+  filename: string
+  content?: string
+  contentBase64?: string
+  format: 'txt' | 'md' | 'docx'
+  chapters: number
+  words: number
+}
+
+export interface DeslopIssue {
+  type: string
+  label: string
+  snippet: string
+  index: number
+  weight: number
+  suggestion: string
+}
+
+export interface DeslopResult {
+  aiScore: number
+  verdict: 'NATURAL' | 'MILD' | 'NOTICEABLE' | 'SEVERE'
+  verdictCn: string
+  stats: {
+    wordCount: number
+    sentenceCount: number
+    issuesCount: number
+    rangDensity: number
+  }
+  issues: DeslopIssue[]
+  suggestions: string[]
 }
 
 export interface OutlineItem {

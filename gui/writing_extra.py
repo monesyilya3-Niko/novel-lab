@@ -10,8 +10,12 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 import re
+import xml.sax.saxutils
+import zipfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -143,6 +147,22 @@ def delete_outline(outline_id: int) -> None:
                            (int(outline_id),))
         if cur.rowcount == 0:
             raise ServiceError(f"大纲不存在: {outline_id}", 404)
+
+
+def reorder_outlines(project: str, order_ids: list[int]) -> list[dict[str, Any]]:
+    """批量更新大纲项排序（原子事务）。"""
+    project = _require_project(project)
+    if not isinstance(order_ids, list):
+        raise ServiceError("order_ids 必须为列表", 400)
+    now = _now_iso()
+    with db.tx() as conn:
+        for idx, oid in enumerate(order_ids):
+            conn.execute(
+                "UPDATE writing_outlines SET sort_order = ?, updated_at = ?"
+                " WHERE id = ? AND project = ?",
+                (idx, now, int(oid), project),
+            )
+    return list_outlines(project)
 
 
 # ---------------------------------------------------------------------------
@@ -444,5 +464,144 @@ def export_project_txt(project: str) -> dict[str, Any]:
             parts.append(f"第{no}章\n\n{content}\n")
     body = "\n\n".join(parts)
     filename = f"{project}-全书导出-{date.today().isoformat()}.txt"
-    return {"filename": filename, "content": body,
+    return {"filename": filename, "content": body, "format": "txt",
             "chapters": len(files), "words": count_words(body)}
+
+
+def export_project_md(project: str) -> dict[str, Any]:
+    """导出全书 Markdown：规范章节结构与元数据。"""
+    project = _require_project(project)
+    files = _iter_chapter_files(project)
+    if not files:
+        raise ServiceError(f"项目尚无章节可导出: {project}", 404)
+    
+    today_str = date.today().isoformat()
+    lines: list[str] = [
+        f"# {project}",
+        "",
+        f"> 导出日期：{today_str} ｜ 章节总数：{len(files)}",
+        "",
+        "---",
+        "",
+    ]
+    total_words = 0
+    for no, fp in files:
+        try:
+            content = _read_chapter(fp).strip()
+        except OSError:
+            continue
+        if not content:
+            continue
+        total_words += count_words(content)
+        first_line = content.split("\n", 1)[0].strip()
+        looks_like_title = bool(first_line) and len(first_line) <= 60 and "。" not in first_line and "，" not in first_line
+        if looks_like_title:
+            body = content[len(first_line):].strip()
+            lines.append(f"## {first_line}")
+            lines.append("")
+            lines.append(body)
+        else:
+            lines.append(f"## 第{no}章")
+            lines.append("")
+            lines.append(content)
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+
+    full_md = "\n".join(lines)
+    filename = f"{project}-全书导出-{today_str}.md"
+    return {
+        "filename": filename,
+        "content": full_md,
+        "format": "md",
+        "chapters": len(files),
+        "words": total_words,
+    }
+
+
+def export_project_docx(project: str) -> dict[str, Any]:
+    """导出全书 Word (.docx)：纯 Python 标准库零依赖实现（生成合法 OpenXML ZIP 包）。"""
+    project = _require_project(project)
+    files = _iter_chapter_files(project)
+    if not files:
+        raise ServiceError(f"项目尚无章节可导出: {project}", 404)
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            '<Default Extension="xml" ContentType="application/xml"/>'
+            '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+            '</Types>'
+        ))
+        z.writestr("_rels/.rels", (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>'
+            '</Relationships>'
+        ))
+
+        doc_body = [
+            '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>'
+            f'<w:r><w:rPr><w:b/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>{xml.sax.saxutils.escape(project)}</w:t></w:r></w:p>'
+        ]
+
+        total_words = 0
+        for no, fp in files:
+            try:
+                content = _read_chapter(fp).strip()
+            except OSError:
+                continue
+            if not content:
+                continue
+            total_words += count_words(content)
+            first_line = content.split("\n", 1)[0].strip()
+            looks_like_title = bool(first_line) and len(first_line) <= 60 and "。" not in first_line and "，" not in first_line
+            if looks_like_title:
+                ch_title = first_line
+                ch_body = content[len(first_line):].strip()
+            else:
+                ch_title = f"第{no}章"
+                ch_body = content
+
+            doc_body.append(
+                '<w:p><w:pPr><w:spacing w:before="360" w:after="180"/></w:pPr>'
+                f'<w:r><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr><w:t>{xml.sax.saxutils.escape(ch_title)}</w:t></w:r></w:p>'
+            )
+            for para in ch_body.split("\n"):
+                p = para.strip()
+                if p:
+                    doc_body.append(
+                        '<w:p><w:pPr><w:ind w:firstLineChars="200" w:firstLine="400"/><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>'
+                        f'<w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t>{xml.sax.saxutils.escape(p)}</w:t></w:r></w:p>'
+                    )
+
+        doc_xml = (
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            f'<w:body>{"".join(doc_body)}</w:body></w:document>'
+        )
+        z.writestr("word/document.xml", doc_xml)
+
+    docx_bytes = buf.getvalue()
+    b64_content = base64.b64encode(docx_bytes).decode("ascii")
+    filename = f"{project}-全书导出-{date.today().isoformat()}.docx"
+    return {
+        "filename": filename,
+        "content_base64": b64_content,
+        "format": "docx",
+        "chapters": len(files),
+        "words": total_words,
+    }
+
+
+def export_project(project: str, fmt: str = "txt") -> dict[str, Any]:
+    """统一多格式导出入口：txt / md / docx。"""
+    fmt_clean = (fmt or "txt").lower().strip()
+    if fmt_clean in ("docx", "word"):
+        return export_project_docx(project)
+    elif fmt_clean in ("md", "markdown"):
+        return export_project_md(project)
+    return export_project_txt(project)

@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as echarts from 'echarts/core'
 import type { EChartsOption } from 'echarts'
-import { BarChart, PieChart, RadarChart, GaugeChart, HeatmapChart } from 'echarts/charts'
+import { BarChart, PieChart, RadarChart, GaugeChart, HeatmapChart, LineChart } from 'echarts/charts'
 import {
   TooltipComponent,
   LegendComponent,
@@ -23,6 +23,7 @@ echarts.use([
   RadarChart,
   GaugeChart,
   HeatmapChart,
+  LineChart,
   TooltipComponent,
   LegendComponent,
   GridComponent,

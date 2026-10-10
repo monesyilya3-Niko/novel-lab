@@ -10,52 +10,91 @@ body,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Microsoft YaHei', sans-serif;
-  background-color: #f5f6f8;
+  background-color: #f7f7f8;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* 「墨」设计系统 v3：细节打磨 */
+/* 现代质感：玻璃拟态与平滑过渡 */
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
 
-/* 朱砂色文本选中 */
+.dark .glassmorphism {
+  background: rgba(20, 20, 23, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 打字机光标动画 */
+@keyframes typewriterBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  background-color: #2563eb;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: typewriterBlink 0.9s infinite;
+}
+
+/* 骨架屏微光渐变 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-effect {
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite;
+}
+
+/* 选区与滚动条细节 */
 ::selection {
-  background: rgba(199, 62, 58, 0.22);
+  background: rgba(37, 99, 235, 0.2);
   color: inherit;
 }
 
-/* 纤细墨色滚动条 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(138, 132, 120, 0.35);
-  border-radius: 4px;
+  background: rgba(160, 160, 170, 0.35);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(199, 62, 58, 0.5);
+  background: rgba(37, 99, 235, 0.5);
 }
-/* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(138, 132, 120, 0.35) transparent;
+  scrollbar-color: rgba(160, 160, 170, 0.35) transparent;
 }
 
-/* 键盘焦点环：朱砂细线 */
 :focus-visible {
-  outline: 2px solid rgba(199, 62, 58, 0.6);
+  outline: 2px solid rgba(37, 99, 235, 0.6);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* 数字等宽（统计数字对齐） */
 .tnum {
   font-variant-numeric: tabular-nums;
 }
