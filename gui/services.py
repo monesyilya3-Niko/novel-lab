@@ -1174,3 +1174,15 @@ def get_worlds() -> dict[str, Any]:
         return json.loads(fp.read_text(encoding="utf-8"))
     except Exception as exc:
         raise ServiceError(f"世界观设定库损坏: {exc}", 500) from exc
+
+
+def get_dialogues() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "dialogue-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "dialogue-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "dialogues": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"台词金句库损坏: {exc}", 500) from exc

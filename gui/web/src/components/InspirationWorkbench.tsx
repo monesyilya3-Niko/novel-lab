@@ -21,6 +21,7 @@ import {
   type HookItem,
   type ShuangdianItem,
   type WorldSystemItem,
+  type DialogueItem,
 } from '../api/client'
 
 export default function InspirationWorkbench() {
@@ -36,6 +37,7 @@ export default function InspirationWorkbench() {
             <Tab label="金手指机制库 (12大外挂)" />
             <Tab label="爽点打脸设计 (三段闭环)" />
             <Tab label="世界观体系 (力量阶梯)" />
+            <Tab label="名场面台词库 (反AI对话)" />
           </Tabs>
         </Box>
 
@@ -44,6 +46,7 @@ export default function InspirationWorkbench() {
         {subTab === 2 && <GoldfingerLibrarySection />}
         {subTab === 3 && <ShuangdianLibrarySection />}
         {subTab === 4 && <WorldLibrarySection />}
+        {subTab === 5 && <DialogueLibrarySection />}
       </Paper>
     </Box>
   )
@@ -101,6 +104,7 @@ function NameGeneratorSection() {
           sx={{ minWidth: 140 }}
         >
           <MenuItem value="character">人物角色</MenuItem>
+          <MenuItem value="title">爆款书名 (网文标题)</MenuItem>
           <MenuItem value="sect">宗门 / 仙门</MenuItem>
           <MenuItem value="corp">集团 / 财阀</MenuItem>
           <MenuItem value="team">电竞 / 战队</MenuItem>
@@ -109,6 +113,23 @@ function NameGeneratorSection() {
           <MenuItem value="skill">功法 / 战技</MenuItem>
           <MenuItem value="artifact">神兵 / 法宝</MenuItem>
         </TextField>
+
+        {kind === 'title' && (
+          <TextField
+            select
+            size="small"
+            label="小说题材"
+            value={style}
+            onChange={(e) => setStyle(e.target.value)}
+            sx={{ minWidth: 140 }}
+          >
+            <MenuItem value="xianxia">仙侠修真</MenuItem>
+            <MenuItem value="dushi">都市神豪</MenuItem>
+            <MenuItem value="kehuan">科幻末日</MenuItem>
+            <MenuItem value="xuanyi">悬疑怪谈</MenuItem>
+            <MenuItem value="duanpian">知乎反转短篇</MenuItem>
+          </TextField>
+        )}
 
         {kind === 'character' && (
           <>
@@ -623,6 +644,118 @@ function WorldLibrarySection() {
                   }}
                 >
                   复制世界观设定
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+
+      <Snackbar
+        open={Boolean(copied)}
+        autoHideDuration={2000}
+        onClose={() => setCopied('')}
+        message={copied}
+      />
+    </Box>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 6. 名场面台词库
+// ---------------------------------------------------------------------------
+
+function DialogueLibrarySection() {
+  const [dialogues, setDialogues] = useState<DialogueItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    toolsApi
+      .getDialogues()
+      .then((res) => {
+        setDialogues(res.dialogues || [])
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const copyText = (txt: string, tip: string) => {
+    navigator.clipboard.writeText(txt)
+    setCopied(`已复制: ${tip}`)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        名场面金句与反AI台词设计库：精选 12 大经典高频交锋场景，提供【AI书面腔反例】与【真人网文口语台词】对照，拆解潜台词、动作节拍与语言指纹。
+      </Typography>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 2 }}>
+        {dialogues.map((d) => (
+          <Card key={d.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {d.name}
+                </Typography>
+                <Chip size="small" label={d.category} color="secondary" />
+              </Box>
+
+              <Box sx={{ bgcolor: 'error.50', borderLeft: 3, borderColor: 'error.main', p: 1, borderRadius: '0 4px 4px 0' }}>
+                <Typography variant="caption" color="error.dark" fontWeight={700} display="block">
+                  ❌ AI说明文书面腔（反例）：
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
+                  {d.aiSlopBad}
+                </Typography>
+              </Box>
+
+              <Box sx={{ bgcolor: 'success.50', borderLeft: 3, borderColor: 'success.main', p: 1, borderRadius: '0 4px 4px 0' }}>
+                <Typography variant="caption" color="success.dark" fontWeight={700} display="block">
+                  ✅ 顶级网文口语台词（推荐）：
+                </Typography>
+                <Typography variant="body2" fontWeight={700} color="text.primary">
+                  {d.humanGood}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>【潜台词拆解】</strong> {d.subtext}
+                </Typography>
+                <Typography variant="caption" color="primary.main">
+                  <strong>【神态动作搭配】</strong> {d.actionBeats}
+                </Typography>
+                <Typography variant="caption" color="info.main">
+                  <strong>【语言指纹建议】</strong> {d.speechProfileTip}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() =>
+                    copyText(
+                      `台词：${d.humanGood}\n动作节拍：${d.actionBeats}\n（潜台词：${d.subtext}）`,
+                      d.name
+                    )
+                  }
+                >
+                  复制台词与动作
                 </Button>
               </Box>
             </CardContent>

@@ -631,12 +631,27 @@ export const styleApi = {
   apply: (body: { style_name: string; base_prompt: string }) => post<Record<string, unknown>>('/style/apply', body),
 }
 
+export interface SubmissionDiagnosisResult {
+  platform: string
+  platformId: string
+  chapterNum: number
+  charCount: number
+  score: number
+  grade: string
+  signingProb: string
+  dialogueRatio: number
+  vetoRisks: string[]
+  actionableFixes: string[]
+}
+
 // 多平台适配
 export const platformApi = {
   list: () => get<Record<string, unknown>>('/platform/list'),
   get: (id: string) => get<Record<string, unknown>>(`/platform/${encodeURIComponent(id)}`),
   check: (body: { platform_id: string; chapter_text: string; chapter_title?: string }) =>
     post<Record<string, unknown>>('/platform/check', body),
+  diagnose: (body: { platform_id: string; chapter_text: string; chapter_title?: string; chapter_num?: number }) =>
+    post<SubmissionDiagnosisResult>('/platform/diagnose', body),
   format: (body: { platform_id: string; chapter_num: number; title: string; content: string }) =>
     post<Record<string, unknown>>('/platform/format', body),
   export: (body: { platform_id: string; book_dir: string }) =>
@@ -807,6 +822,17 @@ export interface WorldSystemItem {
   powerCollapseWarning: string
 }
 
+export interface DialogueItem {
+  id: string
+  name: string
+  category: string
+  aiSlopBad: string
+  humanGood: string
+  subtext: string
+  actionBeats: string
+  speechProfileTip: string
+}
+
 export const toolsApi = {
   generateNames: (params?: NameGenerateParams) => {
     const q = new URLSearchParams()
@@ -822,4 +848,5 @@ export const toolsApi = {
   getTaboos: () => get<{ totalCount: number; taboos: TabooItem[] }>('/tools/taboos'),
   getShuangdians: () => get<{ totalCount: number; shuangdians: ShuangdianItem[] }>('/tools/shuangdians'),
   getWorlds: () => get<{ totalCount: number; worlds: WorldSystemItem[] }>('/tools/worlds'),
+  getDialogues: () => get<{ totalCount: number; dialogues: DialogueItem[] }>('/tools/dialogues'),
 }

@@ -97,5 +97,40 @@ class TestExportChapterTitles(unittest.TestCase):
             [c["title"] for c in data["chapters"]], ["第1章 开端", "第2章 开端"])
 
 
+class TestDiagnoseChapter(unittest.TestCase):
+    """网文签约过稿深度诊断测试。"""
+
+    def test_diagnose_normal_chapter_passes(self):
+        text = "林轩拔剑，冷笑一声：“就凭你们这群鼠辈也配？”\n" + "剑光破空，群雄战栗。" * 200
+        res = platform_service.diagnose_chapter("fanqie", text, "第1章 拔剑", chapter_num=1)
+        self.assertIn(res["grade"], ("A", "B"))
+        self.assertGreaterEqual(res["score"], 70)
+        self.assertIn("signing_prob", res)
+
+
+    def test_diagnose_short_chapter_penalized(self):
+        text = "林轩拔剑冷笑。"
+        res = platform_service.diagnose_chapter("fanqie", text, "第1章 拔剑", chapter_num=1)
+        self.assertEqual(res["grade"], "C")
+        self.assertTrue(any("字数不足" in r for r in res["veto_risks"]))
+
+    def test_diagnose_opening_info_dump_penalized(self):
+        text = "在这个世界，很久很久以前，力量体系分为七大境界……\n" + "他拔剑出招。" * 300
+        res = platform_service.diagnose_chapter("qidian", text, "第1章", chapter_num=1)
+        self.assertTrue(any("头号劝退点" in r for r in res["veto_risks"]))
+
+    def test_diagnose_router_dispatch(self):
+        from gui import router
+        resp, _ = router.dispatch(
+            "POST",
+            "/api/platform/diagnose",
+            {"platform_id": "fanqie", "chapter_text": "林轩拔剑，冷笑一声。" * 150, "chapter_num": 1},
+            {}
+        )
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("grade", resp["data"])
+        self.assertIn("score", resp["data"])
+
+
 if __name__ == "__main__":
     unittest.main()

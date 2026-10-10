@@ -182,6 +182,130 @@ def check_chapter_compliance(platform_id: str, chapter_text: str,
     }
 
 
+_INFO_DUMP_KEYWORDS = [
+    "在这个世界", "很久很久以前", "相传数万年前", "历史悠久", "众所周知",
+    "力量体系分为", "地理位置极为特殊", "根据上古文献记载", "天地初开之际"
+]
+
+_AI_SLOP_PHRASES = [
+    "心中涌起一股暖流", "宛如天神下凡", "深知这个道理", "眼神中闪烁着复杂的光芒",
+    "嘴角勾起一抹弧度", "不由得倒吸了一口凉气", "在心中默默发誓", "感到无比的震惊与愤怒",
+    "仿佛在诉说着曾经的过往", "这一刻，时间仿佛静止了"
+]
+
+
+def diagnose_chapter(platform_id: str, chapter_text: str,
+                     chapter_title: str = "", chapter_num: int = 1) -> dict[str, Any]:
+    """网文签约过稿深度诊断（黄金三章自检、说明文劝退度分析、平台专属审核规则）。"""
+    if platform_id not in PLATFORMS:
+        raise ServiceError(f"不支持的平台: {platform_id}", 400)
+    if not isinstance(chapter_text, str):
+        raise ServiceError("chapter_text 必须为字符串", 400)
+    if chapter_title is None:
+        chapter_title = ""
+    if not isinstance(chapter_title, str):
+        raise ServiceError("chapter_title 必须为字符串", 400)
+    try:
+        c_num = int(chapter_num)
+        if c_num < 1:
+            c_num = 1
+    except (TypeError, ValueError):
+        c_num = 1
+
+    p = PLATFORMS[platform_id]
+    char_count = len(chapter_text)
+    score = 100
+    veto_risks: list[str] = []
+    actionable_fixes: list[str] = []
+
+    # 1. 篇幅达标度
+    min_c = p["chapter_min_chars"]
+    max_c = p["chapter_max_chars"]
+    if char_count < min_c:
+        deficit = min_c - char_count
+        score -= min(35, int(deficit / min_c * 40))
+        veto_risks.append(f"字数不足：当前 {char_count} 字，低于 {p['name']} 最低签约门槛 {min_c} 字（缺 {deficit} 字）")
+        actionable_fixes.append(f"将本章核心冲突或情绪推进补充完整，扩写至 {min_c} 字以上")
+    elif char_count > max_c:
+        score -= 5
+        veto_risks.append(f"单章偏长：当前 {char_count} 字超出建议上限 {max_c} 字，可能造成单章定价偏高或阅读疲劳")
+        actionable_fixes.append("建议在剧情转折处拆分为两章，以提升留存与追读率")
+
+    # 2. 黄金开篇前 300 字检测（特别是前三章）
+    opening_snippet = chapter_text[:300].strip()
+    is_early_chapter = c_num <= 3
+    has_dialogue_or_action = any(q in opening_snippet for q in ('"', "“", "”", "：")) or any(
+        act in opening_snippet for act in ("退婚", "死", "杀", "冷笑", "拔剑", "签", "跪", "滚", "跑", "巴掌", "离婚", "系统")
+    )
+    found_info_dump = [k for k in _INFO_DUMP_KEYWORDS if k in opening_snippet]
+
+    if is_early_chapter:
+        if found_info_dump:
+            score -= 25
+            veto_risks.append(f"头号劝退点：开篇前300字陷入大段背景/历史说明文（命中：{', '.join(found_info_dump)}）")
+            actionable_fixes.append("删去开篇背景设定，直接从主角面临的生死危机、剧烈冲突或对话场景切入（先打起来，设定随剧情自然展开）")
+        elif not has_dialogue_or_action:
+            score -= 15
+            veto_risks.append("开篇节奏较缓：前300字缺乏鲜明的动作冲突、人物对话或紧迫悬念")
+            actionable_fixes.append("前三句植入核心钩子或悬念（如危机、反常事件或倒计时），抓住前三秒阅读注意力")
+
+    # 3. 对话密度分析
+    from gui import engine_adapter
+    dialogue_chars = engine_adapter.dialogue_char_count(chapter_text)
+    dialogue_ratio = round((dialogue_chars / char_count) * 100, 1) if char_count > 0 else 0
+    if char_count > 500:
+        if dialogue_ratio < 12.0:
+            score -= 15
+            veto_risks.append(f"对话密度过低（{dialogue_ratio}%）：通篇叙述说明，读者极易产生视觉与心理疲劳")
+            actionable_fixes.append("将部分陈述句转换为人物交锋对白，用角色的说话态度表现性格冲突")
+        elif dialogue_ratio > 65.0:
+            score -= 10
+            veto_risks.append(f"对话密度过高（{dialogue_ratio}%）：通篇纯对白，缺乏环境渲染与神态动作支撑")
+            actionable_fixes.append("在台词间穿插角色的微表情、肢体动作与潜台词动作节拍（action beats）")
+
+    # 4. AI味俗套词排查
+    found_slop = [phrase for phrase in _AI_SLOP_PHRASES if phrase in chapter_text]
+    if found_slop:
+        deduction = min(20, len(found_slop) * 5)
+        score -= deduction
+        veto_risks.append(f"AI味俗套表达过多（命中 {len(found_slop)} 处：{', '.join(found_slop[:3])}）")
+        actionable_fixes.append("使用写作台【去AI味体检】功能，将书面说明腔与陈词滥调替换为自然网文口语表达")
+
+    # 5. 平台专属风格自检
+    if platform_id == "zhihu" and "我" not in chapter_text[:500]:
+        score -= 20
+        veto_risks.append("知乎盐言风格偏离：前500字未见第一人称“我”，知乎读者偏好第一人称沉浸式代入")
+        actionable_fixes.append("知乎短篇故事建议改为第一人称主视角叙事，直接拉满代入感与情绪撕裂度")
+    elif platform_id == "fanqie" and is_early_chapter and score < 80:
+        veto_risks.append("番茄完读率预警：前三章节奏偏慢，番茄算法推荐严重依赖前三章读完率")
+        actionable_fixes.append("在第1章结尾必须设计强悬念钩子，第2-3章必须安排一次小型爽点兑现")
+
+    score = max(20, min(100, score))
+    if score >= 85:
+        grade = "A"
+        signing_prob = "高（具备高过稿潜力）"
+    elif score >= 70:
+        grade = "B"
+        signing_prob = "中（基本合格，建议按优化建议调整后投递）"
+    else:
+        grade = "C"
+        signing_prob = "低（存在明显硬伤，容易被编辑当场秒拒）"
+
+    return {
+        "platform": p["name"],
+        "platform_id": platform_id,
+        "chapter_num": c_num,
+        "char_count": char_count,
+        "score": score,
+        "grade": grade,
+        "signing_prob": signing_prob,
+        "dialogue_ratio": dialogue_ratio,
+        "veto_risks": veto_risks,
+        "actionable_fixes": actionable_fixes,
+    }
+
+
+
 #: 章节标题自带的章号前缀（"第1章"、"第三十二章 "、"Chapter 3：" …）。
 _CHAPTER_PREFIX_RE = re.compile(
     r"^\s*(?:第\s*[0-9零〇一二三四五六七八九十百千万两]{1,8}\s*[章节回]"

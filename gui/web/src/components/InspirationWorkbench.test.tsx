@@ -77,6 +77,22 @@ vi.mock('../api/client', () => ({
         },
       ],
     }),
+    getDialogues: vi.fn().mockResolvedValue({
+      totalCount: 1,
+      dialogues: [
+        {
+          id: 'DLG-001',
+          name: '宗门死斗·生死看淡一剑封喉',
+          category: '极致打脸',
+          scene: '生死擂台上反派嘲弄主角残废',
+          aiSlopBad: '你居然敢挑战我，真是不自量力！',
+          humanGood: '话太多。拔剑。',
+          subtext: '视若草芥，多说半个字都是浪费灵力',
+          actionBeats: '眼神淡漠如看死物，长剑斜指地面',
+          speechProfileTip: '惜字如金，重音在动词',
+        },
+      ],
+    }),
   },
   friendlyError: (e: unknown) => String(e),
 }))
@@ -125,6 +141,16 @@ describe('InspirationWorkbench', () => {
     await waitFor(() => {
       expect(screen.getByText('东方仙侠·古典修真飞升体系')).toBeDefined()
       expect(screen.getByText('炼气期 (1-9层)')).toBeDefined()
+    })
+  })
+
+  it('切换到名场面台词库 (反AI对话)', async () => {
+    render(<InspirationWorkbench />)
+    fireEvent.click(screen.getByText('名场面台词库 (反AI对话)'))
+    await waitFor(() => {
+      expect(screen.getByText('宗门死斗·生死看淡一剑封喉')).toBeDefined()
+      expect(screen.getByText('话太多。拔剑。')).toBeDefined()
+      expect(screen.getByText(/你居然敢挑战我/)).toBeDefined()
     })
   })
 })

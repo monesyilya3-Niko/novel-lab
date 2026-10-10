@@ -85,6 +85,18 @@ class TestNameGenerator(unittest.TestCase):
             self.assertEqual(r["kind"], k)
             self.assertEqual(len(r["names"]), 5)
 
+    def test_title_names(self):
+        titles = name_generator.generate_title_names(style="xianxia", count=5)
+        self.assertEqual(len(titles), 5)
+        self.assertEqual(len(set(titles)), 5)
+        for t in titles:
+            self.assertTrue(t.startswith("《") and t.endswith("》"))
+
+        res = name_generator.generate(kind="title", style="dushi", count=4)
+        self.assertEqual(res["kind"], "title")
+        self.assertEqual(len(res["names"]), 4)
+
+
 
 class TestPoisonChecker(unittest.TestCase):
     """毒点避雷检测器纯本地算法测试。"""
@@ -236,6 +248,11 @@ class TestToolsServicesAndRoutes(unittest.TestCase):
         self.assertIn("worlds", data)
         self.assertGreaterEqual(len(data["worlds"]), 8)
 
+    def test_get_dialogues_service(self):
+        data = services.get_dialogues()
+        self.assertIn("dialogues", data)
+        self.assertGreaterEqual(len(data["dialogues"]), 10)
+
     def test_router_dispatch_tools_routes(self):
         from gui import router
 
@@ -274,6 +291,12 @@ class TestToolsServicesAndRoutes(unittest.TestCase):
         resp, _ = router.dispatch("GET", "/api/tools/worlds", {}, {})
         self.assertEqual(resp["code"], 0)
         self.assertIn("worlds", resp["data"])
+
+        # 8. GET /api/tools/dialogues
+        resp, _ = router.dispatch("GET", "/api/tools/dialogues", {}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("dialogues", resp["data"])
+
 
 
 if __name__ == "__main__":

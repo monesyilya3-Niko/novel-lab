@@ -681,6 +681,18 @@ def _h_export_book(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, A
         b.get("platform_id", ""), b.get("book_dir", "")))
 
 
+def _h_diagnose_chapter(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import platform_service
+    b = body or {}
+    return ok(platform_service.diagnose_chapter(
+        b.get("platform_id", ""),
+        b.get("chapter_text", ""),
+        b.get("chapter_title", ""),
+        b.get("chapter_num", 1),
+    ))
+
+
+
 # --- M1 高级分析 handlers ---
 
 def _h_distill_status(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
@@ -869,6 +881,11 @@ def _h_tools_worlds(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str,
     return ok(services.get_worlds())
 
 
+def _h_tools_dialogues(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_dialogues())
+
+
+
 
 # ---------------------------------------------------------------------------
 # 路由表
@@ -969,6 +986,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/platform/list$"), _h_list_platforms),
     ("GET", re.compile(r"^/api/platform/(?P<platform_id>[^/]+)$"), _h_get_platform),
     ("POST", re.compile(r"^/api/platform/check$"), _h_check_compliance),
+    ("POST", re.compile(r"^/api/platform/diagnose$"), _h_diagnose_chapter),
     ("POST", re.compile(r"^/api/platform/format$"), _h_format_chapter),
     ("POST", re.compile(r"^/api/platform/export$"), _h_export_book),
     # 管理员系统（会话鉴权由 server 层 _check_auth 完成；login 由 server 直接处理）
@@ -991,6 +1009,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/tools/taboos$"), _h_tools_taboos),
     ("GET", re.compile(r"^/api/tools/shuangdians$"), _h_tools_shuangdians),
     ("GET", re.compile(r"^/api/tools/worlds$"), _h_tools_worlds),
+    ("GET", re.compile(r"^/api/tools/dialogues$"), _h_tools_dialogues),
 ]
 
 

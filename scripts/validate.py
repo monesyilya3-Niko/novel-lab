@@ -803,9 +803,9 @@ def validate_tool_library(d):
         return
     if "meta" not in d:
         err("缺少必填字段 'meta'", "tool-library")
-    has_items = any(k in d for k in ("goldfingers", "hooks", "taboos", "shuangdians", "worlds"))
+    has_items = any(k in d for k in ("goldfingers", "hooks", "taboos", "shuangdians", "worlds", "dialogues"))
     if not has_items:
-        err("缺少有效实操库条目列表（应包含 goldfingers / hooks / taboos / shuangdians / worlds）", "tool-library")
+        err("缺少有效实操库条目列表（应包含 goldfingers / hooks / taboos / shuangdians / worlds / dialogues）", "tool-library")
 
 
 DISPATCH = {
@@ -819,7 +819,7 @@ DISPATCH = {
     # 2026-09-16 新增：此前二者无专用校验器，被兜底误判为 voice-card（大量硬错误 REJECT）
     "distilled": validate_distilled,
     "genre-prose-card-index": validate_genre_prose_card_index,
-    # 2026-10-10 新增：实操工具库（金手指/黄金三章/避雷红线）
+    # 2026-10-10 新增：实操工具库（金手指/黄金三章/避雷红线/名场面台词）
     "tool-library": validate_tool_library,
 }
 
@@ -863,8 +863,8 @@ def auto_kind(d: dict, filename: str | None = None) -> str:
         return "distilled"
     if all(k in d for k in ("rules", "blindspots", "stats")):
         return "distilled"
-    # 2026-10-10：实操工具库（金手指/开篇钩子/避雷红线/爽点打脸/世界观体系）
-    if any(k in d for k in ("goldfingers", "hooks", "taboos", "shuangdians", "worlds")):
+    # 2026-10-10：实操工具库（金手指/开篇钩子/避雷红线/爽点打脸/世界观体系/名场面台词）
+    if any(k in d for k in ("goldfingers", "hooks", "taboos", "shuangdians", "worlds", "dialogues")):
         return "tool-library"
     keys = set(d.keys())
     for kind, hints in AUTO_HINTS.items():

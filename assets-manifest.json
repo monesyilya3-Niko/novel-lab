@@ -1,6 +1,6 @@
 {
   "version": "2.0.3",
-  "generated_at": "2026-10-10T08:53:00.876592-06:00",
+  "generated_at": "2026-10-10T09:48:43.493830-06:00",
   "files": {
     "campus-redemption-commercial-obs-distilled.json": {
       "sha256": "d0f053c82318c2e5ea10371e76ee739bb49656bedcd416f25bec9160a650af85",
@@ -36,6 +36,10 @@
     },
     "chireng_chosen-voice-card.json": {
       "sha256": "3c6a54dc5b3edc2f25cb5382e83b1d789ca35b5eb801ca7d19450a6f4561d363",
+      "previous_hashes": []
+    },
+    "dialogue-library.json": {
+      "sha256": "daae3847f7e9a63f4e33d05f98ad22dae19c9d8fa3bb0472a814e878329a20c3",
       "previous_hashes": []
     },
     "dianjing-genre-pack.json": {
