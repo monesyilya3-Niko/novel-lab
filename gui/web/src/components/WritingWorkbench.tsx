@@ -866,6 +866,7 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
 
   useEffect(() => {
     loadProjects()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -876,6 +877,7 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
 
   useEffect(() => {
     loadEssenceAssets()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [essenceCategory])
 
   // 新建项目
@@ -1532,6 +1534,15 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
             >
               📊 签约预测
             </Button>
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                size="small"
+                label={`本章 ${content.length.toLocaleString()} 字`}
+                color={content.length >= 2000 ? 'success' : content.length >= 1000 ? 'primary' : 'default'}
+                variant={content.length >= 2000 ? 'filled' : 'outlined'}
+                sx={{ fontWeight: 'bold' }}
+              />
+            </Box>
           </Paper>
 
           {/* 本章伏笔暗线协同推进提醒 */}
