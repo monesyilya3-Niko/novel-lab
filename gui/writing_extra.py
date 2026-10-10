@@ -165,13 +165,19 @@ def reorder_outlines(project: str, order_ids: list[int]) -> list[dict[str, Any]]
     project = _require_project(project)
     if not isinstance(order_ids, list):
         raise ServiceError("order_ids 必须为列表", 400)
+    cleaned_ids: list[int] = []
+    for oid in order_ids:
+        try:
+            cleaned_ids.append(int(oid))
+        except (ValueError, TypeError):
+            raise ServiceError(f"非法大纲 ID: {oid!r}", 400) from None
     now = _now_iso()
     with db.tx() as conn:
-        for idx, oid in enumerate(order_ids):
+        for idx, oid in enumerate(cleaned_ids):
             conn.execute(
                 "UPDATE writing_outlines SET sort_order = ?, updated_at = ?"
                 " WHERE id = ? AND project = ?",
-                (idx, now, int(oid), project),
+                (idx, now, oid, project),
             )
     return list_outlines(project)
 
@@ -556,7 +562,8 @@ def export_project_docx(project: str) -> dict[str, Any]:
 
         doc_body = [
             '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>'
-            f'<w:r><w:rPr><w:b/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>{_escape_xml(project)}</w:t></w:r></w:p>'
+            '<w:r><w:rPr><w:rFonts w:hint="eastAsia" w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="宋体"/>'
+            f'<w:b/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t xml:space="preserve">{_escape_xml(project)}</w:t></w:r></w:p>'
         ]
 
         total_words = 0
@@ -579,14 +586,16 @@ def export_project_docx(project: str) -> dict[str, Any]:
 
             doc_body.append(
                 '<w:p><w:pPr><w:spacing w:before="360" w:after="180"/></w:pPr>'
-                f'<w:r><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr><w:t>{_escape_xml(ch_title)}</w:t></w:r></w:p>'
+                '<w:r><w:rPr><w:rFonts w:hint="eastAsia" w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="宋体"/>'
+                f'<w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr><w:t xml:space="preserve">{_escape_xml(ch_title)}</w:t></w:r></w:p>'
             )
             for para in ch_body.split("\n"):
                 p = para.strip()
                 if p:
                     doc_body.append(
                         '<w:p><w:pPr><w:ind w:firstLineChars="200" w:firstLine="400"/><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>'
-                        f'<w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t>{_escape_xml(p)}</w:t></w:r></w:p>'
+                        '<w:r><w:rPr><w:rFonts w:hint="eastAsia" w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="宋体"/>'
+                        f'<w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t xml:space="preserve">{_escape_xml(p)}</w:t></w:r></w:p>'
                     )
 
         doc_xml = (

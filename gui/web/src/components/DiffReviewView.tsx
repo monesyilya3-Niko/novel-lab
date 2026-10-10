@@ -33,7 +33,9 @@ export default function DiffReviewView({
   const maxParas = Math.max(origParas.length, polishParas.length)
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(polishedText)
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(polishedText).catch(() => {})
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

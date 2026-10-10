@@ -58,6 +58,10 @@ export default function DeslopPanel() {
     p = p.replace(/猛然间[，,]?/g, '')
     p = p.replace(/倒吸了一口(?:凉气|冷气)/g, '下意识屏住了呼吸')
     p = p.replace(/瞳孔(?:猛然|剧烈)?收缩/g, '目光骤然一凛')
+    p = p.replace(/眼底(?:闪过|掠过)(?:一丝|一抹)?(?:复杂的|冰冷的|凌厉的)?(?:神色|光芒|暗芒)?/g, '眸色微沉')
+    p = p.replace(/宛如(?:一[只头尊])?断了线的风筝/g, '整个人倒飞砸落')
+    p = p.replace(/(?:不可置否|毋庸置疑|显而易见地?)/g, '')
+    p = p.replace(/嘴角(?:微微)?勾起(?:一抹|一丝)?(?:玩味|戏谑|冰冷|嘲讽|残忍|淡淡)?的(?:笑意|弧度|冷笑)/g, '扯了扯嘴角')
     setPolishedText(p)
     setShowDiff(true)
   }

@@ -51,6 +51,7 @@ CLICHE_PATTERNS = [
     (r"(?:不由得|忍不住|情不自禁地)", "不由得/忍不住口癖", "削减心理过渡词，直接写主角身体下意识的反应。"),
     (r"倒吸了一口(?:凉气|冷气)", "倒吸凉气俗套", "换为屏息、身形后仰或喉咙发紧等更生动的体感。"),
     (r"瞳孔(?:猛然|剧烈)?收缩", "瞳孔收缩俗套", "避免高频使用此模板，可用眼底暗沉、视线锁定等代替。"),
+    (r"嘴角(?:微微)?勾起(?:一抹|一丝)?(?:玩味|戏谑|冰冷|嘲讽|残忍|淡淡)?的(?:笑意|弧度|冷笑)", "嘴角弧度模板", "极度泛滥的脸谱化微表情模板，建议替换为具体的眼神、视线转移或短促台词。"),
 ]
 
 _SENT_SPLIT_RE = re.compile(r"[。！？\n\r]+|[…]{2,}")
@@ -71,7 +72,6 @@ def analyze_deslop(text: str) -> dict[str, Any]:
             "stats": {"word_count": 0, "sentence_count": 0, "issues_count": 0, "rang_density": 0.0},
             "issues": [],
             "suggestions": [],
-            "highlights": [],
         }
 
     # 切句
@@ -147,7 +147,7 @@ def analyze_deslop(text: str) -> dict[str, Any]:
         # 判断三个句子的前 2-3 个字是否完全同构（如"他看见…他听见…他感到…"）
         if len(s1) >= 4 and len(s2) >= 4 and len(s3) >= 4:
             prefix1, prefix2, prefix3 = s1[:2], s2[:2], s3[:2]
-            if prefix1 == prefix2 == prefix3 and ("他" in prefix1 or "她" in prefix1 or "像" in prefix1):
+            if prefix1 == prefix2 == prefix3 and any(ch in prefix1 for ch in ("他", "她", "它", "像", "每", "这", "那")):
                 issues.append({
                     "type": "parallelism",
                     "label": "机械连续同构句",

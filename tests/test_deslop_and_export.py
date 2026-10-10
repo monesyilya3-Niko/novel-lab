@@ -51,7 +51,7 @@ class TestDeslopService(unittest.TestCase):
     def test_new_cliche_patterns_detected(self):
         text = (
             "他眼底闪过一丝复杂的暗芒，宛如一只断了线的风筝倒飞而出。"
-            "毋庸置疑，这显而易见是不可置否的。"
+            "嘴角微微勾起一抹玩味的笑意。毋庸置疑，这显而易见是不可置否的。"
         )
         res = deslop_service.analyze_deslop(text)
         self.assertGreater(len(res["issues"]), 0)
@@ -59,6 +59,7 @@ class TestDeslopService(unittest.TestCase):
         self.assertTrue(any("眼底" in lb for lb in labels))
         self.assertTrue(any("风筝" in lb for lb in labels))
         self.assertTrue(any("说明文论调" in lb for lb in labels))
+        self.assertTrue(any("嘴角" in lb for lb in labels))
 
     def test_empty_and_non_cn(self):
         res = deslop_service.analyze_deslop("")
@@ -130,6 +131,14 @@ class TestWritingExportAndReorder(unittest.TestCase):
         self.assertEqual(reordered[1]["id"], o1["id"])
         self.assertEqual(reordered[1]["sort_order"], 1)
 
+        # 非法 ID 与非列表类型防御断言
+        with self.assertRaises(writing_extra.ServiceError) as cm:
+            writing_extra.reorder_outlines(self.project, ["invalid_id"])
+        self.assertEqual(cm.exception.code, 400)
+        with self.assertRaises(writing_extra.ServiceError) as cm:
+            writing_extra.reorder_outlines(self.project, "not_a_list")  # type: ignore
+        self.assertEqual(cm.exception.code, 400)
+
     def test_docx_illegal_xml_control_chars_filtered(self):
         # 写入含有 XML 1.0 非法控制字符的内容（如 \x00, \x08, \x0b, \x1f）
         dirty_project = "测试XML过滤项目"
@@ -151,6 +160,9 @@ class TestWritingExportAndReorder(unittest.TestCase):
             # 合法文字正常保留
             self.assertIn("第三章 绝壁暗涌", doc_xml)
             self.assertIn("寒芒一闪", doc_xml)
+            # 校验排版保真：xml:space 与 中文字体规范
+            self.assertIn('xml:space="preserve"', doc_xml)
+            self.assertIn('w:eastAsia="宋体"', doc_xml)
 
     def test_router_deslop_endpoint(self):
         res = router._h_writing_deslop({}, {"text": "这一刻时间仿佛凝固了。"})
