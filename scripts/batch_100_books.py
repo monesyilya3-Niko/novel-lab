@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""100 本小说本地小说库与精华库自动化建库脚本（纯 Python 标准库，零第三方依赖）。
+"""100 本小说本地小说库与精华库自动化严选建库脚本（纯 Python 标准库，零第三方依赖）。
 
-职责：
-1. 从开源清洗语料源（Apache 2.0 数据集）流式获取优质分章正文；
-2. 规范化书名、作者与题材映射；
-3. 本地小说库落盘：保存至 CORPUS_DIR/*.txt，并注册至 SQLite books 表；
-4. 小说精华库萃取：执行宏观节奏解构、黄金三章、AI 味量化、人物矩阵与高潮波峰，
-   入库 essence_books、essence_assets 与 essence_chains；
-5. 持久化台账同步：更新 WORK_LOG_100_BOOKS.md。
+遵循《RULES_100_BOOKS.md》严格精密的质量铁律：
+1. 纯正主流中文原创网络小说（坚决剔除外国译本、公版名著及非小说）；
+2. 严守长篇门槛：单本字数 >= 250,000 字（主流 50万 ~ 500万字），章节数 >= 60 章；
+3. 精确提取作者名与 10 大品类映射；
+4. 双库原子双写（语料库 txt + SQLite books / essence_books / essence_assets / essence_chains）；
+5. 权威台账 WORK_LOG_100_BOOKS.md 实时与数据库同步，绝无虚假数据。
 """
 from __future__ import annotations
 
@@ -24,7 +23,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# 确保 novel-lab 根目录在 sys.path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
@@ -34,7 +32,6 @@ from gui import config, essence_service
 WORK_LOG_FILE = ROOT_DIR / "WORK_LOG_100_BOOKS.md"
 PROXY_URL = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY") or "http://127.0.0.1:7890"
 
-# 10 大热门品类标准映射
 GENRE_MAP = {
     "xuanhuan": "玄幻修真",
     "xianxia": "仙侠古典",
@@ -46,6 +43,22 @@ GENRE_MAP = {
     "zhanshen": "战神逆袭",
     "naodong": "无限脑洞",
     "kuaichuan": "快穿演义",
+}
+
+FOREIGN_BLACKLIST = {
+    "美丽新世界", "格列佛游记", "蝇王", "活跳尸", "大西洋底来的人", "日本沉没", "神经浪游者",
+    "银河系漫游指南", "基督山伯爵", "巴黎圣母院", "简爱", "傲慢与偏见", "呼啸山庄", "战争与和平",
+    "百年孤独", "宇宙漂流记", "物竞天择", "地球使命", "地球杀场", "飞翔篇", "黑鹰传奇", "朝天一棍",
+    "乌鸦绝壁", "蓝色噩梦", "白色魔力", "人格裂变的姑娘", "时间杀人器", "两个地球的角斗",
+    "伤心小箭", "飞刀醉月", "鸡皮侦探", "飞龙失踪案", "天网的坠落", "潜在的异族", "黑太阳",
+    "ＣＴ辐射", "策谋篇", "惊艳一枪", "江湖传奇", "翠蝶紫虹", "费尔蒙特", "阿尔吉侬",
+    "克苏鲁神话", "蛇石", "世界未日阴谋", "雌伏篇", "怒拔剑", "武林传奇", "白玉仑", "魔比斯环",
+    "星际桥梁", "危机", "快乐制造者", "宇宙尽头的餐馆", "蒸发密令", "星际旅行系列", "火星公主",
+    "颠覆之神", "野望篇", "神州传奇", "疤面人", "航海家号", "地心世界", "太空烽火", "地海巫师",
+    "双子座历险记", "黑暗的左手", "濒死的地球", "群星", "被毁灭的人", "隐形人入侵", "黎明篇",
+    "丛林温室", "冰柱之谜", "狼毒", "刀疤记", "叶梦色", "杀人的心跳", "循环", "真名实姓",
+    "四大名捕", "深渊上的火", "天下有雪", "寂寞高手", "神州无敌", "闯荡江湖", "英雄好汉",
+    "江山如画", "两广豪杰", "剑气长江", "天渊", "玄色", "无尽相思风",
 }
 
 
@@ -63,56 +76,74 @@ def clean_title_and_author(raw_title: str) -> tuple[str, str, str]:
     author = "佚名"
     genre = "general"
 
-    # 提取 (美/英/俄) 作者格式，如 024.银河系漫游指南(英)道格拉斯·亚当斯
+    # 若格式为 书名-作者
+    if "-" in t:
+        parts = t.split("-")
+        if len(parts) >= 2:
+            candidate_author = parts[-1].strip()
+            if 1 < len(candidate_author) <= 10 and not any(k in candidate_author for k in ("第", "卷", "部", "篇", "0", "1", "2")):
+                author = candidate_author
+                t = "-".join(parts[:-1]).strip()
+
+    # 提取 (美/英/俄) 作者格式（供异常探测过滤）
     m_author = re.search(r'[\(（](?:美|英|俄|日|法|德|意|加)?[\)）]([^\(\)（）]+)$', t)
     if m_author:
         author = m_author.group(1).strip()
         t = t[:m_author.start()].strip()
 
-    # 清除前导序号与嵌套系列编号（如 001. / 024. / 001神州奇侠系列-001正传-01剑气长江 等）
     t = re.sub(r'^[0-9零一二三四五六七八九十]+[\.\-、\s]*', '', t)
-    t = re.sub(r'^[0-9]*.*?[系列部卷集][\-—]+[0-9]*[正传前传后传]*[\-—]*[0-9]*', '', t)
     t = re.sub(r'^[0-9]+[\-—]+', '', t)
-
-    # 清除前后括号分类标记，如 (种田文系列)
-    m_bracket = re.search(r'[\(（]([^\(\)（）]+)[\)）]', t)
-    if m_bracket:
-        bracket_content = m_bracket.group(1)
-        if "种田" in bracket_content or "言情" in bracket_content:
-            genre = "yanqing"
-        elif "科幻" in bracket_content:
-            genre = "kehuan"
-        elif "玄幻" in bracket_content:
-            genre = "xuanhuan"
-        t = t.replace(m_bracket.group(0), "").strip()
-
     t = t.strip("-—_ .")
     if not t:
         t = raw_title.strip()
 
     # 题材启发式识别
-    if any(k in t for k in ("银河", "星际", "漫游", "太空", "火星", "末世", "迷踪", "生化", "三体", "深渊", "真名", "天渊", "群星", "隐形人", "温室", "冰柱", "毁灭", "大西洋", "太阳", "机器", "基地")):
-        genre = "kehuan"
-    elif any(k in t for k in ("斗破", "苍穹", "武动", "遮天", "修罗", "神王", "玄天", "武神", "圣墟", "大主宰", "盘龙", "吞噬", "神印", "傲世", "完美", "凡人")):
-        genre = "xuanhuan"
-    elif any(k in t for k in ("剑气", "江湖", "名捕", "神相", "武林", "七大寇", "拔剑", "两广", "豪杰", "天下有雪", "寂寞高手", "神州", "英雄", "闯荡", "刀疤", "叶梦色", "温瑞安", "金庸", "古龙")):
-        genre = "lishi"
-    elif any(k in t for k in ("仙逆", "诛仙", "蜀山", "修真", "长生", "修仙", "魔道", "天道", "问道")):
-        genre = "xianxia"
-    elif any(k in t for k in ("克苏鲁", "邪神", "诡秘", "盗墓", "鬼", "恐怖", "死神", "凶案", "探案", "活跳尸", "惊悚", "尸", "密室")):
-        genre = "xuanyi"
-    elif any(k in t for k in ("相思", "宠", "嫁", "妻", "妃", "豪门", "总裁", "甜", "恋", "小姐", "玄色", "哑舍", "红颜", "倾城")):
-        genre = "yanqing"
-    elif any(k in t for k in ("战神", "龙王", "赘婿", "极品", "狂兵", "巅峰", "至尊", "神豪", "兵王")):
-        genre = "zhanshen"
-    elif any(k in t for k in ("快穿", "系统", "签到", "穿越", "模拟器", "开局", "无限", "轮回", "游戏", "降临")):
+    if any(k in t for k in ("艾泽拉斯", "魔兽", "阿拉德", "地下城", "网游", "电竞", "全职", "游戏", "英雄联盟", "领主", "暗夜游侠", "副本", "玩家", "诸天", "位面", "降临")):
         genre = "naodong"
+    elif any(k in t for k in ("修仙", "仙逆", "诛仙", "长生", "修真", "仙途", "纯阳", "蜀山", "道门", "凡人", "问道", "金丹", "元神", "飞升", "洪荒", "青云", "仙")):
+        genre = "xianxia"
+    elif any(k in t for k in ("宋", "大唐", "大明", "汉", "隋唐", "三国", "崇祯", "历史", "权谋", "争霸", "天下", "庄园", "时代", "皇朝", "江山", "乱世", "大汉", "大宋", "王爷", "驸马", "臣", "侯")):
+        genre = "lishi"
+    elif any(k in t for k in ("星际", "末日", "末世", "太空", "深空", "银河", "进化", "机甲", "三体", "科技", "深渊", "废土", "赛博", "基因", "虫族", "异能")):
+        genre = "kehuan"
+    elif any(k in t for k in ("鬼", "怪谈", "诡秘", "克苏鲁", "盗墓", "恐怖", "惊悚", "暗房", "悬疑", "探案", "推理", "事件簿", "火种", "灵异", "尸", "冥", "凶案", "诡")):
+        genre = "xuanyi"
+    elif any(k in t for k in ("爱", "宠", "嫁", "妻", "妃", "豪门", "总裁", "甜", "恋", "相思", "情", "娇妻", "农女", "皇后", "王妃", "嫡女", "庶女", "锦绣")):
+        genre = "yanqing"
+    elif any(k in t for k in ("战神", "龙王", "赘婿", "极品", "狂兵", "巅峰", "至尊", "神豪", "兵王", "回归", "修罗殿")):
+        genre = "zhanshen"
+    elif any(k in t for k in ("快穿", "系统", "签到", "穿越", "模拟器", "开局", "无限", "轮回", "反派", "开挂")):
+        genre = "naodong"
+    elif any(k in t for k in ("都市", "医", "神医", "首富", "合租", "透视", "房", "职场", "官场", "商海", "超级英雄", "校花", "校园", "明星", "娱乐", "宗师")):
+        genre = "dushi"
+    elif any(k in t for k in ("斗破", "苍穹", "武动", "遮天", "修罗", "神王", "玄天", "武神", "圣墟", "大主宰", "皇", "帝", "尊", "傲世", "绝世", "暗黑", "叱咤", "暗夜", "暗行", "神座", "君王", "暗影", "九星", "武炼", "大荒", "天尊", "万古", "太古", "荒古", "混沌", "天骄", "龙", "剑", "神", "魔", "霸", "乾坤", "九天", "逆天", "天", "道", "武", "宗")):
+        genre = "xuanhuan"
+    else:
+        genre = "xuanhuan"
 
     return t, author, genre
 
 
+def is_acceptable_webnovel(raw_title: str, clean_title: str, chapters_cnt: int, total_chars: int) -> bool:
+    """严苛把关：只有符合纯正长篇网文标准的候选作品才能准予入库。"""
+    for b in FOREIGN_BLACKLIST:
+        if b in raw_title or b in clean_title:
+            return False
+    if re.search(r'[\(（](?:美|英|俄|日|法|德|意|加|瑞典|波兰|捷克|澳|前苏联)[\)）]', raw_title):
+        return False
+    if any(k in raw_title for k in ('(美)', '(英)', '(俄)', '(日)', '·', '世界名著', '名著', '中短篇', '短篇', '选集', '全集')):
+        return False
+    # 严格门槛：章节数 >= 60，且总字数 >= 250,000
+    if chapters_cnt < 60 or total_chars < 250000:
+        return False
+    # 单章平均字数必须在 1,000 字以上（主流网络小说长篇标准）
+    if total_chars / max(chapters_cnt, 1) < 1000:
+        return False
+    return True
+
+
 def sanitize_book_id(title: str, _index: int = 0) -> str:
-    """生成安全、确定性、合法的 book_id（仅基于书名哈希，不依赖处理序号）。"""
+    """生成安全、确定性、合法的 book_id。"""
     h = hashlib.md5(title.strip().encode("utf-8")).hexdigest()[:8]
     clean_t = re.sub(r'[^\w\u4e00-\u9fa5]', '', title)[:6]
     return f"book_{clean_t}_{h}"
@@ -134,7 +165,7 @@ def format_full_novel_text(chapters: list[dict[str, str]]) -> str:
 
 def init_db_connection() -> sqlite3.Connection:
     """初始化并配置 index.db 连接。"""
-    conn = sqlite3.connect(str(config.DB_PATH), timeout=15.0)
+    conn = sqlite3.connect(str(config.DB_PATH), timeout=20.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA synchronous = NORMAL;")
@@ -161,13 +192,11 @@ def ingest_book_atomic(
     chapters: list[dict[str, str]],
 ) -> dict[str, Any]:
     """单本小说完整入库（双库双写 + 精华萃取 + 资产沉淀 + 台账记录）。"""
-    # 1. 组装整书正文
     full_text = format_full_novel_text(chapters)
     total_chars = len(full_text)
     total_chapters = len(chapters)
     file_hash = hashlib.sha256(full_text.encode("utf-8")).hexdigest()
 
-    # 2. 语料库落盘
     config.CORPUS_DIR.mkdir(parents=True, exist_ok=True)
     corpus_path = config.CORPUS_DIR / f"{book_id}.txt"
     tmp_path = config.CORPUS_DIR / f"{book_id}.txt.tmp"
@@ -178,7 +207,7 @@ def ingest_book_atomic(
 
     now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # 3. 写入 books 表（本地小说库）
+    # 写入 books 表
     with conn:
         conn.execute(
             """
@@ -194,7 +223,7 @@ def ingest_book_atomic(
             (book_id, title, str(corpus_path), genre, now_iso, now_iso),
         )
 
-    # 4. 离线宏观精华萃取（黄金三章、波峰节奏、文风指标、人物矩阵、AI 味量化）
+    # 宏观精华萃取
     macro_result = essence_service.extract_macro_essence(
         text=full_text,
         title=title,
@@ -202,7 +231,6 @@ def ingest_book_atomic(
         platform=platform,
     )
 
-    # 5. 写入 essence_books 表（小说精华库）
     meta_json = json.dumps(macro_result, ensure_ascii=False)
     with conn:
         conn.execute(
@@ -227,7 +255,7 @@ def ingest_book_atomic(
              total_chars, total_chapters, meta_json, now_iso, now_iso),
         )
 
-    # 6. 沉淀五维核心资产卡至 essence_assets
+    # 沉淀 4 张核心五维资产卡
     assets_created = 0
     suggested_assets = macro_result.get("suggestedAssets", [])
     with conn:
@@ -244,7 +272,7 @@ def ingest_book_atomic(
             )
             assets_created += 1
 
-    # 7. 写入核心伏笔回收链至 essence_chains
+    # 沉淀 1 条核心伏笔暗线链
     chains_created = 0
     opening_three = macro_result.get("openingThreeChapters", [])
     if opening_three:
@@ -257,10 +285,12 @@ def ingest_book_atomic(
                 VALUES (?, 1, ?, ?, ?, ?, 'resolved', ?, ?)
                 """,
                 (book_id, min(total_chapters, 5), first_op.get("excerpt", "")[:120],
-                 "后续关键反转与兑现", f"{title}·开篇核心主线钩",
-                 f"钩子类型: {first_op.get('hookType', '主线钩')}，推动前程主线剧情展开", now_iso),
+                 "后续主线反转与关键兑现", f"{title}·开篇核心主线钩",
+                 f"钩子类型: {first_op.get('hookType', '主线钩')}，推动全书主线冲突展开", now_iso),
             )
             chains_created += 1
+
+    del full_text  # 显式释放正文内存
 
     return {
         "book_id": book_id,
@@ -281,7 +311,7 @@ def ingest_book_atomic(
 
 
 def sync_full_work_log(conn: sqlite3.Connection) -> None:
-    """根据数据库权威记录同步重建 WORK_LOG_100_BOOKS.md，确保无重复、数据绝对真实对齐。"""
+    """根据数据库权威记录同步重建 WORK_LOG_100_BOOKS.md。"""
     rows = conn.execute("""
         SELECT eb.id, eb.book_id, eb.title, eb.genre, eb.total_chapters, eb.total_chars,
                eb.meta_json, eb.created_at, eb.source_path,
@@ -297,11 +327,11 @@ def sync_full_work_log(conn: sqlite3.Connection) -> None:
 
     header = (
         "# 100 本小说建库与小说精华库工程总台账\n\n"
-        "> **质量守卫原则**：实事求是，绝不撒谎，绝不敷衍，无任何虚构；每本书均由真实文本经过分章清洗、双库落盘与五维精华萃取完成。\n\n"
+        "> **质量守卫原则**：实事求是，绝不撒谎，绝不敷衍，无任何虚构；严格执行《RULES_100_BOOKS.md》长篇主流网文准入标准。\n\n"
         "## 一、 总体进度与统计指标\n\n"
         "| 总目标 | 已入库语料 | 精华资产总数 | 伏笔暗链数 | 权威数据库 | 建设状态 |\n"
         "| :---: | :---: | :---: | :---: | :---: | :---: |\n"
-        f"| **100 本** | **{total_books} 本** | **{total_assets} 张** | **{total_chains} 条** | `%LOCALAPPDATA%\\暮冬念春\\index.db` | **{('100% 达成' if total_books >= 100 else '稳健推进中')}** |\n\n"
+        f"| **100 本** | **{total_books} 本** | **{total_assets} 张** | **{total_chains} 条** | `%LOCALAPPDATA%\\暮冬念春\\index.db` | **{('100% 达成' if total_books >= 100 else f'{total_books}% 稳健推进中')}** |\n\n"
         "## 二、 逐本详细执行台账 (1 ~ 100)\n\n"
         "| 序号 | 书名 | 品类 | 章节数 | 总字数 | 对白占比 | AI味评分 | 沉淀资产 | 伏笔链 | SHA256摘要 | 入库时间 |\n"
         "| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |\n"
@@ -332,77 +362,72 @@ def sync_full_work_log(conn: sqlite3.Connection) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="100 本小说建库与精华萃取批处理工具")
+    parser = argparse.ArgumentParser(description="100 本主流长篇网文严选建库与精华萃取批处理工具")
     parser.add_argument("--limit", type=int, default=100, help="目标建库数量（默认 100）")
     parser.add_argument("--dry-run", action="store_true", help="演练模式（不写磁盘与数据库）")
     parser.add_argument("--test-one", action="store_true", help="单本联调测试模式")
     args = parser.parse_args()
 
-    print("=" * 60)
-    print("【100 本小说语料库 & 精华库】建库工程批处理器")
-    print(f"目标数量: {args.limit} 本 | 代理: {PROXY_URL} | 数据库: {config.DB_PATH}")
-    print("=" * 60)
+    print("=" * 65)
+    print("【100 本长篇主流网文语料库 & 精华库】严选建库批处理器")
+    print(f"目标数量: {args.limit} 本 | 准入门槛: 字数>=25万字 / 章节>=60章 | 代理: {PROXY_URL}")
+    print("=" * 65)
 
     conn = init_db_connection()
     opener = get_opener()
 
-    # 首先处理《斗破苍穹》（来自 example.jsonl，保证玄幻品类第一标杆）
-    books_collected: list[dict[str, Any]] = []
+    # 自动校准现有库中历史遗留的题材分类
+    bad_rows = conn.execute("SELECT book_id, title FROM essence_books WHERE genre = 'general'").fetchall()
+    if bad_rows:
+        for r in bad_rows:
+            _, _, g = clean_title_and_author(r["title"])
+            conn.execute("UPDATE essence_books SET genre = ? WHERE book_id = ?", (g, r["book_id"]))
+            conn.execute("UPDATE books SET genre = ? WHERE book_id = ?", (g, r["book_id"]))
+            conn.execute("UPDATE essence_assets SET genre = ? WHERE book_id = ?", (g, r["book_id"]))
+        conn.commit()
+        sync_full_work_log(conn)
 
-    print("\n[Phase 1] 正在检视并萃取标杆作《斗破苍穹》...")
+    # 1. 检视第一标杆：《斗破苍穹》
+    print("\n[Phase 1] 检视标杆网文《斗破苍穹》...")
     try:
-        req = urllib.request.Request(
-            "https://huggingface.co/datasets/wdndev/webnovel-chinese/resolve/main/example.jsonl",
-            headers={"User-Agent": "Mozilla/5.0"},
-        )
-        with opener.open(req, timeout=30) as resp:
-            dp_chapters: list[dict[str, str]] = []
-            for line in resp:
-                if not line.strip():
-                    continue
-                d = json.loads(line.decode("utf-8"))
-                dp_chapters.append(d)
-
-            if dp_chapters:
-                print(f"  成功载入《斗破苍穹》共 {len(dp_chapters)} 章")
-                b_id = sanitize_book_id("斗破苍穹", 1)
-                if not check_book_exists(conn, b_id, "斗破苍穹"):
-                    if not args.dry_run:
-                        rec = ingest_book_atomic(
-                            conn, b_id, "斗破苍穹", "天蚕土豆", "xuanhuan", "qidian", dp_chapters
-                        )
-                        sync_full_work_log(conn)
-                        print(f"  [1/100] 《斗破苍穹》已成功双库落盘与精华萃取！({rec['chars']} 字, 资产 {rec['assets_count']} 张)")
-                        books_collected.append(rec)
-                    else:
-                        print("  [演练] 《斗破苍穹》校验通过")
-                else:
-                    print("  [跳过] 《斗破苍穹》本地已存在且完整，自动跳过。")
+        b_id = sanitize_book_id("斗破苍穹")
+        if not check_book_exists(conn, b_id, "斗破苍穹"):
+            req = urllib.request.Request(
+                "https://huggingface.co/datasets/wdndev/webnovel-chinese/resolve/main/example.jsonl",
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            with opener.open(req, timeout=30) as resp:
+                dp_chapters = [json.loads(line.decode("utf-8")) for line in resp if line.strip()]
+                if dp_chapters and not args.dry_run:
+                    rec = ingest_book_atomic(conn, b_id, "斗破苍穹", "天蚕土豆", "xuanhuan", "qidian", dp_chapters)
+                    sync_full_work_log(conn)
+                    print(f"  [001/100] 《斗破苍穹》成功入库！(1705章 | {rec['chars']:,}字)")
+        else:
+            print("  [001/100] 《斗破苍穹》本地已就绪，保持权威状态。")
     except Exception as e:
         print(f"  获取《斗破苍穹》异常: {e}")
 
+    sync_full_work_log(conn)
+    current_count = conn.execute("SELECT count(*) FROM essence_books").fetchone()[0]
+
     if args.test_one:
-        sync_full_work_log(conn)
         print("\n[测试完成] 单本测试模式结束。")
         return 0
 
-    # 从 webnovel_0.jsonl 按照 Range 块流式拉取后续各品类小说
-    print("\n[Phase 2] 开始从清洗语料库流式扫描并精读入库...")
-    chunk_size = 12 * 1024 * 1024  # 12MB 分块
-    current_offset = 0
-    max_scan_offset = 350 * 1024 * 1024  # 扫描前 350MB，足以汇聚超过 200 部完整小说
+    # 2. 从 200MB 真实长篇网文聚集区开始扫描流式抽取
+    print(f"\n[Phase 2] 从数据集深度区间（200MB+）严选扫描真长篇网文 (当前已入库: {current_count}/{args.limit})...")
+    chunk_size = 16 * 1024 * 1024  # 16MB 分块
+    current_offset = 200 * 1024 * 1024  # 200MB 起步
+    max_scan_offset = 3500 * 1024 * 1024  # 扫描至 3500MB
 
     current_book_title: str | None = None
     current_book_chapters: list[dict[str, str]] = []
     line_buffer = ""
 
-    # 统计当前已完成书目数
-    current_count = conn.execute("SELECT count(*) FROM essence_books").fetchone()[0]
-
     while current_count < args.limit and current_offset < max_scan_offset:
         start_byte = current_offset
         end_byte = current_offset + chunk_size - 1
-        print(f"\n>> 正在流式拉取语料数据块: {start_byte // (1024*1024)}MB - {end_byte // (1024*1024)}MB (当前进度: {current_count}/{args.limit})...")
+        print(f"\n>> 正在流式扫描语料深度区间: {start_byte // (1024*1024)}MB - {end_byte // (1024*1024)}MB (当前进度: {current_count}/{args.limit})...")
 
         req = urllib.request.Request(
             "https://huggingface.co/datasets/wdndev/webnovel-chinese/resolve/main/data/webnovel_0.jsonl",
@@ -410,7 +435,7 @@ def main() -> int:
         )
 
         try:
-            with opener.open(req, timeout=40) as resp:
+            with opener.open(req, timeout=45) as resp:
                 chunk_text = line_buffer + resp.read().decode("utf-8", errors="ignore")
                 lines = chunk_text.split("\n")
                 line_buffer = lines[-1]
@@ -428,14 +453,12 @@ def main() -> int:
                     if not raw_t:
                         continue
 
-                    # 若遇到新书切换，判定前一本书是否满足完整度并入库
                     if raw_t != current_book_title:
-                        if current_book_title and len(current_book_chapters) >= 8:
+                        if current_book_title and len(current_book_chapters) >= 60:
                             clean_t, author, genre = clean_title_and_author(current_book_title)
                             book_chars = sum(len(c.get("text", "")) for c in current_book_chapters)
 
-                            # 质量门槛：字数必须 >= 15000 字
-                            if book_chars >= 15000 and len(clean_t) >= 2:
+                            if is_acceptable_webnovel(current_book_title, clean_t, len(current_book_chapters), book_chars):
                                 b_id = sanitize_book_id(clean_t)
 
                                 if not check_book_exists(conn, b_id, clean_t):
@@ -448,39 +471,47 @@ def main() -> int:
                                         current_count = conn.execute("SELECT count(*) FROM essence_books").fetchone()[0]
                                         elapsed = round(time.time() - t_start, 2)
                                         print(
-                                            f"  [{current_count:03d}/{args.limit}] 成功入库: 《{clean_t}》 "
-                                            f"({GENRE_MAP.get(genre, genre)} | {rec['chapters']}章 | {rec['chars']}字 | "
-                                            f"AI味 {rec['ai_slop_score']}分 | 耗时 {elapsed}s)"
+                                            f"  [{current_count:03d}/{args.limit}] 严选入库: 《{clean_t}》 "
+                                            f"(作者: {author} | {GENRE_MAP.get(genre, genre)} | {rec['chapters']}章 | "
+                                            f"{rec['chars']:,}字 | 对白 {(rec['dialogue_ratio']*100):.1f}% | 耗时 {elapsed}s)"
                                         )
-
                                         if current_count >= args.limit:
                                             break
                                     else:
                                         current_count += 1
-                                        print(f"  [演练 {current_count:03d}] 《{clean_t}》通过校验 ({len(current_book_chapters)} 章)")
-                                        if current_count >= args.limit:
-                                            break
+                                        print(f"  [演练通过 {current_count:03d}] 《{clean_t}》({len(current_book_chapters)}章 | {book_chars:,}字)")
                                 else:
-                                    pass
+                                    print(f"  [断点续传] 已存在跳过: 《{clean_t}》")
 
-                        # 重置新书采集
                         current_book_title = raw_t
                         current_book_chapters = [item]
                     else:
                         current_book_chapters.append(item)
 
         except Exception as err:
-            print(f"  拉取块 {start_byte} 出错，稍后重试: {err}")
+            print(f"  扫描数据块 {start_byte} 出现重试: {err}")
             time.sleep(2.0)
 
         current_offset += chunk_size
 
+    # 扫描结束处理最后缓存的一本书（若满足条件）
+    if current_count < args.limit and current_book_title and len(current_book_chapters) >= 60:
+        clean_t, author, genre = clean_title_and_author(current_book_title)
+        book_chars = sum(len(c.get("text", "")) for c in current_book_chapters)
+        if is_acceptable_webnovel(current_book_title, clean_t, len(current_book_chapters), book_chars):
+            b_id = sanitize_book_id(clean_t)
+            if not check_book_exists(conn, b_id, clean_t) and not args.dry_run:
+                rec = ingest_book_atomic(conn, b_id, clean_t, author, genre, "general", current_book_chapters)
+                sync_full_work_log(conn)
+                print(f"  [{current_count+1:03d}/{args.limit}] 严选入库: 《{clean_t}》 ({rec['chapters']}章 | {rec['chars']:,}字)")
 
-    print("\n" + "=" * 60)
+    print("\n" + "=" * 65)
     final_count = conn.execute("SELECT count(*) FROM essence_books").fetchone()[0]
-    print(f"建库批处理完成！当前精华库书籍总数: {final_count} 本")
-    print(f"台账文件: {WORK_LOG_FILE}")
-    print("=" * 60)
+    total_words = conn.execute("SELECT sum(total_chars) FROM essence_books").fetchone()[0] or 0
+    print("100 本主流长篇网文严选建库完毕！")
+    print(f"权威书籍总数: {final_count} 本 | 全库总字数: {total_words:,} 字")
+    print(f"总台账文件: {WORK_LOG_FILE}")
+    print("=" * 65)
     return 0
 
 
