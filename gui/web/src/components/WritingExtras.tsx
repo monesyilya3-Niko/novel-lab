@@ -10,6 +10,7 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
+import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -29,9 +30,9 @@ import HubIcon from '@mui/icons-material/Hub'
 import DescriptionIcon from '@mui/icons-material/Description'
 import CodeIcon from '@mui/icons-material/Code'
 import ArticleIcon from '@mui/icons-material/Article'
-import { writingApi, friendlyError } from '../api/client'
+import { writingApi, toolsApi, friendlyError } from '../api/client'
 import type { WritingProject } from '../types'
-import type { OutlineItem, CharacterCard, NoteItem, WritingStats } from '../api/client'
+import type { OutlineItem, CharacterCard, NoteItem, WritingStats, HookItem } from '../api/client'
 import { useThemeMode } from '../state/ThemeModeContext'
 import { ink, glassCard } from '../ink'
 import CreationRateChart from './charts/CreationRateChart'
@@ -129,6 +130,65 @@ function OutlinePanel({ project }: { project: string }) {
   const [summary, setSummary] = useState('')
   const [status, setStatus] = useState('planned')
 
+  const [templateOpen, setTemplateOpen] = useState(false)
+  const [templates, setTemplates] = useState<HookItem[]>([])
+  const [templateLoading, setTemplateLoading] = useState(false)
+  const [selectedHook, setSelectedHook] = useState<HookItem | null>(null)
+
+  const openHookTemplateDialog = async () => {
+    setTemplateOpen(true)
+    if (templates.length === 0) {
+      setTemplateLoading(true)
+      try {
+        const res = await toolsApi.getHooks()
+        setTemplates(res.hooks || [])
+        if (res.hooks && res.hooks.length > 0) {
+          setSelectedHook(res.hooks[0])
+        }
+      } catch (e) {
+        setError(`加载开篇模板失败: ${friendlyError(e)}`)
+      } finally {
+        setTemplateLoading(false)
+      }
+    }
+  }
+
+  const doApplyTemplate = async () => {
+    if (!selectedHook) return
+    setError('')
+    try {
+      const baseOrder = items.length
+      await writingApi.createOutline({
+        project,
+        kind: 'chapter',
+        title: `第1章：${selectedHook.name}（首章生死危机）`,
+        summary: `【前300字钩子】\n${selectedHook.first300Words}\n\n【第一章节拍】\n${selectedHook.chapter1Beat}`,
+        status: 'planned',
+        sort_order: baseOrder,
+      })
+      await writingApi.createOutline({
+        project,
+        kind: 'chapter',
+        title: `第2章：${selectedHook.name}（压迫激化与转机）`,
+        summary: `【第二章节拍】\n${selectedHook.chapter2Beat}`,
+        status: 'planned',
+        sort_order: baseOrder + 1,
+      })
+      await writingApi.createOutline({
+        project,
+        kind: 'chapter',
+        title: `第3章：${selectedHook.name}（首爽破局与爽点兑现）`,
+        summary: `【第三章节拍】\n${selectedHook.chapter3Beat}`,
+        status: 'planned',
+        sort_order: baseOrder + 2,
+      })
+      setTemplateOpen(false)
+      load()
+    } catch (e) {
+      setError(`应用黄金三章模板失败: ${friendlyError(e)}`)
+    }
+  }
+
   const load = useCallback(() => {
     writingApi
       .outlines(project)
@@ -220,9 +280,14 @@ function OutlinePanel({ project }: { project: string }) {
     <Box>
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          新增分卷 / 章节
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            新增分卷 / 章节
+          </Button>
+          <Button variant="outlined" color="primary" onClick={openHookTemplateDialog}>
+            🚀 引用黄金三章模板
+          </Button>
+        </Box>
         <Typography variant="caption" color="text.secondary">
           共 {items.filter((i) => i.kind === 'volume').length} 卷 / {items.filter((i) => i.kind === 'chapter').length} 章 ｜ 支持上下微移原子重排
         </Typography>
@@ -326,6 +391,100 @@ function OutlinePanel({ project }: { project: string }) {
           <Button variant="contained" onClick={doSave}>保存</Button>
         </DialogActions>
       </Dialog>
+
+      {/* 引用黄金三章开篇模板弹窗 */}
+      <Dialog
+        open={templateOpen}
+        onClose={() => setTemplateOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+          <Typography component="span" variant="h6" fontWeight={700}>
+            🚀 黄金三章开篇模型库
+          </Typography>
+          <Typography component="span" variant="caption" color="text.secondary">
+            内置 10 大提升留存率的成熟开篇节拍
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {templateLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                select
+                label="选择开篇模板"
+                value={selectedHook?.id || ''}
+                onChange={(e) => {
+                  const target = templates.find((t) => t.id === e.target.value)
+                  if (target) setSelectedHook(target)
+                }}
+                fullWidth
+              >
+                {templates.map((t) => (
+                  <MenuItem key={t.id} value={t.id}>
+                    [{t.genre}] {t.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              {selectedHook && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
+                    <Typography variant="subtitle2" color="primary" fontWeight={700} gutterBottom>
+                      🔥 前 300 字吸睛钩子：
+                    </Typography>
+                    <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
+                      {selectedHook.first300Words}
+                    </Typography>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Typography variant="subtitle2" fontWeight={700} color="text.primary" gutterBottom>
+                      第 1 章节拍（生死危机与冲突）：
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                      {selectedHook.chapter1Beat}
+                    </Typography>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Typography variant="subtitle2" fontWeight={700} color="text.primary" gutterBottom>
+                      第 2 章节拍（压迫激化与转机）：
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                      {selectedHook.chapter2Beat}
+                    </Typography>
+                  </Paper>
+
+                  <Paper variant="outlined" sx={{ p: 1.5 }}>
+                    <Typography variant="subtitle2" fontWeight={700} color="text.primary" gutterBottom>
+                      第 3 章节拍（首爽破局与爽点兑现）：
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                      {selectedHook.chapter3Beat}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTemplateOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={doApplyTemplate}
+            disabled={!selectedHook}
+          >
+            一键应用为前三章大纲
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
@@ -367,6 +526,17 @@ function CharacterPanel({ project }: { project: string }) {
     setRelationTarget('')
     setRelationType('同盟')
     setDialogOpen(true)
+  }
+
+  const handleRandomName = async () => {
+    try {
+      const res = await toolsApi.generateNames({ kind: 'character', count: 1 })
+      if (res.names && res.names.length > 0) {
+        setName(res.names[0])
+      }
+    } catch (e) {
+      setError(`随机起名失败: ${friendlyError(e)}`)
+    }
   }
 
   const openEdit = (it: CharacterCard) => {
@@ -513,7 +683,16 @@ function CharacterPanel({ project }: { project: string }) {
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{editing ? '编辑人物卡档案' : '新建人物卡档案'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField label="姓名" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <TextField label="姓名" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+            <Button
+              variant="outlined"
+              onClick={handleRandomName}
+              sx={{ minWidth: 96, height: 40, whiteSpace: 'nowrap' }}
+            >
+              🎲 随机名
+            </Button>
+          </Box>
           <TextField
             label="定位"
             value={role}

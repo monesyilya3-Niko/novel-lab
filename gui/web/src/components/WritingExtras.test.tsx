@@ -13,10 +13,35 @@ vi.mock('../api/client', () => ({
   writingApi: {
     projects: () => mockProjects(),
     outlines: (proj: string) => mockOutlines(proj),
+    createOutline: vi.fn().mockResolvedValue({ id: 99, title: 'mocked' }),
     characters: (proj: string) => mockCharacters(proj),
+    createCharacter: vi.fn().mockResolvedValue({ id: 99, name: 'mocked' }),
     notes: (proj: string) => mockNotes(proj),
     stats: (proj: string) => mockStats(proj),
     export: (proj: string, fmt: string) => mockExport(proj, fmt),
+  },
+  toolsApi: {
+    getHooks: vi.fn().mockResolvedValue({
+      totalCount: 1,
+      hooks: [
+        {
+          id: 'HK-001',
+          name: '退婚逆袭',
+          genre: 'xianxia',
+          first300Words: '前300字钩子内容',
+          chapter1Beat: '第一章节拍内容',
+          chapter2Beat: '第二章节拍内容',
+          chapter3Beat: '第三章节拍内容',
+        },
+      ],
+    }),
+    generateNames: vi.fn().mockResolvedValue({
+      kind: 'character',
+      style: 'xianxia',
+      gender: 'all',
+      count: 1,
+      names: ['叶凌云'],
+    }),
   },
   friendlyError: (e: unknown) => String(e),
 }))
@@ -119,6 +144,47 @@ describe('WritingExtras 创作扩展工作台', () => {
       expect(screen.getByText('导出全书作品')).toBeInTheDocument()
       expect(screen.getByText('导出 Word (.docx)')).toBeInTheDocument()
       expect(screen.getByText('导出 Markdown (.md)')).toBeInTheDocument()
+    })
+  })
+
+  it('在大纲架构中点击引用黄金三章模板并应用', async () => {
+    render(<WritingExtras />)
+    await waitFor(() => {
+      expect(screen.getByText('大纲架构')).toBeInTheDocument()
+    })
+
+    const templateBtn = screen.getByText('🚀 引用黄金三章模板')
+    fireEvent.click(templateBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('🚀 黄金三章开篇模型库')).toBeInTheDocument()
+      expect(screen.getByText('一键应用为前三章大纲')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('一键应用为前三章大纲'))
+  })
+
+  it('在人物卡弹窗中点击随机名按钮自动填入名字', async () => {
+    render(<WritingExtras />)
+    await waitFor(() => {
+      expect(screen.getByText('人物卡与关系')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('人物卡与关系'))
+    await waitFor(() => {
+      expect(screen.getByText('新建人物卡')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('新建人物卡'))
+    await waitFor(() => {
+      expect(screen.getByText('新建人物卡档案')).toBeInTheDocument()
+      expect(screen.getByText('🎲 随机名')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByText('🎲 随机名'))
+    await waitFor(() => {
+      const nameInput = screen.getByLabelText('姓名') as HTMLInputElement
+      expect(nameInput.value).toBe('叶凌云')
     })
   })
 })

@@ -19,7 +19,7 @@ import StarterKit from '@tiptap/starter-kit'
 import CharacterCount from '@tiptap/extension-character-count'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ink } from '../ink'
-import { toolsApi, friendlyError, type PoisonCheckResult } from '../api/client'
+import { toolsApi, writingApi, friendlyError, type PoisonCheckResult, type DeslopResult } from '../api/client'
 
 interface ChapterEditorProps {
   value: string
@@ -30,6 +30,8 @@ interface ChapterEditorProps {
   targetChars?: number
   /** 是否启用底栏快捷毒点排查（默认启用） */
   enablePoisonCheck?: boolean
+  /** 是否启用底栏快捷去 AI 味体检（默认启用） */
+  enableDeslopCheck?: boolean
 }
 
 /** 纯文本 → 编辑器初始 HTML（转义 + 换行分段）。 */
@@ -48,11 +50,17 @@ export default function ChapterEditor({
   minHeight = 160,
   targetChars,
   enablePoisonCheck = true,
+  enableDeslopCheck = true,
 }: ChapterEditorProps) {
   const [poisonOpen, setPoisonOpen] = useState(false)
   const [poisonLoading, setPoisonLoading] = useState(false)
   const [poisonResult, setPoisonResult] = useState<PoisonCheckResult | null>(null)
   const [poisonError, setPoisonError] = useState('')
+
+  const [deslopOpen, setDeslopOpen] = useState(false)
+  const [deslopLoading, setDeslopLoading] = useState(false)
+  const [deslopResult, setDeslopResult] = useState<DeslopResult | null>(null)
+  const [deslopError, setDeslopError] = useState('')
 
   const editor = useEditor({
     extensions: [
@@ -118,6 +126,27 @@ export default function ChapterEditor({
     }
   }
 
+  const handleQuickDeslopCheck = async () => {
+    const text = editor?.getText() || value
+    if (!text.trim()) {
+      setDeslopError('正文为空，请先编写章节内容')
+      setDeslopResult(null)
+      setDeslopOpen(true)
+      return
+    }
+    setDeslopLoading(true)
+    setDeslopError('')
+    setDeslopOpen(true)
+    try {
+      const res = await writingApi.deslop(text)
+      setDeslopResult(res)
+    } catch (e) {
+      setDeslopError(friendlyError(e))
+    } finally {
+      setDeslopLoading(false)
+    }
+  }
+
   const chars = editor?.storage.characterCount.characters() ?? value.length
   const targetMet = targetChars != null && chars >= targetChars
 
@@ -152,7 +181,7 @@ export default function ChapterEditor({
           borderTop: `1px solid ${ink.hairline}`,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {enablePoisonCheck && (
             <Button
               size="small"
@@ -167,6 +196,22 @@ export default function ChapterEditor({
               }}
             >
               🛡️ 毒点避雷排查
+            </Button>
+          )}
+          {enableDeslopCheck && (
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleQuickDeslopCheck}
+              sx={{
+                fontSize: '0.78rem',
+                color: ink.textSecondary,
+                p: 0,
+                minWidth: 'auto',
+                '&:hover': { color: ink.accent },
+              }}
+            >
+              ✨ 去AI味体检
             </Button>
           )}
         </Box>
@@ -250,6 +295,73 @@ export default function ChapterEditor({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPoisonOpen(false)}>关闭并返回写作</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 快捷去 AI 味诊断弹窗 */}
+      <Dialog
+        open={deslopOpen}
+        onClose={() => setDeslopOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+          <Typography component="span" variant="h6" fontWeight={700}>
+            ✨ 章节去 AI 味诊断
+          </Typography>
+          {deslopResult && (
+            <Chip
+              size="small"
+              label={`AI 指数: ${deslopResult.aiScore.toFixed(1)} (${deslopResult.verdictCn})`}
+              color={deslopResult.aiScore < 15 ? 'success' : deslopResult.aiScore < 35 ? 'warning' : 'error'}
+            />
+          )}
+        </DialogTitle>
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {deslopLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          )}
+
+          {deslopError && <Alert severity="error">{deslopError}</Alert>}
+
+          {deslopResult && !deslopLoading && (
+            <>
+              {deslopResult.issues.length === 0 ? (
+                <Alert severity="success">
+                  正文行文极其自然，未检测到任何程式化套路、玄虚比喻、无由排比或俗套口癖！
+                </Alert>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    检出 <strong>{deslopResult.stats.issuesCount}</strong> 处模式化套路（总字数：{deslopResult.stats.wordCount}，总句数：{deslopResult.stats.sentenceCount}，被动句让字密度：{deslopResult.stats.rangDensity.toFixed(1)}‰）：
+                  </Typography>
+                  {deslopResult.issues.map((it, i) => (
+                    <Card key={i} variant="outlined" sx={{ bgcolor: 'action.hover' }}>
+                      <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Chip size="small" label={it.label} color="warning" />
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                            扣分权重：{it.weight}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.primary" display="block">
+                          “...{it.snippet}...”
+                        </Typography>
+                        <Typography variant="caption" color="info.main" display="block" sx={{ mt: 0.5, fontWeight: 600 }}>
+                          【优化建议】 {it.suggestion}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeslopOpen(false)}>关闭并返回写作</Button>
         </DialogActions>
       </Dialog>
     </Box>

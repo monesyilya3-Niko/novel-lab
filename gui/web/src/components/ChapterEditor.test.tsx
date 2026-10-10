@@ -17,6 +17,21 @@ vi.mock('../api/client', () => ({
       findings: [],
     }),
   },
+  writingApi: {
+    deslop: vi.fn().mockResolvedValue({
+      aiScore: 0,
+      verdict: 'NATURAL',
+      verdictCn: '行文自然',
+      stats: {
+        wordCount: 100,
+        sentenceCount: 5,
+        issuesCount: 0,
+        rangDensity: 0,
+      },
+      issues: [],
+      suggestions: [],
+    }),
+  },
   friendlyError: (e: unknown) => String(e),
 }))
 
@@ -93,6 +108,20 @@ describe('ChapterEditor', () => {
     await waitFor(() => {
       expect(screen.getByText('🛡️ 章节毒点排查诊断')).toBeDefined()
       expect(screen.getByText(/未命中任何已知的过度憋屈/)).toBeDefined()
+    })
+
+    const closeBtn = screen.getByText('关闭并返回写作')
+    fireEvent.click(closeBtn)
+  })
+
+  it('点击去AI味体检按钮弹出诊断弹窗', async () => {
+    render(<ChapterEditor value="主角一剑横扫八荒，斩灭妖邪。" onChange={noop} />)
+    const btn = await screen.findByText('✨ 去AI味体检')
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(screen.getByText('✨ 章节去 AI 味诊断')).toBeDefined()
+      expect(screen.getByText(/未检测到任何程式化套路/)).toBeDefined()
     })
 
     const closeBtn = screen.getByText('关闭并返回写作')
