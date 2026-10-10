@@ -126,6 +126,15 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(len(tagged), 1)
         self.assertEqual(tagged[0]["id"], a2["id"])
 
+        # 按生态平台筛选
+        qidian_assets = essence_service.list_assets(platform="qidian")
+        self.assertEqual(len(qidian_assets), 1)
+        self.assertEqual(qidian_assets[0]["id"], a2["id"])
+
+        fanqie_assets = essence_service.list_assets(platform="fanqie")
+        self.assertEqual(len(fanqie_assets), 1)
+        self.assertEqual(fanqie_assets[0]["id"], a1["id"])
+
         # 更新个人笔记与评分
         updated = essence_service.update_asset(a1["id"], user_note="这个切入点适合写都市退婚时套用", rating=5)
         self.assertEqual(updated["user_note"], "这个切入点适合写都市退婚时套用")
