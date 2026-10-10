@@ -95,8 +95,11 @@ function NameGeneratorSection() {
           sx={{ minWidth: 140 }}
         >
           <MenuItem value="character">人物角色</MenuItem>
-          <MenuItem value="sect">宗门 / 势力</MenuItem>
+          <MenuItem value="sect">宗门 / 仙门</MenuItem>
           <MenuItem value="corp">集团 / 财阀</MenuItem>
+          <MenuItem value="team">电竞 / 战队</MenuItem>
+          <MenuItem value="shelter">末世 / 避难所</MenuItem>
+          <MenuItem value="org">怪谈 / 收容机构</MenuItem>
           <MenuItem value="skill">功法 / 战技</MenuItem>
           <MenuItem value="artifact">神兵 / 法宝</MenuItem>
         </TextField>

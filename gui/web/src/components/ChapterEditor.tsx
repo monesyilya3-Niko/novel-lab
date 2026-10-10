@@ -1,14 +1,25 @@
 // ChapterEditor：章节正文编辑器（基于 Tiptap，设计灵感来自 steven-tey/novel，Apache-2.0）。
 // 定位：比 textarea 更干净的中文长文编辑面，带实时字数统计与占位提示。
 // 数据契约：value/onChange 均为纯文本（后端只收纯文本），编辑器内部富文本状态不外泄。
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogActions from '@mui/material/DialogActions'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
+import Card from '@mui/material/Card'
+import CardContent from '@mui/material/CardContent'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import CharacterCount from '@tiptap/extension-character-count'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ink } from '../ink'
+import { toolsApi, friendlyError, type PoisonCheckResult } from '../api/client'
 
 interface ChapterEditorProps {
   value: string
@@ -17,6 +28,8 @@ interface ChapterEditorProps {
   minHeight?: number
   /** 字数目标（如 1500），达到后显示达标提示 */
   targetChars?: number
+  /** 是否启用底栏快捷毒点排查（默认启用） */
+  enablePoisonCheck?: boolean
 }
 
 /** 纯文本 → 编辑器初始 HTML（转义 + 换行分段）。 */
@@ -34,7 +47,13 @@ export default function ChapterEditor({
   placeholder = '在此粘贴或编写章节正文……',
   minHeight = 160,
   targetChars,
+  enablePoisonCheck = true,
 }: ChapterEditorProps) {
+  const [poisonOpen, setPoisonOpen] = useState(false)
+  const [poisonLoading, setPoisonLoading] = useState(false)
+  const [poisonResult, setPoisonResult] = useState<PoisonCheckResult | null>(null)
+  const [poisonError, setPoisonError] = useState('')
+
   const editor = useEditor({
     extensions: [
       // 纯文本模式：只保留段落与换行，关闭加粗/标题等 mark，避免"排了版却存不下来"的误会。
@@ -78,6 +97,27 @@ export default function ChapterEditor({
     }
   }, [value, editor])
 
+  const handleQuickPoisonCheck = async () => {
+    const text = editor?.getText() || value
+    if (!text.trim()) {
+      setPoisonError('正文为空，请先编写章节内容')
+      setPoisonResult(null)
+      setPoisonOpen(true)
+      return
+    }
+    setPoisonLoading(true)
+    setPoisonError('')
+    setPoisonOpen(true)
+    try {
+      const res = await toolsApi.checkPoison(text)
+      setPoisonResult(res)
+    } catch (e) {
+      setPoisonError(friendlyError(e))
+    } finally {
+      setPoisonLoading(false)
+    }
+  }
+
   const chars = editor?.storage.characterCount.characters() ?? value.length
   const targetMet = targetChars != null && chars >= targetChars
 
@@ -104,7 +144,7 @@ export default function ChapterEditor({
       <Box
         sx={{
           display: 'flex',
-          justifyContent: 'flex-end',
+          justifyContent: 'space-between',
           alignItems: 'center',
           gap: 1,
           px: 1.5,
@@ -112,15 +152,106 @@ export default function ChapterEditor({
           borderTop: `1px solid ${ink.hairline}`,
         }}
       >
-        {targetChars != null && (
-          <Typography variant="caption" sx={{ color: targetMet ? ink.success : ink.textTertiary }}>
-            {targetMet ? `已达目标 ${targetChars} 字` : `目标 ${targetChars} 字`}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {enablePoisonCheck && (
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleQuickPoisonCheck}
+              sx={{
+                fontSize: '0.78rem',
+                color: ink.textSecondary,
+                p: 0,
+                minWidth: 'auto',
+                '&:hover': { color: ink.accent },
+              }}
+            >
+              🛡️ 毒点避雷排查
+            </Button>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {targetChars != null && (
+            <Typography variant="caption" sx={{ color: targetMet ? ink.success : ink.textTertiary }}>
+              {targetMet ? `已达目标 ${targetChars} 字` : `目标 ${targetChars} 字`}
+            </Typography>
+          )}
+          <Typography variant="caption" sx={{ color: ink.textTertiary }}>
+            {chars} 字
           </Typography>
-        )}
-        <Typography variant="caption" sx={{ color: ink.textTertiary }}>
-          {chars} 字
-        </Typography>
+        </Box>
       </Box>
+
+      {/* 快捷毒点诊断弹窗 */}
+      <Dialog
+        open={poisonOpen}
+        onClose={() => setPoisonOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+          <Typography component="span" variant="h6" fontWeight={700}>
+            🛡️ 章节毒点排查诊断
+          </Typography>
+          {poisonResult && (
+            <Chip
+              size="small"
+              label={poisonResult.verdict}
+              color={poisonResult.score === 0 ? 'success' : poisonResult.score < 30 ? 'warning' : 'error'}
+            />
+          )}
+        </DialogTitle>
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {poisonLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          )}
+
+          {poisonError && <Alert severity="error">{poisonError}</Alert>}
+
+          {poisonResult && !poisonLoading && (
+            <>
+              {poisonResult.findings.length === 0 ? (
+                <Alert severity="success">
+                  本章未命中任何已知的过度憋屈、圣母资敌、降智舔狗、战力断崖等恶性弃坑毒点，行文节奏舒畅！
+                </Alert>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    检出 <strong>{poisonResult.totalIssues}</strong> 处潜在风险（扣分：{poisonResult.score}）：
+                  </Typography>
+                  {poisonResult.findings.map((f, i) => (
+                    <Card key={i} variant="outlined" sx={{ bgcolor: 'action.hover' }}>
+                      <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <Chip size="small" label={`第 ${f.line} 行`} />
+                          <Typography variant="subtitle2" fontWeight={700}>
+                            {f.typeName}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
+                            命中：{f.matched}
+                          </Typography>
+                        </Box>
+                        <Typography variant="caption" color="text.primary" display="block">
+                          “...{f.snippet}... ”
+                        </Typography>
+                        <Typography variant="caption" color="success.main" display="block" sx={{ mt: 0.5, fontWeight: 600 }}>
+                          【改法建议】 {f.suggestion}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPoisonOpen(false)}>关闭并返回写作</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

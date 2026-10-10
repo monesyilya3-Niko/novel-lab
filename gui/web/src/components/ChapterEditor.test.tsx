@@ -4,9 +4,21 @@
 //   1) 外部非空 value 变化必须回同步到编辑器（受控契约）；
 //   2) 空段落 / 换行在“纯文本 → HTML → 纯文本”往返中保真。
 // 外加：HTML 转义（value 里的 <>& 不得被当成标签解析）、字数统计显示。
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ChapterEditor from './ChapterEditor'
+
+vi.mock('../api/client', () => ({
+  toolsApi: {
+    checkPoison: vi.fn().mockResolvedValue({
+      score: 0,
+      verdict: '安全：未发现明显弃坑毒点，行文节奏舒畅',
+      totalIssues: 0,
+      findings: [],
+    }),
+  },
+  friendlyError: (e: unknown) => String(e),
+}))
 
 const noop = vi.fn()
 
@@ -71,5 +83,19 @@ describe('ChapterEditor', () => {
   it('达到目标字数显示达标提示', async () => {
     render(<ChapterEditor value="你好世界" onChange={noop} targetChars={4} />)
     await screen.findByText('已达目标 4 字')
+  })
+
+  it('点击毒点避雷排查按钮弹出诊断弹窗', async () => {
+    render(<ChapterEditor value="主角一剑横扫八荒，斩灭妖邪。" onChange={noop} />)
+    const btn = await screen.findByText('🛡️ 毒点避雷排查')
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(screen.getByText('🛡️ 章节毒点排查诊断')).toBeDefined()
+      expect(screen.getByText(/未命中任何已知的过度憋屈/)).toBeDefined()
+    })
+
+    const closeBtn = screen.getByText('关闭并返回写作')
+    fireEvent.click(closeBtn)
   })
 })

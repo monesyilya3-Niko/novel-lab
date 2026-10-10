@@ -1,6 +1,6 @@
 """网文核心毒点与弃坑点排查引擎 — 100% 纯 Python 标准库实现。
 
-排查 7 大核心高危毒点：
+排查 10 大核心高危毒点：
 1. excessive_suffering: 过度憋屈受辱无反抗
 2. enemy_mercy: 圣母资敌放虎归山
 3. simp_behavior: 降智舔狗践踏尊严
@@ -8,6 +8,9 @@
 5. preachy_monologue: 作者下场长篇生硬说教
 6. distress_trope: 核心女配莫名被俘送人头
 7. ntr_ambiguity: 绿帽擦边与情感忠诚背叛
+8. nerfed_powers: 金手指莫名被夺削弱
+9. broken_promise: 言而无信承诺烂尾
+10. brainless_antagonist: 反派无脑复读找茬
 """
 from __future__ import annotations
 
@@ -102,8 +105,46 @@ POISON_PATTERNS = [
         ],
         "reason": "情感背叛或严重暧昧擦边，直接触碰读者的第一禁区，导致毁灭性差评。",
         "suggestion": "严守情感忠诚底线；若有误会，三章内必须彻底廓清并严惩造谣者。"
+    },
+    {
+        "type": "nerfed_powers",
+        "name": "金手指莫名被夺削弱",
+        "severity": "high",
+        "weight": 20,
+        "patterns": [
+            r"(被宗门长辈强行收走|将宝物暂借给他人保管|无故被小偷盗走|金手指陷入永久休眠)",
+            r"(神级外挂被莫名封印|修为被废且金手指失灵|宝物被迫上交家族)"
+        ],
+        "reason": "主角已获得的底牌被生硬剥夺，剥夺感极强，读者付出沉没成本受挫弃书。",
+        "suggestion": "外挂可以有冷却限制或代价，但绝对控制权必须始终在主角手中；如被夺，三章内必须作为反杀诱饵。"
+    },
+    {
+        "type": "broken_promise",
+        "name": "言而无信承诺烂尾",
+        "severity": "medium",
+        "weight": 10,
+        "patterns": [
+            r"(早就把当年的誓言忘得一干二净|昔日的承诺抛诸脑后|早就忘了还要去救)",
+            r"(发过的重誓如今全当耳旁风|随口答应的事从不兑现)"
+        ],
+        "reason": "主角立誓后抛诸脑后毫无推进，显得人设虚伪冷血，丧失主线目标牵引力。",
+        "suggestion": "建立伏笔记账本，阶段性交代主线目标的推进进度，有始有终完成承诺结算。"
+    },
+    {
+        "type": "brainless_antagonist",
+        "name": "反派无脑复读找茬",
+        "severity": "medium",
+        "weight": 10,
+        "patterns": [
+            r"(你找死！你找死！|你这废物竟敢|给脸不要脸的小畜生|你可知我是谁|信不信我诛你九族)",
+            r"(蝼蚁也敢放肆|不知天高地厚的狗东西|跪下磕头饶你不死)"
+        ],
+        "reason": "反派台词单一廉价复读，毫无动机地为了找茬而找茬，挨打之后毫无长进继续送人头，爽感单薄低俗。",
+        "suggestion": "反派动机立足于真实利益争夺；反派反扑要有手段和层级升级，避免复读机式谩骂。"
     }
 ]
+
+MAX_SCAN_LINES = 10000
 
 
 def check_poison(text: str) -> dict[str, Any]:
@@ -125,7 +166,7 @@ def check_poison(text: str) -> dict[str, Any]:
             "findings": []
         }
 
-    lines = text.splitlines()
+    lines = text.splitlines()[:MAX_SCAN_LINES]
     findings: list[dict[str, Any]] = []
     total_penalty = 0
 

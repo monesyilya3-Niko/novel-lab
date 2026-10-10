@@ -1,8 +1,8 @@
 """离线工具引擎与资产端点单元测试（起名工坊、毒点避雷、实操资产库）。
 
 覆盖：
-1. gui.name_generator: 角色、势力、功法、法宝生成，去重与数量边界。
-2. gui.poison_checker: 7 大核心毒点检测及干净文本置信度。
+1. gui.name_generator: 角色、势力、功法、法宝、战队、避难所、收容机构生成，去重与数量边界。
+2. gui.poison_checker: 10 大核心毒点检测及干净文本置信度、行数截断安全。
 3. gui.services: generate_names, scan_poison, get_goldfingers, get_hooks, get_taboos。
 4. gui.router: /api/tools/* 路由分发、参数校验与响应包裹。
 
@@ -62,10 +62,28 @@ class TestNameGenerator(unittest.TestCase):
         self.assertEqual(len(artifacts), 8)
         self.assertEqual(len(set(artifacts)), 8)
 
+    def test_team_shelter_org_names(self):
+        teams = name_generator.generate_team_names(count=8)
+        self.assertEqual(len(teams), 8)
+        self.assertEqual(len(set(teams)), 8)
+
+        shelters = name_generator.generate_shelter_names(count=8)
+        self.assertEqual(len(shelters), 8)
+        self.assertEqual(len(set(shelters)), 8)
+
+        orgs = name_generator.generate_org_names(count=8)
+        self.assertEqual(len(orgs), 8)
+        self.assertEqual(len(set(orgs)), 8)
+
     def test_generate_unified(self):
         res = name_generator.generate(kind="character", style="xianxia", gender="all", count=5)
         self.assertEqual(res["count"], 5)
         self.assertEqual(len(res["names"]), 5)
+
+        for k in ("team", "shelter", "org"):
+            r = name_generator.generate(kind=k, count=5)
+            self.assertEqual(r["kind"], k)
+            self.assertEqual(len(r["names"]), 5)
 
 
 class TestPoisonChecker(unittest.TestCase):
@@ -128,6 +146,37 @@ class TestPoisonChecker(unittest.TestCase):
         types = [i["type"] for i in res["findings"]]
         self.assertIn("ntr_ambiguity", types)
 
+    def test_detect_nerfed_powers(self):
+        text = "刚拿到至宝，便被宗门长辈强行收走，神级外挂被莫名封印。"
+        res = poison_checker.check_poison(text)
+        self.assertGreater(res["score"], 0)
+        types = [i["type"] for i in res["findings"]]
+        self.assertIn("nerfed_powers", types)
+
+    def test_detect_broken_promise(self):
+        text = "他早就把当年的誓言忘得一干二净，随口答应的事从不兑现。"
+        res = poison_checker.check_poison(text)
+        self.assertGreater(res["score"], 0)
+        types = [i["type"] for i in res["findings"]]
+        self.assertIn("broken_promise", types)
+
+    def test_detect_brainless_antagonist(self):
+        text = "反派恶狠狠道：你找死！你找死！不知天高地厚的狗东西，跪下磕头饶你不死！"
+        res = poison_checker.check_poison(text)
+        self.assertGreater(res["score"], 0)
+        types = [i["type"] for i in res["findings"]]
+        self.assertIn("brainless_antagonist", types)
+
+    def test_max_scan_lines_limit(self):
+        # 构造超过 10000 行的文本，确保引擎不会崩溃且严格执行安全上限
+        lines = ["正常行内容" for _ in range(10050)]
+        # 在第 10020 行放入毒点，超出 MAX_SCAN_LINES 应被截断不触发
+        lines[10020] = "他甘愿做牛做马，只求你不要离开我"
+        text = "\n".join(lines)
+        res = poison_checker.check_poison(text)
+        self.assertEqual(res["score"], 0)
+        self.assertEqual(res["total_issues"], 0)
+
 
 class TestToolsServicesAndRoutes(unittest.TestCase):
     """服务层及 API 路由分发测试。"""
@@ -139,6 +188,15 @@ class TestToolsServicesAndRoutes(unittest.TestCase):
 
         sect_data = services.generate_names(kind="sect", count=3)
         self.assertEqual(len(sect_data["names"]), 3)
+
+        team_data = services.generate_names(kind="team", count=3)
+        self.assertEqual(len(team_data["names"]), 3)
+
+        shelter_data = services.generate_names(kind="shelter", count=3)
+        self.assertEqual(len(shelter_data["names"]), 3)
+
+        org_data = services.generate_names(kind="org", count=3)
+        self.assertEqual(len(org_data["names"]), 3)
 
         skill_data = services.generate_names(kind="skill", count=3)
         self.assertEqual(len(skill_data["names"]), 3)

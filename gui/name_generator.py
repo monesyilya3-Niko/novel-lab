@@ -230,6 +230,61 @@ def generate_artifact_names(count: int = 10) -> list[str]:
     return results
 
 
+TEAM_PREFIXES = ["极光", "破晓", "星芒", "暗影", "无畏", "天擎", "银翼", "赤焰", "幻影", "雷霆", "神谕", "巅峰", "狂澜", "苍穹"]
+TEAM_SUFFIXES = ["战队", "电子竞技俱乐部", "Gaming", "Esports", "先锋队", "俱乐部", "Team"]
+
+SHELTER_PREFIXES = ["晨曦", "希望", "钢铁壁垒", "诺亚", "曙光", "方舟", "永夜", "黑石", "磐石", "地下城", "守望", "避难所", "新绿洲"]
+SHELTER_SUFFIXES = ["基地", "避难所", "聚集地", "要塞", "安全区", "前哨站", "地下城", "特别行政特区"]
+
+ORG_PREFIXES = ["第七", "第九", "第十三", "守秘人", "深空", "天理", "真理", "异象", "黑水", "天启", "秩序", "极密", "异常收容"]
+ORG_SUFFIXES = ["调查局", "基金会", "协议会", "研究所", "防务联盟", "仲裁庭", "理事会", "监督部", "学会"]
+
+
+def generate_team_names(count: int = 10) -> list[str]:
+    """生成电竞战队或竞技俱乐部名称。"""
+    results: list[str] = []
+    used = set()
+    count = max(1, min(count, 50))
+    for _ in range(count):
+        for _retry in range(30):
+            name = f"{random.choice(TEAM_PREFIXES)}{random.choice(TEAM_SUFFIXES)}"
+            if name not in used:
+                used.add(name)
+                results.append(name)
+                break
+    return results
+
+
+def generate_shelter_names(count: int = 10) -> list[str]:
+    """生成末日避难所、聚集地或生存要塞名称。"""
+    results: list[str] = []
+    used = set()
+    count = max(1, min(count, 50))
+    for _ in range(count):
+        for _retry in range(30):
+            name = f"{random.choice(SHELTER_PREFIXES)}{random.choice(SHELTER_SUFFIXES)}"
+            if name not in used:
+                used.add(name)
+                results.append(name)
+                break
+    return results
+
+
+def generate_org_names(count: int = 10) -> list[str]:
+    """生成怪谈收容机构、神秘调查局或科研联盟名称。"""
+    results: list[str] = []
+    used = set()
+    count = max(1, min(count, 50))
+    for _ in range(count):
+        for _retry in range(30):
+            name = f"{random.choice(ORG_PREFIXES)}{random.choice(ORG_SUFFIXES)}"
+            if name not in used:
+                used.add(name)
+                results.append(name)
+                break
+    return results
+
+
 def generate(kind: str = "character", style: str = "xianxia", gender: str = "all", count: int = 10) -> dict[str, Any]:
     """起名工坊对外统一接口。"""
     kind = kind.lower().strip()
@@ -243,6 +298,12 @@ def generate(kind: str = "character", style: str = "xianxia", gender: str = "all
         names = generate_skill_names(count=count)
     elif kind in ("artifact", "weapon"):
         names = generate_artifact_names(count=count)
+    elif kind in ("team", "esports"):
+        names = generate_team_names(count=count)
+    elif kind in ("shelter", "base"):
+        names = generate_shelter_names(count=count)
+    elif kind in ("org", "agency", "institution"):
+        names = generate_org_names(count=count)
     else:
         names = generate_character_names(style=style, gender=gender, count=count)
         
