@@ -705,7 +705,7 @@ interface StudioViewProps {
 
 function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
   const [projects, setProjects] = useState<WritingProject[]>([])
-  const [currentProject, setCurrentProject] = useState<string>('default')
+  const [currentProject, setCurrentProject] = useState<string>('')
   const [meta, setMeta] = useState<ProjectMeta | null>(null)
   const [outlines, setOutlines] = useState<OutlineItem[]>([])
   const [characters, setCharacters] = useState<CharacterCard[]>([])
@@ -719,6 +719,19 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
     '寒风呼啸，少年林凡握紧手中残破铁剑，凝视着眼前深不见底的万丈深渊。宗门考核长老的冷笑声犹在耳畔，但他胸膛内那颗沉寂已久的神秘石珠，正隐隐泛起滚烫的微光。'
   )
   const [saving, setSaving] = useState<boolean>(false)
+
+  // 本地草稿自动暂存 Key（防丢稿机制）
+  const getDraftKey = (proj: string, ch: number) => `novel_draft_${proj}_ch${ch}`
+
+  // 监听内容变动，自动同步到本地草稿缓存
+  useEffect(() => {
+    if (!currentProject || !content) return
+    try {
+      localStorage.setItem(getDraftKey(currentProject, chapterNo), content)
+    } catch {
+      // 忽略 LocalStorage 写入限额异常
+    }
+  }, [content, currentProject, chapterNo])
 
   // 左右栏交互
   const [leftTab, setLeftTab] = useState<'outlines' | 'characters' | 'notes'>('outlines')
@@ -936,13 +949,22 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
     }
   }
 
-  // 下一章快捷切换
+  // 下一章快捷切换（带本地草稿记忆防误触）
   const handleNextChapter = () => {
+    if (content.trim()) {
+      try {
+        localStorage.setItem(getDraftKey(currentProject, chapterNo), content)
+      } catch {}
+    }
     const next = chapterNo + 1
     setChapterNo(next)
     setChapterTitle(`第${next}章`)
-    setContent('')
-    setToast(`已准备好开启第 ${next} 章创作`)
+    let savedDraft = ''
+    try {
+      savedDraft = localStorage.getItem(getDraftKey(currentProject, next)) || ''
+    } catch {}
+    setContent(savedDraft)
+    setToast(`已准备好开启第 ${next} 章创作${savedDraft ? '（已自动恢复本章本地草稿）' : ''}`)
   }
 
   // 快捷创建章节大纲
@@ -1044,6 +1066,9 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
         content: content,
       })
       setToast(`第 ${chapterNo} 章已入库！共 ${r.char_count} 字（${r.overwrote ? '覆盖旧章' : '新增章节'}）`)
+      try {
+        localStorage.removeItem(getDraftKey(currentProject, chapterNo))
+      } catch {}
       // 重新加载统计与大纲
       loadProjectData(currentProject)
     } catch (e) {
@@ -1146,6 +1171,11 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
             onChange={(e) => setCurrentProject(e.target.value)}
             sx={{ minWidth: 180 }}
           >
+            {projects.length === 0 && (
+              <MenuItem value="" disabled>
+                （暂无小说工程）
+              </MenuItem>
+            )}
             {projects.map((p) => (
               <MenuItem key={p.id} value={p.name}>
                 {p.name}
@@ -1297,12 +1327,28 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
                         '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
                       }}
                       onClick={() => {
+                        if (content.trim()) {
+                          try {
+                            localStorage.setItem(getDraftKey(currentProject, chapterNo), content)
+                          } catch {}
+                        }
                         setChapterTitle(ot.title)
+                        let targetNo = chapterNo
                         const m = ot.title.match(/第\s*(\d+)\s*章/)
                         if (m) {
-                          setChapterNo(Number(m[1]))
+                          targetNo = Number(m[1])
+                          setChapterNo(targetNo)
                         }
-                        setToast(`已选定大纲章节: ${ot.title}`)
+                        let savedDraft = ''
+                        try {
+                          savedDraft = localStorage.getItem(getDraftKey(currentProject, targetNo)) || ''
+                        } catch {}
+                        if (savedDraft) {
+                          setContent(savedDraft)
+                          setToast(`已选定大纲章节: ${ot.title}（已自动恢复本地草稿）`)
+                        } else {
+                          setToast(`已选定大纲章节: ${ot.title}`)
+                        }
                       }}
                     >
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1317,19 +1363,35 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
                         />
                       </Box>
                       {ot.summary && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            mt: 0.5,
-                          }}
-                        >
-                          {ot.summary}
-                        </Typography>
+                        <>
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              mt: 0.5,
+                            }}
+                          >
+                            {ot.summary}
+                          </Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5 }}>
+                            <Button
+                              size="small"
+                              variant="text"
+                              startIcon={<InputIcon fontSize="small" />}
+                              sx={{ fontSize: 11, py: 0 }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                insertTextToEditor(`【大纲细纲骨架：${ot.title}】\n${ot.summary}\n\n`, ot.title)
+                              }}
+                            >
+                              引用细纲到正文
+                            </Button>
+                          </Box>
+                        </>
                       )}
                     </Card>
                   ))

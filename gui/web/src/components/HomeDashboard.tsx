@@ -194,7 +194,7 @@ export default function HomeDashboard() {
                 {[
                   { title: '分析拆书', desc: '导入 TXT，全链路拆解', key: 'analysis' as WorkbenchKey, accent: ink.cinnabar },
                   { title: '资产库', desc: '浏览题材包与笔法卡', key: 'assets' as WorkbenchKey, accent: ink.teal },
-                  { title: '辅助写作', desc: '注入资产，AI 伴写', key: 'writing' as WorkbenchKey, accent: ink.gold },
+                  { title: '沉浸创作室', desc: '一屏三栏·副驾伴写', key: 'writing' as WorkbenchKey, accent: ink.gold },
                 ].map((a) => (
                   <Grid item xs={12} sm={4} key={a.key}>
                     <Card
