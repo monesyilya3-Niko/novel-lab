@@ -119,6 +119,28 @@ class TestDiagnoseChapter(unittest.TestCase):
         res = platform_service.diagnose_chapter("qidian", text, "第1章", chapter_num=1)
         self.assertTrue(any("头号劝退点" in r for r in res["veto_risks"]))
 
+    def test_diagnose_qidian_virgin_mary_penalized(self):
+        text = "林轩叹了口气：“得饶人处且饶人，我原谅了他，饶他不死。”\n" + "他收剑入鞘，转身离去。" * 150
+        res = platform_service.diagnose_chapter("qidian", text, "第1章 饶恕", chapter_num=1)
+        self.assertTrue(any("主角出现无原则圣母行为" in r for r in res["veto_risks"]))
+
+    def test_diagnose_jinjiang_greasy_and_emotion(self):
+        text = "冷夜寒一把抓住她的手腕：“小妖精，女人你成功引起了我的注意。”\n" + "他霸道地将她推在墙上。" * 200
+        res = platform_service.diagnose_chapter("jinjiang", text, "第1章 偶遇", chapter_num=1)
+        self.assertTrue(any("油腻古早霸总" in r for r in res["veto_risks"]))
+
+    def test_diagnose_qimao_insult_without_counter(self):
+        text = "王琴破口大骂：“你这个上门女婿，窝囊废，穷光蛋，滚出我家！”\n" + "陈阳默默低头扫地，受尽欺凌。" * 100
+        res = platform_service.diagnose_chapter("qimao", text, "第1章 受辱", chapter_num=1)
+        self.assertTrue(any("七猫爽点脱节预警" in r for r in res["veto_risks"]))
+
+    def test_list_platforms_includes_creative_params(self):
+        platforms = platform_service.list_platforms()
+        self.assertEqual(len(platforms), 5)
+        for p in platforms:
+            self.assertIn("climax_interval", p)
+            self.assertIn("rhythm_type", p)
+
     def test_diagnose_router_dispatch(self):
         from gui import router
         resp, _ = router.dispatch(

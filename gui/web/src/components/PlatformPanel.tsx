@@ -16,10 +16,15 @@ import { friendlyError } from '../api/client'
 interface Platform {
   id: string
   name: string
-  chapterMinChars: number
-  chapterMaxChars: number
-  supportsSerialization: boolean
-  genreCount: number
+  chapterMinChars?: number
+  chapterMaxChars?: number
+  chapter_min_chars?: number
+  chapter_max_chars?: number
+  supportsSerialization?: boolean
+  supports_serialization?: boolean
+  climax_interval?: string
+  rhythm_type?: string
+  genreCount?: number
 }
 
 export default function PlatformPanel() {
@@ -86,19 +91,32 @@ export default function PlatformPanel() {
     return 'error'
   }
 
+  const minChars = currentPlatform?.chapter_min_chars ?? currentPlatform?.chapterMinChars ?? 0
+  const maxChars = currentPlatform?.chapter_max_chars ?? currentPlatform?.chapterMaxChars ?? 0
+
   return (
     <Box>
       <Typography variant="h6" gutterBottom>多平台适配与签约诊断</Typography>
 
-      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
         <TextField select label="目标平台" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 180 }} size="small">
           {platforms.map((p) => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
         </TextField>
         {currentPlatform && (
-          <Chip
-            label={`${currentPlatform.chapterMinChars}-${currentPlatform.chapterMaxChars}字/章`}
-            size="small" color="primary" variant="outlined"
-          />
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+            {minChars > 0 && (
+              <Chip
+                label={`${minChars}-${maxChars}字/章`}
+                size="small" color="primary" variant="outlined"
+              />
+            )}
+            {currentPlatform.climax_interval && (
+              <Chip label={`爽点周期: ${currentPlatform.climax_interval}`} size="small" color="secondary" variant="outlined" />
+            )}
+            {currentPlatform.rhythm_type && (
+              <Chip label={currentPlatform.rhythm_type} size="small" variant="outlined" />
+            )}
+          </Stack>
         )}
       </Box>
 

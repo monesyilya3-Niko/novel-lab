@@ -22,6 +22,10 @@ PLATFORMS = {
         "chapter_format": "第{num}章 {title}",
         "title_max_len": 30,
         "supports_serialization": True,
+        "climax_interval": "8-12章",
+        "dialogue_sweet_spot": (20.0, 45.0),
+        "rhythm_type": "长线升级·世界观宏大·智斗博弈",
+        "platform_taboos": ["主角无原则圣母", "战力严重崩坏", "反派无脑降智", "通篇白话纯对白水文"],
         "genre_whitelist": [
             "玄幻", "奇幻", "武侠", "仙侠", "都市", "现实", "军事", "历史",
             "游戏", "体育", "科幻", "悬疑", "轻小说", "短篇",
@@ -34,6 +38,10 @@ PLATFORMS = {
         "chapter_format": "第{num}章 {title}",
         "title_max_len": 20,
         "supports_serialization": True,
+        "climax_interval": "2-3章",
+        "dialogue_sweet_spot": (25.0, 55.0),
+        "rhythm_type": "短平快·300字入戏·高频碾压打脸",
+        "platform_taboos": ["开篇大段设定说明文", "主角憋屈隐忍不还手", "章末无悬念钩子", "节奏拖沓慢热"],
         "genre_whitelist": [
             "都市", "玄幻", "悬疑", "历史", "科幻", "言情", "武侠",
             "仙侠", "游戏", "体育", "现实", "轻小说",
@@ -46,6 +54,10 @@ PLATFORMS = {
         "chapter_format": "第{num}章 {title}",
         "title_max_len": 40,
         "supports_serialization": True,
+        "climax_interval": "4-6章",
+        "dialogue_sweet_spot": (35.0, 60.0),
+        "rhythm_type": "人设细腻·情感推拉·修罗场张力",
+        "platform_taboos": ["主角人设崩塌OOC", "油腻古早霸总台词", "通篇枯燥陈述缺乏神态微表情", "低俗低质擦边"],
         "genre_whitelist": [
             "言情", "纯爱", "无CP", "奇幻", "武侠", "仙侠", "都市",
             "悬疑", "科幻", "游戏", "轻小说", "短篇",
@@ -58,6 +70,10 @@ PLATFORMS = {
         "chapter_format": "第{num}章 {title}",
         "title_max_len": 20,
         "supports_serialization": True,
+        "climax_interval": "3-5章",
+        "dialogue_sweet_spot": (25.0, 50.0),
+        "rhythm_type": "下沉爽感·阶级反差·强势归来逆袭",
+        "platform_taboos": ["长篇受辱无底牌反制", "世界观过于晦涩深奥", "主角行事优柔寡断"],
         "genre_whitelist": [
             "都市", "玄幻", "悬疑", "历史", "科幻", "言情", "武侠",
             "仙侠", "游戏", "现实", "轻小说",
@@ -70,6 +86,10 @@ PLATFORMS = {
         "chapter_format": "{title}",
         "title_max_len": 50,
         "supports_serialization": False,
+        "climax_interval": "1500字一反转",
+        "dialogue_sweet_spot": (15.0, 40.0),
+        "rhythm_type": "第一人称代入·多重反转·现实人性撕裂",
+        "platform_taboos": ["第三人称疏离叙事", "无逻辑天降外挂", "开篇缺乏核心矛盾事件", "通篇注水流水账"],
         "genre_whitelist": [
             "悬疑", "言情", "脑洞", "科幻", "奇幻", "都市", "历史",
             "现实", "成长", "治愈",
@@ -87,6 +107,8 @@ def list_platforms() -> list[dict[str, Any]]:
             "chapter_min_chars": p["chapter_min_chars"],
             "chapter_max_chars": p["chapter_max_chars"],
             "supports_serialization": p["supports_serialization"],
+            "climax_interval": p.get("climax_interval", ""),
+            "rhythm_type": p.get("rhythm_type", ""),
             "genre_count": len(p["genre_whitelist"]),
         }
         for pid, p in PLATFORMS.items()
@@ -184,19 +206,21 @@ def check_chapter_compliance(platform_id: str, chapter_text: str,
 
 _INFO_DUMP_KEYWORDS = [
     "在这个世界", "很久很久以前", "相传数万年前", "历史悠久", "众所周知",
-    "力量体系分为", "地理位置极为特殊", "根据上古文献记载", "天地初开之际"
+    "力量体系分为", "地理位置极为特殊", "根据上古文献记载", "天地初开之际",
+    "这片大陆上", "修仙境界划分为", "追溯到太古时期", "浩瀚的大陆"
 ]
 
 _AI_SLOP_PHRASES = [
     "心中涌起一股暖流", "宛如天神下凡", "深知这个道理", "眼神中闪烁着复杂的光芒",
     "嘴角勾起一抹弧度", "不由得倒吸了一口凉气", "在心中默默发誓", "感到无比的震惊与愤怒",
-    "仿佛在诉说着曾经的过往", "这一刻，时间仿佛静止了"
+    "仿佛在诉说着曾经的过往", "这一刻，时间仿佛静止了", "不是因为别的，而是因为",
+    "在这寂静的夜里", "无形之中散发着", "仿佛能够穿透一切", "一时间，空气陷入了沉默"
 ]
 
 
 def diagnose_chapter(platform_id: str, chapter_text: str,
                      chapter_title: str = "", chapter_num: int = 1) -> dict[str, Any]:
-    """网文签约过稿深度诊断（黄金三章自检、说明文劝退度分析、平台专属审核规则）。"""
+    """网文签约过稿深度诊断（黄金三章自检、说明文劝退度分析、全平台专属审核规则）。"""
     if platform_id not in PLATFORMS:
         raise ServiceError(f"不支持的平台: {platform_id}", 400)
     if not isinstance(chapter_text, str):
@@ -271,7 +295,7 @@ def diagnose_chapter(platform_id: str, chapter_text: str,
         veto_risks.append(f"AI味俗套表达过多（命中 {len(found_slop)} 处：{', '.join(found_slop[:3])}）")
         actionable_fixes.append("使用写作台【去AI味体检】功能，将书面说明腔与陈词滥调替换为自然网文口语表达")
 
-    # 5. 平台专属风格自检
+    # 5. 全平台专属风格深度自检
     if platform_id == "zhihu" and "我" not in chapter_text[:500]:
         score -= 20
         veto_risks.append("知乎盐言风格偏离：前500字未见第一人称“我”，知乎读者偏好第一人称沉浸式代入")
@@ -279,6 +303,38 @@ def diagnose_chapter(platform_id: str, chapter_text: str,
     elif platform_id == "fanqie" and is_early_chapter and score < 80:
         veto_risks.append("番茄完读率预警：前三章节奏偏慢，番茄算法推荐严重依赖前三章读完率")
         actionable_fixes.append("在第1章结尾必须设计强悬念钩子，第2-3章必须安排一次小型爽点兑现")
+    elif platform_id == "qidian":
+        virgin_mary_keywords = ["原谅了他", "得饶人处且饶人", "放虎归山", "心中不忍放过", "饶他不死"]
+        found_holy = [k for k in virgin_mary_keywords if k in chapter_text]
+        if found_holy:
+            score -= 15
+            veto_risks.append(f"起点读者大忌：主角出现无原则圣母行为（命中：{', '.join(found_holy)}）")
+            actionable_fixes.append("起点读者极重杀伐果断与合理自保，消除圣母行为，改为主角权衡利弊后的果决处置")
+        if dialogue_ratio > 55.0 and char_count > 1000:
+            score -= 10
+            veto_risks.append(f"起点宏大叙事失衡：对话占比高达 {dialogue_ratio}%，缺乏世界观、博弈与心理铺垫")
+            actionable_fixes.append("起点长线文需要更扎实的势力背景与环境博弈描写，精简纯对白，增加局势分析与动作细节")
+    elif platform_id == "jinjiang":
+        greasy_phrases = ["小妖精", "女人你成功引起了我的注意", "不知好歹的小东西", "玩火自焚"]
+        found_greasy = [k for k in greasy_phrases if k in chapter_text]
+        if found_greasy:
+            score -= 20
+            veto_risks.append(f"晋江人设大忌：出现油腻古早霸总俗套台词（命中：{', '.join(found_greasy)}）")
+            actionable_fixes.append("彻底删除油腻俗套用语，改为符合现代审美的互相尊重、平等推拉与眼神细节")
+        emotional_keywords = ["眼神", "心跳", "指尖", "微怔", "垂眸", "呼吸", "眼底", "轻颤", "下意识"]
+        if not any(k in chapter_text for k in emotional_keywords) and char_count > 800:
+            score -= 10
+            veto_risks.append("晋江情感张力不足：本章未见眼神、心跳、微表情等细腻神态描写")
+            actionable_fixes.append("晋江读者极重心理共鸣，在两人互动关键节点补充神态微表情与潜台词动作节拍")
+    elif platform_id == "qimao":
+        insult_keywords = ["废物", "穷光蛋", "上门女婿", "窝囊废", "倒插门"]
+        has_insult = any(k in chapter_text[:800] for k in insult_keywords)
+        counter_keywords = ["底牌", "战神", "至尊", "神医", "龙王", "系统", "余额", "冷笑", "下跪", "大佬"]
+        has_counter = any(k in chapter_text[:1200] for k in counter_keywords)
+        if is_early_chapter and has_insult and not has_counter:
+            score -= 15
+            veto_risks.append("七猫爽点脱节预警：开篇主角受尽侮辱嘲讽，但前千字内未见任何反制底牌或爽点预期")
+            actionable_fixes.append("下沉免费流极忌漫长憋屈，在受辱后 500 字内必须展示隐秘底牌或反打脸前置伏笔")
 
     score = max(20, min(100, score))
     if score >= 85:
