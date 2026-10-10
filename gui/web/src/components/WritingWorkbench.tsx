@@ -728,8 +728,8 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
     if (!currentProject || !content) return
     try {
       localStorage.setItem(getDraftKey(currentProject, chapterNo), content)
-    } catch {
-      // 忽略 LocalStorage 写入限额异常
+    } catch (_e) {
+      void _e
     }
   }, [content, currentProject, chapterNo])
 
@@ -954,7 +954,9 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
     if (content.trim()) {
       try {
         localStorage.setItem(getDraftKey(currentProject, chapterNo), content)
-      } catch {}
+      } catch (_e) {
+        void _e
+      }
     }
     const next = chapterNo + 1
     setChapterNo(next)
@@ -962,7 +964,9 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
     let savedDraft = ''
     try {
       savedDraft = localStorage.getItem(getDraftKey(currentProject, next)) || ''
-    } catch {}
+    } catch (_e) {
+      void _e
+    }
     setContent(savedDraft)
     setToast(`已准备好开启第 ${next} 章创作${savedDraft ? '（已自动恢复本章本地草稿）' : ''}`)
   }
@@ -1068,7 +1072,9 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
       setToast(`第 ${chapterNo} 章已入库！共 ${r.char_count} 字（${r.overwrote ? '覆盖旧章' : '新增章节'}）`)
       try {
         localStorage.removeItem(getDraftKey(currentProject, chapterNo))
-      } catch {}
+      } catch (_e) {
+        void _e
+      }
       // 重新加载统计与大纲
       loadProjectData(currentProject)
     } catch (e) {
@@ -1330,7 +1336,9 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
                         if (content.trim()) {
                           try {
                             localStorage.setItem(getDraftKey(currentProject, chapterNo), content)
-                          } catch {}
+                          } catch (_e) {
+                            void _e
+                          }
                         }
                         setChapterTitle(ot.title)
                         let targetNo = chapterNo
@@ -1342,7 +1350,9 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
                         let savedDraft = ''
                         try {
                           savedDraft = localStorage.getItem(getDraftKey(currentProject, targetNo)) || ''
-                        } catch {}
+                        } catch (_e) {
+                          void _e
+                        }
                         if (savedDraft) {
                           setContent(savedDraft)
                           setToast(`已选定大纲章节: ${ot.title}（已自动恢复本地草稿）`)
