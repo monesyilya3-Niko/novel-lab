@@ -19,6 +19,8 @@ import {
   friendlyError,
   type GoldfingerItem,
   type HookItem,
+  type ShuangdianItem,
+  type WorldSystemItem,
 } from '../api/client'
 
 export default function InspirationWorkbench() {
@@ -32,12 +34,16 @@ export default function InspirationWorkbench() {
             <Tab label="起名工坊 (离线智能)" />
             <Tab label="开篇钩子库 (黄金三章)" />
             <Tab label="金手指机制库 (12大外挂)" />
+            <Tab label="爽点打脸设计 (三段闭环)" />
+            <Tab label="世界观体系 (力量阶梯)" />
           </Tabs>
         </Box>
 
         {subTab === 0 && <NameGeneratorSection />}
         {subTab === 1 && <HookLibrarySection />}
         {subTab === 2 && <GoldfingerLibrarySection />}
+        {subTab === 3 && <ShuangdianLibrarySection />}
+        {subTab === 4 && <WorldLibrarySection />}
       </Paper>
     </Box>
   )
@@ -384,6 +390,239 @@ function GoldfingerLibrarySection() {
                   }
                 >
                   复制金手指设定
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+
+      <Snackbar
+        open={Boolean(copied)}
+        autoHideDuration={2000}
+        onClose={() => setCopied('')}
+        message={copied}
+      />
+    </Box>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 4. 爽点打脸设计库
+// ---------------------------------------------------------------------------
+
+function ShuangdianLibrarySection() {
+  const [shuangdians, setShuangdians] = useState<ShuangdianItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    toolsApi
+      .getShuangdians()
+      .then((res) => {
+        setShuangdians(res.shuangdians || [])
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const copyText = (txt: string, tip: string) => {
+    navigator.clipboard.writeText(txt)
+    setCopied(`已复制: ${tip}`)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        网文爽点与打脸逆袭闭环设计库：覆盖 12 大成熟爽点模式，包含三段式闭环（压抑-蓄势-释放）、打脸四拍（嘲讽-沉默-碾压-围观）及升级防疲劳链。
+      </Typography>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 2 }}>
+        {shuangdians.map((s) => (
+          <Card key={s.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {s.name}
+                </Typography>
+                <Chip size="small" label={s.category} color="warning" />
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography variant="caption" color="error.main">
+                  <strong>【压抑前奏】</strong> {s.suppression}
+                </Typography>
+                <Typography variant="caption" color="primary.main">
+                  <strong>【暗中蓄势】</strong> {s.buildUp}
+                </Typography>
+              </Box>
+
+              <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1, display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                <Typography variant="caption" fontWeight={600} color="text.secondary">
+                  打脸四拍执行节拍：
+                </Typography>
+                <Typography variant="caption">{s.mockery}</Typography>
+                <Typography variant="caption">{s.silence}</Typography>
+                <Typography variant="caption" fontWeight={600} color="error.dark">{s.crush}</Typography>
+                <Typography variant="caption" color="text.secondary">{s.spectators}</Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>升级路径：</strong> {s.upgradePath}
+                </Typography>
+                <Typography variant="caption" color="info.main">
+                  <strong>防疲劳提示：</strong> {s.antiFatigueTip}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() =>
+                    copyText(
+                      `【${s.name}】（${s.category}）\n压抑：${s.suppression}\n蓄势：${s.buildUp}\n四拍执行：\n- ${s.mockery}\n- ${s.silence}\n- ${s.crush}\n- ${s.spectators}\n升级路径：${s.upgradePath}\n防疲劳提示：${s.antiFatigueTip}`,
+                      s.name
+                    )
+                  }
+                >
+                  复制本套爽点模型
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        ))}
+      </Box>
+
+      <Snackbar
+        open={Boolean(copied)}
+        autoHideDuration={2000}
+        onClose={() => setCopied('')}
+        message={copied}
+      />
+    </Box>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 5. 世界观与力量体系库
+// ---------------------------------------------------------------------------
+
+function WorldLibrarySection() {
+  const [worlds, setWorlds] = useState<WorldSystemItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  useEffect(() => {
+    setLoading(true)
+    toolsApi
+      .getWorlds()
+      .then((res) => {
+        setWorlds(res.worlds || [])
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const copyText = (txt: string, tip: string) => {
+    navigator.clipboard.writeText(txt)
+    setCopied(`已复制: ${tip}`)
+  }
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        多题材世界观与力量体系设定库：包含清晰境界阶梯、三大不可违背法则铁律、货币资源兑换链及战力防崩红线。
+      </Typography>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))', gap: 2 }}>
+        {worlds.map((w) => (
+          <Card key={w.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  {w.name}
+                </Typography>
+                <Chip size="small" label={w.genre} color="success" />
+              </Box>
+
+              <Typography variant="caption" fontWeight={600} color="primary.main">
+                境界进阶阶梯：
+              </Typography>
+              <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1, display: 'flex', flexDirection: 'column', gap: 0.5, maxHeight: 180, overflowY: 'auto' }}>
+                {w.tierLadder?.map((t, idx) => (
+                  <Box key={idx} sx={{ borderBottom: idx < w.tierLadder.length - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none', pb: 0.5 }}>
+                    <Typography variant="caption" fontWeight={700} color="text.primary">
+                      {t.tier}
+                    </Typography>
+                    <Typography variant="caption" display="block" color="text.secondary">
+                      能力：{t.powerDesc}
+                    </Typography>
+                    <Typography variant="caption" display="block" color="warning.main">
+                      代价：{t.breakthroughCost}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
+                <Typography variant="caption" fontWeight={600} color="error.main">
+                  法则铁律：
+                </Typography>
+                {w.ironRules?.map((rule, idx) => (
+                  <Typography key={idx} variant="caption" color="text.secondary">
+                    • {rule}
+                  </Typography>
+                ))}
+              </Box>
+
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  <strong>货币与资源：</strong> {w.currencyAndResources}
+                </Typography>
+                <Typography variant="caption" color="error.dark">
+                  <strong>防崩红线：</strong> {w.powerCollapseWarning}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => {
+                    const tiersStr = w.tierLadder?.map((t) => `${t.tier}: ${t.powerDesc} (晋阶: ${t.breakthroughCost})`).join('\n') || ''
+                    const rulesStr = w.ironRules?.join('\n') || ''
+                    copyText(
+                      `【${w.name}】（${w.genre}）\n境界阶梯：\n${tiersStr}\n法则铁律：\n${rulesStr}\n货币资源：${w.currencyAndResources}\n防崩红线：${w.powerCollapseWarning}`,
+                      w.name
+                    )
+                  }}
+                >
+                  复制世界观设定
                 </Button>
               </Box>
             </CardContent>

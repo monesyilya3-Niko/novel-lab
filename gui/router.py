@@ -861,6 +861,15 @@ def _h_tools_taboos(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str,
     return ok(services.get_taboos())
 
 
+def _h_tools_shuangdians(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_shuangdians())
+
+
+def _h_tools_worlds(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_worlds())
+
+
+
 # ---------------------------------------------------------------------------
 # 路由表
 # ---------------------------------------------------------------------------
@@ -980,6 +989,8 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/tools/goldfingers$"), _h_tools_goldfingers),
     ("GET", re.compile(r"^/api/tools/hooks$"), _h_tools_hooks),
     ("GET", re.compile(r"^/api/tools/taboos$"), _h_tools_taboos),
+    ("GET", re.compile(r"^/api/tools/shuangdians$"), _h_tools_shuangdians),
+    ("GET", re.compile(r"^/api/tools/worlds$"), _h_tools_worlds),
 ]
 
 

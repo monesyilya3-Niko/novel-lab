@@ -803,9 +803,9 @@ def validate_tool_library(d):
         return
     if "meta" not in d:
         err("缺少必填字段 'meta'", "tool-library")
-    has_items = any(k in d for k in ("goldfingers", "hooks", "taboos"))
+    has_items = any(k in d for k in ("goldfingers", "hooks", "taboos", "shuangdians", "worlds"))
     if not has_items:
-        err("缺少有效实操库条目列表（应包含 goldfingers / hooks / taboos）", "tool-library")
+        err("缺少有效实操库条目列表（应包含 goldfingers / hooks / taboos / shuangdians / worlds）", "tool-library")
 
 
 DISPATCH = {
@@ -863,8 +863,8 @@ def auto_kind(d: dict, filename: str | None = None) -> str:
         return "distilled"
     if all(k in d for k in ("rules", "blindspots", "stats")):
         return "distilled"
-    # 2026-10-10：实操工具库（金手指/开篇钩子/避雷红线）
-    if any(k in d for k in ("goldfingers", "hooks", "taboos")):
+    # 2026-10-10：实操工具库（金手指/开篇钩子/避雷红线/爽点打脸/世界观体系）
+    if any(k in d for k in ("goldfingers", "hooks", "taboos", "shuangdians", "worlds")):
         return "tool-library"
     keys = set(d.keys())
     for kind, hints in AUTO_HINTS.items():

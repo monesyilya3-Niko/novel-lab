@@ -777,6 +777,36 @@ export interface TabooItem {
   fixSuggestion: string
 }
 
+export interface ShuangdianItem {
+  id: string
+  name: string
+  category: string
+  suppression: string
+  buildUp: string
+  mockery: string
+  silence: string
+  crush: string
+  spectators: string
+  upgradePath: string
+  antiFatigueTip: string
+}
+
+export interface WorldTierItem {
+  tier: string
+  powerDesc: string
+  breakthroughCost: string
+}
+
+export interface WorldSystemItem {
+  id: string
+  name: string
+  genre: string
+  tierLadder: WorldTierItem[]
+  ironRules: string[]
+  currencyAndResources: string
+  powerCollapseWarning: string
+}
+
 export const toolsApi = {
   generateNames: (params?: NameGenerateParams) => {
     const q = new URLSearchParams()
@@ -790,4 +820,6 @@ export const toolsApi = {
   getGoldfingers: () => get<{ totalCount: number; goldfingers: GoldfingerItem[] }>('/tools/goldfingers'),
   getHooks: () => get<{ totalCount: number; hooks: HookItem[] }>('/tools/hooks'),
   getTaboos: () => get<{ totalCount: number; taboos: TabooItem[] }>('/tools/taboos'),
+  getShuangdians: () => get<{ totalCount: number; shuangdians: ShuangdianItem[] }>('/tools/shuangdians'),
+  getWorlds: () => get<{ totalCount: number; worlds: WorldSystemItem[] }>('/tools/worlds'),
 }

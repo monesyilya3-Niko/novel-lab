@@ -226,6 +226,16 @@ class TestToolsServicesAndRoutes(unittest.TestCase):
         self.assertIn("taboos", data)
         self.assertGreaterEqual(len(data["taboos"]), 8)
 
+    def test_get_shuangdians_service(self):
+        data = services.get_shuangdians()
+        self.assertIn("shuangdians", data)
+        self.assertGreaterEqual(len(data["shuangdians"]), 10)
+
+    def test_get_worlds_service(self):
+        data = services.get_worlds()
+        self.assertIn("worlds", data)
+        self.assertGreaterEqual(len(data["worlds"]), 8)
+
     def test_router_dispatch_tools_routes(self):
         from gui import router
 
@@ -254,6 +264,16 @@ class TestToolsServicesAndRoutes(unittest.TestCase):
         resp, _ = router.dispatch("GET", "/api/tools/taboos", {}, {})
         self.assertEqual(resp["code"], 0)
         self.assertIn("taboos", resp["data"])
+
+        # 6. GET /api/tools/shuangdians
+        resp, _ = router.dispatch("GET", "/api/tools/shuangdians", {}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("shuangdians", resp["data"])
+
+        # 7. GET /api/tools/worlds
+        resp, _ = router.dispatch("GET", "/api/tools/worlds", {}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("worlds", resp["data"])
 
 
 if __name__ == "__main__":

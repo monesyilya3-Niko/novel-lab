@@ -1150,3 +1150,27 @@ def get_taboos() -> dict[str, Any]:
         return json.loads(fp.read_text(encoding="utf-8"))
     except Exception as exc:
         raise ServiceError(f"避雷规范库损坏: {exc}", 500) from exc
+
+
+def get_shuangdians() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "shuangdian-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "shuangdian-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "shuangdians": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"爽点设计库损坏: {exc}", 500) from exc
+
+
+def get_worlds() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "world-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "world-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "worlds": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"世界观设定库损坏: {exc}", 500) from exc

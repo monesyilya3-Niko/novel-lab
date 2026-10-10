@@ -39,6 +39,44 @@ vi.mock('../api/client', () => ({
         },
       ],
     }),
+    getShuangdians: vi.fn().mockResolvedValue({
+      totalCount: 1,
+      shuangdians: [
+        {
+          id: 'SD-001',
+          name: '越级碾压·生死台上断天骄',
+          category: '实力碾压',
+          suppression: '天骄反派当众逼签生死契约',
+          buildUp: '暗中借金手指参悟至尊功法',
+          mockery: '第一拍·嘲讽：反派大声哄笑',
+          silence: '第二拍·沉默：全场以为主角吓傻',
+          crush: '第三拍·碾压：一击必杀吐血跪地',
+          spectators: '第四拍·围观：全场数万修士死寂三息',
+          upgradePath: '同辈恶霸 → 宗门核心真传',
+          antiFatigueTip: '打脸不可原地复读',
+        },
+      ],
+    }),
+    getWorlds: vi.fn().mockResolvedValue({
+      totalCount: 1,
+      worlds: [
+        {
+          id: 'WD-001',
+          name: '东方仙侠·古典修真飞升体系',
+          genre: '仙侠修真',
+          tierLadder: [
+            {
+              tier: '炼气期 (1-9层)',
+              powerDesc: '引气入体，五感敏锐',
+              breakthroughCost: '需百日筑基',
+            },
+          ],
+          ironRules: ['法则铁律一：境界鸿沟不可逾越'],
+          currencyAndResources: '下品灵石 → 中品灵石',
+          powerCollapseWarning: '严禁金丹多如狗',
+        },
+      ],
+    }),
   },
   friendlyError: (e: unknown) => String(e),
 }))
@@ -69,6 +107,24 @@ describe('InspirationWorkbench', () => {
     await waitFor(() => {
       expect(screen.getByText('神级选择系统')).toBeDefined()
       expect(screen.getByText('系统外挂')).toBeDefined()
+    })
+  })
+
+  it('切换到爽点打脸设计', async () => {
+    render(<InspirationWorkbench />)
+    fireEvent.click(screen.getByText('爽点打脸设计 (三段闭环)'))
+    await waitFor(() => {
+      expect(screen.getByText('越级碾压·生死台上断天骄')).toBeDefined()
+      expect(screen.getByText('实力碾压')).toBeDefined()
+    })
+  })
+
+  it('切换到世界观体系', async () => {
+    render(<InspirationWorkbench />)
+    fireEvent.click(screen.getByText('世界观体系 (力量阶梯)'))
+    await waitFor(() => {
+      expect(screen.getByText('东方仙侠·古典修真飞升体系')).toBeDefined()
+      expect(screen.getByText('炼气期 (1-9层)')).toBeDefined()
     })
   })
 })

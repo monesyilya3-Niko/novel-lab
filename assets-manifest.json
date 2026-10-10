@@ -1,6 +1,6 @@
 {
   "version": "2.0.3",
-  "generated_at": "2026-10-10T06:37:13.802000-06:00",
+  "generated_at": "2026-10-10T08:53:00.876592-06:00",
   "files": {
     "campus-redemption-commercial-obs-distilled.json": {
       "sha256": "d0f053c82318c2e5ea10371e76ee739bb49656bedcd416f25bec9160a650af85",
@@ -372,6 +372,10 @@
       "sha256": "be45d5c756cbc05d73710d4861e31d25b1e9820040ef7a53092c640d2ffbd4ea",
       "previous_hashes": []
     },
+    "shuangdian-library.json": {
+      "sha256": "aaa871eb18a0c2b9500316534a71ff2f0ad9f8ce46c58b933f7112f1ec4d4d22",
+      "previous_hashes": []
+    },
     "suyixinjian_chosen-commercial-obs.json": {
       "sha256": "d63af4ac886ad42c842e04317fdfe3dbcce4bde5a19c8edee39a24e5e8d48713",
       "previous_hashes": []
@@ -401,6 +405,10 @@
         "0eba5c580daa4cc0a72737b1b2ba6ab2e82fe767b8db39d79c385dad57aa1156",
         "07a303dfddc12cd62a6a1c84d7372a92a78f5f253f69ac78efe9535ba6718341"
       ]
+    },
+    "world-library.json": {
+      "sha256": "619a087e7fe82d7645a4d557e37ef8f0c1e22ec5be1cc8164a75e2ed8b1d6a0f",
+      "previous_hashes": []
     },
     "xianxia-genre-pack.json": {
       "sha256": "0872ad08447f9b172b1849101f75188ba2c36f4f3777b200fc20c368e440fa67",
