@@ -83,10 +83,10 @@ class TestDb(unittest.TestCase):
     def test_apply_migrations_records_version(self):
         db.init_schema()
         applied = db.apply_migrations()
-        self.assertEqual(applied, [1, 2], "应执行 0001、0002 迁移并返回版本 [1, 2]")
+        self.assertEqual(applied, [1, 2, 3], "应执行 0001、0002、0003 迁移并返回版本 [1, 2, 3]")
         conn = db.get_conn()
         row = conn.execute("SELECT COUNT(*) AS n FROM schema_migrations").fetchone()
-        self.assertEqual(row["n"], 2)
+        self.assertEqual(row["n"], 3)
 
     def test_apply_migrations_idempotent(self):
         db.init_schema()
@@ -96,7 +96,7 @@ class TestDb(unittest.TestCase):
         self.assertEqual(applied_again, [], "已执行迁移不应再次执行")
         conn = db.get_conn()
         row = conn.execute("SELECT COUNT(*) AS n FROM schema_migrations").fetchone()
-        self.assertEqual(row["n"], 2)
+        self.assertEqual(row["n"], 3)
 
     def test_tx_commit(self):
         db.init_schema()

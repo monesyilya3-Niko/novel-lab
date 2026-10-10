@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import time
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -893,6 +894,93 @@ def _h_tools_emotions(_params: dict[str, Any], _body: dict[str, Any]) -> dict[st
     return ok(services.get_emotions())
 
 
+# ---------------------------------------------------------------------------
+# 小说精华数据库处理器
+# ---------------------------------------------------------------------------
+
+def _h_essence_books_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok({"books": essence_service.list_books(genre=params.get("genre"), platform=params.get("platform"))})
+
+
+def _h_essence_book_get(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok(essence_service.get_book(params["book_id"]))
+
+
+def _h_essence_book_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok(essence_service.delete_book(params["book_id"]))
+
+
+def _h_essence_analyze_macro(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    b = body or {}
+    text = b.get("text")
+    title = b.get("title")
+    if not isinstance(text, str) or not text.strip():
+        raise ServiceError("text 必须为非空字符串", 400)
+    if not isinstance(title, str) or not title.strip():
+        raise ServiceError("title 必须为非空字符串", 400)
+    genre = b.get("genre") or "general"
+    platform = b.get("platform") or "general"
+    res = essence_service.extract_macro_essence(text, title, genre=genre, platform=platform)
+    book_id = b.get("book_id") or f"essence_{int(time.time())}"
+    essence_service.create_or_update_book(
+        book_id=book_id,
+        title=title,
+        genre=genre,
+        platform=platform,
+        total_chapters=res["total_chapters"],
+        total_chars=res["total_chars"],
+        meta=res,
+    )
+    return ok({"book_id": book_id, **res})
+
+
+def _h_essence_assets_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok({"assets": essence_service.list_assets(
+        book_id=params.get("book_id"),
+        category=params.get("category"),
+        tag=params.get("tag"),
+        genre=params.get("genre"),
+    )})
+
+
+def _h_essence_asset_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    b = body or {}
+    return ok(essence_service.create_asset(
+        book_id=b.get("book_id", ""),
+        category=b.get("category", ""),
+        title=b.get("title", ""),
+        content=b.get("content", ""),
+        summary=b.get("summary", ""),
+        tags=b.get("tags", ""),
+        genre=b.get("genre", "general"),
+        platform=b.get("platform", "general"),
+        rating=int(b.get("rating", 5)),
+        user_note=b.get("user_note", ""),
+    ))
+
+
+def _h_essence_asset_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok(essence_service.delete_asset(int(params["asset_id"])))
+
+
+def _h_essence_adopt(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    b = body or {}
+    asset_id = b.get("asset_id")
+    project = b.get("project")
+    target_kind = b.get("target_kind") or "outline"
+    if asset_id is None:
+        raise ServiceError("缺少 asset_id", 400)
+    return ok(essence_service.adopt_asset_to_project(int(asset_id), project, target_kind=target_kind))
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -1020,6 +1108,15 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/tools/dialogues$"), _h_tools_dialogues),
     ("GET", re.compile(r"^/api/tools/characters$"), _h_tools_characters),
     ("GET", re.compile(r"^/api/tools/emotions$"), _h_tools_emotions),
+    # 小说精华数据库
+    ("GET", re.compile(r"^/api/essence/books$"), _h_essence_books_list),
+    ("GET", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)$"), _h_essence_book_get),
+    ("DELETE", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)$"), _h_essence_book_delete),
+    ("POST", re.compile(r"^/api/essence/analyze$"), _h_essence_analyze_macro),
+    ("GET", re.compile(r"^/api/essence/assets$"), _h_essence_assets_list),
+    ("POST", re.compile(r"^/api/essence/assets$"), _h_essence_asset_create),
+    ("DELETE", re.compile(r"^/api/essence/assets/(?P<asset_id>[^/]+)$"), _h_essence_asset_delete),
+    ("POST", re.compile(r"^/api/essence/adopt$"), _h_essence_adopt),
 ]
 
 
