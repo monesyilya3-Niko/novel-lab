@@ -1,23 +1,7 @@
 {
   "version": "2.0.3",
-  "generated_at": "2026-10-07T00:30:01.151886+08:00",
+  "generated_at": "2026-10-10T06:37:13.802000-06:00",
   "files": {
-    "Lord_of_the_Mysteries-commercial-obs.json": {
-      "sha256": "d03d48a63142c9f1d75f88c52d112c477ba4f83d433b7a3f140ac102435bd09e",
-      "previous_hashes": []
-    },
-    "Lord_of_the_Mysteries-craft-card.json": {
-      "sha256": "d1a66c8623d0e8a74a5281765a3e722a7bb44ce3a981e48fb8b3432f6f5b4177",
-      "previous_hashes": []
-    },
-    "Lord_of_the_Mysteries-structure-obs.json": {
-      "sha256": "870791972b60b22546d638e8f2190893e81b02918a5ce5ff132a07a8ae1887a6",
-      "previous_hashes": []
-    },
-    "Lord_of_the_Mysteries-voice-card.json": {
-      "sha256": "f3351dfa0fd1b6edc22cb84cdf7b0d91089cff35fb5033f6989a5fc979da0950",
-      "previous_hashes": []
-    },
     "campus-redemption-commercial-obs-distilled.json": {
       "sha256": "d0f053c82318c2e5ea10371e76ee739bb49656bedcd416f25bec9160a650af85",
       "previous_hashes": []
@@ -54,9 +38,33 @@
       "sha256": "3c6a54dc5b3edc2f25cb5382e83b1d789ca35b5eb801ca7d19450a6f4561d363",
       "previous_hashes": []
     },
+    "dianjing-genre-pack.json": {
+      "sha256": "f7d384912e22b4066ab39e23b55a02b5b3a2c16c270d9324ad70471d94d2f7e2",
+      "previous_hashes": [
+        "93b8d3180b16b447ce70f44d6a8a90c8f1098c4517bd05c4b132be9cc81d2bd5"
+      ]
+    },
+    "duanju-shuangwen-genre-pack.json": {
+      "sha256": "0b366afe2315dcc21d2b0fa7926f111dceb5d355a5e0f63c6182828c74aaf254",
+      "previous_hashes": [
+        "a8e0f89cbe5d8c1d93796c686e42df0bc4ff3b9185855d5fb21309438ff101cf"
+      ]
+    },
     "dushi-naodong-genre-pack.json": {
       "sha256": "10069316f4a58f1ab0a798004a0d26e93738e6904ff03b87b61f39d57973e541",
       "previous_hashes": []
+    },
+    "dushi-shenyi-genre-pack.json": {
+      "sha256": "adb34575d6c85dc7630000ecbfabad6a68b869d0da6c2fddda14a5ff69af1786",
+      "previous_hashes": [
+        "e19b34d90596fda3625aa800097fb7835f7080de62df30aa56e314a8d2985362"
+      ]
+    },
+    "dushi-xitong-genre-pack.json": {
+      "sha256": "702969370cee4b664e97babdf1d1d37c2070481070d1be13b3c970926ad6de2d",
+      "previous_hashes": [
+        "38e3ec2301e11b944a975d566c2bed810106c9714622224cb40cb9c712c6934b"
+      ]
     },
     "dushi-xiuzhen-genre-pack.json": {
       "sha256": "8076832812072fdca29b45fcd67fe6daa1f94a5f13006b91186c5f3ceaaa3915",
@@ -264,8 +272,68 @@
       "sha256": "822ac129cbd61059e27dd5189e602a1d65a86bb49342669d5e280cf15deda38d",
       "previous_hashes": []
     },
+    "goldfinger-library.json": {
+      "sha256": "2bd44394f12dfb1ec2e5560cc24e226b47bc315bf2b6ba7e9bd82b503104cee7",
+      "previous_hashes": []
+    },
+    "goudai-changsheng-genre-pack.json": {
+      "sha256": "a718cb53763ea142d005bbd31bbb01ea368ca5b84cb509d0307cc7b3c9247417",
+      "previous_hashes": [
+        "d23d709e5be9e10329fee8a44cfb1d64da2bc755495d71bcb4017e9c18cb35ec"
+      ]
+    },
+    "guize-guaitan-genre-pack.json": {
+      "sha256": "1f5e6b51b71a4f5694b014eeeadbf296e7d68f631787a72e01b6013791771335",
+      "previous_hashes": [
+        "c279470ed2867d7fd2549a042416a2559982e341bd214ee1468ffb10676ceb2b"
+      ]
+    },
     "guyan-naodong-genre-pack.json": {
       "sha256": "44fd615545101f215a54a798076c6394dbecade74d127f5de897766c14d7ca51",
+      "previous_hashes": []
+    },
+    "haomen-zongcai-genre-pack.json": {
+      "sha256": "7f8620ef8aed39a5b4965e19f60b9efc50b6f80e0791a85d4f4d6dc97aec6aa8",
+      "previous_hashes": [
+        "4786f17ff1f3871b02ff28c5125dcd2069e734c78b0dfee225b9023ac463c683"
+      ]
+    },
+    "hook-library.json": {
+      "sha256": "574d21bdef9c1f0ebf11f880b04276b9136fb781d7987d9ef1b640477cba09f2",
+      "previous_hashes": []
+    },
+    "kehuan-moshi-genre-pack.json": {
+      "sha256": "54a5efdbdf316993836fede9669bed36f1053505a0fca1a81305a9f38099ba85",
+      "previous_hashes": [
+        "a65c2e3222f2e1f2d3a25b11b7f18918c41eb61d580e1a24ffb74ca8f50b2e14"
+      ]
+    },
+    "kuaichuan-genre-pack.json": {
+      "sha256": "23606fe7dfb952b6e5c669ed94f4bf3ca25e4ce12df5ae8b28024bfde66b43c3",
+      "previous_hashes": [
+        "289d8e20a3922feace1910619f0f24185a59e29fe12ae9cc4de08bed7cdbea67"
+      ]
+    },
+    "lishi-chuanyue-genre-pack.json": {
+      "sha256": "aaf09bb8565045cd7474c70a37e71c9116f3f7cd7feec2589335fb4221690f98",
+      "previous_hashes": [
+        "d38e18507e9067954922959370c71ae0105c5eb27ef361e64cf6850f975f082e"
+      ]
+    },
+    "Lord_of_the_Mysteries-commercial-obs.json": {
+      "sha256": "d03d48a63142c9f1d75f88c52d112c477ba4f83d433b7a3f140ac102435bd09e",
+      "previous_hashes": []
+    },
+    "Lord_of_the_Mysteries-craft-card.json": {
+      "sha256": "d1a66c8623d0e8a74a5281765a3e722a7bb44ce3a981e48fb8b3432f6f5b4177",
+      "previous_hashes": []
+    },
+    "Lord_of_the_Mysteries-structure-obs.json": {
+      "sha256": "870791972b60b22546d638e8f2190893e81b02918a5ce5ff132a07a8ae1887a6",
+      "previous_hashes": []
+    },
+    "Lord_of_the_Mysteries-voice-card.json": {
+      "sha256": "f3351dfa0fd1b6edc22cb84cdf7b0d91089cff35fb5033f6989a5fc979da0950",
       "previous_hashes": []
     },
     "qingning_chosen-commercial-obs.json": {
@@ -320,13 +388,18 @@
       "sha256": "10d3395e5cb9c2e0e876f77adc8e4d565d817a11953540cdcfa668ef0acd4dbd",
       "previous_hashes": []
     },
+    "taboo-library.json": {
+      "sha256": "ccac1d9cc254d7543e405cb3574bc27816a9d80f738a3738e5d09a1979185577",
+      "previous_hashes": []
+    },
     "trope-library.json": {
-      "sha256": "07a303dfddc12cd62a6a1c84d7372a92a78f5f253f69ac78efe9535ba6718341",
+      "sha256": "2418033de2b3e6f7f517e35d9585608d9bfdef793589576ee6db00296b778e6b",
       "previous_hashes": [
         "4b83423a9a5f598861b192a83fff1c569256f764f338e029d7c2badddb38da95",
         "b4a4650b168b18c8a8d030600f65b6270687815e7dcbf753b8b5b0cdb0a6a965",
         "d9f0f0f4f36b72a721cc015f46dfcbe7a313361c56772a18a0ff4db298e97613",
-        "0eba5c580daa4cc0a72737b1b2ba6ab2e82fe767b8db39d79c385dad57aa1156"
+        "0eba5c580daa4cc0a72737b1b2ba6ab2e82fe767b8db39d79c385dad57aa1156",
+        "07a303dfddc12cd62a6a1c84d7372a92a78f5f253f69ac78efe9535ba6718341"
       ]
     },
     "xianxia-genre-pack.json": {
@@ -336,6 +409,12 @@
     "xuanhuan-genre-pack.json": {
       "sha256": "25f1dbfec62c2291b1de1d957e308dc47803e938ea0570d80b31a9b1b1ec0392",
       "previous_hashes": []
+    },
+    "xuanhuan-naodong-genre-pack.json": {
+      "sha256": "90bf197a4bca3eb381299c08ac0324df85165f7304ebc9f424a4c8f27afe690c",
+      "previous_hashes": [
+        "d55e9dc353b50d8d093fda9bfb067f027dfba07b85ee9b1985f7fa9d2ca07cd4"
+      ]
     },
     "xuanyi-lingyi-genre-pack.json": {
       "sha256": "37c9c1ae744fe54a88b6d461835b76eceba68038dc03fdb01989ff230b1a3570",
@@ -362,8 +441,10 @@
       "previous_hashes": []
     },
     "通用-现实言情-voice-card.json": {
-      "sha256": "47dbdc48e4e40f6ea6e1be24c169d5435f529c364b22182810b2999807311fc4",
-      "previous_hashes": []
+      "sha256": "4351c738ae2b017ce086549dc5b60372f8ce4ce167049e4f0cf139d219b7d3c4",
+      "previous_hashes": [
+        "47dbdc48e4e40f6ea6e1be24c169d5435f529c364b22182810b2999807311fc4"
+      ]
     }
   }
 }

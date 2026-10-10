@@ -1,0 +1,266 @@
+{
+  "meta": {
+    "id": "genre-guize-guaitan",
+    "name": "规则怪谈",
+    "sub_tags": [
+      "规则怪谈",
+      "惊悚无限流",
+      "国运直播",
+      "克苏鲁",
+      "智斗通关"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：规则怪谈/惊悚游戏/高智商推演通关",
+    "source_books": [
+      {
+        "title": "规则怪谈标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "guize-guaitan_ref1"
+      },
+      {
+        "title": "规则怪谈热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "guize-guaitan_ref2"
+      },
+      {
+        "title": "规则怪谈经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "guize-guaitan_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "突兀被选中进入诡异副本（如妈妈的纸条、午夜列车），开篇直接呈现首批规则清单",
+        "hook_position": 400,
+        "conflict_intro_position": 700,
+        "protagonist_intro_method": "观察入微，心如止水，拥有提示金手指或反常理推演逻辑",
+        "golden_finger_reveal": "金手指可查看隐藏错误规则、真实诡异视角或强制豁免一次死亡"
+      },
+      "chapter_2_3_task": "第2章他国天选者按假规则盲动当场暴毙引发全网恐慌；第3章主角利用隐藏规则逆向破局，不仅存活还拿到S级通关线索，惊艳全球观众",
+      "common_mistakes": [
+        "规则漏洞百出毫无逻辑",
+        "恐怖氛围全靠一惊一乍没有压迫感",
+        "主角无脑硬莽无视规则",
+        "弹幕观众反应过于假大空"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.5,
+      "dry_spell_tolerance": 5,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.4,
+          "buildup_length": 3,
+          "skeleton": "众人皆以为是死局，主角反向利用诡异悖论完成绝地通关，反转震撼全网"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.25,
+          "buildup_length": 4,
+          "skeleton": "通关副本为本国赢取寿命增益、灵气复苏或资源暴增，国人举国狂欢"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.2,
+          "buildup_length": 5,
+          "skeleton": "将不可名状的恐怖诡异boss收服为契约仆从，化敌为友成为底牌"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "副本最后一条生死规则出现致命冲突，时钟指向午夜十二点，脚步声停在门外",
+      "pre_paywall_buildup": "主角发现了规则里的致命陷阱，必须在三秒内做出违反常理的惊天决断"
+    },
+    "retention_risk_points": [
+      {
+        "position": "副本前期",
+        "reason": "规则清单枯燥冗长",
+        "mitigation": "边行动边展示规则，让违反规则的配角当场暴毙来演示规则残酷"
+      },
+      {
+        "position": "副本中期",
+        "reason": "解密陷入死胡同",
+        "mitigation": "引入其他阵营天选者互坑或诡异主动试探增加动态冲突"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "单副本最终S级破局决战时加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "桀桀桀",
+      "恐怖如斯",
+      "大能",
+      "纳命来"
+    ],
+    "fatigue_words": [
+      {
+        "word": "心头一颤",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "倒吸一口凉气",
+        "max_per_chapter": 1
+      },
+      {
+        "word": "san值狂掉",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "惊悚悬疑克制",
+      "note": "诡异说话语调失真，弹幕热烈震惊，主角沉着冷静少言"
+    },
+    "iron_rules": [
+      {
+        "rule": "规则即天理：规则内逻辑自洽，主角只能靠智斗与规则悖论通关，严禁无脑战力硬拆。",
+        "bad_example": "面对必死规则的红衣厉鬼，主角大吼一声一拳将其轰成齑粉。",
+        "good_example": "主角注意到规则第三条和第七条的矛盾，在时钟敲响时主动把钥匙塞进了小女孩手里，诡异的利爪硬生生止在额前。",
+        "rationale": "怪谈的魅力在于高智商推演与规则破局，暴力直接拆迁会让惊悚感荡然无存。"
+      }
+    ],
+    "forbidden_elements": [
+      "战力崩坏肉身拆鬼",
+      "规则前后逻辑矛盾自相抵触",
+      "主角完全不开动脑筋全靠保送"
+    ],
+    "required_elements": [
+      "血字或纸条规则列表",
+      "违规者当场暴毙警示",
+      "国运弹幕与现实联动",
+      "S级隐藏评价通关奖励"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.2,
+      "max": 0.38
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 25,
+      "climax_position": 0.85,
+      "arc_template": [
+        "怪谈降临与规则解读",
+        "探查线索与破除第一死劫",
+        "直面诡异核心与规则矛盾",
+        "反向推演惊天逆转",
+        "通关结算与国运具现"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "副本初始",
+        "beats": [
+          "环境阴森",
+          "读取规则",
+          "确立生存目标"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "解密摸索",
+        "beats": [
+          "收集道具",
+          "触发禁忌",
+          "破解第一条规则"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.15,
+        "typical_position": "决战时刻",
+        "beats": [
+          "揭露真伪规则",
+          "智胜终极诡异",
+          "拿到通关信物"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.15,
+        "typical_position": "结算",
+        "beats": [
+          "通关评价",
+          "全球赞誉",
+          "本国奖励具现"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "终章",
+        "beats": [
+          "现实世界出现怪谈裂痕",
+          "下一副本预告"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2200,
+      "max": 3200,
+      "typical": 2600
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 2,
+      "avg_span": 15,
+      "max_span": 40,
+      "plant_technique": [
+        "规则边缘模糊的字迹",
+        "镜子慢半秒的倒影"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "每个副本核心诡异机制绝不重复。",
+      "hook_density_curve": [
+        "开篇惊悚高压",
+        "中段抽丝剥茧解密",
+        "尾声极限反杀翻盘"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.4,
+          "skeleton": "发现此前信奉的第一规则其实是伪造的致命陷阱。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.95,
+          "frequency": 0.4,
+          "skeleton": "门外传来了妈妈和妹妹两个人同时叫门的声音。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "怪谈规则不可抗拒",
+      "必死中必有一线生机",
+      "现实受累原则"
+    ],
+    "power_system_type": "认知等级 + 诡异收容道具",
+    "progression_granularity": "从新手级通关者到怪谈执法官",
+    "naming_conventions": [
+      "副本代号",
+      "规则编号",
+      "诡异等级"
+    ]
+  }
+}

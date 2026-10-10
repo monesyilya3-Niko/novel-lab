@@ -827,6 +827,41 @@ def _h_admin_session_revoke(params: dict[str, Any], _body: dict[str, Any]) -> di
 
 
 # ---------------------------------------------------------------------------
+# 创作增值工具与实操库处理器
+# ---------------------------------------------------------------------------
+
+def _h_tools_names(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    kind = str(params.get("kind", "character"))
+    style = str(params.get("style", "xianxia"))
+    gender = str(params.get("gender", "all"))
+    try:
+        count = int(params.get("count", 10))
+    except (TypeError, ValueError):
+        count = 10
+    return ok(services.generate_names(kind=kind, style=style, gender=gender, count=count))
+
+
+def _h_tools_poison_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    b = body or {}
+    text = b.get("text", "")
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    return ok(services.scan_poison(text))
+
+
+def _h_tools_goldfingers(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_goldfingers())
+
+
+def _h_tools_hooks(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_hooks())
+
+
+def _h_tools_taboos(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    return ok(services.get_taboos())
+
+
+# ---------------------------------------------------------------------------
 # 路由表
 # ---------------------------------------------------------------------------
 
@@ -939,6 +974,12 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/admin/change-password$"), _h_admin_change_password),
     ("GET", re.compile(r"^/api/admin/sessions$"), _h_admin_sessions),
     ("DELETE", re.compile(r"^/api/admin/sessions/(?P<sid>[^/]+)$"), _h_admin_session_revoke),
+    # 创作增值工具与实操库
+    ("GET", re.compile(r"^/api/tools/names$"), _h_tools_names),
+    ("POST", re.compile(r"^/api/tools/poison-check$"), _h_tools_poison_check),
+    ("GET", re.compile(r"^/api/tools/goldfingers$"), _h_tools_goldfingers),
+    ("GET", re.compile(r"^/api/tools/hooks$"), _h_tools_hooks),
+    ("GET", re.compile(r"^/api/tools/taboos$"), _h_tools_taboos),
 ]
 
 

@@ -1,0 +1,254 @@
+{
+  "meta": {
+    "id": "genre-lishi-chuanyue",
+    "name": "历史穿越",
+    "sub_tags": [
+      "历史穿越",
+      "寒门权谋",
+      "工业强国",
+      "九龙夺嫡",
+      "争霸天下"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：历史架空/科举寒门/降维打击/治国强兵",
+    "source_books": [
+      {
+        "title": "历史穿越标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "lishi-chuanyue_ref1"
+      },
+      {
+        "title": "历史穿越热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "lishi-chuanyue_ref2"
+      },
+      {
+        "title": "历史穿越经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "lishi-chuanyue_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "穿越到古代贫寒之家或落魄宗室，300字内面临抄家、讨债、饿死或退婚的燃眉之急",
+        "hook_position": 500,
+        "conflict_intro_position": 900,
+        "protagonist_intro_method": "现代工科/经济学霸，开局冷静清算家底，寻找破局第一桶金",
+        "golden_finger_reveal": "现代工业/科学记忆或图纸库，用简易化学/物理知识当场变现"
+      },
+      "chapter_2_3_task": "第2章提炼精盐/造纸/酿高度酒赚取第一桶金；第3章惊动地方权贵或官府，通过献策或结交名士站稳脚跟",
+      "common_mistakes": [
+        "满口现代大白话跳戏",
+        "一天手搓蒸汽机无铺垫",
+        "皇帝朝廷全员降智"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.4,
+      "dry_spell_tolerance": 7,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.35,
+          "buildup_length": 4,
+          "skeleton": "用格物之术或算筹诗词在文会朝堂惊艳四座，名儒权贵叹服"
+        },
+        {
+          "type": "收益兑现",
+          "ratio": 0.25,
+          "buildup_length": 3,
+          "skeleton": "雪盐烈酒风靡全城，日进斗金解决生存困境"
+        },
+        {
+          "type": "他人认可",
+          "ratio": 0.25,
+          "buildup_length": 6,
+          "skeleton": "洞悉朝堂夺嫡暗流，助阵营大获全胜受封要职"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "朝廷党争风暴骤起，密旨连夜传至封地，或边关告急蛮夷十万大军压境",
+      "pre_paywall_buildup": "主角在地方根基刚立，引起了京城首辅与东宫太子的忌惮与杀机"
+    },
+    "retention_risk_points": [
+      {
+        "position": "第10-20章",
+        "reason": "沉迷赚钱剧情停滞",
+        "mitigation": "引入地方豪绅夺产危机，逼主角走科举入仕或武功夺权"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "科举放榜或决战沙场时加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "给力",
+      "卧槽",
+      "懵逼",
+      "扎心了"
+    ],
+    "fatigue_words": [
+      {
+        "word": "微微一笑",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "倒吸一口凉气",
+        "max_per_chapter": 1
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "古风雅致结合市井烟火",
+      "note": "朝堂机锋，市井生动，主角言谈张弛有度"
+    },
+    "iron_rules": [
+      {
+        "rule": "古代社会阶级森严：商人地位低下，有钱必须尽快寻求权力庇护或自身入仕。",
+        "bad_example": "主角成了首富后在王爷面前吆五喝六，王爷不仅不生气还认主角当大哥。",
+        "good_example": "日进万贯的第一天，主角便将三成利契送入知府衙门，求得官商护身符。",
+        "rationale": "脱离皇权专制逻辑的商业爽文会极大降低历史文读者的认同感。"
+      }
+    ],
+    "forbidden_elements": [
+      "现代词汇泛滥跳戏",
+      "反派官僚全员降智",
+      "科技跨度无视古代冶金基础"
+    ],
+    "required_elements": [
+      "时代考据感",
+      "利益纠葛与阶级权谋",
+      "现代科技降维打击"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.25,
+      "max": 0.42
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 40,
+      "climax_position": 0.8,
+      "arc_template": [
+        "寒门自救第一桶金",
+        "考取功名初入官场",
+        "地方主政治理一方",
+        "朝堂博弈九龙夺嫡",
+        "平定边患鼎革天下"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "卷初",
+        "beats": [
+          "清点家底",
+          "背景切入",
+          "矛盾初显"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "卷中",
+        "beats": [
+          "研发新技术",
+          "结交朋党",
+          "反击阴谋"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.15,
+        "typical_position": "卷末",
+        "beats": [
+          "廷争胜利",
+          "击溃外敌",
+          "加官进爵"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.15,
+        "typical_position": "爆发后",
+        "beats": [
+          "论功行赏",
+          "发展封地",
+          "百姓爱戴"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "过渡段",
+        "beats": [
+          "先帝崩逝朝局更迭"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2400,
+      "max": 3400,
+      "typical": 2800
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 3,
+      "avg_span": 30,
+      "max_span": 80,
+      "plant_technique": [
+        "边关军报的粮草数字差",
+        "皇子暗中购置的大量马蹄铁"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "商业赚钱爽与朝堂权谋爽交替推进。",
+      "hook_density_curve": [
+        "开局贫寒破产危机",
+        "中局生死党争死局",
+        "高潮决战国运一役"
+      ],
+      "hook_types": [
+        {
+          "type": "危机降临",
+          "strength": 0.9,
+          "frequency": 0.35,
+          "skeleton": "政敌买通大理寺，弹劾奏章已递送御前，抄家校尉正在策马途中。"
+        },
+        {
+          "type": "实力展示",
+          "strength": 0.85,
+          "frequency": 0.35,
+          "skeleton": "百炼钢成、新式火炮试射，巨响震碎了朝廷工部官员的认知。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "枪杆子与钱袋子并存",
+      "民心所向即天命",
+      "科技演进合乎逻辑"
+    ],
+    "power_system_type": "官僚品秩/爵位 + 现代科技工业体系",
+    "progression_granularity": "从寒门秀才到七品县令再到内阁首辅与开国元勋",
+    "naming_conventions": [
+      "古代官职名",
+      "爵位称谓",
+      "古代年号与地名"
+    ]
+  }
+}

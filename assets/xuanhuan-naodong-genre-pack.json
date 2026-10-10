@@ -1,0 +1,252 @@
+{
+  "meta": {
+    "id": "genre-xuanhuan-naodong",
+    "name": "玄幻脑洞",
+    "sub_tags": [
+      "玄幻脑洞",
+      "运朝争霸",
+      "天道盘点",
+      "诸天垂钓",
+      "气运词条"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：玄幻脑洞/诸天万界/气运词条/天道盘点/运朝帝王",
+    "source_books": [
+      {
+        "title": "玄幻脑洞标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "xuanhuan-naodong_ref1"
+      },
+      {
+        "title": "玄幻脑洞热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "xuanhuan-naodong_ref2"
+      },
+      {
+        "title": "玄幻脑洞经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "xuanhuan-naodong_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "开局觉醒推演诸天或修改气运词条金手指，300字内打破传统玄幻慢热瓶颈，直接查看天骄气运并截胡首桩逆天机缘",
+        "hook_position": 450,
+        "conflict_intro_position": 800,
+        "protagonist_intro_method": "冷静理智高维视角，将万界生灵视作棋盘，开局掠夺金色传说词条",
+        "golden_finger_reveal": "气运词条面板（可升级可掠夺）、诸天投影光幕或垂钓诸天至宝"
+      },
+      "chapter_2_3_task": "第2章原气运之子寻找机缘扑空，机缘已入主角腹中；第3章主角炼化机缘战力暴涨，当众反杀打脸前来退婚或夺骨的天之骄子，震撼整座圣地",
+      "common_mistakes": [
+        "写成老套退婚废柴流慢热拖沓",
+        "金手指设定繁琐讲解两千字说明书",
+        "词条升级没有明确战斗力反馈"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.5,
+      "dry_spell_tolerance": 5,
+      "payoff_types": [
+        {
+          "type": "升级",
+          "ratio": 0.4,
+          "buildup_length": 2,
+          "skeleton": "掠夺白绿词条合成为金色神级【重瞳至尊】【万劫不灭】，战力质变横推同辈"
+        },
+        {
+          "type": "收益兑现",
+          "ratio": 0.35,
+          "buildup_length": 3,
+          "skeleton": "抢先气运之子一步挖走九天神金与帝经残卷，让天命之子怀疑人生"
+        },
+        {
+          "type": "他人认可",
+          "ratio": 0.25,
+          "buildup_length": 5,
+          "skeleton": "诸天投影光幕盘点万界十大战神，主角真身位列榜首引爆万族惊悚"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "上界不朽道统降下法旨强收主角宗门为奴，主角激活了金色词条【弑天帝命】，抬手一枪刺破苍穹",
+      "pre_paywall_buildup": "主角建立了无上运朝，引来上界禁区古老巨头的联手围剿"
+    },
+    "retention_risk_points": [
+      {
+        "position": "跨界换地图",
+        "reason": "战力膨胀后老战力崩坏",
+        "mitigation": "词条系统遵循概念级因果律，无论到哪个位面皆降维打击"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "金色词条觉醒或踏碎不朽圣地加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "桀桀桀",
+      "蝼蚁",
+      "本座",
+      "纳命来"
+    ],
+    "fatigue_words": [
+      {
+        "word": "金色光芒大放",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "倒吸冷气",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "霸气超然降维俯瞰",
+      "note": "对所谓天命之子嗤之以鼻，话语从容威严，格局宏大"
+    },
+    "iron_rules": [
+      {
+        "rule": "脑洞必须颠覆传统玄幻死板套路：以新规则（词条、运朝、投影）重塑升级体验。",
+        "bad_example": "主角每天在瀑布下打拳练剑练了一百年，终于突破到了炼气期第三层。",
+        "good_example": "主角看了一眼气运之子头顶的金色光环，伸手一点：【至尊骨】词条已提取，下一秒体内龙吟震天，修为连破三大重天。",
+        "rationale": "玄幻脑洞的核心是新颖金手指对陈旧修炼体系的降维替代与高效爽感。"
+      }
+    ],
+    "forbidden_elements": [
+      "回归老式吐血苦修",
+      "金手指送给别人",
+      "气运之子无限原地复活恶心人"
+    ],
+    "required_elements": [
+      "彩色气运词条分级",
+      "截胡天命机缘爽感",
+      "概念级神通异象",
+      "运朝神国宏伟气象"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.2,
+      "max": 0.38
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 30,
+      "climax_position": 0.85,
+      "arc_template": [
+        "气运觉醒掠夺机缘",
+        "截胡天命称霸圣地",
+        "立国运朝天道封神",
+        "横推禁区诸天投影",
+        "独断万古万界天帝"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.2,
+        "typical_position": "发现目标",
+        "beats": [
+          "洞察天骄词条",
+          "锁定逆天机缘"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.4,
+        "typical_position": "截胡融合",
+        "beats": [
+          "提前布局夺宝",
+          "词条熔炼升级",
+          "境界暴涨"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.25,
+        "typical_position": "同阶横推",
+        "beats": [
+          "无敌异象降临",
+          "一掌镇压圣子",
+          "全族老祖惊骇膜拜"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.05,
+        "typical_position": "清点收获",
+        "beats": [
+          "万道神音绕梁"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "上界法旨",
+        "beats": [
+          "引动域外诸天异动"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2200,
+      "max": 3200,
+      "typical": 2600
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 3,
+      "avg_span": 30,
+      "max_span": 70,
+      "plant_technique": [
+        "某位落魄乞丐头顶隐藏的七彩混沌词条",
+        "九天之上沉睡的帝尊残魂"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "词条种类百花齐放（战斗、悟性、气运、寿命、因果、创造）。",
+      "hook_density_curve": [
+        "开局极速截胡破局",
+        "中局运朝气运鼎盛",
+        "高潮独断诸天神话"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.45,
+          "skeleton": "九道纯阳词条合一，金色退去，化作前所未有的【鸿蒙创世】神级词条。"
+        },
+        {
+          "type": "实力展示",
+          "strength": 0.9,
+          "frequency": 0.4,
+          "skeleton": "上界真仙降临企图灭宗，主角身后浮现亿万里人道运朝金龙，一指点落真仙陨落。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "气运所钟万法辟易",
+      "运朝位格定天命",
+      "词条概念级绝对生效"
+    ],
+    "power_system_type": "词条品阶（白/绿/蓝/紫/金/红/彩） + 运朝果位 + 仙道玄幻境界",
+    "progression_granularity": "从宗门边缘弟子到一品气运王侯再到诸天唯一无上帝尊",
+    "naming_conventions": [
+      "词条专属名称（【天生重瞳】【荒古圣体】【天道垂青】）",
+      "运朝尊号",
+      "诸天位面名"
+    ]
+  }
+}

@@ -1,0 +1,252 @@
+{
+  "meta": {
+    "id": "genre-dushi-xitong",
+    "name": "都市系统",
+    "sub_tags": [
+      "都市系统",
+      "神豪签到",
+      "万倍返现",
+      "开局首富",
+      "无敌消费"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：都市系统/神豪签到/消费返现/财力降维打击",
+    "source_books": [
+      {
+        "title": "都市系统标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "dushi-xitong_ref1"
+      },
+      {
+        "title": "都市系统热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "dushi-xitong_ref2"
+      },
+      {
+        "title": "都市系统经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "dushi-xitong_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "穷困潦倒被现实碾压（失恋/欠租/被势利亲戚羞辱），开局绑定神豪系统直接发放首笔亿元体验金",
+        "hook_position": 400,
+        "conflict_intro_position": 700,
+        "protagonist_intro_method": "性格爽利，有仇必报，获得系统后毫不犹豫直接开启买买买",
+        "golden_finger_reveal": "消费万倍暴击返现、每日签到神豪资产或全额免单黑金卡"
+      },
+      "chapter_2_3_task": "第2章进高端商场/4S店全款提顶级超跑打脸拜金看客；第3章银行行长亲自送至尊VIP卡，前女友或势利上司得知真相悔断肝肠",
+      "common_mistakes": [
+        "花钱还要受尽窝囊气不敢花",
+        "有钱了还在底层小公司忍气吞声当下人",
+        "系统任务刁难主角毫无爽感"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.55,
+      "dry_spell_tolerance": 4,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.45,
+          "buildup_length": 2,
+          "skeleton": "反派仗势欺人炫富，主角直接十倍资金全资收购对方公司，当场开除反派"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 1,
+          "skeleton": "签到汤臣一品整栋楼、签到千亿集团控股权，财富阶层瞬间跃升"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.25,
+          "buildup_length": 3,
+          "skeleton": "曾经高高在上的校花、名流、商界大佬在主角面前恭敬讨好"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "国际顶级拍卖会上，主角与跨国隐世财阀为了压轴国宝开启无上限百亿竞价拉锯",
+      "pre_paywall_buildup": "主角开启了系统的神秘全球金融支配者权限"
+    },
+    "retention_risk_points": [
+      {
+        "position": "中期阶段",
+        "reason": "纯花钱炫富产生审美疲劳",
+        "mitigation": "转向高科技投资、挽救民族产业、建设私人超级海岛与全球资本对抗"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "大型拍卖会或全资收购战加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "恐怖如斯",
+      "老朽",
+      "蝼蚁",
+      "桀桀桀"
+    ],
+    "fatigue_words": [
+      {
+        "word": "到账短信",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "目瞪口呆",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "轻快豪横快意恩仇",
+      "note": "能用钱解决的事绝不废话，行事霸气洒脱，金句频出"
+    },
+    "iron_rules": [
+      {
+        "rule": "神豪不窝囊：主角拥有绝对财力后，绝不允许任何憋屈剧情，当场反击不隔夜。",
+        "bad_example": "主角卡里有一百个亿，还是被经理骂得低头擦桌子不敢出声。",
+        "good_example": "主角直接把百亿黑卡拍在桌上，两分钟后大厦物业老板亲自赶来把经理扔了出去。",
+        "rationale": "神豪文的核心卖点是金钱带来的极致掌控感与反压迫快感。"
+      }
+    ],
+    "forbidden_elements": [
+      "装穷被无脑小瞧打不完",
+      "给反派当舔狗送钱",
+      "系统任务惩罚极其恶心"
+    ],
+    "required_elements": [
+      "真实到账提醒",
+      "消费暴击反馈",
+      "社会地位颠覆",
+      "实业报国格局"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.25,
+      "max": 0.45
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 25,
+      "climax_position": 0.8,
+      "arc_template": [
+        "金钱觉醒消费返现",
+        "房车标配横扫商圈",
+        "全资收购踩碎旧仇",
+        "产业布局民族脊梁",
+        "全球资本神级教父"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.2,
+        "typical_position": "新任务",
+        "beats": [
+          "触发消费任务",
+          "反派跳梁炫耀"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.4,
+        "typical_position": "消费过程",
+        "beats": [
+          "豪掷千金",
+          "买空专柜",
+          "各方惊诧"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.2,
+        "typical_position": "结果兑现",
+        "beats": [
+          "暴击返现万倍",
+          "全资控股",
+          "反派绝望崩溃"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "享受生活",
+        "beats": [
+          "顶级豪宅派对",
+          "众人崇拜"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "新版图",
+        "beats": [
+          "系统商城进阶升级"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2000,
+      "max": 2800,
+      "typical": 2400
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 2,
+      "avg_span": 15,
+      "max_span": 40,
+      "plant_technique": [
+        "系统提示中未解锁的星际/能源权限",
+        "某位国际投资大鳄的行踪日志"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "消费对象从奢侈品、跑车豪宅、上市公司到芯片半导体、航空火箭逐步升级。",
+      "hook_density_curve": [
+        "开局极速爽感",
+        "中局商业并购战",
+        "高潮全球财富峰会"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.45,
+          "skeleton": "账户余额后多出了十二个零，全场刷卡机发出爆鸣。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.85,
+          "frequency": 0.35,
+          "skeleton": "首富家族继承人毕恭毕敬端茶递水，尊称主角为幕后大老板。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "金钱万能与资本规则约束",
+      "财富转化为社会地位与实体力量"
+    ],
+    "power_system_type": "神豪系统等级（LV1~LV10） + 每日签到额度",
+    "progression_granularity": "从万元户到百亿新贵再到万亿隐世资本掌舵人",
+    "naming_conventions": [
+      "顶级超跑/豪宅名（帕加尼、柯尼塞格、檀宫）",
+      "集团商业名称",
+      "银行至尊黑卡代号"
+    ]
+  }
+}

@@ -1,0 +1,254 @@
+{
+  "meta": {
+    "id": "genre-haomen-zongcai",
+    "name": "豪门总裁",
+    "sub_tags": [
+      "豪门世家",
+      "真假千金",
+      "马甲掉落",
+      "全员团宠",
+      "甜宠爽文"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：豪门总裁/真千金归来/全能马甲/顶级团宠/极致护短",
+    "source_books": [
+      {
+        "title": "豪门总裁标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "haomen-zongcai_ref1"
+      },
+      {
+        "title": "豪门总裁热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "haomen-zongcai_ref2"
+      },
+      {
+        "title": "豪门总裁经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "haomen-zongcai_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "真千金从乡下被接回豪门，假千金茶言茶语陷害，亲生父母偏心鄙夷，开局遭遇退婚/赶出家门",
+        "hook_position": 400,
+        "conflict_intro_position": 700,
+        "protagonist_intro_method": "看似乡巴佬实则顶级神医/黑客/科研巨擘，绝美清冷，气场两米八",
+        "golden_finger_reveal": "全球顶级隐世马甲（神医鬼手、黑客Q、著名设计师、财阀幕后金主）"
+      },
+      "chapter_2_3_task": "第2章假千金炫耀顶级请柬，主角随手拿出黑金特权卡；第3章京圈第一权势大佬公开护短，向全城宣布非主角不娶，偏心父母全员震惊",
+      "common_mistakes": [
+        "真千金窝囊忍让讨好偏心父母",
+        "假千金手段低级像泼妇骂街",
+        "男主眼瞎认错人虐女虐半本书"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.5,
+      "dry_spell_tolerance": 5,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.45,
+          "buildup_length": 3,
+          "skeleton": "众人疯狂追捧的国际顶级大佬当场对主角鞠躬尊称老师，全场下巴脱臼"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 4,
+          "skeleton": "亲生父母得知真千金身份后痛哭流涕求原谅，主角绝情拉黑断绝关系"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.25,
+          "buildup_length": 2,
+          "skeleton": "禁欲系京圈太子爷只对女主一人低头弯腰系鞋带，霸气宣告谁动她谁死"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "全球顶级峰会上，假千金意图当众揭露主角伪造学历，幕后主持大佬微笑着走下台将麦克风递给主角",
+      "pre_paywall_buildup": "主角最大的第一王牌马甲即将当着全京城顶流的面轰然揭开"
+    },
+    "retention_risk_points": [
+      {
+        "position": "中期发展",
+        "reason": "马甲掉落过多产生重复感",
+        "mitigation": "引入跨国世家世仇、女主母亲留下的惊天遗产秘密与科研突破主线"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "大型宴会掉马或世纪婚礼加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "恐怖如斯",
+      "老朽",
+      "桀桀桀",
+      "纳命来"
+    ],
+    "fatigue_words": [
+      {
+        "word": "瞳孔骤缩",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "不屑一顾",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "名门雅致与锋芒毕露",
+      "note": "绿茶假千金楚楚可怜，偏心父母道貌岸然，女主角毒舌冷艳一语封喉"
+    },
+    "iron_rules": [
+      {
+        "rule": "马甲必有实锤见证：每一次打脸都要在名流云集的高级公开场合当众兑现。",
+        "bad_example": "主角偷偷给假千金发了个微信说我是大黑客，假千金就害怕了。",
+        "good_example": "宴会大屏幕突然亮起，国际黑客联盟理事长的授权签名下，赫然印着主角的大头照，假千金手中的香槟杯当场砸碎在地上。",
+        "rationale": "豪门爽文的快感在于阶层身份的彻底反转与众人众目睽睽下的顶礼膜拜。"
+      }
+    ],
+    "forbidden_elements": [
+      "女主受尽虐待还认贼作父",
+      "男主中药后认错女二当白月光",
+      "女主被赶出家门流落街头吃土"
+    ],
+    "required_elements": [
+      "全能神级马甲",
+      "京圈顶流男主无底线宠溺",
+      "偏心家族全员悔恨",
+      "手撕绿茶假千金"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.35,
+      "max": 0.55
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 25,
+      "climax_position": 0.8,
+      "arc_template": [
+        "真千金归来断绝关系",
+        "宴会初次掉马惊艳四座",
+        "京圈太子爷霸道求婚",
+        "层层剥落马甲权倾京城",
+        "假千金伏法世纪盛宴"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "设局陷害",
+        "beats": [
+          "假千金设套",
+          "偏心父母逼迫",
+          "宾客冷嘲热讽"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "反击准备",
+        "beats": [
+          "女主淡定看戏",
+          "男主暗中撑腰",
+          "关键证人就位"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.2,
+        "typical_position": "高光时刻",
+        "beats": [
+          "马甲当场掀开",
+          "反派身败名裂",
+          "男主宣告所有权"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "甜蜜日常",
+        "beats": [
+          "太子爷撒娇吃醋",
+          "数钱数到手软"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "新危机",
+        "beats": [
+          "上一辈身世血仇浮现"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2000,
+      "max": 3000,
+      "typical": 2400
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 3,
+      "avg_span": 20,
+      "max_span": 50,
+      "plant_technique": [
+        "女主旧书包里随便塞着的诺贝尔提名推荐信",
+        "男主书房保险柜里珍藏多年的半张泛黄照片"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "每个马甲类型不同（医圣、黑客、画家、车神、财阀执掌人）。",
+      "hook_density_curve": [
+        "开局断绝关系痛快爽",
+        "中局连续掉马震撼全城",
+        "尾声世纪婚礼万人朝拜"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.45,
+          "skeleton": "主持人颤抖着念出第一名名字，镜头给到了正在台下吃蛋糕的主角。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.35,
+          "skeleton": "全城豪门逼迫女主道歉，男主直接带着保镖封锁全场：谁敢让我夫人受委屈？"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "血缘比不过真情",
+      "顶级才华无视阶层壁垒",
+      "男主双标专一原则"
+    ],
+    "power_system_type": "马甲威望等级 + 京圈豪门社会地位",
+    "progression_granularity": "从乡下孤女到京城顶流再到全球财阀唯一话事人",
+    "naming_conventions": [
+      "豪门世家姓氏（陆、霍、傅、顾）",
+      "马甲代号（鬼医、Q、无名）",
+      "顶级私立学院与会所名"
+    ]
+  }
+}

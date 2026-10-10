@@ -1099,3 +1099,54 @@ def _generate_reports_inner(book_id: str, book: dict[str, Any]) -> None:
         "report_ids": report_ids,
         "report_chars": chk.get("total", 0),
     })
+
+
+# ---------------------------------------------------------------------------
+# 创作增值工具服务（起名 / 毒点扫描 / 实操资产库）
+# ---------------------------------------------------------------------------
+
+def generate_names(kind: str = "character", style: str = "xianxia",
+                   gender: str = "all", count: int = 10) -> dict[str, Any]:
+    from gui import name_generator
+    return name_generator.generate(kind=kind, style=style, gender=gender, count=count)
+
+
+def scan_poison(text: str) -> dict[str, Any]:
+    from gui import poison_checker
+    return poison_checker.check_poison(text)
+
+
+def get_goldfingers() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "goldfinger-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "goldfinger-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "goldfingers": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"金手指库损坏: {exc}", 500) from exc
+
+
+def get_hooks() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "hook-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "hook-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "hooks": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"开篇模板库损坏: {exc}", 500) from exc
+
+
+def get_taboos() -> dict[str, Any]:
+    fp = config.ASSETS_ROOT / "taboo-library.json"
+    if not fp.is_file():
+        fp = config.ROOT_DIR / "assets" / "taboo-library.json"
+    if not fp.is_file():
+        return {"total_count": 0, "taboos": []}
+    try:
+        return json.loads(fp.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ServiceError(f"避雷规范库损坏: {exc}", 500) from exc

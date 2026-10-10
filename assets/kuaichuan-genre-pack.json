@@ -1,0 +1,251 @@
+{
+  "meta": {
+    "id": "genre-kuaichuan",
+    "name": "女频快穿",
+    "sub_tags": [
+      "快穿穿书",
+      "女配逆袭",
+      "打脸万人迷",
+      "修罗场",
+      "打脸原男女主"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：女频快穿/炮灰自救/万人嫌变万人迷/修罗场火葬场",
+    "source_books": [
+      {
+        "title": "女频快穿标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "kuaichuan_ref1"
+      },
+      {
+        "title": "女频快穿热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "kuaichuan_ref2"
+      },
+      {
+        "title": "女频快穿经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "kuaichuan_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "穿成原书惨死倒贴的恶毒女配或冤大头原配，开局就是退婚现场或万人嫌被弃名场面",
+        "hook_position": 400,
+        "conflict_intro_position": 650,
+        "protagonist_intro_method": "清醒独立大女主，当场撕毁婚约不纠缠，转头投奔反派大佬或独自搞事业",
+        "golden_finger_reveal": "万人迷好感度系统、剧情先知剧本或绝美生子/神医/学霸外挂"
+      },
+      "chapter_2_3_task": "第2章原男主以为女主欲擒故纵暗中观察；第3章女主角光芒万丈惊艳全场，反派大佬公开撑腰，原男主初现悔意",
+      "common_mistakes": [
+        "原谅渣男重蹈覆辙",
+        "女主无脑恋爱脑全靠男人救",
+        "原女主降智撕逼手段过低级"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.5,
+      "dry_spell_tolerance": 5,
+      "payoff_types": [
+        {
+          "type": "情感回应",
+          "ratio": 0.4,
+          "buildup_length": 3,
+          "skeleton": "原男主全家追悔莫及痛哭流涕，女主冷眼相对绝不回头"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 2,
+          "skeleton": "曾轻视嘲讽女主的豪门名流在宴会上排队向女主敬酒求情"
+        },
+        {
+          "type": "情感回应",
+          "ratio": 0.2,
+          "buildup_length": 4,
+          "skeleton": "高冷反派、疯批暴君、清冷仙尊为博女主一笑大打出手"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "世界核心秘密揭开，原男主红着眼眶堵在门前下跪求复合，反派大佬一把揽过女主纤腰",
+      "pre_paywall_buildup": "女配任务进度达到99%，即将脱离当前小世界"
+    },
+    "retention_risk_points": [
+      {
+        "position": "小世界转场",
+        "reason": "读者对新世界缺乏归属感",
+        "mitigation": "上个世界结算丰厚奖励，新世界开篇直接进入极具反差的修罗场高潮"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "小世界大结局或男主火葬场时加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "恐怖如斯",
+      "老夫",
+      "桀桀桀",
+      "纳命来"
+    ],
+    "fatigue_words": [
+      {
+        "word": "眼眶通红",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "他疯了",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "清冷机敏暗藏锋芒",
+      "note": "女主角台词杀人诛心，男配角台词偏执深情，撕逼戏爽脆利落"
+    },
+    "iron_rules": [
+      {
+        "rule": "绝不吃回头草：渣男原男主必须火葬场烧成灰，女主专注自我成就与真正双向奔赴。",
+        "bad_example": "原男主道了个歉送了束花，女主就原谅了他，两人重归于好。",
+        "good_example": "原男主跪在暴雨中求她回头，女主头也不回地上了反派摄政王的马车：“你谁啊，真不熟。”",
+        "rationale": "快穿文读者最核心的阅读动机就是看倒贴女配撕下标签后的虐渣爽感。"
+      }
+    ],
+    "forbidden_elements": [
+      "恋爱脑原谅出轨",
+      "圣母帮害自己的反派脱罪",
+      "女主自身能力平平全靠光环"
+    ],
+    "required_elements": [
+      "开局断绝关系",
+      "多重大佬修罗场",
+      "原主角光环剥夺",
+      "利落脱离世界"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.35,
+      "max": 0.55
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 20,
+      "climax_position": 0.8,
+      "arc_template": [
+        "穿书觉醒脱离苦海",
+        "绽放光芒全员改观",
+        "原主角翻车失势",
+        "火葬场开启死不回头",
+        "任务圆满换下个世界"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "新世界初始",
+        "beats": [
+          "梳理原剧情",
+          "打破原定恶劣局面"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "发展期",
+        "beats": [
+          "展示才华",
+          "攻略关键大佬",
+          "反击诬陷"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.2,
+        "typical_position": "打脸高潮",
+        "beats": [
+          "撕破伪善面具",
+          "男主破防崩溃",
+          "女主万人迷登顶"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "甜蜜互动",
+        "beats": [
+          "与真命男主感情升温"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "世界结束",
+        "beats": [
+          "积分结算抽奖"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2000,
+      "max": 3000,
+      "typical": 2400
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 2,
+      "avg_span": 12,
+      "max_span": 30,
+      "plant_technique": [
+        "原男主手机里未删除的过往照片",
+        "真反派大佬暗恋已久的信物"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "每个小世界人设迥异（娱乐圈花瓶、豪门真假千金、修仙废柴师尊、年代文知青）。",
+      "hook_density_curve": [
+        "开局退婚绝裂",
+        "中局身份大逆转",
+        "结尾修罗场修罗决战"
+      ],
+      "hook_types": [
+        {
+          "type": "对手登场",
+          "strength": 0.9,
+          "frequency": 0.4,
+          "skeleton": "三界大佬同时登门抢亲，原男主被挤在最外层连门都进不去。"
+        },
+        {
+          "type": "身份反转",
+          "strength": 0.85,
+          "frequency": 0.35,
+          "skeleton": "原以为只是穷酸丫头，原来是首富流落民间的唯一掌上明珠。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "主神系统积分兑换法则",
+      "因果报应不爽原则",
+      "女主独立自强精神内核"
+    ],
+    "power_system_type": "快穿系统商城技能 + 宿主灵魂魅力属性",
+    "progression_granularity": "从初级快穿执行者到主神级裁决者",
+    "naming_conventions": [
+      "小世界标题（穿成总裁白月光的替身）",
+      "系统代号（007、发财系统）"
+    ]
+  }
+}

@@ -1,0 +1,280 @@
+{
+  "meta": {
+    "id": "genre-kehuan-moshi",
+    "name": "科幻末世",
+    "sub_tags": [
+      "科幻末世",
+      "末世求生",
+      "避难所",
+      "丧尸晶核",
+      "囤货危机"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：科幻末世/废土生存/避难所基建",
+    "source_books": [
+      {
+        "title": "科幻末世标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "kehuan-moshi_ref1"
+      },
+      {
+        "title": "科幻末世热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "kehuan-moshi_ref2"
+      },
+      {
+        "title": "科幻末世经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "kehuan-moshi_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "以灾难降临前夕倒计时或极端恶劣天灾开场，300字内抛出囤货/庇护所第一重生存危机",
+        "hook_position": 450,
+        "conflict_intro_position": 800,
+        "protagonist_intro_method": "重生/先知或觉醒安全屋系统，冷酷果决，不拖泥带水",
+        "golden_finger_reveal": "安全屋/无限空间/物资倍增金手指首度亮相，展示存活第一张底牌"
+      },
+      "chapter_2_3_task": "第2章抢先截胡致命物资或加固安全屋避难所；第3章天灾/尸潮爆发，门外人间炼狱，门内主角丰衣足食，形成第一次反差爽感",
+      "common_mistakes": [
+        "圣母心泛滥救白眼狼",
+        "开篇大篇幅解释天灾科学成因",
+        "物资获取过于容易毫无危机感",
+        "缺少末日降临前的人情反差"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.45,
+      "dry_spell_tolerance": 6,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.35,
+          "buildup_length": 3,
+          "skeleton": "邻里/仇敌受冻挨饿苦苦哀求，主角在安全屋内烤肉品酒，彻底碾压旧日轻视"
+        },
+        {
+          "type": "收益兑现",
+          "ratio": 0.3,
+          "buildup_length": 2,
+          "skeleton": "探险或猎杀收获高阶晶核/稀缺能源/升级模块，庇护所功能跃升"
+        },
+        {
+          "type": "反杀",
+          "ratio": 0.2,
+          "buildup_length": 5,
+          "skeleton": "掠夺者武装冲击安全屋，遭遇主角重火力防线降维打击，全军覆没"
+        },
+        {
+          "type": "他人认可",
+          "ratio": 0.15,
+          "buildup_length": 7,
+          "skeleton": "建立私人基地，幸存者强者主动来投，确立末世一方霸主地位"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "特大天灾（极寒/酸雨/红月）骤然升级，或巨型变异兽潮包围避难所",
+      "pre_paywall_buildup": "避难所刚完成重要升级，防御体系面临第一场极限压力测试"
+    },
+    "retention_risk_points": [
+      {
+        "position": "第1-3章",
+        "reason": "囤货流水账过长",
+        "mitigation": "把囤货过程写成与奸商/仇敌斗智斗勇，带爽感与紧迫感"
+      },
+      {
+        "position": "第15-30章",
+        "reason": "安全屋内剧情单调",
+        "mitigation": "外派无人机搜救/探查遗迹，引入异能进化与外部势力博弈"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "尸潮防卫战或基地扩张时加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "圣母",
+      "好人有好报",
+      "恐怖如斯",
+      "蝼蚁",
+      "大家都是同胞"
+    ],
+    "fatigue_words": [
+      {
+        "word": "倒吸一口凉气",
+        "max_per_chapter": 1
+      },
+      {
+        "word": "眼神冰冷",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "物资堆积如山",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "硬派冷峻",
+      "note": "末世人命如草芥，对话务实利己，不讲虚头巴脑的大道理，主角行事杀伐果断"
+    },
+    "iron_rules": [
+      {
+        "rule": "末日法则第一条：绝对禁止圣母泛滥无底线救人。",
+        "bad_example": "看到前女友带着一家老小在门外哭求，他心软了，打开了安全屋大门。",
+        "good_example": "看着监视器里痛哭流涕的旧仇人，主角拉下百叶窗，给火锅里又添了一盘雪花肥牛。",
+        "rationale": "末世读者追求的是自保与秩序裁决，圣母放水会瞬间导致大面积弃书。"
+      }
+    ],
+    "forbidden_elements": [
+      "主角无端圣母",
+      "反派无限复活恶心主角",
+      "安全屋被无脑路人轻易攻破"
+    ],
+    "required_elements": [
+      "极限定时危机",
+      "物资与反差爽感",
+      "避难所黑科技进化",
+      "末世丛林生存法则"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.18,
+      "max": 0.35
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 35,
+      "climax_position": 0.8,
+      "arc_template": [
+        "灾变预警与极限囤货",
+        "末日降临与室内反差爽",
+        "外出探险与异能觉醒",
+        "掠夺者来犯与火力洗地",
+        "基地扩张与秩序建立"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "卷首与灾变前夕",
+        "beats": [
+          "收集情报",
+          "危机征兆",
+          "储备物资"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "章中",
+        "beats": [
+          "天灾升级",
+          "防御强化",
+          "局部交锋"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.15,
+        "typical_position": "卷末",
+        "beats": [
+          "正面火力全开",
+          "灭杀尸王/敌酋",
+          "掠夺丰厚战利品"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.15,
+        "typical_position": "爆点后",
+        "beats": [
+          "清点战利品",
+          "享用美食",
+          "升级安全屋"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "阶段末",
+        "beats": [
+          "更高级异变出现",
+          "国家避难所广播"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2000,
+      "max": 3000,
+      "typical": 2400
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 3,
+      "avg_span": 25,
+      "max_span": 70,
+      "plant_technique": [
+        "变异生物的诡异进化痕迹",
+        "收音机中断断续续的求救密码",
+        "天空中隐约出现的机械裂痕"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "连续两章不使用同一种天灾威胁；反杀掠夺者后紧接高阶变异警报。",
+      "hook_density_curve": [
+        "开篇重度危机钩子",
+        "中段物资掠夺与异能突破",
+        "卷末巨型天灾对抗"
+      ],
+      "hook_types": [
+        {
+          "type": "危机降临",
+          "strength": 0.9,
+          "frequency": 0.3,
+          "skeleton": "气温骤降四十度，或十万丧尸潮偏离航道朝避难所涌来。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.85,
+          "frequency": 0.25,
+          "skeleton": "废弃军火库或前沿研究所发现未启用的战略级能量核心。"
+        },
+        {
+          "type": "对手登场",
+          "strength": 0.85,
+          "frequency": 0.25,
+          "skeleton": "昔日背叛自己的仇敌作为掠夺者先遣队队长现身门外。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "末世资源守恒",
+      "人性利益匹配",
+      "实力决定规矩"
+    ],
+    "power_system_type": "安全屋科技等级 + 基因进化异能",
+    "progression_granularity": "从地下求生到移动战舰再到陆地霸主",
+    "naming_conventions": [
+      "避难所型号",
+      "异能序列代号",
+      "丧尸危险等级"
+    ]
+  }
+}

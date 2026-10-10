@@ -39,6 +39,7 @@ resolve_python() {
 
     # 2) 项目约定解释器 / 项目内 venv（存在才用）
     for cand in \
+        "C:/Users/monesy/AppData/Local/Programs/Python/Python313/python.exe" \
         "C:/Users/monesy/.niko/binaries/python/versions/3.13.12/python.exe" \
         "$REPO_ROOT/.venv/Scripts/python.exe" \
         "$REPO_ROOT/.venv/bin/python" \

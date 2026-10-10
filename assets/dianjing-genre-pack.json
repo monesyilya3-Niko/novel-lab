@@ -1,0 +1,255 @@
+{
+  "meta": {
+    "id": "genre-dianjing",
+    "name": "电竞竞技",
+    "sub_tags": [
+      "电竞游戏",
+      "LOL英雄联盟",
+      "S赛夺冠",
+      "重回巅峰",
+      "天眼指挥"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：电竞热血/MOBA巅峰/微操手速/黑马战队逆袭",
+    "source_books": [
+      {
+        "title": "电竞竞技标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "dianjing_ref1"
+      },
+      {
+        "title": "电竞竞技热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "dianjing_ref2"
+      },
+      {
+        "title": "电竞竞技经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "dianjing_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "以老将遗憾退役或被俱乐部无情解约开场，300字内重生或觉醒反应力巅峰系统",
+        "hook_position": 400,
+        "conflict_intro_position": 750,
+        "protagonist_intro_method": "意识超神手速拉满，重回十八岁黄金年龄，开局韩服第一高分路人局",
+        "golden_finger_reveal": "操作预判光环、对手微表情识破或全图视野推演系统"
+      },
+      "chapter_2_3_task": "第2章排位撞车知名职业选手并完成神级丝血单杀；第3章引发各大俱乐部转会期疯抢，加入解散边缘的草根战队开启逆袭",
+      "common_mistakes": [
+        "游戏操作描写过于晦涩非玩家看不懂",
+        "全程单排不打正规比赛没有热血团魂",
+        "现实勾心斗角挤占过多比赛高光"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.5,
+      "dry_spell_tolerance": 5,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.35,
+          "buildup_length": 2,
+          "skeleton": "极限走位躲三个技能丝血反杀全场起立欢呼"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 3,
+          "skeleton": "黑粉解说此前疯狂嘲讽，赛后被精彩集锦当场打脸哑口无言"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.2,
+          "buildup_length": 6,
+          "skeleton": "绝境翻盘击败不可一世的宿敌豪门，金色的雨落满全场"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "世界赛生死局选人阶段掏出绝活冷门黑科技英雄，解说惊呼全场哗然",
+      "pre_paywall_buildup": "战队大比分落后被逼入绝境，全队信任主角做最后一搏"
+    },
+    "retention_risk_points": [
+      {
+        "position": "常规赛阶段",
+        "reason": "比赛模式单一重复",
+        "mitigation": "每场比赛设计不同的核心战术冲突（针对性禁选、野区入侵、四包二）"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "淘汰赛决胜局或总决赛加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "恐怖如斯",
+      "本尊",
+      "蝼蚁",
+      "桀桀桀"
+    ],
+    "fatigue_words": [
+      {
+        "word": "手速飙升",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "不可思议",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "年轻热血电竞口吻",
+      "note": "充满游戏黑话（拉扯、操作、开团、点菜、金身），燃点与骚话并存"
+    },
+    "iron_rules": [
+      {
+        "rule": "团战画面感第一：操作描写要有具体技能顺序和空间博弈，禁止空洞喊口号。",
+        "bad_example": "主角凭借惊人的手速，啪啪啪把敌人全打死了。",
+        "good_example": "闪现贴脸挂虚弱，侧身扭开致命预判钩，大招水银秒解回身拉弓，暴击的红字在敌方AD头顶炸裂。",
+        "rationale": "电竞文的核心是游戏团战的竞技临场感与微操细节。"
+      }
+    ],
+    "forbidden_elements": [
+      "对手无脑送人头",
+      "队友纯摆设毫无团队互动",
+      "游戏数值版本严重错乱"
+    ],
+    "required_elements": [
+      "热血团魂",
+      "绝境反打名场面",
+      "解说观众实时反馈",
+      "冠军奖杯信仰"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.3,
+      "max": 0.5
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 30,
+      "climax_position": 0.85,
+      "arc_template": [
+        "重新连接韩服登顶",
+        "组建战队征战次级",
+        "杀入顶级联赛黑马",
+        "季后赛绝境穿梭",
+        "全球总决赛封神"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "赛前准备",
+        "beats": [
+          "赛前研究",
+          "垃圾话战术",
+          "BP阵容博弈"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "对局展开",
+        "beats": [
+          "对线交锋",
+          "野区摩擦",
+          "小龙争夺"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.2,
+        "typical_position": "决胜团战",
+        "beats": [
+          "大龙团秒C位",
+          "基地一波推平",
+          "全场高呼ID"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "赛后采访",
+        "beats": [
+          "金句频出",
+          "商业代言",
+          "复盘分析"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "转会/版本",
+        "beats": [
+          "游戏大版本更新",
+          "战术重构"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2000,
+      "max": 3000,
+      "typical": 2500
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 2,
+      "avg_span": 20,
+      "max_span": 50,
+      "plant_technique": [
+        "对方教练组秘密准备的英雄底牌",
+        "主角手伤暗伤的康复进度"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "对局胜负节奏多变，翻盘、碾压、抢龙、偷家轮番呈现。",
+      "hook_density_curve": [
+        "常规赛稳步连胜",
+        "季后赛硬仗拉扯",
+        "总决赛第五局巅峰"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.4,
+          "skeleton": "敌方四人包夹上路，主角不退反进卡视野反打。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.85,
+          "frequency": 0.3,
+          "skeleton": "赛前被全网看衰打成0-3，赛后MVP海报刷爆热搜第一。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "实力说话原则：赛场上不认资历只认战绩",
+      "团队协同与英雄克制平衡"
+    ],
+    "power_system_type": "个人操作反应/意识评分 + 团队协同指挥度",
+    "progression_granularity": "从高分路人王，到联赛最佳新人，再到三冠王历史第一人",
+    "naming_conventions": [
+      "选手职业ID（TheX、Faker、Uzi风格）",
+      "英雄技能代号",
+      "赛事简称（LPL、LCK、MSI、S赛）"
+    ]
+  }
+}

@@ -1,0 +1,251 @@
+{
+  "meta": {
+    "id": "genre-dushi-shenyi",
+    "name": "都市神医",
+    "sub_tags": [
+      "都市神医",
+      "国医无双",
+      "隐世医圣",
+      "救治首富",
+      "扮猪吃虎"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：都市神医/九转回阳/银针渡命/权贵折服",
+    "source_books": [
+      {
+        "title": "都市神医标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "dushi-shenyi_ref1"
+      },
+      {
+        "title": "都市神医热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "dushi-shenyi_ref2"
+      },
+      {
+        "title": "都市神医经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "dushi-shenyi_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "开局被西医专家断定病入膏肓的顶级大人物面临死亡，主角在场被众人鄙视驱赶",
+        "hook_position": 450,
+        "conflict_intro_position": 750,
+        "protagonist_intro_method": "隐世医门唯一传人，携太乙金针入红尘，看似平平无奇实则通天彻地",
+        "golden_finger_reveal": "上古医经传承、肉白骨气血透视或生生造化真气"
+      },
+      "chapter_2_3_task": "第2章西医宣布抢救失败下达病危，主角出手行针力挽狂澜；第3章大人物起死回生当场下跪拜谢，送出顶级黑卡与豪宅，嘲讽者面如死灰",
+      "common_mistakes": [
+        "药方与中医理论胡编乱造毫无美感",
+        "治好权贵后被继续无脑羞辱没有地位提升",
+        "主角无欲无求不搞势力建设"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.45,
+      "dry_spell_tolerance": 6,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.4,
+          "buildup_length": 2,
+          "skeleton": "全世界判了死刑的绝症，主角三根银针稳住心脉当场痊愈，神乎其技"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.35,
+          "buildup_length": 3,
+          "skeleton": "省城巨擘、战区统帅将主角奉为座上宾，赠百亿集团与贴身信物"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.25,
+          "buildup_length": 5,
+          "skeleton": "反派以权势逼迫主角，殊不知其背后的靠山竟是主角刚救下的大哥"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "国医馆老国手携传国药方登门请教，隐世古武世家老祖身中奇毒连夜登门求救",
+      "pre_paywall_buildup": "主角神医之名震动省城，引来京城顶级医疗财阀与古医门的封杀杀机"
+    },
+    "retention_risk_points": [
+      {
+        "position": "第10-25章",
+        "reason": "看病行医公式化重复",
+        "mitigation": "由普通看病延伸至古医门派纷争、中药现代化产业争夺与古武者暗战"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "救活国柱大人物或神医大比时加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "恐怖如斯",
+      "蝼蚁",
+      "纳命来"
+    ],
+    "fatigue_words": [
+      {
+        "word": "气定神闲",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "倒吸冷气",
+        "max_per_chapter": 1
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "自信沉稳大医精诚",
+      "note": "诊断时字字诛心专业笃定，面对权贵不卑不亢，面对挑衅言简意赅"
+    },
+    "iron_rules": [
+      {
+        "rule": "中医手段要有古意风骨：针法、穴位、药性描写要专业典雅，绝不空泛胡诌。",
+        "bad_example": "他随便拿了个针扎了一下，病人就好了。",
+        "good_example": "左手引气，右手捻针，透天凉与烧山火双针并济，三寸银针发出轻微龙吟，逆转阴阳。",
+        "rationale": "神医文的质感来自于传统医道的神秘感与救死扶伤的庄严感。"
+      }
+    ],
+    "forbidden_elements": [
+      "主角见死不救毫无医德内核",
+      "权贵翻脸不认账而主角窝囊忍让"
+    ],
+    "required_elements": [
+      "太乙神针名场面",
+      "专家打脸反差",
+      "至尊黑卡权势回报",
+      "悬壶济世兼济天下"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.25,
+      "max": 0.42
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 30,
+      "climax_position": 0.8,
+      "arc_template": [
+        "下山入世初显神威",
+        "救治首富名震一城",
+        "中医大比横扫西医",
+        "解救国柱权倾朝野",
+        "重整医门匡扶正道"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.25,
+        "typical_position": "病患出场",
+        "beats": [
+          "病症凶险",
+          "名医束手",
+          "主角被斥"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "救治过程",
+        "beats": [
+          "把脉断症",
+          "银针过穴",
+          "药石化解"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.2,
+        "typical_position": "病愈反转",
+        "beats": [
+          "病人苏醒",
+          "名医羞愧下拜",
+          "大人物送礼撑腰"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "善后",
+        "beats": [
+          "医馆开业",
+          "人脉织网"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "牵出大案",
+        "beats": [
+          "奇毒背后的大势力现身"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2200,
+      "max": 3200,
+      "typical": 2600
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 3,
+      "avg_span": 25,
+      "max_span": 60,
+      "plant_technique": [
+        "病人血液中残留的罕见古蛊毒",
+        "老家破旧医箱底层的半卷残篇"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "病症类型丰富变换（商界大佬猝死、军中战神暗伤、豪门千金怪病）。",
+      "hook_density_curve": [
+        "开局绝症翻盘",
+        "中局医武双绝立威",
+        "高潮中西医国际巅峰对决"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.4,
+          "skeleton": "心电图拉成一条直线，所有医生摘下口罩，主角大步跨入病房。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.85,
+          "frequency": 0.35,
+          "skeleton": "狂妄院长当众撕毁主角处方，三分钟后院长突发心梗瘫倒在地。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "医者仁心与雷霆手段并存",
+      "人脉即护道者原则"
+    ],
+    "power_system_type": "九针医道境界 + 真气修为何厚度",
+    "progression_granularity": "从街头走方郎中到一省座上宾再到天下国士无双",
+    "naming_conventions": [
+      "针法名（太乙神针、回阳九针）",
+      "古方药名",
+      "权贵豪门世家名"
+    ]
+  }
+}

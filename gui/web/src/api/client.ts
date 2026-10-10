@@ -714,3 +714,80 @@ export const adminApi = {
   sessions: () => get<AdminSession[]>('/admin/sessions'),
   revokeSession: (id: string) => del<{ revoked: boolean }>(`/admin/sessions/${encodeURIComponent(id)}`),
 }
+
+export interface NameGenerateParams {
+  kind?: string
+  style?: string
+  gender?: string
+  count?: number
+}
+
+export interface NameGenerateResult {
+  kind: string
+  style: string
+  gender: string
+  count: number
+  names: string[]
+}
+
+export interface PoisonFinding {
+  line: number
+  type: string
+  typeName: string
+  severity: string
+  snippet: string
+  matched: string
+  reason: string
+  suggestion: string
+}
+
+export interface PoisonCheckResult {
+  score: number
+  verdict: string
+  totalIssues: number
+  findings: PoisonFinding[]
+}
+
+export interface GoldfingerItem {
+  id: string
+  name: string
+  category: string
+  triggerMechanism: string
+  costAndLimits: string[]
+  progressionCurve: string
+  antiCollapseRule: string
+}
+
+export interface HookItem {
+  id: string
+  name: string
+  genre: string
+  first300Words: string
+  chapter1Beat: string
+  chapter2Beat: string
+  chapter3Beat: string
+}
+
+export interface TabooItem {
+  id: string
+  name: string
+  severity: string
+  description: string
+  readerReaction: string
+  fixSuggestion: string
+}
+
+export const toolsApi = {
+  generateNames: (params?: NameGenerateParams) => {
+    const q = new URLSearchParams()
+    if (params?.kind) q.set('kind', params.kind)
+    if (params?.style) q.set('style', params.style)
+    if (params?.gender) q.set('gender', params.gender)
+    if (params?.count) q.set('count', String(params.count))
+    return get<NameGenerateResult>(`/tools/names?${q}`)
+  },
+  checkPoison: (text: string) => post<PoisonCheckResult>('/tools/poison-check', { text }),
+  getGoldfingers: () => get<{ totalCount: number; goldfingers: GoldfingerItem[] }>('/tools/goldfingers'),
+  getHooks: () => get<{ totalCount: number; hooks: HookItem[] }>('/tools/hooks'),
+  getTaboos: () => get<{ totalCount: number; taboos: TabooItem[] }>('/tools/taboos'),
+}

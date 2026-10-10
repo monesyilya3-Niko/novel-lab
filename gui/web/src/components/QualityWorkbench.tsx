@@ -18,6 +18,7 @@ import { hasDesktopBridge, pickPath, type PickKind } from '../desktopBridge'
 import type { QualityTaskState, QcReportItem } from '../types'
 import { friendlyError } from '../api/client'
 import QcVisuals from './QcVisuals'
+import PoisonCheckPanel from './PoisonCheckPanel'
 
 /**
  * 桌面版（Electron）才出现的"选择…"按钮。
@@ -72,6 +73,7 @@ export default function QualityWorkbench() {
         <Tab label="单章检查" />
         <Tab label="全书质检" />
         <Tab label="QC 综合" />
+        <Tab label="毒点避雷" />
       </Tabs>
         <ContextHelpButton guideKey="quality" />
       </Box>
@@ -79,6 +81,7 @@ export default function QualityWorkbench() {
         {tab === 0 && <CheckPanel />}
         {tab === 1 && <BookQualityPanel />}
         {tab === 2 && <QcPanel />}
+        {tab === 3 && <PoisonCheckPanel />}
       </Box>
     </Box>
   )

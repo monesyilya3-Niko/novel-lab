@@ -1,0 +1,246 @@
+{
+  "meta": {
+    "id": "genre-duanju-shuangwen",
+    "name": "短剧爽文",
+    "sub_tags": [
+      "短剧爽文",
+      "战神归来",
+      "极致打脸",
+      "身份掉马",
+      "秒级反转"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.65,
+    "note": "通用题材包：竖屏短剧/极速节奏/秒级反转/情绪拉满/三秒一钩",
+    "source_books": [
+      {
+        "title": "短剧爽文标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "duanju-shuangwen_ref1"
+      },
+      {
+        "title": "短剧爽文热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "duanju-shuangwen_ref2"
+      },
+      {
+        "title": "短剧爽文经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "duanju-shuangwen_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "3秒内爆发极端冲突：退婚、下跪、被辱、掌掴、被赶出门，情绪压到地底，300字内龙王战神令出，十万将士整装待发",
+        "hook_position": 300,
+        "conflict_intro_position": 500,
+        "protagonist_intro_method": "看似落魄赘婿/乞丐，实则当世唯一封号战神/龙王殿主/百国天子",
+        "golden_finger_reveal": "至尊龙王金令、无上限黑金至尊卡或通天战神卫队"
+      },
+      "chapter_2_3_task": "第2章恶毒反派肆无忌惮踩主角尊严逼主角下跪；第3章反派最大的靠山战区首长连夜赶到当场下跪请罪，反手暴抽恶毒反派，极致打脸反转",
+      "common_mistakes": [
+        "铺垫长篇大论超过两分钟",
+        "反派道歉太快没有狠狠折磨羞辱",
+        "主角情绪温吞不展现绝对威严"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.7,
+      "dry_spell_tolerance": 3,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.5,
+          "buildup_length": 1,
+          "skeleton": "大人物冲入现场，无视所有人，径直跪在主角面前高呼参见殿主"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 1,
+          "skeleton": "反派仗势欺人，靠山当场现身正义执行，掌掴反派几十耳光"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.2,
+          "buildup_length": 2,
+          "skeleton": "主角一通电话，反派家族企业三分钟内股票跌停破产清算"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "反派掏出伪造调令威胁枪毙主角，门外十万铁骑引擎轰鸣，战神战机盘旋压境",
+      "pre_paywall_buildup": "反派把主角逼到绝路，主角冷笑掏出了真正的护国统帅印"
+    },
+    "retention_risk_points": [
+      {
+        "position": "每章末尾",
+        "reason": "节奏放缓导致滑走",
+        "mitigation": "每章必留生死决绝钩子或身份悬念，保持卡点强刺激"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 3,
+      "burst_timing": "大高潮连续爆更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "恐怖如斯",
+      "老朽",
+      "桀桀桀"
+    ],
+    "fatigue_words": [
+      {
+        "word": "轰然倒地",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "面色惨白",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "极致冲突短平快",
+      "note": "反派傲慢跋扈极度欠揍，主角字字如雷言出法随，对白短促有力"
+    },
+    "iron_rules": [
+      {
+        "rule": "短剧铁律：情绪压抑绝不超过一千字，反压迫打脸必须雷霆万钧当场击碎。",
+        "bad_example": "主角忍辱负重被打了十章，暗中布局了三十年才找机会告官。",
+        "good_example": "丈母娘刚刚把茶水泼在主角脸上，军区总司令便踹碎大门端枪冲了进来：“谁敢对我大夏镇国龙帅不敬！”",
+        "rationale": "短剧读者追求的是极速情绪价值代偿，长线憋屈会立刻造成读者滑走弃书。"
+      }
+    ],
+    "forbidden_elements": [
+      "长篇大段环境心理描写",
+      "主角圣母饶恕反派",
+      "反派智商正常不惹事"
+    ],
+    "required_elements": [
+      "极致身份反差",
+      "秒级耳光打脸",
+      "三分钟破产清算",
+      "战神一怒伏尸百万"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.4,
+      "max": 0.65
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 20,
+      "climax_position": 0.9,
+      "arc_template": [
+        "战神归来受尽屈辱",
+        "小打脸家族震荡",
+        "招惹省城豪门",
+        "总督下跪大打脸",
+        "封狼居胥百国来朝"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.15,
+        "typical_position": "极速起势",
+        "beats": [
+          "反派挑衅羞辱",
+          "立下不可思议赌约"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "逼入死角",
+        "beats": [
+          "反派后台赶到",
+          "嚣张达到顶峰"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.35,
+        "typical_position": "核爆反转",
+        "beats": [
+          "真正靠山下跪",
+          "巴掌狂抽反派",
+          "家族当场破产"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.05,
+        "typical_position": "战神收势",
+        "beats": [
+          "众人跪地敬畏"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "更强反派",
+        "beats": [
+          "京城更大反派宣战"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 1500,
+      "max": 2200,
+      "typical": 1800
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 1,
+      "avg_span": 10,
+      "max_span": 25,
+      "plant_technique": [
+        "主角手上那枚磨损的黑铁龙戒"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "每章结尾必须是一记响亮的打脸前置悬念或身份爆破卡点。",
+      "hook_density_curve": [
+        "全篇持续高能高频刺激"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.95,
+          "frequency": 0.5,
+          "skeleton": "战神印玺重重砸在茶几上，总督看清纹路的瞬间吓得魂飞魄散。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.4,
+          "skeleton": "一通电话打出，反派全族银行卡瞬间被冻结，执法队直升机降落房顶。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "战神不可辱法则",
+      "权力与财富金字塔顶端支配"
+    ],
+    "power_system_type": "九大封号战神军衔 + 龙王殿全球势力网络",
+    "progression_granularity": "从隐姓埋名赘婿到大夏唯一的镇国天王",
+    "naming_conventions": [
+      "战神封号（修罗、天龙、北境之王）",
+      "四大战尊/十二神将代号",
+      "隐世财阀豪门名"
+    ]
+  }
+}

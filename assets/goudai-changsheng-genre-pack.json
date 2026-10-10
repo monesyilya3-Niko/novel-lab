@@ -1,0 +1,253 @@
+{
+  "meta": {
+    "id": "genre-goudai-changsheng",
+    "name": "苟道长生",
+    "sub_tags": [
+      "苟道长生",
+      "修仙模拟器",
+      "稳健发育",
+      "长生不老",
+      "幕后老祖"
+    ],
+    "target_platform": "长篇通用",
+    "scope": "genre-generalized",
+    "confidence": 0.6,
+    "note": "通用题材包：苟道流/长生不死/稳健修仙/熬死仇敌/因果不沾",
+    "source_books": [
+      {
+        "title": "苟道长生标杆代表作一",
+        "platform": "番茄",
+        "performance": "千万级爆款",
+        "voice_card_ref": "goudai-changsheng_ref1"
+      },
+      {
+        "title": "苟道长生热门畅销作二",
+        "platform": "番茄",
+        "performance": "高追读榜首",
+        "voice_card_ref": "goudai-changsheng_ref2"
+      },
+      {
+        "title": "苟道长生经典完结作三",
+        "platform": "番茄",
+        "performance": "高评分必读",
+        "voice_card_ref": "goudai-changsheng_ref3"
+      }
+    ]
+  },
+  "commercial": {
+    "opening_analysis": {
+      "chapter_1": {
+        "first_300_words_task": "穿越修仙界觉醒长生道果寿元无尽，300字内树立‘只要我不浪，我就能熬死所有人’的核心信条",
+        "hook_position": 450,
+        "conflict_intro_position": 850,
+        "protagonist_intro_method": "极其稳健，谋定后动，绝不强出头，开局选择最不起眼的灵植夫或藏经阁杂役",
+        "golden_finger_reveal": "长生不死道果（寿元无限，锁死生机）或天道模拟器（预知死亡杀劫）"
+      },
+      "chapter_2_3_task": "第2章天才同门邀约探索凶险古修洞府，主角果断拒绝留在后方种田；第3章前线传来同门全军覆没噩耗，主角暗自庆幸并在后山默默收获千年灵药",
+      "common_mistakes": [
+        "嘴上说苟结果第三章就冲上去越级杀人夺宝",
+        "为了面子意气用事招惹大派圣子",
+        "长生变成枯燥无聊的纯闭关流水账"
+      ]
+    },
+    "payoff_density": {
+      "per_thousand_words": 0.4,
+      "dry_spell_tolerance": 7,
+      "payoff_types": [
+        {
+          "type": "打脸",
+          "ratio": 0.4,
+          "buildup_length": 5,
+          "skeleton": "昔日不可一世的天骄仇敌大限已至化为黄土，主角在坟前敬酒送行，一身修为早已通玄"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.3,
+          "buildup_length": 3,
+          "skeleton": "各大宗门两败俱伤抢夺神物，主角伪装路人以不可思议的稳健手段笑纳核心至宝"
+        },
+        {
+          "type": "打脸",
+          "ratio": 0.2,
+          "buildup_length": 4,
+          "skeleton": "劫匪强盗企图抢劫‘平平无奇老汉’，主角一抬手引动九天神雷将其灰飞烟灭连魂都扬了"
+        }
+      ]
+    },
+    "paywall": {
+      "cliffhanger_technique": "修仙界万年大劫爆发，正魔大战波及隐居山谷，主角被迫揭开隐藏了五百年的真实修为",
+      "pre_paywall_buildup": "模拟器警报连续爆红，主角布下的一万八千重防御大阵被触发了第一重"
+    },
+    "retention_risk_points": [
+      {
+        "position": "长生中期",
+        "reason": "岁月流逝节奏失控",
+        "mitigation": "以修仙百艺（符箓、阵法、炼丹、傀儡）为载体，展示技能不断拉满的踏实爽感"
+      }
+    ],
+    "update_rhythm": {
+      "chapters_per_day": 2,
+      "burst_timing": "熬死一代大敌或宗门更迭换代时加更"
+    }
+  },
+  "language_rules": {
+    "banned_phrases": [
+      "少年意气",
+      "不服就干",
+      "逆天而行",
+      "三十年河东三十年河西"
+    ],
+    "fatigue_words": [
+      {
+        "word": "稳如泰山",
+        "max_per_chapter": 2
+      },
+      {
+        "word": "默默隐忍",
+        "max_per_chapter": 2
+      }
+    ],
+    "dialogue_style": {
+      "dominant_subtype": "温和平庸藏锋于钝",
+      "note": "对谁都是笑脸相迎‘道友所言极是’，心中早已推演好八种退路与补刀方案"
+    },
+    "iron_rules": [
+      {
+        "rule": "稳健不是窝囊，而是杀人必扬灰：不出手则已，一出手必断因果绝后患。",
+        "bad_example": "主角被抢了灵石，还要笑着对强盗说谢谢，随后强盗继续霸占主角房屋。",
+        "good_example": "主角面上恭敬交出下品灵石，当夜化身百里外的元婴魔修，顺着因果线把强盗宗族连根拔起，灰都不留一粒。",
+        "rationale": "苟道流读者看的是高智商避险与毫无风险的绝对碾压，不是真受虐。"
+      }
+    ],
+    "forbidden_elements": [
+      "装逼上头主动跳出来当众出风头",
+      "斩草不除根留下活口给后文找麻烦",
+      "为女人或虚名涉险"
+    ],
+    "required_elements": [
+      "长生不死岁月沉淀",
+      "修仙百艺全技能拉满",
+      "叠最厚的甲打最狠的偷袭",
+      "因果全消扬骨灰"
+    ]
+  },
+  "quality_thresholds": {
+    "dialogue_optimal": {
+      "min": 0.15,
+      "max": 0.3
+    },
+    "pass": 75,
+    "warn": 60
+  },
+  "structure": {
+    "arc_rhythm": {
+      "chapters_per_arc": 35,
+      "climax_position": 0.8,
+      "arc_template": [
+        "扎根凡尘苟道成真",
+        "百艺皆通阵法叠甲",
+        "熬死一代天骄宗门",
+        "大劫降临暗中操盘",
+        "人间飞升逍遥长生"
+      ]
+    },
+    "chapter_roles": [
+      {
+        "role": "铺垫",
+        "ratio": 0.3,
+        "typical_position": "岁月日常",
+        "beats": [
+          "研习百艺",
+          "种灵草炼灵丹",
+          "看外界风云变幻"
+        ]
+      },
+      {
+        "role": "推进",
+        "ratio": 0.35,
+        "typical_position": "杀劫推演",
+        "beats": [
+          "察觉危机端倪",
+          "改良护山大阵",
+          "制造假死脱身傀儡"
+        ]
+      },
+      {
+        "role": "爆发",
+        "ratio": 0.15,
+        "typical_position": "清算反杀",
+        "beats": [
+          "绝杀暗算之敌",
+          "连环阵法诛杀",
+          "神魂彻底湮灭"
+        ]
+      },
+      {
+        "role": "缓冲",
+        "ratio": 0.1,
+        "typical_position": "战后善后",
+        "beats": [
+          "收拾战利品",
+          "换马甲搬家"
+        ]
+      },
+      {
+        "role": "转折",
+        "ratio": 0.1,
+        "typical_position": "时代变迁",
+        "beats": [
+          "几百年岁月流逝故人老去"
+        ]
+      }
+    ],
+    "chapter_word_range": {
+      "min": 2400,
+      "max": 3400,
+      "typical": 2800
+    },
+    "foreshadow_pattern": {
+      "concurrent_open": 3,
+      "avg_span": 40,
+      "max_span": 100,
+      "plant_technique": [
+        "百年前随手种下的普通树苗如今化为参天神木",
+        "当年指点过的凡人孩童如今是一代开国大帝"
+      ]
+    },
+    "hook_system": {
+      "anti_repetition_rule": "种田日常与雷霆除恶交错，展现超脱时光的史诗沧桑感。",
+      "hook_density_curve": [
+        "初期谨小慎微避祸",
+        "中期运筹帷幄熬死强敌",
+        "后期俯瞰诸天纪元更替"
+      ],
+      "hook_types": [
+        {
+          "type": "悬念揭示",
+          "strength": 0.9,
+          "frequency": 0.35,
+          "skeleton": "天道模拟器中浮现血字：你若参加明日论道，三日后将被元婴老怪搜魂而死。"
+        },
+        {
+          "type": "悬念揭示",
+          "strength": 0.85,
+          "frequency": 0.35,
+          "skeleton": "闭关三百年出关，昔日称霸一方的万年仙门如今已是一片杂草废墟。"
+        }
+      ]
+    }
+  },
+  "world_conventions": {
+    "iron_laws": [
+      "长生不死不等于天下无敌：遇杀劫仍会死，所以必须万分稳健",
+      "因果牵连是修行第一大害"
+    ],
+    "power_system_type": "仙道境界梯度 + 寿元道果数值 + 百艺圆满等级（符/丹/器/阵/傀儡）",
+    "progression_granularity": "从炼气长生者到结丹老怪物再到万古幕后唯一道祖",
+    "naming_conventions": [
+      "化名马甲库（韩立、厉飞雨风格）",
+      "阵法层级名（九曲黄河混元阵）",
+      "古修洞府代号"
+    ]
+  }
+}
