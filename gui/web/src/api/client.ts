@@ -485,6 +485,29 @@ export const writingApi = {
     get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}&format=${format}`),
   deslop: (text: string) =>
     post<DeslopResult>('/writing/deslop', { text }),
+  getProjectMeta: (project: string) =>
+    get<ProjectMeta>(`/writing/projects/${encodeURIComponent(project)}/meta`),
+  updateProjectMeta: (
+    project: string,
+    body: {
+      platform?: string
+      genre?: string
+      target_words?: number
+      summary?: string
+      meta?: Record<string, unknown>
+    }
+  ) => post<ProjectMeta>(`/writing/projects/${encodeURIComponent(project)}/meta`, body),
+}
+
+export interface ProjectMeta {
+  project: string
+  platform: string
+  genre: string
+  targetWords: number
+  summary: string
+  meta: Record<string, unknown>
+  createdAt: number
+  updatedAt: number
 }
 
 export interface ExportResult {
@@ -992,5 +1015,34 @@ export const essenceApi = {
   deleteAsset: (assetId: number) => del<{ deleted: boolean; assetId: number }>(`/essence/assets/${assetId}`),
   adoptAsset: (body: { asset_id: number; project: string; target_kind?: string }) =>
     post<{ adopted: boolean; targetKind: string; recordId: number }>('/essence/adopt', body),
+  listChains: (bookId?: string) => {
+    const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
+    return get<{ chains: EssenceChain[] }>(`/essence/chains${q}`)
+  },
+  createChain: (body: {
+    book_id: string
+    title: string
+    category?: string
+    plant_chapter?: number
+    reveal_chapter?: number
+    climax_chapter?: number
+    description?: string
+    status?: string
+  }) => post<EssenceChain>('/essence/chains', body),
+  deleteChain: (chainId: number) => del<{ deleted: boolean; chainId: number }>(`/essence/chains/${chainId}`),
+}
+
+export interface EssenceChain {
+  id: number
+  bookId: string
+  title: string
+  category: string
+  plantChapter: number
+  revealChapter: number
+  climaxChapter: number
+  description: string
+  status: 'planted' | 'developing' | 'revealed' | 'recycled'
+  createdAt: number
+  updatedAt: number
 }
 

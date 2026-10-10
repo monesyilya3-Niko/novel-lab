@@ -247,6 +247,34 @@ class WritingExtraTest(unittest.TestCase):
         self.assertEqual(payload["code"], 0)
         self.assertIn("today_words", payload["data"])
 
+    def test_project_meta_crud_and_router(self):
+        from gui import router
+        # 1. 默认查询
+        m = writing_extra.get_project_meta(PROJ)
+        self.assertEqual(m["platform"], "fanqie")
+        self.assertEqual(m["target_words"], 1000000)
+
+        # 2. 更新元数据
+        up = writing_extra.update_project_meta(
+            PROJ, platform="qidian", genre="xianxia", target_words=2000000, summary="修真问道"
+        )
+        self.assertEqual(up["platform"], "qidian")
+        self.assertEqual(up["genre"], "xianxia")
+        self.assertEqual(up["target_words"], 2000000)
+
+        # 3. 路由分发
+        resp, _ = router.dispatch("GET", f"/api/writing/projects/{PROJ}/meta", {}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertEqual(resp["data"]["platform"], "qidian")
+
+        post_resp, _ = router.dispatch(
+            "POST", f"/api/writing/projects/{PROJ}/meta",
+            {"platform": "jinjiang", "genre": "yanqing"},
+            {}
+        )
+        self.assertEqual(post_resp["code"], 0)
+        self.assertEqual(post_resp["data"]["platform"], "jinjiang")
+
 
 
 

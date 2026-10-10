@@ -625,3 +625,68 @@ def export_project(project: str, fmt: str = "txt") -> dict[str, Any]:
     elif fmt_clean in ("md", "markdown"):
         return export_project_md(project)
     return export_project_txt(project)
+
+
+def get_project_meta(project: str) -> dict[str, Any]:
+    """获取项目的平台生态、题材与企划元数据。"""
+    proj = _require_project(project)
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM writing_projects_meta WHERE project = ?", (proj,)
+    ).fetchone()
+    if row:
+        d = dict(row)
+        try:
+            d["meta"] = json.loads(d.get("meta_json") or "{}")
+        except (json.JSONDecodeError, TypeError):
+            d["meta"] = {}
+        return d
+    # 若尚无元数据，返回默认预设
+    return {
+        "project": proj,
+        "platform": "fanqie",
+        "genre": "general",
+        "target_words": 1000000,
+        "summary": "",
+        "meta": {},
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+    }
+
+
+def update_project_meta(
+    project: str,
+    platform: str | None = None,
+    genre: str | None = None,
+    target_words: int | None = None,
+    summary: str | None = None,
+    meta: dict | None = None,
+) -> dict[str, Any]:
+    """更新或创建项目的平台生态与企划元数据。"""
+    proj = _require_project(project)
+    current = get_project_meta(proj)
+    new_platform = str(platform) if platform is not None else current["platform"]
+    new_genre = str(genre) if genre is not None else current["genre"]
+    new_target_words = int(target_words) if target_words is not None else current["target_words"]
+    new_summary = str(summary) if summary is not None else current["summary"]
+    new_meta = meta if meta is not None else current.get("meta", {})
+    now = datetime.now().isoformat()
+
+    with db.tx() as conn:
+        conn.execute(
+            """
+            INSERT INTO writing_projects_meta
+                (project, platform, genre, target_words, summary, meta_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(project) DO UPDATE SET
+                platform = excluded.platform,
+                genre = excluded.genre,
+                target_words = excluded.target_words,
+                summary = excluded.summary,
+                meta_json = excluded.meta_json,
+                updated_at = excluded.updated_at
+            """,
+            (proj, new_platform, new_genre, new_target_words, new_summary, json.dumps(new_meta, ensure_ascii=False), now, now),
+        )
+    return get_project_meta(proj)
+

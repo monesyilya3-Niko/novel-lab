@@ -27,6 +27,8 @@ import MenuBookIcon from '@mui/icons-material/MenuBook'
 import LayersIcon from '@mui/icons-material/Layers'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import AccountTreeIcon from '@mui/icons-material/AccountTree'
+import AddIcon from '@mui/icons-material/Add'
 import {
   essenceApi,
   writingApi,
@@ -34,6 +36,7 @@ import {
   type EssenceBook,
   type EssenceAsset,
   type EssenceMacroAnalysisResult,
+  type EssenceChain,
 } from '../api/client'
 import type { WritingProject } from '../types'
 
@@ -77,13 +80,15 @@ export default function EssenceWorkbench() {
           <Tabs value={tab} onChange={(_, v) => setTab(v)}>
             <Tab icon={<AutoAwesomeIcon fontSize="small" />} iconPosition="start" label="离线精读与解构提炼" />
             <Tab icon={<LayersIcon fontSize="small" />} iconPosition="start" label="五维精华资产库" />
+            <Tab icon={<AccountTreeIcon fontSize="small" />} iconPosition="start" label="伏笔暗线图谱" />
             <Tab icon={<MenuBookIcon fontSize="small" />} iconPosition="start" label="已精读书籍档案" />
           </Tabs>
         </Box>
 
         {tab === 0 && <MacroExtractSection onAssetSaved={() => setTab(1)} />}
         {tab === 1 && <EssenceAssetsSection />}
-        {tab === 2 && <EssenceBooksSection />}
+        {tab === 2 && <EssenceChainsSection />}
+        {tab === 3 && <EssenceBooksSection />}
       </Paper>
     </Box>
   )
@@ -743,3 +748,388 @@ function EssenceBooksSection() {
     </Box>
   )
 }
+
+// ---------------------------------------------------------------------------
+// 4. 伏笔暗线图谱 (Foreshadowing Matrix)
+// ---------------------------------------------------------------------------
+
+const CHAIN_STATUS_MAP: Record<string, { label: string; color: 'default' | 'primary' | 'warning' | 'success' }> = {
+  planted: { label: '🌱 已埋下', color: 'default' },
+  developing: { label: '⏳ 推进发酵', color: 'warning' },
+  revealed: { label: '🔍 已显露', color: 'primary' },
+  recycled: { label: '✅ 闭环回收', color: 'success' },
+}
+
+function EssenceChainsSection() {
+  const [chains, setChains] = useState<EssenceChain[]>([])
+  const [books, setBooks] = useState<EssenceBook[]>([])
+  const [selectedBook, setSelectedBook] = useState<string>('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [toast, setToast] = useState('')
+
+  // 新建暗线对话框
+  const [openCreate, setOpenCreate] = useState(false)
+  const [formBookId, setFormBookId] = useState('')
+  const [formTitle, setFormTitle] = useState('')
+  const [formCategory, setFormCategory] = useState('身份谜题')
+  const [formPlant, setFormPlant] = useState(1)
+  const [formReveal, setFormReveal] = useState(20)
+  const [formClimax, setFormClimax] = useState(50)
+  const [formDesc, setFormDesc] = useState('')
+  const [formStatus, setFormStatus] = useState<'planted' | 'developing' | 'revealed' | 'recycled'>('planted')
+  const [saving, setSaving] = useState(false)
+
+  const loadData = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const [bookRes, chainRes] = await Promise.all([
+        essenceApi.listBooks(),
+        essenceApi.listChains(selectedBook || undefined),
+      ])
+      setBooks(bookRes.books || [])
+      setChains(chainRes.chains || [])
+      if (!formBookId && bookRes.books && bookRes.books.length > 0) {
+        setFormBookId(bookRes.books[0].bookId)
+      }
+    } catch (e) {
+      setError(friendlyError(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [selectedBook])
+
+  const handleCreate = async () => {
+    if (!formTitle.trim()) {
+      setError('请输入暗线伏笔名称')
+      return
+    }
+    const bookId = formBookId || (books.length > 0 ? books[0].bookId : 'general')
+    setSaving(true)
+    try {
+      await essenceApi.createChain({
+        book_id: bookId,
+        title: formTitle.trim(),
+        category: formCategory,
+        plant_chapter: formPlant,
+        reveal_chapter: formReveal,
+        climax_chapter: formClimax,
+        description: formDesc.trim(),
+        status: formStatus,
+      })
+      setToast('暗线伏笔已成功创建并录入图谱')
+      setOpenCreate(false)
+      setFormTitle('')
+      setFormDesc('')
+      loadData()
+    } catch (e) {
+      setError(friendlyError(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async (chainId: number) => {
+    if (!window.confirm('确定删除此条伏笔暗线吗？')) return
+    try {
+      await essenceApi.deleteChain(chainId)
+      setToast('已删除暗线')
+      loadData()
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  const recycledCount = chains.filter((c) => c.status === 'recycled').length
+  const avgSpan =
+    chains.length > 0
+      ? Math.round(chains.reduce((acc, c) => acc + Math.max(0, c.climaxChapter - c.plantChapter), 0) / chains.length)
+      : 0
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <TextField
+            select
+            size="small"
+            label="筛选书籍档案"
+            value={selectedBook}
+            onChange={(e) => setSelectedBook(e.target.value)}
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">全部书籍暗线</MenuItem>
+            {books.map((b) => (
+              <MenuItem key={b.bookId} value={b.bookId}>
+                {b.title}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Typography variant="body2" color="text.secondary">
+            共 {chains.length} 条暗线 | 回收闭环: {recycledCount} 条 | 平均呼应跨度: {avgSpan} 章
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="outlined" size="small" onClick={loadData}>
+            刷新
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setOpenCreate(true)}
+          >
+            录入伏笔暗线
+          </Button>
+        </Box>
+      </Box>
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : chains.length === 0 ? (
+        <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
+          暂无伏笔暗线数据。点击右上角「录入伏笔暗线」，建立长篇小说的草蛇灰线与回收图谱。
+        </Paper>
+      ) : (
+        <Grid container spacing={2}>
+          {chains.map((c) => {
+            const statusConfig = CHAIN_STATUS_MAP[c.status] || CHAIN_STATUS_MAP.planted
+            const totalSpan = Math.max(1, c.climaxChapter)
+            const plantPct = Math.min(95, Math.max(2, (c.plantChapter / totalSpan) * 100))
+            const revealPct = Math.min(98, Math.max(plantPct + 2, (c.revealChapter / totalSpan) * 100))
+            return (
+              <Grid item xs={12} md={6} key={c.id}>
+                <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                          {c.title}
+                        </Typography>
+                        <Chip size="small" label={c.category} variant="outlined" />
+                        <Chip
+                          size="small"
+                          label={statusConfig.label}
+                          color={statusConfig.color}
+                        />
+                      </Box>
+                      <IconButton size="small" color="error" onClick={() => handleDelete(c.id)}>
+                        <DeleteOutlineIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+
+                    {/* 可视化伏笔跨越节点 */}
+                    <Box sx={{ my: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          🌱 埋设：<b>第 {c.plantChapter} 章</b>
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          🔍 揭晓：<b>第 {c.revealChapter} 章</b>
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          💥 高潮回收：<b>第 {c.climaxChapter} 章</b>
+                        </Typography>
+                      </Box>
+
+                      {/* 进度轨道 */}
+                      <Box sx={{ position: 'relative', height: 10, bgcolor: 'divider', borderRadius: 5, my: 1 }}>
+                        {/* 伏笔发展区间 */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: `${plantPct}%`,
+                            width: `${Math.max(5, 100 - plantPct)}%`,
+                            height: '100%',
+                            bgcolor:
+                              c.status === 'recycled'
+                                ? 'success.main'
+                                : c.status === 'revealed'
+                                ? 'primary.main'
+                                : 'warning.main',
+                            borderRadius: 5,
+                            opacity: 0.6,
+                          }}
+                        />
+                        {/* 节点标记 */}
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: `${plantPct}%`,
+                            top: -2,
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            bgcolor: 'primary.dark',
+                            border: '2px solid white',
+                            transform: 'translateX(-50%)',
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: `${revealPct}%`,
+                            top: -2,
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            bgcolor: 'warning.dark',
+                            border: '2px solid white',
+                            transform: 'translateX(-50%)',
+                          }}
+                        />
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            right: 0,
+                            top: -2,
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            bgcolor: 'error.main',
+                            border: '2px solid white',
+                          }}
+                        />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center', mt: 0.5 }}>
+                        张力跨度: 跨越 {Math.max(0, c.climaxChapter - c.plantChapter)} 章释放
+                      </Typography>
+                    </Box>
+
+                    {c.description && (
+                      <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                        {c.description}
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            )
+          })}
+        </Grid>
+      )}
+
+      {/* 新建暗线对话框 */}
+      <Dialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>录入伏笔暗线图谱</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="所属书籍"
+            value={formBookId}
+            onChange={(e) => setFormBookId(e.target.value)}
+          >
+            {books.map((b) => (
+              <MenuItem key={b.bookId} value={b.bookId}>
+                {b.title}
+              </MenuItem>
+            ))}
+            {books.length === 0 && <MenuItem value="general">通用书籍</MenuItem>}
+          </TextField>
+
+          <TextField
+            fullWidth
+            size="small"
+            label="暗线 / 伏笔名称"
+            placeholder="例如：男主身世玉佩、九品功法残卷、反派隐藏心腹"
+            value={formTitle}
+            onChange={(e) => setFormTitle(e.target.value)}
+          />
+
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="暗线类型"
+            value={formCategory}
+            onChange={(e) => setFormCategory(e.target.value)}
+          >
+            <MenuItem value="身份谜题">身份谜题 (主角/配角隐藏血脉身世)</MenuItem>
+            <MenuItem value="力量伏笔">力量伏笔 (神兵暗扣/功法反噬/禁制代价)</MenuItem>
+            <MenuItem value="恩怨宿命">恩怨宿命 (灭族旧恨/宗门内奸/同盟背叛)</MenuItem>
+            <MenuItem value="世界真相">世界真相 (末日成因/飞升骗局/神祇降临)</MenuItem>
+            <MenuItem value="情感暗涌">情感暗涌 (白月光之死/误会冰释/道侣心结)</MenuItem>
+          </TextField>
+
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              type="number"
+              size="small"
+              label="埋下章节 (Plant)"
+              value={formPlant}
+              onChange={(e) => setFormPlant(Number(e.target.value))}
+              fullWidth
+            />
+            <TextField
+              type="number"
+              size="small"
+              label="显露章节 (Reveal)"
+              value={formReveal}
+              onChange={(e) => setFormReveal(Number(e.target.value))}
+              fullWidth
+            />
+            <TextField
+              type="number"
+              size="small"
+              label="高潮章节 (Climax)"
+              value={formClimax}
+              onChange={(e) => setFormClimax(Number(e.target.value))}
+              fullWidth
+            />
+          </Box>
+
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="当前状态"
+            value={formStatus}
+            onChange={(e) => setFormStatus(e.target.value as any)}
+          >
+            <MenuItem value="planted">🌱 已埋下 (埋点刚出现，读者留有浅印象)</MenuItem>
+            <MenuItem value="developing">⏳ 推进发酵 (多次侧面呼应，悬念升级)</MenuItem>
+            <MenuItem value="revealed">🔍 已显露 (真相浮出水面，即将引爆大冲突)</MenuItem>
+            <MenuItem value="recycled">✅ 闭环回收 (高潮引爆完成，伏笔爽点收束)</MenuItem>
+          </TextField>
+
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            label="暗线铺设逻辑与爽点释放机制"
+            placeholder="说明此伏笔如何前后呼应，为何能抓住读者注意力，高潮时如何反转或打脸"
+            value={formDesc}
+            onChange={(e) => setFormDesc(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCreate(false)}>取消</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={saving}>
+            {saving ? '保存中...' : '录入图谱'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(toast)}
+        autoHideDuration={3000}
+        onClose={() => setToast('')}
+        message={toast}
+      />
+    </Box>
+  )
+}
+

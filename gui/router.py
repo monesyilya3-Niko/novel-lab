@@ -982,6 +982,50 @@ def _h_essence_adopt(_params: dict[str, Any], body: dict[str, Any]) -> dict[str,
     return ok(essence_service.adopt_asset_to_project(int(asset_id), project, target_kind=target_kind))
 
 
+def _h_writing_project_meta_get(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    return ok(writing_extra.get_project_meta(params["project"]))
+
+
+def _h_writing_project_meta_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    return ok(writing_extra.update_project_meta(
+        project=params["project"],
+        platform=b.get("platform"),
+        genre=b.get("genre"),
+        target_words=b.get("target_words"),
+        summary=b.get("summary"),
+        meta=b.get("meta"),
+    ))
+
+
+def _h_essence_chains_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    book_id = params.get("book_id") or ""
+    return ok({"chains": essence_service.list_chains(book_id)})
+
+
+def _h_essence_chain_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    b = body or {}
+    return ok(essence_service.create_chain(
+        book_id=b.get("book_id", ""),
+        clue_name=b.get("clue_name", ""),
+        hook_chapter=int(b.get("hook_chapter", 1)),
+        payoff_chapter=int(b.get("payoff_chapter", 1)),
+        hook_text=b.get("hook_text", ""),
+        payoff_text=b.get("payoff_text", ""),
+        status=b.get("status", "resolved"),
+        analysis=b.get("analysis", ""),
+    ))
+
+
+def _h_essence_chain_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok(essence_service.delete_chain(int(params["chain_id"])))
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -1118,6 +1162,11 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/essence/assets$"), _h_essence_asset_create),
     ("DELETE", re.compile(r"^/api/essence/assets/(?P<asset_id>[^/]+)$"), _h_essence_asset_delete),
     ("POST", re.compile(r"^/api/essence/adopt$"), _h_essence_adopt),
+    ("GET", re.compile(r"^/api/writing/projects/(?P<project>[^/]+)/meta$"), _h_writing_project_meta_get),
+    ("POST", re.compile(r"^/api/writing/projects/(?P<project>[^/]+)/meta$"), _h_writing_project_meta_update),
+    ("GET", re.compile(r"^/api/essence/chains$"), _h_essence_chains_list),
+    ("POST", re.compile(r"^/api/essence/chains$"), _h_essence_chain_create),
+    ("DELETE", re.compile(r"^/api/essence/chains/(?P<chain_id>[^/]+)$"), _h_essence_chain_delete),
 ]
 
 

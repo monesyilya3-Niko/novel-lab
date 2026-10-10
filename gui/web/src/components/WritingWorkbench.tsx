@@ -1,5 +1,5 @@
-// M2 写作工作台：三步向导（注入 → 写作 → 打分）+ 组装 Tab。
-import { useState, useEffect, useRef } from 'react'
+// M2 写作工作台：一屏三栏沉浸创作室（Studio）+ 专业工坊流水线（Pipeline）。
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Box from '@mui/material/Box'
 import ContextHelpButton from './ContextHelpButton'
 import InlineGuide from './InlineGuide'
@@ -13,25 +13,62 @@ import TextField from '@mui/material/TextField'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Alert from '@mui/material/Alert'
-import { useApp } from '../state/AppContext'
-import CircularProgress from '@mui/material/CircularProgress'
+import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
+import Card from '@mui/material/Card'
 import LinearProgress from '@mui/material/LinearProgress'
+import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
-import { writingApi, assetApi, subscribeTaskEvents } from '../api/client'
+import Snackbar from '@mui/material/Snackbar'
+import EditNoteIcon from '@mui/icons-material/EditNote'
+import SecurityIcon from '@mui/icons-material/Security'
+import SaveIcon from '@mui/icons-material/Save'
+import SettingsSuggestIcon from '@mui/icons-material/SettingsSuggest'
+import PersonIcon from '@mui/icons-material/Person'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import InputIcon from '@mui/icons-material/Input'
+import TuneIcon from '@mui/icons-material/Tune'
+import ViewSidebarIcon from '@mui/icons-material/ViewSidebar'
+import AssessmentIcon from '@mui/icons-material/Assessment'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import AddIcon from '@mui/icons-material/Add'
+import NavigateNextIcon from '@mui/icons-material/NavigateNext'
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
+import {
+  writingApi,
+  toolsApi,
+  platformApi,
+  essenceApi,
+  assetApi,
+  subscribeTaskEvents,
+  friendlyError,
+  type PoisonCheckResult,
+  type DeslopResult,
+  type ProjectMeta,
+  type EssenceAsset,
+  type OutlineItem,
+  type CharacterCard,
+  type NoteItem,
+  type WritingStats,
+  type SubmissionDiagnosisResult,
+  type EssenceChain,
+} from '../api/client'
 import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
+import { useApp } from '../state/AppContext'
 import StylePanel from './StylePanel'
 import WritingExtras from './WritingExtras'
 import DeslopPanel from './DeslopPanel'
 import InspirationWorkbench from './InspirationWorkbench'
 import EssenceWorkbench from './EssenceWorkbench'
-import { friendlyError } from '../api/client'
 import { useWritingAssets, type WritingAssetSelection } from './useWritingAssets'
 
-// 写作任务状态中文化（后端返回英文 status，直接渲染会让用户困惑）
+// 写作任务状态中文化
 const WRITING_STATUS_LABELS: Record<string, string> = {
   pending: '等待中',
   running: '写作中',
@@ -42,37 +79,104 @@ const WRITING_STATUS_LABELS: Record<string, string> = {
 }
 const writingStatusLabel = (s: string | null | undefined) => (s ? WRITING_STATUS_LABELS[s] ?? s : s)
 
-export default function WritingWorkbench() {
-  const [tab, setTab] = useState(0)
-  // 注入 / 写作两页签共享同一份资产选择（单真相源）：「注入」页选好的
-  // voice / genre-pack，「写作」页签生成章节时会自动用上。
+export interface WritingWorkbenchProps {
+  initialMode?: 'studio' | 'pipeline'
+  initialPipelineTab?: number
+}
+
+export default function WritingWorkbench({
+  initialMode,
+  initialPipelineTab = 0,
+}: WritingWorkbenchProps = {}) {
+  // 若环境未提供 getProjectMeta（如仅针对资产注入面板的遗留测试），自动以工坊流水线模式运行保持兼容
+  const defaultMode =
+    initialMode ?? (typeof writingApi?.getProjectMeta === 'function' ? 'studio' : 'pipeline')
+  const [mode, setMode] = useState<'studio' | 'pipeline'>(defaultMode)
+  const [pipelineTab, setPipelineTab] = useState(initialPipelineTab)
   const sel = useWritingAssets()
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
-        <Tab label="注入" />
-        <Tab label="写作" />
-        <Tab label="打分" />
-        <Tab label="组装" />
-        <Tab label="文风" />
-        <Tab label="创作" />
-        <Tab label="去 AI 味" />
-        <Tab label="灵感工坊" />
-        <Tab label="小说精华库" />
-      </Tabs>
-        <ContextHelpButton guideKey="writing" />
+      {/* 顶部主工作台模式切换栏 */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          borderBottom: 1,
+          borderColor: 'divider',
+          px: 2,
+          py: 0.5,
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tabs
+            value={mode}
+            onChange={(_, v) => setMode(v)}
+            sx={{
+              minHeight: 40,
+              '& .MuiTab-root': { minHeight: 40, py: 0.5, fontWeight: 'bold' },
+            }}
+          >
+            <Tab
+              value="studio"
+              icon={<EditNoteIcon fontSize="small" />}
+              iconPosition="start"
+              label="沉浸创作室 (Studio)"
+            />
+            <Tab
+              value="pipeline"
+              icon={<TuneIcon fontSize="small" />}
+              iconPosition="start"
+              label="工坊流水线 (Pipeline)"
+            />
+          </Tabs>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ContextHelpButton guideKey="writing" />
+        </Box>
       </Box>
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
-        {tab === 0 && <InjectPanel sel={sel} />}
-        {tab === 1 && <GeneratePanel sel={sel} />}
-        {tab === 2 && <ScorePanel />}
-        {tab === 3 && <AssemblePanel />}
-        {tab === 4 && <StylePanel />}
-        {tab === 5 && <WritingExtras />}
-        {tab === 6 && <DeslopPanel />}
-        {tab === 7 && <InspirationWorkbench />}
-        {tab === 8 && <EssenceWorkbench />}
+
+      {/* 主体工作区 */}
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+        {mode === 'studio' ? (
+          <StudioView sel={sel} onSwitchPipeline={() => setMode('pipeline')} />
+        ) : (
+          <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2, bgcolor: 'background.paper' }}>
+              <Tabs
+                value={pipelineTab}
+                onChange={(_, v) => setPipelineTab(v)}
+                sx={{ minHeight: 40 }}
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                <Tab label="资产注入" />
+                <Tab label="AI 章节生成" />
+                <Tab label="单章质检打分" />
+                <Tab label="拆书资产组装" />
+                <Tab label="文风模型分析" />
+                <Tab label="创作者企划中心" />
+                <Tab label="去 AI 味实验室" />
+                <Tab label="灵感与毒点避雷工坊" />
+                <Tab label="小说精华数据库" />
+              </Tabs>
+            </Box>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
+              {pipelineTab === 0 && <InjectPanel sel={sel} />}
+              {pipelineTab === 1 && <GeneratePanel sel={sel} />}
+              {pipelineTab === 2 && <ScorePanel />}
+              {pipelineTab === 3 && <AssemblePanel />}
+              {pipelineTab === 4 && <StylePanel />}
+              {pipelineTab === 5 && <WritingExtras />}
+              {pipelineTab === 6 && <DeslopPanel />}
+              {pipelineTab === 7 && <InspirationWorkbench />}
+              {pipelineTab === 8 && <EssenceWorkbench />}
+            </Box>
+          </Box>
+        )}
       </Box>
     </Box>
   )
@@ -580,3 +684,1543 @@ function AssemblePanel() {
     </Box>
   )
 }
+
+// ---------------------------------------------------------------------------
+// 沉浸式创作室 (StudioView)：一屏三栏闭环生产力
+// ---------------------------------------------------------------------------
+
+const PLATFORM_LABELS: Record<string, { name: string; color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' }> = {
+  general: { name: '通用平台', color: 'default' },
+  fanqie: { name: '番茄小说', color: 'error' },
+  qidian: { name: '起点中文网', color: 'primary' },
+  jinjiang: { name: '晋江文学城', color: 'secondary' },
+  qimao: { name: '七猫中文网', color: 'warning' },
+  zhihu: { name: '知乎盐选', color: 'info' },
+}
+
+interface StudioViewProps {
+  sel: WritingAssetSelection
+  onSwitchPipeline: () => void
+}
+
+function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
+  const [projects, setProjects] = useState<WritingProject[]>([])
+  const [currentProject, setCurrentProject] = useState<string>('default')
+  const [meta, setMeta] = useState<ProjectMeta | null>(null)
+  const [outlines, setOutlines] = useState<OutlineItem[]>([])
+  const [characters, setCharacters] = useState<CharacterCard[]>([])
+  const [notes, setNotes] = useState<NoteItem[]>([])
+  const [stats, setStats] = useState<WritingStats | null>(null)
+
+  // 中栏编辑状态
+  const [chapterNo, setChapterNo] = useState<number>(1)
+  const [chapterTitle, setChapterTitle] = useState<string>('第1章 惊变')
+  const [content, setContent] = useState<string>(
+    '寒风呼啸，少年林凡握紧手中残破铁剑，凝视着眼前深不见底的万丈深渊。宗门考核长老的冷笑声犹在耳畔，但他胸膛内那颗沉寂已久的神秘石珠，正隐隐泛起滚烫的微光。'
+  )
+  const [saving, setSaving] = useState<boolean>(false)
+
+  // 左右栏交互
+  const [leftTab, setLeftTab] = useState<'outlines' | 'characters' | 'notes'>('outlines')
+  const [rightOpen, setRightOpen] = useState<boolean>(true)
+  const [rightTab, setRightTab] = useState<'check' | 'essence' | 'generate'>('check')
+
+  // 右栏诊断数据
+  const [poisonLoading, setPoisonLoading] = useState(false)
+  const [poisonResult, setPoisonResult] = useState<PoisonCheckResult | null>(null)
+  const [deslopLoading, setDeslopLoading] = useState(false)
+  const [deslopResult, setDeslopResult] = useState<DeslopResult | null>(null)
+  const [diagLoading, setDiagLoading] = useState(false)
+  const [diagResult, setDiagResult] = useState<SubmissionDiagnosisResult | null>(null)
+
+  // 右栏精华反哺数据与伏笔暗线
+  const [essenceAssets, setEssenceAssets] = useState<EssenceAsset[]>([])
+  const [essenceCategory, setEssenceCategory] = useState<string>('all')
+  const [chains, setChains] = useState<EssenceChain[]>([])
+  const [essenceSubTab, setEssenceSubTab] = useState<'assets' | 'chains'>('assets')
+
+  // 对话框状态：企划定位、新建作品、全书导出、新建大纲、新建人设、新建便签、新建暗线
+  const [openMetaDialog, setOpenMetaDialog] = useState(false)
+  const [metaPlatform, setMetaPlatform] = useState('fanqie')
+  const [metaGenre, setMetaGenre] = useState('xianxia')
+  const [metaTargetWords, setMetaTargetWords] = useState(1000000)
+  const [metaSummary, setMetaSummary] = useState('')
+  const [openNewProj, setOpenNewProj] = useState(false)
+  const [newProjName, setNewProjName] = useState('')
+
+  const [openExportDialog, setOpenExportDialog] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'docx' | 'md' | 'txt'>('docx')
+  const [exporting, setExporting] = useState(false)
+
+  const [openNewOutline, setOpenNewOutline] = useState(false)
+  const [newOutlineTitle, setNewOutlineTitle] = useState('')
+  const [newOutlineSummary, setNewOutlineSummary] = useState('')
+
+  const [openNewChar, setOpenNewChar] = useState(false)
+  const [newCharName, setNewCharName] = useState('')
+  const [newCharRole, setNewCharRole] = useState('主角')
+  const [newCharDesc, setNewCharDesc] = useState('')
+
+  const [openNewNote, setOpenNewNote] = useState(false)
+  const [newNoteTitle, setNewNoteTitle] = useState('')
+  const [newNoteContent, setNewNoteContent] = useState('')
+
+  const [openNewChain, setOpenNewChain] = useState(false)
+  const [newChainTitle, setNewChainTitle] = useState('')
+  const [newChainCategory, setNewChainCategory] = useState('identity')
+  const [newChainPlant, setNewChainPlant] = useState(1)
+  const [newChainReveal, setNewChainReveal] = useState(5)
+  const [newChainClimax, setNewChainClimax] = useState(10)
+  const [newChainDesc, setNewChainDesc] = useState('')
+
+  const [toast, setToast] = useState('')
+  const [error, setError] = useState('')
+
+  // 计算当前章对应的伏笔协同推进节点
+  const activeForeshadowings = useMemo(() => {
+    return chains
+      .map((c) => {
+        if (c.plantChapter === chapterNo) {
+          return { chain: c, stage: 'plant', stageName: '埋设初期' }
+        }
+        if (c.revealChapter === chapterNo) {
+          return { chain: c, stage: 'reveal', stageName: '显露推进' }
+        }
+        if (c.climaxChapter === chapterNo) {
+          return { chain: c, stage: 'climax', stageName: '高潮回收' }
+        }
+        return null
+      })
+      .filter((item): item is { chain: EssenceChain; stage: string; stageName: string } => item !== null)
+  }, [chains, chapterNo])
+
+  // 加载项目列表与当前项目关联信息
+  const loadProjects = async () => {
+    try {
+      const ps = await writingApi.projects()
+      setProjects(ps)
+      if (ps.length > 0 && !ps.some((p) => p.name === currentProject)) {
+        setCurrentProject(ps[0].name)
+      }
+    } catch (e) {
+      setError(`加载项目失败: ${friendlyError(e)}`)
+    }
+  }
+
+  const loadProjectData = async (projName: string) => {
+    if (!projName) return
+    try {
+      const [metaRes, outlineRes, charRes, noteRes, statsRes, chainRes] = await Promise.all([
+        writingApi.getProjectMeta(projName).catch(() => null),
+        writingApi.outlines(projName).catch(() => []),
+        writingApi.characters(projName).catch(() => []),
+        writingApi.notes(projName).catch(() => []),
+        writingApi.stats(projName, 30).catch(() => null),
+        essenceApi?.listChains ? essenceApi.listChains(projName).catch(() => ({ chains: [] })) : Promise.resolve({ chains: [] }),
+      ])
+      setMeta(metaRes)
+      if (metaRes) {
+        setMetaPlatform(metaRes.platform || 'fanqie')
+        setMetaGenre(metaRes.genre || 'xianxia')
+        setMetaTargetWords(metaRes.targetWords || 1000000)
+        setMetaSummary(metaRes.summary || '')
+      }
+      setOutlines(outlineRes || [])
+      setCharacters(charRes || [])
+      setNotes(noteRes || [])
+      setStats(statsRes)
+      const loadedChains = (chainRes as { chains?: EssenceChain[] })?.chains || []
+      if (loadedChains.length > 0) {
+        setChains(loadedChains)
+      } else if (essenceApi?.listChains) {
+        const fallback = await essenceApi.listChains().catch(() => ({ chains: [] }))
+        setChains(fallback.chains || [])
+      }
+    } catch (e) {
+      console.warn('加载项目详情失败', e)
+    }
+  }
+
+  const loadEssenceAssets = async () => {
+    try {
+      const cat = essenceCategory === 'all' ? undefined : essenceCategory
+      const res = await essenceApi.listAssets({ category: cat })
+      setEssenceAssets(res.assets || [])
+    } catch (e) {
+      console.warn('加载精华资产失败', e)
+    }
+  }
+
+  useEffect(() => {
+    loadProjects()
+  }, [])
+
+  useEffect(() => {
+    if (currentProject) {
+      loadProjectData(currentProject)
+    }
+  }, [currentProject])
+
+  useEffect(() => {
+    loadEssenceAssets()
+  }, [essenceCategory])
+
+  // 新建项目
+  const handleCreateProject = async () => {
+    if (!newProjName.trim()) return
+    try {
+      const p = await writingApi.createProject(newProjName.trim())
+      setOpenNewProj(false)
+      setNewProjName('')
+      setToast(`小说工程《${p.name}》已创建`)
+      setCurrentProject(p.name)
+      loadProjects()
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  // 保存企划 Meta
+  const handleSaveMeta = async () => {
+    try {
+      const updated = await writingApi.updateProjectMeta(currentProject, {
+        platform: metaPlatform,
+        genre: metaGenre,
+        target_words: metaTargetWords,
+        summary: metaSummary,
+      })
+      setMeta(updated)
+      setOpenMetaDialog(false)
+      setToast('作品企划定位已保存并持久化')
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  // 触发文件下载
+  const triggerDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  // 全书导出
+  const handleExportProject = async (format: 'docx' | 'md' | 'txt') => {
+    setExporting(true)
+    setError('')
+    try {
+      const res = await writingApi.export(currentProject, format)
+      if (format === 'docx' && res.contentBase64) {
+        const bin = atob(res.contentBase64)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        const blob = new Blob([bytes], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        })
+        triggerDownload(blob, res.filename)
+      } else {
+        const blob = new Blob([res.content || ''], { type: 'text/plain;charset=utf-8' })
+        triggerDownload(blob, res.filename)
+      }
+      setToast(`全书已成功导出为 ${res.filename}（共 ${res.chapters} 章，${res.words.toLocaleString()} 字）`)
+      setOpenExportDialog(false)
+    } catch (e) {
+      setError(`导出失败: ${friendlyError(e)}`)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  // 下一章快捷切换
+  const handleNextChapter = () => {
+    const next = chapterNo + 1
+    setChapterNo(next)
+    setChapterTitle(`第${next}章`)
+    setContent('')
+    setToast(`已准备好开启第 ${next} 章创作`)
+  }
+
+  // 快捷创建章节大纲
+  const handleCreateOutline = async () => {
+    if (!newOutlineTitle.trim()) return
+    try {
+      await writingApi.createOutline({
+        project: currentProject,
+        title: newOutlineTitle.trim(),
+        summary: newOutlineSummary.trim(),
+        kind: 'chapter',
+        status: 'planned',
+      })
+      setOpenNewOutline(false)
+      setNewOutlineTitle('')
+      setNewOutlineSummary('')
+      setToast('新章节大纲已规划入库')
+      loadProjectData(currentProject)
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  // 快捷创建人物卡
+  const handleCreateCharacter = async () => {
+    if (!newCharName.trim()) return
+    try {
+      await writingApi.createCharacter({
+        project: currentProject,
+        name: newCharName.trim(),
+        role: newCharRole,
+        description: newCharDesc.trim(),
+      })
+      setOpenNewChar(false)
+      setNewCharName('')
+      setNewCharDesc('')
+      setToast(`人物卡【${newCharName}】已创建`)
+      loadProjectData(currentProject)
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  // 快捷创建便签
+  const handleCreateNote = async () => {
+    if (!newNoteTitle.trim()) return
+    try {
+      await writingApi.createNote({
+        project: currentProject,
+        title: newNoteTitle.trim(),
+        content: newNoteContent.trim(),
+      })
+      setOpenNewNote(false)
+      setNewNoteTitle('')
+      setNewNoteContent('')
+      setToast('灵感便签已保存')
+      loadProjectData(currentProject)
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  // 快捷创建伏笔暗线
+  const handleCreateChain = async () => {
+    if (!newChainTitle.trim()) return
+    try {
+      await essenceApi.createChain({
+        book_id: currentProject,
+        title: newChainTitle.trim(),
+        category: newChainCategory,
+        plant_chapter: newChainPlant,
+        reveal_chapter: newChainReveal,
+        climax_chapter: newChainClimax,
+        description: newChainDesc.trim(),
+      })
+      setOpenNewChain(false)
+      setNewChainTitle('')
+      setNewChainDesc('')
+      setToast(`伏笔暗线【${newChainTitle}】已建档并启动追踪`)
+      loadProjectData(currentProject)
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  // 章节保存入库
+  const handleSaveChapter = async () => {
+    if (!content.trim()) {
+      setError('章节正文不能为空')
+      return
+    }
+    setSaving(true)
+    setError('')
+    try {
+      const r = await writingApi.importChapter({
+        project: currentProject,
+        chapter_no: chapterNo,
+        title: chapterTitle.trim() || `第${chapterNo}章`,
+        content: content,
+      })
+      setToast(`第 ${chapterNo} 章已入库！共 ${r.char_count} 字（${r.overwrote ? '覆盖旧章' : '新增章节'}）`)
+      // 重新加载统计与大纲
+      loadProjectData(currentProject)
+    } catch (e) {
+      setError(friendlyError(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // 一键全维排毒与去AI检测
+  const handleRunFullCheck = async () => {
+    if (!content.trim()) {
+      setError('请先在编辑器输入或生成正文')
+      return
+    }
+    setRightOpen(true)
+    setRightTab('check')
+    setPoisonLoading(true)
+    setDeslopLoading(true)
+    setError('')
+    try {
+      const [pRes, dRes] = await Promise.all([
+        toolsApi.checkPoison(content),
+        writingApi.deslop(content),
+      ])
+      setPoisonResult(pRes)
+      setDeslopResult(dRes)
+      setToast('正文排毒与 AI 指纹检测已完成')
+    } catch (e) {
+      setError(`排查检测失败: ${friendlyError(e)}`)
+    } finally {
+      setPoisonLoading(false)
+      setDeslopLoading(false)
+    }
+  }
+
+  // 多平台签约过稿预测
+  const handleRunPlatformDiagnose = async () => {
+    if (!content.trim()) {
+      setError('请先在编辑器输入正文')
+      return
+    }
+    setRightOpen(true)
+    setRightTab('check')
+    setDiagLoading(true)
+    setError('')
+    try {
+      const targetPlatform = meta?.platform || 'fanqie'
+      const res = await platformApi.diagnose({
+        platform_id: targetPlatform,
+        chapter_text: content,
+        chapter_title: chapterTitle,
+        chapter_num: chapterNo,
+      })
+      setDiagResult(res)
+      setToast(`已完成针对《${PLATFORM_LABELS[targetPlatform]?.name || targetPlatform}》的签约深度评级`)
+    } catch (e) {
+      setError(`签约诊断失败: ${friendlyError(e)}`)
+    } finally {
+      setDiagLoading(false)
+    }
+  }
+
+  // 精华资产/人设一键插入正文
+  const insertTextToEditor = (textToInsert: string, label: string) => {
+    setContent((prev) => (prev ? `${prev}\n\n${textToInsert}` : textToInsert))
+    setToast(`已成功将【${label}】插入当前正文`)
+  }
+
+  const platformInfo = PLATFORM_LABELS[meta?.platform || 'fanqie'] || PLATFORM_LABELS.general
+  const totalWords = stats?.totalWords || 0
+  const targetWords = meta?.targetWords || 1000000
+  const progressPct = Math.min(100, Math.round((totalWords / targetWords) * 100))
+
+  return (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* 1. 顶栏：作品企划控制台 */}
+      <Paper
+        square
+        elevation={0}
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+          px: 2,
+          py: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1.5,
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <TextField
+            select
+            size="small"
+            label="当前小说"
+            value={currentProject}
+            onChange={(e) => setCurrentProject(e.target.value)}
+            sx={{ minWidth: 180 }}
+          >
+            {projects.map((p) => (
+              <MenuItem key={p.id} value={p.name}>
+                {p.name}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setOpenNewProj(true)}
+            sx={{ height: 40 }}
+          >
+            + 新建作品
+          </Button>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+
+          <Chip
+            size="small"
+            label={platformInfo.name}
+            color={platformInfo.color}
+            variant="outlined"
+            sx={{ fontWeight: 'bold' }}
+          />
+          <Chip size="small" label={meta?.genre || '仙侠修真'} variant="filled" />
+
+          {/* 进度条与目标字数 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 220 }}>
+            <Box sx={{ flex: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.2 }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                  创作进度: {totalWords.toLocaleString()} / {targetWords.toLocaleString()} 字
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                  {progressPct}%
+                </Typography>
+              </Box>
+              <LinearProgress variant="determinate" value={progressPct} sx={{ height: 6, borderRadius: 3 }} />
+            </Box>
+          </Box>
+
+          <Chip
+            size="small"
+            icon={<TrendingUpIcon />}
+            label={`今日已写: ${stats?.todayWords || 0} 字`}
+            color="success"
+            variant="outlined"
+          />
+
+          <Button
+            size="small"
+            startIcon={<SettingsSuggestIcon />}
+            onClick={() => setOpenMetaDialog(true)}
+          >
+            企划定位
+          </Button>
+
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => setOpenExportDialog(true)}
+          >
+            全书导出
+          </Button>
+
+          <Button
+            size="small"
+            variant="text"
+            startIcon={<TuneIcon />}
+            onClick={onSwitchPipeline}
+          >
+            工坊流水线
+          </Button>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Tooltip title={rightOpen ? '折叠右侧智能副驾' : '展开右侧智能副驾'}>
+            <IconButton size="small" onClick={() => setRightOpen(!rightOpen)} color={rightOpen ? 'primary' : 'default'}>
+              <ViewSidebarIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Paper>
+
+      {/* 2. 三栏生产力工作区 */}
+      <Box sx={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        {/* 左栏：企划大纲树 & 设定智库 (280px) */}
+        <Paper
+          square
+          elevation={0}
+          sx={{
+            width: 280,
+            borderRight: 1,
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+            bgcolor: 'background.paper',
+          }}
+        >
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs
+              value={leftTab}
+              onChange={(_, v) => setLeftTab(v)}
+              variant="fullWidth"
+              sx={{ minHeight: 40, '& .MuiTab-root': { minHeight: 40, py: 0.5, fontSize: 13 } }}
+            >
+              <Tab value="outlines" label={`大纲 (${outlines.length})`} />
+              <Tab value="characters" label={`人设 (${characters.length})`} />
+              <Tab value="notes" label={`便签 (${notes.length})`} />
+            </Tabs>
+          </Box>
+
+          <Box sx={{ px: 1.5, py: 0.8, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'flex-end', bgcolor: 'action.hover' }}>
+            {leftTab === 'outlines' && (
+              <Button size="small" startIcon={<AddIcon />} onClick={() => setOpenNewOutline(true)} sx={{ fontSize: 11, py: 0.2 }}>
+                规划新章
+              </Button>
+            )}
+            {leftTab === 'characters' && (
+              <Button size="small" startIcon={<AddIcon />} onClick={() => setOpenNewChar(true)} sx={{ fontSize: 11, py: 0.2 }}>
+                新建人设
+              </Button>
+            )}
+            {leftTab === 'notes' && (
+              <Button size="small" startIcon={<AddIcon />} onClick={() => setOpenNewNote(true)} sx={{ fontSize: 11, py: 0.2 }}>
+                新增便签
+              </Button>
+            )}
+          </Box>
+
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 1.5 }}>
+            {leftTab === 'outlines' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {outlines.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                    暂无大纲。可在上方点「规划新章」或去工坊流水线规划卷章。
+                  </Typography>
+                ) : (
+                  outlines.map((ot) => (
+                    <Card
+                      key={ot.id}
+                      variant="outlined"
+                      sx={{
+                        p: 1,
+                        cursor: 'pointer',
+                        '&:hover': { borderColor: 'primary.main', bgcolor: 'action.hover' },
+                      }}
+                      onClick={() => {
+                        setChapterTitle(ot.title)
+                        const m = ot.title.match(/第\s*(\d+)\s*章/)
+                        if (m) {
+                          setChapterNo(Number(m[1]))
+                        }
+                        setToast(`已选定大纲章节: ${ot.title}`)
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                          {ot.title}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={ot.status === 'done' ? '已写' : ot.status === 'writing' ? '写作中' : '待写'}
+                          color={ot.status === 'done' ? 'success' : ot.status === 'writing' ? 'primary' : 'default'}
+                          sx={{ height: 20, fontSize: 11 }}
+                        />
+                      </Box>
+                      {ot.summary && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            mt: 0.5,
+                          }}
+                        >
+                          {ot.summary}
+                        </Typography>
+                      )}
+                    </Card>
+                  ))
+                )}
+              </Box>
+            )}
+
+            {leftTab === 'characters' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {characters.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                    暂无人物卡。可在工坊流水线中创建主角/配角人设。
+                  </Typography>
+                ) : (
+                  characters.map((ch) => (
+                    <Card key={ch.id} variant="outlined" sx={{ p: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <PersonIcon fontSize="small" color="primary" />
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                            {ch.name}
+                          </Typography>
+                        </Box>
+                        <Chip size="small" label={ch.role} sx={{ height: 20, fontSize: 11 }} />
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', my: 0.5 }}>
+                        {ch.description}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        startIcon={<InputIcon fontSize="small" />}
+                        sx={{ fontSize: 11, p: 0 }}
+                        onClick={() => insertTextToEditor(`【角色登场：${ch.name}】（${ch.role}）\n设定特征：${ch.description}`, ch.name)}
+                      >
+                        引用设定到正文
+                      </Button>
+                    </Card>
+                  ))
+                )}
+              </Box>
+            )}
+
+            {leftTab === 'notes' && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {notes.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                    暂无便签。
+                  </Typography>
+                ) : (
+                  notes.map((n) => (
+                    <Card key={n.id} variant="outlined" sx={{ p: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                        {n.title}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', my: 0.5 }}>
+                        {n.content}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        startIcon={<InputIcon fontSize="small" />}
+                        sx={{ fontSize: 11, p: 0 }}
+                        onClick={() => insertTextToEditor(`【灵感便签：${n.title}】\n${n.content}`, n.title)}
+                      >
+                        引用便签
+                      </Button>
+                    </Card>
+                  ))
+                )}
+              </Box>
+            )}
+          </Box>
+        </Paper>
+
+        {/* 中栏：沉浸式正文编辑器 (Flex: 1) */}
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', p: 2, overflow: 'auto' }}>
+          {error && <Alert severity="error" sx={{ mb: 1.5 }} onClose={() => setError('')}>{error}</Alert>}
+
+          {/* 章节控制条 */}
+          <Paper sx={{ p: 1.5, mb: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+            <TextField
+              type="number"
+              size="small"
+              label="章号"
+              value={chapterNo}
+              onChange={(e) => setChapterNo(Math.max(1, Number(e.target.value)))}
+              sx={{ width: 90 }}
+            />
+            <TextField
+              size="small"
+              label="章节标题"
+              value={chapterTitle}
+              onChange={(e) => setChapterTitle(e.target.value)}
+              sx={{ flex: 1, minWidth: 200 }}
+              placeholder="例如：第1章 惊变"
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<SaveIcon />}
+              onClick={handleSaveChapter}
+              disabled={saving}
+            >
+              {saving ? '入库中...' : '保存并入库'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<NavigateNextIcon />}
+              onClick={handleNextChapter}
+            >
+              下一章
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<SecurityIcon />}
+              onClick={handleRunFullCheck}
+            >
+              ⚡ 排毒与去AI
+            </Button>
+            <Button
+              variant="outlined"
+              color="info"
+              startIcon={<AssessmentIcon />}
+              onClick={handleRunPlatformDiagnose}
+            >
+              📊 签约预测
+            </Button>
+          </Paper>
+
+          {/* 本章伏笔暗线协同推进提醒 */}
+          {activeForeshadowings.length > 0 && (
+            <Alert
+              severity="info"
+              icon={<NotificationsActiveIcon />}
+              sx={{ mb: 1.5, borderRadius: 2 }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                本章（第 {chapterNo} 章）伏笔暗线协同推进提醒：
+              </Typography>
+              {activeForeshadowings.map((af, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                  <Typography variant="body2" sx={{ fontSize: 13 }}>
+                    • 【{af.stageName}】<strong>{af.chain.title}</strong>：{af.chain.description || '按大纲节奏推进此伏笔'}
+                  </Typography>
+                  <Button
+                    size="small"
+                    variant="text"
+                    startIcon={<InputIcon fontSize="small" />}
+                    onClick={() => insertTextToEditor(`【伏笔推进提醒：${af.chain.title}】（${af.stageName}阶段）\n${af.chain.description}`, af.chain.title)}
+                    sx={{ fontSize: 11, py: 0 }}
+                  >
+                    引用到正文
+                  </Button>
+                </Box>
+              ))}
+            </Alert>
+          )}
+
+          {/* Tiptap 正文编辑器主体 */}
+          <Paper sx={{ flex: 1, minHeight: 480, p: 2, display: 'flex', flexDirection: 'column' }}>
+            <ChapterEditor
+              value={content}
+              onChange={setContent}
+              minHeight={420}
+              placeholder="在此沉浸创作章节正文……随写随查左侧大纲设定，右侧智能副驾实时排雷并反哺精华资产。"
+              targetChars={3000}
+              enablePoisonCheck={false}
+              enableDeslopCheck={false}
+            />
+          </Paper>
+        </Box>
+
+        {/* 右栏：智能副驾 Inspector & 五维精华反哺 (360px) */}
+        {rightOpen && (
+          <Paper
+            square
+            elevation={0}
+            sx={{
+              width: 360,
+              borderLeft: 1,
+              borderColor: 'divider',
+              display: 'flex',
+              flexDirection: 'column',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs
+                value={rightTab}
+                onChange={(_, v) => setRightTab(v)}
+                variant="fullWidth"
+                sx={{ minHeight: 40, '& .MuiTab-root': { minHeight: 40, py: 0.5, fontSize: 13 } }}
+              >
+                <Tab value="check" label="排雷与去AI" />
+                <Tab value="essence" label="精华资产反哺" />
+                <Tab value="generate" label="文风生成" />
+              </Tabs>
+            </Box>
+
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 1.5 }}>
+              {/* Tab 1: 排雷与去 AI 味 */}
+              {rightTab === 'check' && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      fullWidth
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={handleRunFullCheck}
+                      disabled={poisonLoading || deslopLoading}
+                    >
+                      {poisonLoading || deslopLoading ? '诊断中...' : '一键排雷与去AI味'}
+                    </Button>
+                    <Button
+                      fullWidth
+                      size="small"
+                      variant="outlined"
+                      color="info"
+                      onClick={handleRunPlatformDiagnose}
+                      disabled={diagLoading}
+                    >
+                      {diagLoading ? '诊断中...' : '签约预测'}
+                    </Button>
+                  </Box>
+
+                  {/* 签约诊断结果 */}
+                  {diagResult && (
+                    <Card variant="outlined" sx={{ p: 1.5, borderColor: 'info.main' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'info.main' }}>
+                          签约评级: {diagResult.grade}
+                        </Typography>
+                        <Chip size="small" label={`签约概率: ${diagResult.signingProb}`} color="info" />
+                      </Box>
+                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                        对白占比: {(diagResult.dialogueRatio * 100).toFixed(1)}% | 综合评分: {diagResult.score}分
+                      </Typography>
+                      {diagResult.vetoRisks.length > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="caption" color="error.main" sx={{ fontWeight: 'bold' }}>
+                            ⚠️ 平台劝退风险:
+                          </Typography>
+                          {diagResult.vetoRisks.map((vr, i) => (
+                            <Typography key={i} variant="caption" color="error" sx={{ display: 'block' }}>
+                              • {vr}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* 10大毒点排查结果 */}
+                  {poisonResult && (
+                    <Card variant="outlined" sx={{ p: 1.5, borderColor: poisonResult.findings.length > 0 ? 'warning.main' : 'success.main' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                          毒点排查: {poisonResult.verdict}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={`违规项: ${poisonResult.findings.length}`}
+                          color={poisonResult.findings.length > 0 ? 'error' : 'success'}
+                        />
+                      </Box>
+                      {poisonResult.findings.length === 0 ? (
+                        <Typography variant="caption" color="success.main" sx={{ display: 'block', mt: 1 }}>
+                          ✅ 未发现虐主、战力崩溃、反派无脑等 10 大核心毒点。
+                        </Typography>
+                      ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                          {poisonResult.findings.map((f, i) => (
+                            <Box key={i} sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                [{f.typeName}] {f.snippet}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                💡 建议: {f.suggestion}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* 去 AI 味结果 */}
+                  {deslopResult && (
+                    <Card variant="outlined" sx={{ p: 1.5, borderColor: deslopResult.aiScore > 3 ? 'warning.main' : 'success.main' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                          AI 指纹: {deslopResult.verdictCn}
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={`AI评分: ${deslopResult.aiScore}/10`}
+                          color={deslopResult.aiScore > 5 ? 'error' : deslopResult.aiScore > 2 ? 'warning' : 'success'}
+                        />
+                      </Box>
+                      {deslopResult.suggestions.length > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                            口语化脱水建议:
+                          </Typography>
+                          {deslopResult.suggestions.slice(0, 4).map((sug, i) => (
+                            <Typography key={i} variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              • {sug}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Card>
+                  )}
+                </Box>
+              )}
+
+              {/* Tab 2: 精华资产与伏笔暗线 */}
+              {rightTab === 'essence' && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Tabs
+                    value={essenceSubTab}
+                    onChange={(_, v) => setEssenceSubTab(v)}
+                    variant="fullWidth"
+                    sx={{ minHeight: 32, '& .MuiTab-root': { minHeight: 32, py: 0.5, fontSize: 12 } }}
+                  >
+                    <Tab value="assets" label={`五维提炼卡 (${essenceAssets.length})`} />
+                    <Tab value="chains" label={`伏笔暗线 (${chains.length})`} />
+                  </Tabs>
+
+                  {essenceSubTab === 'assets' ? (
+                    <>
+                      <TextField
+                        select
+                        size="small"
+                        fullWidth
+                        label="资产类别"
+                        value={essenceCategory}
+                        onChange={(e) => setEssenceCategory(e.target.value)}
+                      >
+                        <MenuItem value="all">全部精华资产</MenuItem>
+                        <MenuItem value="outline">骨架大纲</MenuItem>
+                        <MenuItem value="hook">开篇钩子</MenuItem>
+                        <MenuItem value="character">人设反差</MenuItem>
+                        <MenuItem value="trope">爆款桥段</MenuItem>
+                        <MenuItem value="style">反AI口语</MenuItem>
+                      </TextField>
+
+                      {essenceAssets.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                          暂无提炼资产。请先在「小说精华数据库」或「灵感工坊」中提炼沉淀。
+                        </Typography>
+                      ) : (
+                        essenceAssets.map((asset) => (
+                          <Card key={asset.id} variant="outlined" sx={{ p: 1.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                {asset.title}
+                              </Typography>
+                              <Chip size="small" label={asset.category} variant="outlined" sx={{ height: 20 }} />
+                            </Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                my: 0.5,
+                              }}
+                            >
+                              {asset.content}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<InputIcon />}
+                                sx={{ fontSize: 11 }}
+                                onClick={() => insertTextToEditor(asset.content, asset.title)}
+                              >
+                                插入正文
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<ContentCopyIcon />}
+                                sx={{ fontSize: 11 }}
+                                onClick={() => {
+                                  navigator.clipboard.writeText(asset.content)
+                                  setToast(`已复制: ${asset.title}`)
+                                }}
+                              >
+                                复制
+                              </Button>
+                            </Box>
+                          </Card>
+                        ))
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                          草蛇灰线推进图谱
+                        </Typography>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<AddIcon />}
+                          onClick={() => {
+                            setNewChainPlant(chapterNo)
+                            setNewChainReveal(Math.max(chapterNo + 3, 5))
+                            setNewChainClimax(Math.max(chapterNo + 8, 10))
+                            setOpenNewChain(true)
+                          }}
+                          sx={{ fontSize: 11, py: 0.2 }}
+                        >
+                          记录新暗线
+                        </Button>
+                      </Box>
+
+                      {chains.length === 0 ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                          当前作品尚无伏笔暗线。点击右上角即可添加第一条草蛇灰线！
+                        </Typography>
+                      ) : (
+                        chains.map((chain) => {
+                          const isCurPlant = chain.plantChapter === chapterNo
+                          const isCurReveal = chain.revealChapter === chapterNo
+                          const isCurClimax = chain.climaxChapter === chapterNo
+                          const isCurActive = isCurPlant || isCurReveal || isCurClimax
+                          return (
+                            <Card
+                              key={chain.id}
+                              variant="outlined"
+                              sx={{
+                                p: 1.5,
+                                borderColor: isCurActive ? 'primary.main' : 'divider',
+                                bgcolor: isCurActive ? 'action.hover' : 'inherit',
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                  {chain.title}
+                                </Typography>
+                                <Chip
+                                  size="small"
+                                  label={
+                                    chain.category === 'identity'
+                                      ? '身份谜题'
+                                      : chain.category === 'power'
+                                      ? '力量伏笔'
+                                      : chain.category === 'fate'
+                                      ? '恩怨宿命'
+                                      : chain.category === 'truth'
+                                      ? '世界真相'
+                                      : '草蛇灰线'
+                                  }
+                                  sx={{ height: 20, fontSize: 10 }}
+                                />
+                              </Box>
+
+                              {isCurActive && (
+                                <Chip
+                                  size="small"
+                                  color="primary"
+                                  label={`🔔 当前第${chapterNo}章关键推进点（${isCurPlant ? '埋设' : isCurReveal ? '显露' : '高潮回收'}）`}
+                                  sx={{ height: 20, fontSize: 10, mt: 0.5 }}
+                                />
+                              )}
+
+                              <Box sx={{ my: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                  <Typography variant="caption" sx={{ fontSize: 11, color: isCurPlant ? 'primary.main' : 'text.secondary' }}>
+                                    埋设: 第{chain.plantChapter}章
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: 11, color: isCurReveal ? 'primary.main' : 'text.secondary' }}>
+                                    显露: 第{chain.revealChapter}章
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ fontSize: 11, color: isCurClimax ? 'error.main' : 'text.secondary' }}>
+                                    回收: 第{chain.climaxChapter}章
+                                  </Typography>
+                                </Box>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={
+                                    chapterNo <= chain.plantChapter
+                                      ? 15
+                                      : chapterNo >= chain.climaxChapter
+                                      ? 100
+                                      : Math.round(
+                                          ((chapterNo - chain.plantChapter) /
+                                            Math.max(1, chain.climaxChapter - chain.plantChapter)) *
+                                            100
+                                        )
+                                  }
+                                  sx={{ height: 5, borderRadius: 3 }}
+                                />
+                              </Box>
+
+                              {chain.description && (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                  {chain.description}
+                                </Typography>
+                              )}
+
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  startIcon={<InputIcon />}
+                                  sx={{ fontSize: 11 }}
+                                  onClick={() =>
+                                    insertTextToEditor(
+                                      `【伏笔暗线协同：${chain.title}】\n设计轨迹：第${chain.plantChapter}章埋设 → 第${chain.revealChapter}章显露 → 第${chain.climaxChapter}章高潮回收\n设定详情：${chain.description}`,
+                                      chain.title
+                                    )
+                                  }
+                                >
+                                  引用暗线到正文
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<ContentCopyIcon />}
+                                  sx={{ fontSize: 11 }}
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(chain.description || chain.title)
+                                    setToast(`已复制伏笔暗线: ${chain.title}`)
+                                  }}
+                                >
+                                  复制
+                                </Button>
+                              </Box>
+                            </Card>
+                          )
+                        })
+                      )}
+                    </>
+                  )}
+                </Box>
+              )}
+
+              {/* Tab 3: 文风与 AI 生成 */}
+              {rightTab === 'generate' && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    从拆书模型中注入 voice 与题材规范，快速给当前章节注入叙事声线：
+                  </Typography>
+                  <TextField
+                    select
+                    size="small"
+                    fullWidth
+                    label="voice-card 声线"
+                    value={sel.voice}
+                    onChange={(e) => sel.setVoice(e.target.value)}
+                  >
+                    {sel.byKind('voice').map((a) => (
+                      <MenuItem key={a.id} value={a.id}>
+                        {a.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <TextField
+                    select
+                    size="small"
+                    fullWidth
+                    label="genre-pack 题材包"
+                    value={sel.genrePack}
+                    onChange={(e) => sel.setGenrePack(e.target.value)}
+                  >
+                    <MenuItem value="">无</MenuItem>
+                    {sel.byKind('genre_pack').map((a) => (
+                      <MenuItem key={a.id} value={a.id}>
+                        {a.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  <Button variant="outlined" onClick={onSwitchPipeline} startIcon={<TuneIcon />}>
+                    前往工坊高级生成器
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          </Paper>
+        )}
+      </Box>
+
+      {/* 企划定位对话框 */}
+      <Dialog open={openMetaDialog} onClose={() => setOpenMetaDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>作品企划与多平台定位</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="目标签约平台"
+            value={metaPlatform}
+            onChange={(e) => setMetaPlatform(e.target.value)}
+          >
+            <MenuItem value="fanqie">番茄小说 (30秒黄金钩/每章留扣/防虐主)</MenuItem>
+            <MenuItem value="qidian">起点中文网 (大纵深世界观/严密升级/反圣母)</MenuItem>
+            <MenuItem value="jinjiang">晋江文学城 (人设细腻反差/推拉克制/微表情)</MenuItem>
+            <MenuItem value="qimao">七猫中文网 (开局强冲突受辱/底牌强反制)</MenuItem>
+            <MenuItem value="zhihu">知乎盐选 (第一人称高反转/三幕式快节奏)</MenuItem>
+            <MenuItem value="general">通用网文平台</MenuItem>
+          </TextField>
+
+          <TextField
+            fullWidth
+            size="small"
+            label="小说题材"
+            value={metaGenre}
+            onChange={(e) => setMetaGenre(e.target.value)}
+            placeholder="例如：xianxia / dushi / xuanhuan"
+          />
+
+          <TextField
+            type="number"
+            fullWidth
+            size="small"
+            label="全书目标字数"
+            value={metaTargetWords}
+            onChange={(e) => setMetaTargetWords(Number(e.target.value))}
+          />
+
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            label="作品一句话卖点与核心主线"
+            value={metaSummary}
+            onChange={(e) => setMetaSummary(e.target.value)}
+            placeholder="说明主角核心爽点、金手指与主线目标"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenMetaDialog(false)}>取消</Button>
+          <Button variant="contained" onClick={handleSaveMeta}>
+            保存企划
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新建作品对话框 */}
+      <Dialog open={openNewProj} onClose={() => setOpenNewProj(false)}>
+        <DialogTitle>新建小说作品</DialogTitle>
+        <DialogContent sx={{ pt: 1 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="小说作品名称"
+            placeholder="例如：万界仙途"
+            value={newProjName}
+            onChange={(e) => setNewProjName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNewProj(false)}>取消</Button>
+          <Button variant="contained" onClick={handleCreateProject}>
+            创建
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 全书导出对话框 */}
+      <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>全书一键导出与排版生成</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            当前工程《{currentProject}》已写 {stats?.totalChapters || 0} 章，共 {(stats?.totalWords || 0).toLocaleString()} 字。
+          </Typography>
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="导出排版格式"
+            value={exportFormat}
+            onChange={(e) => setExportFormat(e.target.value as 'docx' | 'md' | 'txt')}
+          >
+            <MenuItem value="docx">📘 Word 文档 (.docx) — 官方标准排版稿（带标题封面）</MenuItem>
+            <MenuItem value="md">📝 Markdown 结构稿 (.md) — 适合 Obsidian/知识库</MenuItem>
+            <MenuItem value="txt">📄 纯文本 (.txt) — 干净无格式，直接复制粘贴</MenuItem>
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenExportDialog(false)}>取消</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => handleExportProject(exportFormat)}
+            disabled={exporting}
+          >
+            {exporting ? '导出中...' : '立即下载'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新建章节大纲对话框 */}
+      <Dialog open={openNewOutline} onClose={() => setOpenNewOutline(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>规划新章节大纲</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="章节标题"
+            placeholder="例如：第2章 惊变"
+            value={newOutlineTitle}
+            onChange={(e) => setNewOutlineTitle(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            label="本章剧情细纲与冲突目标"
+            placeholder="说明本章主要发生什么事件、制造什么悬念或爽点"
+            value={newOutlineSummary}
+            onChange={(e) => setNewOutlineSummary(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNewOutline(false)}>取消</Button>
+          <Button variant="contained" onClick={handleCreateOutline}>
+            保存大纲
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新建人物卡对话框 */}
+      <Dialog open={openNewChar} onClose={() => setOpenNewChar(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>新建核心人物设定卡</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="人物姓名"
+            placeholder="例如：白灵儿"
+            value={newCharName}
+            onChange={(e) => setNewCharName(e.target.value)}
+          />
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="角色定位"
+            value={newCharRole}
+            onChange={(e) => setNewCharRole(e.target.value)}
+          >
+            <MenuItem value="主角">主角 (主角光环/核心行动驱动)</MenuItem>
+            <MenuItem value="女主角">女主角 (羁绊/情感推拉)</MenuItem>
+            <MenuItem value="反派">反派 (压迫感/利益冲突)</MenuItem>
+            <MenuItem value="宿敌">宿敌 (镜像对照/势均力敌)</MenuItem>
+            <MenuItem value="导师">导师 (传道/暗藏秘密)</MenuItem>
+            <MenuItem value="配角">配角 (插科打诨/辅助推进)</MenuItem>
+          </TextField>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            label="人设反差与核心特质"
+            placeholder="例如：表面清冷孤傲，实则内藏反差护短；具有关键血脉"
+            value={newCharDesc}
+            onChange={(e) => setNewCharDesc(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNewChar(false)}>取消</Button>
+          <Button variant="contained" onClick={handleCreateCharacter}>
+            保存人物
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新建灵感便签对话框 */}
+      <Dialog open={openNewNote} onClose={() => setOpenNewNote(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>随手记下灵感便签</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="便签标题"
+            placeholder="例如：万剑归宗的视觉描写"
+            value={newNoteTitle}
+            onChange={(e) => setNewNoteTitle(e.target.value)}
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            label="灵感详情"
+            placeholder="例如：剑气如雨倒卷长空，带出金石裂帛之音"
+            value={newNoteContent}
+            onChange={(e) => setNewNoteContent(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNewNote(false)}>取消</Button>
+          <Button variant="contained" onClick={handleCreateNote}>
+            保存便签
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 新建伏笔暗线对话框 */}
+      <Dialog open={openNewChain} onClose={() => setOpenNewChain(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>记录全书草蛇灰线（伏笔暗线）</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField
+            autoFocus
+            fullWidth
+            size="small"
+            label="伏笔线索名称"
+            placeholder="例如：林凡胸前神秘石珠的来历"
+            value={newChainTitle}
+            onChange={(e) => setNewChainTitle(e.target.value)}
+          />
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="伏笔类型"
+            value={newChainCategory}
+            onChange={(e) => setNewChainCategory(e.target.value)}
+          >
+            <MenuItem value="identity">身份谜题 (主角或大反派隐匿身世)</MenuItem>
+            <MenuItem value="power">力量伏笔 (神功残卷/异宝异动/底牌法则)</MenuItem>
+            <MenuItem value="fate">恩怨宿命 (宗门灭顶旧案/复仇契机)</MenuItem>
+            <MenuItem value="truth">世界真相 (天地禁制/天道伪善/世界黑幕)</MenuItem>
+            <MenuItem value="emotion">情感暗涌 (红颜身份/背叛契机)</MenuItem>
+          </TextField>
+          <Box sx={{ display: 'flex', gap: 1.5 }}>
+            <TextField
+              type="number"
+              fullWidth
+              size="small"
+              label="埋设章号 (Plant)"
+              value={newChainPlant}
+              onChange={(e) => setNewChainPlant(Math.max(1, Number(e.target.value)))}
+            />
+            <TextField
+              type="number"
+              fullWidth
+              size="small"
+              label="显露章号 (Reveal)"
+              value={newChainReveal}
+              onChange={(e) => setNewChainReveal(Math.max(1, Number(e.target.value)))}
+            />
+            <TextField
+              type="number"
+              fullWidth
+              size="small"
+              label="回收章号 (Climax)"
+              value={newChainClimax}
+              onChange={(e) => setNewChainClimax(Math.max(1, Number(e.target.value)))}
+            />
+          </Box>
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            size="small"
+            label="暗线闭环规划与关键意象"
+            placeholder="说明在埋设时给读者留下的微弱疑点，以及高潮时如何反转引爆"
+            value={newChainDesc}
+            onChange={(e) => setNewChainDesc(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNewChain(false)}>取消</Button>
+          <Button variant="contained" onClick={handleCreateChain}>
+            启动暗线追踪
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={Boolean(toast)} autoHideDuration={3000} onClose={() => setToast('')} message={toast} />
+    </Box>
+  )
+}
+

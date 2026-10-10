@@ -262,6 +262,36 @@ class TestEssenceService(unittest.TestCase):
             )
         self.assertEqual(cm.exception.code, 400)
 
+    def test_essence_chains_router_endpoints(self):
+        # 1. 创建伏笔暗线
+        create_resp, _ = router.dispatch(
+            "POST",
+            "/api/essence/chains",
+            {
+                "book_id": "test_book_chains",
+                "clue_name": "神秘玉佩",
+                "hook_chapter": 2,
+                "payoff_chapter": 25,
+                "hook_text": "爷爷临死前塞给他的残破玉佩",
+                "payoff_text": "在古修洞府中玉佩发烫开启密室",
+                "status": "resolved",
+                "analysis": "标准双向闭环伏笔",
+            },
+            {},
+        )
+        self.assertEqual(create_resp["code"], 0)
+        chain_id = create_resp["data"]["id"]
+
+        # 2. 查询伏笔列表
+        list_resp, _ = router.dispatch("GET", "/api/essence/chains", {}, {"book_id": "test_book_chains"})
+        self.assertEqual(list_resp["code"], 0)
+        self.assertEqual(len(list_resp["data"]["chains"]), 1)
+
+        # 3. 删除伏笔
+        del_resp, _ = router.dispatch("DELETE", f"/api/essence/chains/{chain_id}", {}, {})
+        self.assertEqual(del_resp["code"], 0)
+        self.assertTrue(del_resp["data"]["deleted"])
+
 
 if __name__ == "__main__":
     unittest.main()

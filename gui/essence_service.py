@@ -307,6 +307,15 @@ def create_chain(
     return dict(row)
 
 
+def delete_chain(chain_id: int) -> dict[str, Any]:
+    """删除指定的伏笔暗线记录。"""
+    with db.tx() as conn:
+        res = conn.execute("DELETE FROM essence_chains WHERE id = ?", (chain_id,))
+        if res.rowcount == 0:
+            raise ServiceError(f"未找到待删除伏笔暗线: {chain_id}", 404)
+    return {"deleted": True, "id": chain_id}
+
+
 # ---------------------------------------------------------------------------
 # 4. 纯离线宏观节奏与文风快速萃取（标准库毫秒级）
 # ---------------------------------------------------------------------------

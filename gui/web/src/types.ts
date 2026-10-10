@@ -157,6 +157,10 @@ export interface WritingProject {
   id: string
   name: string
   readOnly: boolean
+  platform?: string
+  genre?: string
+  targetWords?: number
+  summary?: string
 }
 
 export interface InjectResult {

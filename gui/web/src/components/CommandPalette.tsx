@@ -22,6 +22,7 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import DarkModeIcon from '@mui/icons-material/DarkMode'
 import LightModeIcon from '@mui/icons-material/LightMode'
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import { useApp } from '../state/AppContext'
 import { useThemeMode } from '../state/ThemeModeContext'
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
@@ -38,13 +39,14 @@ interface CommandItem {
 const WORKBENCH_META: { key: WorkbenchKey; label: string; icon: React.ReactNode; keywords: string }[] = [
   { key: 'home', label: '首页', icon: <HomeIcon fontSize="small" />, keywords: 'home 首页 概览 dashboard' },
   { key: 'analysis', label: '分析拆书', icon: <InsightsIcon fontSize="small" />, keywords: 'analysis 分析 拆书' },
-  { key: 'writing', label: '辅助写作', icon: <EditNoteIcon fontSize="small" />, keywords: 'writing 写作' },
+  { key: 'writing', label: '辅助写作 (沉浸创作室与工坊)', icon: <EditNoteIcon fontSize="small" />, keywords: 'writing 写作 创作室 studio 工坊' },
   { key: 'quality', label: '质量检验', icon: <FactCheckIcon fontSize="small" />, keywords: 'quality 质量 检验' },
   { key: 'assets', label: '资产库', icon: <FolderOpenIcon fontSize="small" />, keywords: 'assets 资产' },
   { key: 'advanced', label: '高级功能', icon: <AutoAwesomeIcon fontSize="small" />, keywords: 'advanced 高级' },
   { key: 'system', label: '系统', icon: <TuneIcon fontSize="small" />, keywords: 'system 系统' },
   { key: 'settings', label: '设置', icon: <SettingsIcon fontSize="small" />, keywords: 'settings 设置' },
   { key: 'admin', label: '管理后台', icon: <AdminPanelSettingsIcon fontSize="small" />, keywords: 'admin 管理 后台' },
+  { key: 'help', label: '帮助中心', icon: <HelpOutlineIcon fontSize="small" />, keywords: 'help 帮助 指南 教程 faq' },
 ]
 
 /** 简单模糊匹配：query 的字符按序出现在 target 中 */
@@ -76,7 +78,7 @@ export default function CommandPalette() {
       list.push({
         id: `wb-${wb.key}`,
         label: `前往${wb.label}`,
-        hint: wb.key === 'home' ? 'Alt+1' : undefined,
+        hint: wb.key === 'home' ? 'Alt+1' : wb.key === 'writing' ? 'Alt+3' : undefined,
         icon: wb.icon,
         group: '工作台',
         run: () => setWorkbench(wb.key),

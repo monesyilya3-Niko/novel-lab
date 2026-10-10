@@ -9,6 +9,9 @@ const mockDeleteAsset = vi.fn()
 const mockAdoptAsset = vi.fn()
 const mockListBooks = vi.fn()
 const mockDeleteBook = vi.fn()
+const mockListChains = vi.fn()
+const mockCreateChain = vi.fn()
+const mockDeleteChain = vi.fn()
 const mockProjects = vi.fn()
 
 vi.mock('../api/client', () => ({
@@ -20,6 +23,9 @@ vi.mock('../api/client', () => ({
     adoptAsset: (...args: any[]) => mockAdoptAsset(...args),
     listBooks: (...args: any[]) => mockListBooks(...args),
     deleteBook: (...args: any[]) => mockDeleteBook(...args),
+    listChains: (...args: any[]) => mockListChains(...args),
+    createChain: (...args: any[]) => mockCreateChain(...args),
+    deleteChain: (...args: any[]) => mockDeleteChain(...args),
   },
   writingApi: {
     projects: () => mockProjects(),
@@ -67,11 +73,38 @@ describe('EssenceWorkbench', () => {
     })
   })
 
-  it('渲染三大顶层标签页', () => {
+  it('渲染四大顶层标签页', () => {
     render(<EssenceWorkbench />)
     expect(screen.getByText('离线精读与解构提炼')).toBeInTheDocument()
     expect(screen.getByText('五维精华资产库')).toBeInTheDocument()
+    expect(screen.getByText('伏笔暗线图谱')).toBeInTheDocument()
     expect(screen.getByText('已精读书籍档案')).toBeInTheDocument()
+  })
+
+  it('切换到伏笔暗线图谱并加载展示暗线', async () => {
+    mockListChains.mockResolvedValue({
+      chains: [
+        {
+          id: 101,
+          bookId: 'book_01',
+          title: '九品功法残卷',
+          category: '力量伏笔',
+          plantChapter: 3,
+          revealChapter: 25,
+          climaxChapter: 60,
+          description: '第三章主角偶然在藏经阁角落拾取，实为无上心法残卷。',
+          status: 'planted',
+        },
+      ],
+    })
+    render(<EssenceWorkbench />)
+    fireEvent.click(screen.getByText('伏笔暗线图谱'))
+    await waitFor(() => {
+      expect(screen.getByText('九品功法残卷')).toBeInTheDocument()
+      expect(screen.getByText('力量伏笔')).toBeInTheDocument()
+      expect(screen.getByText('🌱 已埋下')).toBeInTheDocument()
+      expect(screen.getByText(/跨越 57 章释放/)).toBeInTheDocument()
+    })
   })
 
   it('精读提炼表单校验与成功提炼解构', async () => {

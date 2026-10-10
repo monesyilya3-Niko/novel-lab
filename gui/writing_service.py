@@ -188,6 +188,31 @@ def list_projects() -> list[dict[str, Any]]:
                 projects.append({"id": child.name, "name": name, "read_only": False})
     # CLI 只读 default 项目：无论 novel/ 是否为空都必须出现
     projects.append({"id": "default", "name": "default（CLI 只读）", "read_only": True})
+
+    meta_map = {}
+    try:
+        from gui import db
+        rows = db.get_conn().execute(
+            "SELECT project, platform, genre, target_words, summary FROM writing_projects_meta"
+        ).fetchall()
+        for r in rows:
+            meta_map[r["project"]] = dict(r)
+    except Exception:
+        pass
+
+    for p in projects:
+        m = meta_map.get(p["id"])
+        if m:
+            p["platform"] = m["platform"]
+            p["genre"] = m["genre"]
+            p["target_words"] = m["target_words"]
+            p["summary"] = m["summary"]
+        else:
+            p["platform"] = "fanqie"
+            p["genre"] = "general"
+            p["target_words"] = 1000000
+            p["summary"] = ""
+
     return projects
 
 
