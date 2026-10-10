@@ -1086,6 +1086,22 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
     }
   }
 
+  // 快捷键支持：Ctrl+S 保存入库，Alt+N 快速开启下一章
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        handleSaveChapter()
+      } else if (e.altKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault()
+        handleNextChapter()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, currentProject, chapterNo, chapterTitle])
+
   // 一键全维排毒与去AI检测
   const handleRunFullCheck = async () => {
     if (!content.trim()) {
@@ -1501,23 +1517,29 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
               sx={{ flex: 1, minWidth: 200 }}
               placeholder="例如：第1章 惊变"
             />
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<SaveIcon />}
-              onClick={handleSaveChapter}
-              disabled={saving}
-            >
-              {saving ? '入库中...' : '保存并入库'}
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={<NavigateNextIcon />}
-              onClick={handleNextChapter}
-            >
-              下一章
-            </Button>
+            <Tooltip title="快捷键: Ctrl+S">
+              <span>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<SaveIcon />}
+                  onClick={handleSaveChapter}
+                  disabled={saving}
+                >
+                  {saving ? '入库中...' : '保存并入库'}
+                </Button>
+              </span>
+            </Tooltip>
+            <Tooltip title="快捷键: Alt+N">
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<NavigateNextIcon />}
+                onClick={handleNextChapter}
+              >
+                下一章
+              </Button>
+            </Tooltip>
             <Button
               variant="outlined"
               color="error"
