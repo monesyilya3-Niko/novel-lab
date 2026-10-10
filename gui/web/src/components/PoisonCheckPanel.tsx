@@ -189,11 +189,10 @@ function PoisonScannerSection() {
 
 function TabooLibrarySection() {
   const [taboos, setTaboos] = useState<TabooItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getTaboos()
       .then((res) => {

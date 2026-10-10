@@ -87,6 +87,7 @@ function NameGeneratorSection() {
 
   useEffect(() => {
     handleGenerate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const copyName = (name: string) => {
@@ -241,12 +242,11 @@ function NameGeneratorSection() {
 
 function HookLibrarySection() {
   const [hooks, setHooks] = useState<HookItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getHooks()
       .then((res) => {
@@ -342,12 +342,11 @@ function HookLibrarySection() {
 
 function GoldfingerLibrarySection() {
   const [goldfingers, setGoldfingers] = useState<GoldfingerItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getGoldfingers()
       .then((res) => {
@@ -440,12 +439,11 @@ function GoldfingerLibrarySection() {
 
 function ShuangdianLibrarySection() {
   const [shuangdians, setShuangdians] = useState<ShuangdianItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getShuangdians()
       .then((res) => {
@@ -550,12 +548,11 @@ function ShuangdianLibrarySection() {
 
 function WorldLibrarySection() {
   const [worlds, setWorlds] = useState<WorldSystemItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getWorlds()
       .then((res) => {
@@ -673,12 +670,11 @@ function WorldLibrarySection() {
 
 function DialogueLibrarySection() {
   const [dialogues, setDialogues] = useState<DialogueItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getDialogues()
       .then((res) => {
@@ -785,12 +781,11 @@ function DialogueLibrarySection() {
 
 function CharacterLibrarySection() {
   const [characters, setCharacters] = useState<CharacterPersonaItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getCharacters()
       .then((res) => {
@@ -889,12 +884,11 @@ function CharacterLibrarySection() {
 
 function EmotionLibrarySection() {
   const [emotions, setEmotions] = useState<EmotionItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState('')
 
   useEffect(() => {
-    setLoading(true)
     toolsApi
       .getEmotions()
       .then((res) => {

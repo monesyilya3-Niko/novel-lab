@@ -422,6 +422,7 @@ function EssenceAssetsSection() {
   useEffect(() => {
     loadAssets()
     loadProjects()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCategory, selectedPlatform])
 
   const handleDelete = async (id: number) => {
@@ -802,6 +803,7 @@ function EssenceChainsSection() {
 
   useEffect(() => {
     loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBook])
 
   const handleCreate = async () => {
