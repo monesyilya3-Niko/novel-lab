@@ -454,7 +454,9 @@ function CharacterPanel({ project }: { project: string }) {
             let extraObj: any = {}
             try {
               extraObj = JSON.parse(it.extra || '{}')
-            } catch {}
+            } catch {
+              extraObj = {}
+            }
             return (
               <Grid item xs={12} sm={6} md={4} key={it.id}>
                 <Card elevation={0} sx={{ height: '100%', ...glassCard(isDark) }}>

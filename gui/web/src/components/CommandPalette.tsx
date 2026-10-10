@@ -147,10 +147,6 @@ export default function CommandPalette() {
     return () => window.removeEventListener('keydown', onKey)
   }, [open, filtered, activeIndex, runItem])
 
-  useEffect(() => {
-    setActiveIndex(0)
-  }, [query])
-
   // 滚动到高亮项
   useEffect(() => {
     listRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: 'nearest' })
@@ -184,7 +180,10 @@ export default function CommandPalette() {
           fullWidth
           placeholder="搜索工作台或操作…"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            setActiveIndex(0)
+          }}
           variant="outlined"
           size="small"
           InputProps={{

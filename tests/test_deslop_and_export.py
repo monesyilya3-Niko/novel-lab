@@ -48,6 +48,18 @@ class TestDeslopService(unittest.TestCase):
         issue_types = {it["type"] for it in res["issues"]}
         self.assertTrue(issue_types & {"hollow_rhetoric", "tautology", "cliche", "parallelism"})
 
+    def test_new_cliche_patterns_detected(self):
+        text = (
+            "他眼底闪过一丝复杂的暗芒，宛如一只断了线的风筝倒飞而出。"
+            "毋庸置疑，这显而易见是不可置否的。"
+        )
+        res = deslop_service.analyze_deslop(text)
+        self.assertGreater(len(res["issues"]), 0)
+        labels = [it["label"] for it in res["issues"]]
+        self.assertTrue(any("眼底" in lb for lb in labels))
+        self.assertTrue(any("风筝" in lb for lb in labels))
+        self.assertTrue(any("说明文论调" in lb for lb in labels))
+
     def test_empty_and_non_cn(self):
         res = deslop_service.analyze_deslop("")
         self.assertEqual(res["stats"]["word_count"], 0)
@@ -117,6 +129,28 @@ class TestWritingExportAndReorder(unittest.TestCase):
         self.assertEqual(reordered[0]["sort_order"], 0)
         self.assertEqual(reordered[1]["id"], o1["id"])
         self.assertEqual(reordered[1]["sort_order"], 1)
+
+    def test_docx_illegal_xml_control_chars_filtered(self):
+        # 写入含有 XML 1.0 非法控制字符的内容（如 \x00, \x08, \x0b, \x1f）
+        dirty_project = "测试XML过滤项目"
+        pdir = config.NOVEL_DIR / dirty_project / "chapters" / "arc-1"
+        pdir.mkdir(parents=True, exist_ok=True)
+        dirty_text = "第三章 绝壁暗涌\x00\x08\x0b\x1f\n\n寒芒一闪\x0c，生死已分。"
+        (pdir / "chapter-003.txt").write_text(dirty_text, encoding="utf-8")
+
+        res = writing_extra.export_project(dirty_project, fmt="docx")
+        self.assertEqual(res["format"], "docx")
+        raw_docx = base64.b64decode(res["content_base64"])
+        buf = io.BytesIO(raw_docx)
+        self.assertTrue(zipfile.is_zipfile(buf))
+        with zipfile.ZipFile(buf, "r") as z:
+            doc_xml = z.read("word/document.xml").decode("utf-8")
+            # 非法控制字符已被过滤
+            for bad_char in ["\x00", "\x08", "\x0b", "\x0c", "\x1f"]:
+                self.assertNotIn(bad_char, doc_xml)
+            # 合法文字正常保留
+            self.assertIn("第三章 绝壁暗涌", doc_xml)
+            self.assertIn("寒芒一闪", doc_xml)
 
     def test_router_deslop_endpoint(self):
         res = router._h_writing_deslop({}, {"text": "这一刻时间仿佛凝固了。"})

@@ -27,6 +27,17 @@ from gui.services import ServiceError
 _log = get_logger("writing_extra")
 
 _WS_RE = re.compile(r"\s+")
+# XML 1.0 合法字符过滤：剔除 \x00-\x08, \x0b, \x0c, \x0e-\x1f, \ufffe, \uffff 等非法控制字符
+_ILLEGAL_XML_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]")
+
+
+def _escape_xml(text: str) -> str:
+    """过滤 XML 1.0 非法字符并转义实体字符 (&, <, >)。"""
+    if not text:
+        return ""
+    cleaned = _ILLEGAL_XML_CHARS_RE.sub("", text)
+    return xml.sax.saxutils.escape(cleaned)
+
 
 _OUTLINE_KINDS = frozenset({"volume", "chapter"})
 _OUTLINE_STATUSES = frozenset({"planned", "writing", "done"})
@@ -545,7 +556,7 @@ def export_project_docx(project: str) -> dict[str, Any]:
 
         doc_body = [
             '<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="480"/></w:pPr>'
-            f'<w:r><w:rPr><w:b/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>{xml.sax.saxutils.escape(project)}</w:t></w:r></w:p>'
+            f'<w:r><w:rPr><w:b/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr><w:t>{_escape_xml(project)}</w:t></w:r></w:p>'
         ]
 
         total_words = 0
@@ -568,14 +579,14 @@ def export_project_docx(project: str) -> dict[str, Any]:
 
             doc_body.append(
                 '<w:p><w:pPr><w:spacing w:before="360" w:after="180"/></w:pPr>'
-                f'<w:r><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr><w:t>{xml.sax.saxutils.escape(ch_title)}</w:t></w:r></w:p>'
+                f'<w:r><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr><w:t>{_escape_xml(ch_title)}</w:t></w:r></w:p>'
             )
             for para in ch_body.split("\n"):
                 p = para.strip()
                 if p:
                     doc_body.append(
                         '<w:p><w:pPr><w:ind w:firstLineChars="200" w:firstLine="400"/><w:spacing w:line="360" w:lineRule="auto"/></w:pPr>'
-                        f'<w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t>{xml.sax.saxutils.escape(p)}</w:t></w:r></w:p>'
+                        f'<w:r><w:rPr><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr><w:t>{_escape_xml(p)}</w:t></w:r></w:p>'
                     )
 
         doc_xml = (
