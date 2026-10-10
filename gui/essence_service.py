@@ -152,6 +152,7 @@ def list_assets(
     category: str | None = None,
     tag: str | None = None,
     genre: str | None = None,
+    platform: str | None = None,
 ) -> list[dict[str, Any]]:
     """查询结构化精华资产列表。"""
     conn = db.get_conn()
@@ -168,6 +169,9 @@ def list_assets(
     if genre:
         conds.append("genre = ?")
         params.append(genre)
+    if platform:
+        conds.append("platform = ?")
+        params.append(platform)
     if tag:
         conds.append("tags LIKE ?")
         params.append(f"%{tag}%")

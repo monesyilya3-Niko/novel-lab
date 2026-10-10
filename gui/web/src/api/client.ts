@@ -884,3 +884,113 @@ export const toolsApi = {
   getCharacters: () => get<{ totalCount: number; characters: CharacterPersonaItem[] }>('/tools/characters'),
   getEmotions: () => get<{ totalCount: number; emotions: EmotionItem[] }>('/tools/emotions'),
 }
+
+export interface EssenceBook {
+  bookId: string
+  title: string
+  genre: string
+  platform: string
+  totalChapters: number
+  totalChars: number
+  avgChapterLen: number
+  dialogueRatio: number
+  rhythmClimaxInterval: number
+  aiSlopScore: number
+  summary: string
+  meta: Record<string, unknown>
+  createdAt: number
+  updatedAt: number
+}
+
+export interface EssenceAsset {
+  id: number
+  bookId: string
+  category: 'outline' | 'hook' | 'character' | 'trope' | 'style'
+  title: string
+  content: string
+  summary: string
+  tags: string
+  genre: string
+  platform: string
+  rating: number
+  userNote: string
+  createdAt: number
+  updatedAt: number
+}
+
+export interface EssenceMacroAnalysisResult {
+  bookId: string
+  title: string
+  genre: string
+  platform: string
+  totalChapters: number
+  totalChars: number
+  avgChapterLen: number
+  dialogueRatio: number
+  rhythmClimaxInterval: number
+  aiSlopScore: number
+  openingThreeChapters: Array<{
+    chapterIndex: number
+    title: string
+    charCount: number
+    hookType: string
+    hasPayoffOrAnticipation: boolean
+    dialogueRatio: number
+    excerpt: string
+  }>
+  highFrequencySpeechPatterns: Array<{
+    phrase: string
+    count: number
+  }>
+  suggestedAssets: Array<{
+    category: string
+    title: string
+    summary: string
+    content: string
+  }>
+}
+
+export const essenceApi = {
+  listBooks: (params?: { genre?: string; platform?: string }) => {
+    const q = new URLSearchParams()
+    if (params?.genre) q.set('genre', params.genre)
+    if (params?.platform) q.set('platform', params.platform)
+    const qs = q.toString()
+    return get<{ books: EssenceBook[] }>(`/essence/books${qs ? `?${qs}` : ''}`)
+  },
+  getBook: (bookId: string) => get<EssenceBook>(`/essence/books/${encodeURIComponent(bookId)}`),
+  deleteBook: (bookId: string) => del<{ deleted: boolean; bookId: string }>(`/essence/books/${encodeURIComponent(bookId)}`),
+  analyzeMacro: (body: {
+    title: string
+    text: string
+    genre?: string
+    platform?: string
+    book_id?: string
+  }) => post<EssenceMacroAnalysisResult>('/essence/analyze', body),
+  listAssets: (params?: { book_id?: string; category?: string; tag?: string; genre?: string; platform?: string }) => {
+    const q = new URLSearchParams()
+    if (params?.book_id) q.set('book_id', params.book_id)
+    if (params?.category) q.set('category', params.category)
+    if (params?.tag) q.set('tag', params.tag)
+    if (params?.genre) q.set('genre', params.genre)
+    if (params?.platform) q.set('platform', params.platform)
+    const qs = q.toString()
+    return get<{ assets: EssenceAsset[] }>(`/essence/assets${qs ? `?${qs}` : ''}`)
+  },
+  createAsset: (body: {
+    book_id: string
+    category: string
+    title: string
+    content: string
+    summary?: string
+    tags?: string
+    genre?: string
+    platform?: string
+    rating?: number
+    user_note?: string
+  }) => post<EssenceAsset>('/essence/assets', body),
+  deleteAsset: (assetId: number) => del<{ deleted: boolean; assetId: number }>(`/essence/assets/${assetId}`),
+  adoptAsset: (body: { asset_id: number; project: string; target_kind?: string }) =>
+    post<{ adopted: boolean; targetKind: string; recordId: number }>('/essence/adopt', body),
+}
+

@@ -945,6 +945,7 @@ def _h_essence_assets_list(params: dict[str, Any], _body: dict[str, Any]) -> dic
         category=params.get("category"),
         tag=params.get("tag"),
         genre=params.get("genre"),
+        platform=params.get("platform"),
     )})
 
 

@@ -27,6 +27,7 @@ import StylePanel from './StylePanel'
 import WritingExtras from './WritingExtras'
 import DeslopPanel from './DeslopPanel'
 import InspirationWorkbench from './InspirationWorkbench'
+import EssenceWorkbench from './EssenceWorkbench'
 import { friendlyError } from '../api/client'
 import { useWritingAssets, type WritingAssetSelection } from './useWritingAssets'
 
@@ -58,6 +59,7 @@ export default function WritingWorkbench() {
         <Tab label="创作" />
         <Tab label="去 AI 味" />
         <Tab label="灵感工坊" />
+        <Tab label="小说精华库" />
       </Tabs>
         <ContextHelpButton guideKey="writing" />
       </Box>
@@ -70,6 +72,7 @@ export default function WritingWorkbench() {
         {tab === 5 && <WritingExtras />}
         {tab === 6 && <DeslopPanel />}
         {tab === 7 && <InspirationWorkbench />}
+        {tab === 8 && <EssenceWorkbench />}
       </Box>
     </Box>
   )
