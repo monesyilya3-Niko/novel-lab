@@ -358,7 +358,11 @@ def extract_macro_essence(
     """提取整本书的离线宏观数据：全书文风指标、章节节奏心电图、高频角色候选。"""
     total_chars = len(text)
     chapters = split_chapters_simple(text)
-    total_chapters = len(chapters)
+    # 过滤可能存在的卷标空章，确保真实章节有正文内容
+    valid_chapters = [c for c in chapters if c[1].strip()]
+    if not valid_chapters:
+        valid_chapters = chapters
+    total_chapters = len(valid_chapters)
 
     # 1. 对话占比与平均句长
     quote_matches = re.findall(r'[“"「]([^”"」]+)[”"」]', text)
@@ -369,11 +373,11 @@ def extract_macro_essence(
     avg_sentence_len = round(sum(len(s) for s in sentences) / len(sentences), 1) if sentences else 0
 
     # 2. 章节长度心跳曲线与波峰检测（大于平均字数 1.3 倍视为高潮大章）
-    chapter_lengths = [len(c[1]) for c in chapters]
+    chapter_lengths = [len(c[1]) for c in valid_chapters]
     avg_chapter_len = int(sum(chapter_lengths) / total_chapters) if total_chapters > 0 else 0
 
     climax_chapters: list[dict[str, Any]] = []
-    for i, (ctitle, cbody) in enumerate(chapters, 1):
+    for i, (ctitle, cbody) in enumerate(valid_chapters, 1):
         c_len = len(cbody)
         if c_len > avg_chapter_len * 1.3 and c_len > 1000:
             climax_chapters.append({
@@ -382,12 +386,23 @@ def extract_macro_essence(
                 "length": c_len,
             })
 
+    # 若章节长度分布极均匀未触发 1.3 倍阈值，提取篇幅排名前列的大章作为代表
+    if not climax_chapters and valid_chapters:
+        sorted_by_len = sorted(enumerate(valid_chapters, 1), key=lambda x: len(x[1][1]), reverse=True)
+        for i, (ctitle, cbody) in sorted_by_len[:6]:
+            if len(cbody) >= 500:
+                climax_chapters.append({
+                    "chapter_num": i,
+                    "title": ctitle,
+                    "length": len(cbody),
+                })
+
     # 3. 高频人物实体启发式提取（2~3字中文专有名词）
     person_candidates = extract_characters_from_text(text, top_n=6)
 
     # 4. 黄金三章开篇深度解构（满足前端 openingThreeChapters 字段契约）
     opening_three: list[dict[str, Any]] = []
-    for i, (ctitle, cbody) in enumerate(chapters[:3], 1):
+    for i, (ctitle, cbody) in enumerate(valid_chapters[:3], 1):
         c_len = len(cbody)
         c_quotes = re.findall(r'[“"「]([^”"」]+)[”"」]', cbody)
         c_dialogue_chars = sum(len(q) for q in c_quotes)
@@ -466,7 +481,11 @@ def extract_macro_essence(
             "category": "trope",
             "title": f"《{title}》高潮爆点与爽点波峰模型",
             "summary": f"监测到 {len(climax_chapters)} 处高潮大章波峰，情绪回落与拉升周期约为 {climax_interval} 章/次。",
-            "content": "【关键高潮波峰章节】\n" + "\n".join(f"• 第 {c['chapter_num']} 章: {c['title']} ({c['length']} 字)" for c in climax_chapters[:8]),
+            "content": (
+                "【关键高潮波峰章节】\n"
+                + "\n".join(f"• 第 {c['chapter_num']} 章: {c['title']} ({c['length']} 字)" for c in climax_chapters[:8])
+                + f"\n\n【全书节奏模型诊断】\n全书实测共 {total_chapters} 章节，单章平均约 {avg_chapter_len} 字。宏观高潮爆发周期约为每 {climax_interval} 章形成一次冲突升级与利益兑现波峰。"
+            ),
         },
     ]
 

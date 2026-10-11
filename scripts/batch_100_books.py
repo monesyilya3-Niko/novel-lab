@@ -294,16 +294,19 @@ def ingest_book_atomic(
     # 沉淀 1 条核心伏笔暗线链
     chains_created = 0
     opening_three = macro_result.get("openingThreeChapters", [])
-    if opening_three:
-        first_op = opening_three[0]
+    valid_opening = [op for op in opening_three if op.get("excerpt", "").strip()]
+    if valid_opening:
+        first_op = valid_opening[0]
+        hook_txt = first_op.get("excerpt", "")[:120].strip()
         with conn:
             conn.execute(
                 """
                 INSERT INTO essence_chains
                     (book_id, hook_chapter, payoff_chapter, hook_text, payoff_text, clue_name, status, analysis, created_at)
-                VALUES (?, 1, ?, ?, ?, ?, 'resolved', ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, 'resolved', ?, ?)
                 """,
-                (book_id, min(total_chapters, 5), first_op.get("excerpt", "")[:120],
+                (book_id, first_op.get("chapterIndex", 1), min(total_chapters, max(5, first_op.get("chapterIndex", 1) + 3)),
+                 hook_txt,
                  "后续主线反转与关键兑现", f"{title}·开篇核心主线钩",
                  f"钩子类型: {first_op.get('hookType', '主线钩')}，推动全书主线冲突展开", now_iso),
             )
