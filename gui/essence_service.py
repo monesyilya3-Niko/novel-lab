@@ -67,6 +67,7 @@ def _format_book_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
 def list_books(genre: str | None = None, platform: str | None = None) -> list[dict[str, Any]]:
     """获取所有已归档或分析的小说精华书籍列表。"""
     conn = db.get_conn()
+
     query = "SELECT * FROM essence_books"
     params: list[Any] = []
     conds: list[str] = []
@@ -82,6 +83,7 @@ def list_books(genre: str | None = None, platform: str | None = None) -> list[di
 
     rows = conn.execute(query, params).fetchall()
     return [_format_book_dict(r) for r in rows]
+
 
 
 def get_book(book_id: str) -> dict[str, Any]:
@@ -972,3 +974,551 @@ def check_constitution_compliance(
         "character_voice_alerts": char_alerts,
         "summary": summary,
     }
+
+
+# ---------------------------------------------------------------------------
+# 8. 传世神作与爆款典范精选库（Curated Masterpiece Library）
+# ---------------------------------------------------------------------------
+
+CURATED_MASTERPIECES: list[dict[str, Any]] = [
+    {
+        "book_id": "curated_mudongnianchun",
+        "title": "暮冬念春",
+        "genre": "yanqing",
+        "platform": "jinjiang",
+        "total_chapters": 157,
+        "total_chars": 420000,
+        "meta": {
+            "avgChapterLen": 2675,
+            "dialogueRatio": 0.122,
+            "rhythmClimaxInterval": 4,
+            "aiSlopScore": 1.2,
+            "summary": "现实言情与双向救赎群像典范。寒冬江岸救赎开局，克制深情、电影感动作白描，彻底消除AI味。",
+            "isCurated": True,
+            "badge": "镇馆之作",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "《暮冬念春》三幕式全书架构",
+                "summary": "从江岸生死救赎到同居试探，再到行李箱秘密揭开与双向救赎的严密闭环。",
+                "content": "【第一幕：救赎与破冰】寒冬江岸救下轻生少女，防备收留、合租试探，建立基础信任。\n【第二幕：暗流与升温】生活细节磨合，旧日心理创伤隐现，共同面对现实重压，情感由怜生爱。\n【第三幕：秘密揭开与终局救赎】四年前行李箱日记秘密曝光，旧伤彻底解开心结，双向奔赴迎来曙光。",
+                "tags": "暮冬念春,大纲,三幕式,治愈救赎",
+                "rating": 5,
+            },
+            {
+                "category": "character",
+                "title": "陆沉 & 苏念 双核反差人设",
+                "summary": "陆沉外冷内热行动派，苏念外柔内刚PTSD防御机制，极具化学反应。",
+                "content": "【陆沉】：表面冷淡克制、话少锋利，实则行动派细节控。深情入骨，用无声陪伴替对方筑起安全壁垒。\n【苏念】：外表清冷文弱，内心倔强坚韧。受创伤后极度缺乏安全感，通过画笔释放压抑情绪，在救赎中找回自我。",
+                "tags": "暮冬念春,人设反差,男女主原型",
+                "rating": 5,
+            },
+            {
+                "category": "hook",
+                "title": "黄金开篇钩子：江岸红围巾生死抉择",
+                "summary": "寒冬深夜江岸，那一抹飞扬的红围巾与少年毫不犹豫跃入刺骨江水，30秒抓住读者。",
+                "content": "寒风呼啸的深夜江堤，栏杆边摇摇欲坠的身影，随风翻飞的鲜红围巾在漆黑夜色中格外刺眼。少年没有一丝犹豫甩开外套跃入刺骨冰江，在绝望深渊中硬生生拉回了一条垂危生命。",
+                "tags": "暮冬念春,开篇钩子,强冲突入局",
+                "rating": 5,
+            },
+            {
+                "category": "style",
+                "title": "反AI微表情与动作白描质感",
+                "summary": "不堆砌排比、不直白喊情绪，通过微颤指尖、咬白的下唇演活内心波澜。",
+                "content": "彻底拒绝“他非常愤怒”“她心中万分悲凉”等空洞陈述。聚焦具体可感细节：玄关处久久未脱下的湿透长靴、握着水杯泛白发青的指节、热茶升腾雾气后闪躲的目光，用镜头语言演出人物心理。",
+                "tags": "暮冬念春,反AI文风,动作白描",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "手链刻字之谜",
+                "category": "身份暗线",
+                "plant_chapter": 3,
+                "reveal_chapter": 98,
+                "climax_chapter": 142,
+                "description": "手链内侧模糊的缩写刻痕，串联起两人童年旧院落的一段模糊记忆，成为解开身世救赎的关键契机。",
+                "status": "recycled",
+            },
+            {
+                "title": "四年前行李箱的红色日记本",
+                "category": "情感暗线",
+                "plant_chapter": 12,
+                "reveal_chapter": 80,
+                "climax_chapter": 140,
+                "description": "锁在行李箱最底层的泛黄日记，记录着四年前相遇倒计时与不为人知的隐忍牺牲，终章引爆情感高潮。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_lord_of_the_mysteries",
+        "title": "诡秘之主",
+        "genre": "xuanhuan",
+        "platform": "qidian",
+        "total_chapters": 1432,
+        "total_chars": 4460000,
+        "meta": {
+            "avgChapterLen": 3110,
+            "dialogueRatio": 0.285,
+            "rhythmClimaxInterval": 3,
+            "aiSlopScore": 0.8,
+            "summary": "西方玄幻与克苏鲁蒸汽朋克封神神作。二十二条神之途径、严谨序列魔药体系与塔罗会宏大架构。",
+            "isCurated": True,
+            "badge": "西幻封神",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "廷根篇《小丑》完整三幕式骨架",
+                "summary": "从穿越失忆自尽案到占卜家魔药消化，再到值夜者阵亡与殉职终章。",
+                "content": "【开篇】：绯红之月照耀书桌，手枪自戕穿帮，神秘日记与占卜家入局。\n【推进】：加入值夜者小队，消化魔药、设立塔罗会，暗线追查安提哥努斯笔记。\n【高潮爆发】：老尼尔失控悲剧，雪伦夫人案爆发，终局队长邓恩·史密斯阵亡，克莱恩殉职反杀因斯·赞格威尔。",
+                "tags": "诡秘之主,廷根篇,大纲骨架",
+                "rating": 5,
+            },
+            {
+                "category": "trope",
+                "title": "灰雾之上的塔罗会：信息差装大佬流典范",
+                "summary": "小号开大、逼格拉满与成员主动脑补，形成绝佳爽感正向反馈循环。",
+                "content": "主角以低序列实力伪装古老隐秘存在“愚者”，借助灰雾空间跨地域拉人。利用成员对神秘未知的恐惧与敬畏，由正义奥黛丽与倒吊人阿尔杰自行脑补其深不可测，以极小代价换取全大陆最核心情报与非凡材料。",
+                "tags": "诡秘之主,爆款桥段,塔罗会,信息差",
+                "rating": 5,
+            },
+            {
+                "category": "character",
+                "title": "克莱恩·莫雷蒂 人格弧光",
+                "summary": "穷神、愚者、温柔守护者，面对疯狂绝望世界始终坚守人性温度。",
+                "content": "表面是端坐于灰雾之上的神秘存在，心底是对几便士精打细算的平民青年。在残酷序列晋升中，始终为了保护家人与平凡生灵而对抗疯狂失控，直至沉眠。",
+                "tags": "诡秘之主,角色人设,克莱恩",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "安提哥努斯家族笔记",
+                "category": "悬疑主线",
+                "plant_chapter": 2,
+                "reveal_chapter": 120,
+                "climax_chapter": 210,
+                "description": "一本失落的古老占卜笔记，背后牵扯霍纳奇斯主峰的隐秘血腥源头与密修会博弈。",
+                "status": "recycled",
+            },
+            {
+                "title": "0-08 封印物阿勒苏霍德之笔",
+                "category": "幕后黑手",
+                "plant_chapter": 15,
+                "reveal_chapter": 180,
+                "climax_chapter": 213,
+                "description": "看似全城随机发生的荒谬惨剧，实则皆为一支羽毛笔在幕后编织的命运剧本。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_fanrenxiuxian",
+        "title": "凡人修仙传",
+        "genre": "xianxia",
+        "platform": "qidian",
+        "total_chapters": 2450,
+        "total_chars": 7700000,
+        "meta": {
+            "avgChapterLen": 3140,
+            "dialogueRatio": 0.240,
+            "rhythmClimaxInterval": 4,
+            "aiSlopScore": 0.9,
+            "summary": "古典凡人流修仙开山祖师。山村穷小子韩立凭借掌天瓶与极致稳健、杀伐果断逆天飞升。",
+            "isCurated": True,
+            "badge": "凡人流鼻祖",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "七玄门与神手谷开局卷纲",
+                "summary": "山村穷小子韩立入门考核、发现掌天瓶、识破墨大夫夺舍反杀出山。",
+                "content": "【入门】：资质平庸入七玄门为记名弟子，偶然捡到墨绿小瓶。\n【机缘】：发现小瓶吸收月光凝聚灵液可催熟草药，苦修长春功。\n【危机与反杀】：墨大夫病入膏肓图谋夺舍，韩立底牌尽出搏杀生父般恩师，得眨眼剑法与升仙令。",
+                "tags": "凡人修仙传,开篇大纲,稳健升级",
+                "rating": 5,
+            },
+            {
+                "category": "character",
+                "title": "韩立：“韩跑跑”杀伐果断性格模型",
+                "summary": "不主动招惹是非，但凡出手必定斩草除根；见势不妙立即脚底抹油。",
+                "content": "深知修仙界弱肉强食。从不圣母泛滥，讲究利己而不主动害无辜；遇到高阶敌人从不逞能硬拼，风遁符保命第一；一旦决定反杀，绝不给敌人留下半分元婴逃脱机会。",
+                "tags": "凡人修仙传,人设原型,韩立",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "墨大夫的剧烈咳嗽与夺舍杀局",
+                "category": "生存危机",
+                "plant_chapter": 14,
+                "reveal_chapter": 35,
+                "climax_chapter": 62,
+                "description": "看似悉心栽培的师徒温情，实为将主角当做长春功成熟容器的残忍夺舍棋局。",
+                "status": "recycled",
+            },
+            {
+                "title": "掌天瓶绿液催熟灵药法则",
+                "category": "核心金手指",
+                "plant_chapter": 8,
+                "reveal_chapter": 40,
+                "climax_chapter": 150,
+                "description": "从小小催熟十年草药，到逐步解开仙界法则、逆天改命炼制绝世丹药的底层发动机。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_daoguiyixian",
+        "title": "道诡异仙",
+        "genre": "xuanyi",
+        "platform": "qidian",
+        "total_chapters": 480,
+        "total_chars": 2150000,
+        "meta": {
+            "avgChapterLen": 4470,
+            "dialogueRatio": 0.290,
+            "rhythmClimaxInterval": 3,
+            "aiSlopScore": 1.1,
+            "summary": "悬疑怪谈与中式民俗克苏鲁现象级爆款。主角李火旺在修仙界与精神病院之间认知分裂。",
+            "isCurated": True,
+            "badge": "克系民俗爆款",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "清风观逃亡篇核心骨架",
+                "summary": "丹阳子炼药、真假杨娜幻视、斩杀丹阳子逃出魔窟、护送同伴寻家。",
+                "content": "【开篇】：李火旺醒于清风观被充当药引，满目畸形药童与血腥炼丹炉，现实与异界剧烈颠倒。\n【反杀逃脱】：借心素奇异能力引发天地异象，反手劈杀妖道丹阳子，带领畸形同伴踏入未知凶险凡尘。",
+                "tags": "道诡异仙,大纲,民俗怪谈",
+                "rating": 5,
+            },
+            {
+                "category": "style",
+                "title": "中式荒诞民俗恐怖通感白描",
+                "summary": "血肉香火、黑太岁、游老爷，将民俗异化到极点，非理智的失控感十足。",
+                "content": "文字极富画面冲击与荒诞不适感。不写平庸的鬼怪，而是将民间白事、傩戏、香火祭祀与克苏鲁不可名状的肉块、神明规则相融合，创造出直击心灵的中式恐怖氛围。",
+                "tags": "道诡异仙,文风典范,通感描写",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "杨娜与病房监护仪幻觉界线",
+                "category": "核心世界观谜题",
+                "plant_chapter": 1,
+                "reveal_chapter": 120,
+                "climax_chapter": 450,
+                "description": "究竟哪边是真哪边是假？病房刺耳的仪器心率声与修仙界的刀光剑影反复重叠撕扯。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_dafengdagengren",
+        "title": "大奉打更人",
+        "genre": "xianxia",
+        "platform": "qidian",
+        "total_chapters": 860,
+        "total_chars": 3750000,
+        "meta": {
+            "avgChapterLen": 4360,
+            "dialogueRatio": 0.380,
+            "rhythmClimaxInterval": 2,
+            "aiSlopScore": 1.0,
+            "summary": "仙侠破案与爽点反转天花板。警校许七安死牢开局破税银案，金句频出、家国大义与社牛勾栏并存。",
+            "isCurated": True,
+            "badge": "探案爽文天花板",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "税银大案与云鹿书院卷纲",
+                "summary": "死牢穿越、化学置换法破解税银沉江之谜、保全家族、书院作诗震惊大儒。",
+                "content": "【死牢开局】：醒于监牢三日问斩倒计时，凭借法医与刑侦知识推导银鞘硝石反应。\n【公堂反转】：众目睽睽下水盆验银破局，免除族人流放死罪。\n【人前显圣】：云鹿书院题诗惊动天下士子，引起魏渊赏识披上打更人铜锣黑袍。",
+                "tags": "大奉打更人,探案反转,黄金开局",
+                "rating": 5,
+            },
+            {
+                "category": "trope",
+                "title": "三段式人前显圣与高燃背诗打脸",
+                "summary": "绝境受辱蓄势→众生绝望→踏出一步朗诵绝句引动天地异象彻底反转。",
+                "content": "压抑铺垫拉满：强敌高高在上、同僚屈辱沉默；主角出列，一句盛世诗篇落地，引动文气冲霄、异象震颤朝堂，实现情绪上的瞬间雪崩式反转打脸。",
+                "tags": "大奉打更人,爆款桥段,人前显圣",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "桑泊湖底封印的神殊断臂",
+                "category": "力量主线",
+                "plant_chapter": 40,
+                "reveal_chapter": 110,
+                "climax_chapter": 340,
+                "description": "五百年前佛妖大战封印的修罗残躯，成为主角寄生共生的无敌底牌。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_qingyunian",
+        "title": "庆余年",
+        "genre": "lishi",
+        "platform": "qidian",
+        "total_chapters": 780,
+        "total_chars": 3980000,
+        "meta": {
+            "avgChapterLen": 5100,
+            "dialogueRatio": 0.340,
+            "rhythmClimaxInterval": 4,
+            "aiSlopScore": 0.7,
+            "summary": "历史穿越与权谋群像经典。重症肌无力少年范闲携现代记忆入庆国京都，探寻母亲身世与神庙真相。",
+            "isCurated": True,
+            "badge": "权谋群像巅峰",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "范闲入京都主线大纲",
+                "summary": "澹州遇刺、初入京都遇见鸡腿姑娘、牛栏街血案、祈年殿夜宴醉酒背诗。",
+                "content": "【澹州启程】：刺客试探入局，五竹陪伴告别老祖母，踏入漩涡中心京都。\n【初见与刺杀】：神庙偏殿遇见林婉儿，牛栏街遭遇程巨树埋伏，挚友藤梓荆战死引爆复仇火焰。\n【殿上争锋】：长公主与庄墨韩构陷抄袭，范闲醉饮三百杯背诵唐诗宋词三百首压服天下文坛。",
+                "tags": "庆余年,京都卷纲,权谋大纲",
+                "rating": 5,
+            },
+            {
+                "category": "trope",
+                "title": "降维打击：工业文明遗物对冷兵器封建时代的碾压",
+                "summary": "黑箱子里的重狙枪、天下三大钱庄的现代金融构架，形成极强降维爽感。",
+                "content": "在人人迷信大宗师近神力量的封建王朝，母亲遗留的黑箱里竟静静躺着一把巴雷特反器材重狙。当九品刺客凌空袭来，一声撕裂空气的轰鸣瞬间将其轰杀成渣，带来科技文明对冷兵器的绝对震撼降维。",
+                "tags": "庆余年,降维打击,神庙武器",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "叶轻眉留下的黑色大箱子",
+                "category": "神庙暗线",
+                "plant_chapter": 5,
+                "reveal_chapter": 160,
+                "climax_chapter": 240,
+                "description": "锁在太平别院的神秘工业造物，蕴藏着灭杀大宗师的终极底牌与母亲留给世界的真相。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_xuezhonghandaoxing",
+        "title": "雪中悍刀行",
+        "genre": "wuxia",
+        "platform": "zongheng",
+        "total_chapters": 980,
+        "total_chars": 4600000,
+        "meta": {
+            "avgChapterLen": 4690,
+            "dialogueRatio": 0.310,
+            "rhythmClimaxInterval": 4,
+            "aiSlopScore": 0.6,
+            "summary": "传统武侠与庙堂江湖群像绝唱。北凉王世子徐凤年千里历练，老黄、李淳罡、温华群像壮烈，慷慨悲凉。",
+            "isCurated": True,
+            "badge": "群像江湖绝唱",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "三年六千里还乡卷纲",
+                "summary": "劣马黄酒浪荡还家、老黄死战武帝城、徐凤年二出江湖踏入听潮亭习刀。",
+                "content": "【游历归来】：白马义从世子伪装落魄马贼游历三年还家，老黄缺门牙倒贴草鞋。\n【老仆赴死】：老黄取回剑匣踏上东海武帝城，剑九黄战死城头为少爷开路。\n【立誓学刀】：听潮亭闭关，天下第一李淳罡相伴，二出江湖北凉铁骑整军备战。",
+                "tags": "雪中悍刀行,三年六千里,江湖群像",
+                "rating": 5,
+            },
+            {
+                "category": "character",
+                "title": "徐凤年 & 老黄 亦仆亦友群像原型",
+                "summary": "劣马黄酒、偷地瓜挨打，临终望北为少爷拔刀的悲壮宿命感。",
+                "content": "老黄不是无敌的宗师，他怕死、贪酒、门牙漏风；但他又是当年名动天下的剑九黄。面对王仙芝天下第二的无敌威名，他为了让少爷敢于直面命运，毅然死战至筋脉寸断而不退一步。",
+                "tags": "雪中悍刀行,群像人设,老黄",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "老黄剑匣留武帝城头",
+                "category": "江湖悲歌",
+                "plant_chapter": 28,
+                "reveal_chapter": 180,
+                "climax_chapter": 182,
+                "description": "老仆死战留下剑匣，彻底斩断主角苟且偷生的念头，逼出北凉世子扛起三十万铁骑的决绝雄心。",
+                "status": "recycled",
+            },
+        ],
+    },
+    {
+        "book_id": "curated_doupocangqiong",
+        "title": "斗破苍穹",
+        "genre": "xuanhuan",
+        "platform": "qidian",
+        "total_chapters": 1640,
+        "total_chars": 5300000,
+        "meta": {
+            "avgChapterLen": 3230,
+            "dialogueRatio": 0.320,
+            "rhythmClimaxInterval": 3,
+            "aiSlopScore": 1.2,
+            "summary": "玄幻异界莫欺少年穷退婚打脸逆袭流鼻祖。药老指引吞噬异火，三十年河东三十年河西情绪闭环。",
+            "isCurated": True,
+            "badge": "逆袭退婚鼻祖",
+        },
+        "assets": [
+            {
+                "category": "outline",
+                "title": "乌坦城退婚至三年之约核心卷纲",
+                "summary": "斗之气三段跌落神坛、纳兰嫣然上门退婚羞辱、药老苏醒传授焚诀、三年后登云岚宗雪耻。",
+                "content": "【绝境谷底】：曾经的天才少年修为倒退为斗之气三段，受尽宗族冷眼欺辱。\n【退婚引爆】：云岚宗少宗主强势登门退婚，萧炎怒断婚姻立下三年之约。\n【名师指路】：母亲遗物黑戒中苏醒药尊者，传授能吞噬天地异火进化的无上焚诀。\n【高潮雪耻】：三年历练踏破云岚宗，大败纳兰嫣然，彻底实现“莫欺少年穷”誓言。",
+                "tags": "斗破苍穹,退婚流,三年之约,逆袭大纲",
+                "rating": 5,
+            },
+            {
+                "category": "hook",
+                "title": "黄金三章退婚休书断章",
+                "summary": "“三十年河东，三十年河西，莫欺少年穷！”咬破手指当众断义断婚。",
+                "content": "众目睽睽之下，少年挺直脊梁，冷冷看着不可一世的高傲少女。指尖鲜血在宣纸上划下殷红休书，字字如刀掷地有声：“纳兰小姐，今日不是你退婚，而是我萧炎将你逐出萧门！”情绪铺垫在此刻彻底沸腾。",
+                "tags": "斗破苍穹,黄金断章,莫欺少年穷",
+                "rating": 5,
+            },
+        ],
+        "chains": [
+            {
+                "title": "黑色古戒吞噬斗气之谜",
+                "category": "金手指主线",
+                "plant_chapter": 1,
+                "reveal_chapter": 3,
+                "climax_chapter": 5,
+                "description": "三年修为倒退的真正根源——戒指中陷入沉睡的八品药尊者灵魂吸纳斗气，苏醒后成为通天名师。",
+                "status": "recycled",
+            },
+            {
+                "title": "陀舍古帝玉与魂殿灭萧家",
+                "category": "终极阴谋暗线",
+                "plant_chapter": 80,
+                "reveal_chapter": 350,
+                "climax_chapter": 1200,
+                "description": "父亲神秘失踪与古帝玉秘密，牵扯出横跨整个斗气大陆的魂天帝万年阴谋。",
+                "status": "recycled",
+            },
+        ],
+    },
+]
+
+
+def ensure_curated_library(clean_raw_corpus: bool = True) -> dict[str, Any]:
+    """清洗生僻语料垃圾书并全量入库 8 大传世神作精品档案。"""
+    conn = db.get_conn()
+    cleaned_count = 0
+    with db.tx() as tx_conn:
+        if clean_raw_corpus:
+            # 清除早期生僻原始语料扫入的无价值生书（仅清理 book_ 开头的生僻批量记录）
+            tx_conn.execute("DELETE FROM essence_chains WHERE book_id LIKE 'book_%'")
+            tx_conn.execute("DELETE FROM essence_assets WHERE book_id LIKE 'book_%'")
+            tx_conn.execute("DELETE FROM essence_tasks WHERE book_id LIKE 'book_%'")
+            cur = tx_conn.execute("DELETE FROM essence_books WHERE book_id LIKE 'book_%'")
+            cleaned_count = cur.rowcount
+
+        # 灌装 8 大精选神作档案
+        now = _now_iso()
+        for b in CURATED_MASTERPIECES:
+            b_id = b["book_id"]
+            meta_json = json.dumps(b.get("meta", {}), ensure_ascii=False)
+            tx_conn.execute(
+                """
+                INSERT INTO essence_books
+                    (book_id, title, source_path, genre, platform, total_chapters, total_chars,
+                     analyzed_chapters, status, meta_json, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(book_id) DO UPDATE SET
+                    title = excluded.title,
+                    genre = excluded.genre,
+                    platform = excluded.platform,
+                    total_chapters = excluded.total_chapters,
+                    total_chars = excluded.total_chars,
+                    meta_json = excluded.meta_json,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    b_id,
+                    b["title"],
+                    f"curated://{b_id}",
+                    b["genre"],
+                    b["platform"],
+                    b["total_chapters"],
+                    b["total_chars"],
+                    b["total_chapters"],
+                    "ready",
+                    meta_json,
+                    now,
+                    now,
+                ),
+            )
+
+            # 写入对应五维资产卡（存在同名则跳过）
+            for asset in b.get("assets", []):
+                exists = tx_conn.execute(
+                    "SELECT id FROM essence_assets WHERE book_id = ? AND title = ?",
+                    (b_id, asset["title"]),
+                ).fetchone()
+                if not exists:
+                    tx_conn.execute(
+                        """
+                        INSERT INTO essence_assets
+                            (book_id, category, title, summary, content, tags, genre, platform, rating, user_note, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            b_id,
+                            asset["category"],
+                            asset["title"],
+                            asset.get("summary", ""),
+                            asset["content"],
+                            asset.get("tags", ""),
+                            b["genre"],
+                            b["platform"],
+                            asset.get("rating", 5),
+                            "传世神作核心资产",
+                            now,
+                            now,
+                        ),
+                    )
+
+            # 写入对应伏笔暗线（存在同名则跳过）
+            for ch in b.get("chains", []):
+                exists = tx_conn.execute(
+                    "SELECT id FROM essence_chains WHERE book_id = ? AND clue_name = ?",
+                    (b_id, ch["title"]),
+                ).fetchone()
+                if not exists:
+                    tx_conn.execute(
+                        """
+                        INSERT INTO essence_chains
+                            (book_id, hook_chapter, payoff_chapter, hook_text, payoff_text, clue_name, status, analysis, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            b_id,
+                            ch.get("plant_chapter", 1),
+                            ch.get("climax_chapter", ch.get("reveal_chapter", 1)),
+                            f"第 {ch.get('plant_chapter', 1)} 章埋下",
+                            f"第 {ch.get('climax_chapter', ch.get('reveal_chapter', 1))} 章引爆",
+                            ch["title"],
+                            ch.get("status", "resolved"),
+                            ch.get("description", ""),
+                            now,
+                        ),
+                    )
+
+    return {
+        "curated_books_seeded": len(CURATED_MASTERPIECES),
+        "raw_corpus_cleaned": cleaned_count,
+        "success": True,
+    }
+

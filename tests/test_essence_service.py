@@ -511,6 +511,36 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(resp_api["code"], 0)
         self.assertFalse(resp_api["data"]["is_compliant"])
 
+    def test_ensure_curated_library(self):
+        """验证 8 大传世神作编纂矩阵入库、资产与伏笔链完整绑定。"""
+        res = essence_service.ensure_curated_library(clean_raw_corpus=False)
+        self.assertTrue(res["success"])
+        self.assertEqual(res["curated_books_seeded"], 8)
+
+        books = essence_service.list_books()
+        titles = {b["title"] for b in books}
+        self.assertIn("暮冬念春", titles)
+        self.assertIn("诡秘之主", titles)
+        self.assertIn("凡人修仙传", titles)
+        self.assertIn("道诡异仙", titles)
+        self.assertIn("大奉打更人", titles)
+        self.assertIn("庆余年", titles)
+        self.assertIn("雪中悍刀行", titles)
+        self.assertIn("斗破苍穹", titles)
+
+        # 验证《暮冬念春》五维资产与伏笔
+        md_book = essence_service.get_book("curated_mudongnianchun")
+        self.assertEqual(md_book["title"], "暮冬念春")
+        self.assertEqual(md_book["total_chapters"], 157)
+        self.assertEqual(md_book["genre"], "yanqing")
+
+        assets = essence_service.list_assets(book_id="curated_mudongnianchun")
+        self.assertGreaterEqual(len(assets), 4)
+
+        chains = essence_service.list_chains(book_id="curated_mudongnianchun")
+        self.assertGreaterEqual(len(chains), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
+

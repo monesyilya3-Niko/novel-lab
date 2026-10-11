@@ -836,6 +836,16 @@ class GuiServer:
         from gui import builtin_sync
         builtin_sync.sync_at_startup()
 
+        # 小说精华库传世神作就绪保障（2026-10-11）
+        try:
+            from gui import essence_service
+            conn = db.get_conn()
+            curated_cnt = conn.execute("SELECT count(*) FROM essence_books WHERE book_id LIKE 'curated_%'").fetchone()[0]
+            if curated_cnt == 0:
+                essence_service.ensure_curated_library(clean_raw_corpus=False)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("精选神作档案就绪初始化跳过: %s", exc)
+
         # 管理员系统：首次启动生成随机初始密码（只打印一次）。
         # P1-2 修复（2026-09-29）：桌面端无控制台窗口（windowsHide），只写日志
         # 用户无从得知。首次生成时同步写入数据目录下的明文指引文件，
