@@ -974,7 +974,7 @@ def _h_essence_asset_create(_params: dict[str, Any], body: dict[str, Any]) -> di
     from gui import essence_service
     b = body or {}
     return ok(essence_service.create_asset(
-        book_id=b.get("book_id", ""),
+        book_id=b.get("book_id") or b.get("bookId") or "",
         category=b.get("category", ""),
         title=b.get("title", ""),
         content=b.get("content", ""),
@@ -983,7 +983,7 @@ def _h_essence_asset_create(_params: dict[str, Any], body: dict[str, Any]) -> di
         genre=b.get("genre", "general"),
         platform=b.get("platform", "general"),
         rating=int(b.get("rating", 5)),
-        user_note=b.get("user_note", ""),
+        user_note=b.get("user_note") or b.get("userNote") or "",
     ))
 
 
@@ -995,9 +995,9 @@ def _h_essence_asset_delete(params: dict[str, Any], _body: dict[str, Any]) -> di
 def _h_essence_adopt(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
     b = body or {}
-    asset_id = b.get("asset_id")
+    asset_id = b.get("asset_id") if b.get("asset_id") is not None else b.get("assetId")
     project = b.get("project")
-    target_kind = b.get("target_kind") or "outline"
+    target_kind = b.get("target_kind") or b.get("targetKind") or "outline"
     if asset_id is None:
         raise ServiceError("缺少 asset_id", 400)
     return ok(essence_service.adopt_asset_to_project(int(asset_id), project, target_kind=target_kind))
@@ -1023,22 +1023,35 @@ def _h_writing_project_meta_update(params: dict[str, Any], body: dict[str, Any])
 
 def _h_essence_chains_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
-    book_id = params.get("book_id") or ""
+    book_id = params.get("book_id") or params.get("bookId") or None
     return ok({"chains": essence_service.list_chains(book_id)})
 
 
 def _h_essence_chain_create(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
     b = body or {}
+    clue = b.get("clue_name") or b.get("title") or ""
+    cat = b.get("category", "")
+    if cat and cat not in clue:
+        clue_full = f"{clue}·{cat}"
+    else:
+        clue_full = clue
+
+    hook_ch = b.get("hook_chapter") or b.get("plant_chapter") or 1
+    payoff_ch = b.get("payoff_chapter") or b.get("climax_chapter") or 1
+    desc = b.get("description", "")
+    hook_txt = b.get("hook_text") or desc
+    analysis_txt = b.get("analysis") or desc
+
     return ok(essence_service.create_chain(
-        book_id=b.get("book_id", ""),
-        clue_name=b.get("clue_name", ""),
-        hook_chapter=int(b.get("hook_chapter", 1)),
-        payoff_chapter=int(b.get("payoff_chapter", 1)),
-        hook_text=b.get("hook_text", ""),
+        book_id=b.get("book_id") or b.get("bookId") or "",
+        clue_name=clue_full,
+        hook_chapter=int(hook_ch),
+        payoff_chapter=int(payoff_ch),
+        hook_text=hook_txt,
         payoff_text=b.get("payoff_text", ""),
-        status=b.get("status", "resolved"),
-        analysis=b.get("analysis", ""),
+        status=b.get("status", "planted"),
+        analysis=analysis_txt,
     ))
 
 

@@ -547,7 +547,7 @@ function EssenceAssetsSection() {
                   </Typography>
 
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', my: 0.5 }}>
-                    {item.tags.split(',').filter(Boolean).map((tag, idx) => (
+                    {(item.tags || '').split(',').filter(Boolean).map((tag, idx) => (
                       <Chip key={idx} label={tag} size="small" variant="outlined" />
                     ))}
                     <Chip label={`生态: ${item.platform}`} size="small" variant="outlined" />
@@ -910,9 +910,9 @@ function EssenceChainsSection() {
         <Grid container spacing={2}>
           {chains.map((c) => {
             const statusConfig = CHAIN_STATUS_MAP[c.status] || CHAIN_STATUS_MAP.planted
-            const totalSpan = Math.max(1, c.climaxChapter)
-            const plantPct = Math.min(95, Math.max(2, (c.plantChapter / totalSpan) * 100))
-            const revealPct = Math.min(98, Math.max(plantPct + 2, (c.revealChapter / totalSpan) * 100))
+            const totalSpan = Math.max(1, c.climaxChapter ?? 1)
+            const plantPct = Math.min(95, Math.max(2, ((c.plantChapter ?? 1) / totalSpan) * 100))
+            const revealPct = Math.min(98, Math.max(plantPct + 2, ((c.revealChapter ?? 1) / totalSpan) * 100))
             return (
               <Grid item xs={12} md={6} key={c.id}>
                 <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>

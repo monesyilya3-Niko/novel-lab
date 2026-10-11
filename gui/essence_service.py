@@ -154,7 +154,7 @@ def delete_book(book_id: str) -> dict[str, Any]:
         if res.rowcount == 0:
             raise ServiceError(f"未找到待删除小说档案: {book_id}", 404)
 
-    return {"deleted": True, "book_id": book_id}
+    return {"deleted": True, "book_id": book_id, "bookId": book_id}
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +166,8 @@ def _format_asset_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     d = dict(r)
     d["bookId"] = d.get("book_id", "")
     d["userNote"] = d.get("user_note", "")
+    d["tags"] = d.get("tags") or ""
+    d["summary"] = d.get("summary") or ""
     d["createdAt"] = d.get("created_at", "")
     d["updatedAt"] = d.get("updated_at", "")
     return d
@@ -175,8 +177,8 @@ def _format_chain_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     """格式化暗链字典，注入前端图谱 camelCase 契约字段。"""
     d = dict(r)
     b_id = d.get("book_id", "")
-    hook_ch = d.get("hook_chapter", 1)
-    payoff_ch = d.get("payoff_chapter", 1)
+    hook_ch = d.get("hook_chapter") or 1
+    payoff_ch = d.get("payoff_chapter") or 1
     clue = d.get("clue_name", "核心主线暗链")
     hook_txt = d.get("hook_text", "")
     analysis = d.get("analysis", "")
@@ -189,6 +191,7 @@ def _format_chain_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     d["climaxChapter"] = payoff_ch
     d["description"] = f"{hook_txt}\n\n【伏笔解析】{analysis}".strip() if analysis else hook_txt
     d["createdAt"] = d.get("created_at", "")
+    d["updatedAt"] = d.get("updated_at", d.get("created_at", ""))
     return d
 
 
@@ -313,7 +316,7 @@ def delete_asset(asset_id: int) -> dict[str, Any]:
         res = conn.execute("DELETE FROM essence_assets WHERE id = ?", (asset_id,))
         if res.rowcount == 0:
             raise ServiceError(f"未找到待删除资产: {asset_id}", 404)
-    return {"deleted": True, "id": asset_id}
+    return {"deleted": True, "id": asset_id, "assetId": asset_id}
 
 
 # ---------------------------------------------------------------------------
@@ -366,7 +369,7 @@ def create_chain(
         chain_id = cur.lastrowid
 
     row = db.get_conn().execute("SELECT * FROM essence_chains WHERE id = ?", (chain_id,)).fetchone()
-    return dict(row)
+    return _format_chain_dict(row)
 
 
 def delete_chain(chain_id: int) -> dict[str, Any]:
@@ -375,7 +378,7 @@ def delete_chain(chain_id: int) -> dict[str, Any]:
         res = conn.execute("DELETE FROM essence_chains WHERE id = ?", (chain_id,))
         if res.rowcount == 0:
             raise ServiceError(f"未找到待删除伏笔暗线: {chain_id}", 404)
-    return {"deleted": True, "id": chain_id}
+    return {"deleted": True, "id": chain_id, "chainId": chain_id}
 
 
 # ---------------------------------------------------------------------------
@@ -660,7 +663,7 @@ def adopt_asset_to_project(
                 (project, "chapter", asset["title"], asset.get("summary") or asset["content"][:200], "planned", 999, now, now),
             )
             adopted_id = cur.lastrowid
-            return {"adopted": True, "target_kind": "outline", "adopted_id": adopted_id, "project": project}
+            return {"adopted": True, "target_kind": "outline", "targetKind": "outline", "adopted_id": adopted_id, "recordId": adopted_id, "project": project}
 
         elif target_kind == "character":
             # 导入到 writing_characters
@@ -673,7 +676,7 @@ def adopt_asset_to_project(
                 (project, asset["title"], "核心参考原型", asset["content"], json.dumps(extra_meta, ensure_ascii=False), now, now),
             )
             adopted_id = cur.lastrowid
-            return {"adopted": True, "target_kind": "character", "adopted_id": adopted_id, "project": project}
+            return {"adopted": True, "target_kind": "character", "targetKind": "character", "adopted_id": adopted_id, "recordId": adopted_id, "project": project}
 
         elif target_kind == "note":
             # 导入到 writing_notes
@@ -685,7 +688,7 @@ def adopt_asset_to_project(
                 (project, f"【精华灵感】{asset['title']}", asset["content"], now, now),
             )
             adopted_id = cur.lastrowid
-            return {"adopted": True, "target_kind": "note", "adopted_id": adopted_id, "project": project}
+            return {"adopted": True, "target_kind": "note", "targetKind": "note", "adopted_id": adopted_id, "recordId": adopted_id, "project": project}
 
         else:
             raise ServiceError(f"不支持的反哺目标类型: {target_kind}，可选: outline, character, note", 400)

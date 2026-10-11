@@ -292,6 +292,28 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(del_resp["code"], 0)
         self.assertTrue(del_resp["data"]["deleted"])
 
+        # 4. 前端表单字段别名创建 (title, plant_chapter, climax_chapter, description, category)
+        create_ui_resp, _ = router.dispatch(
+            "POST",
+            "/api/essence/chains",
+            {
+                "book_id": "test_book_chains",
+                "title": "九品心法残页",
+                "category": "力量伏笔",
+                "plant_chapter": 3,
+                "climax_chapter": 30,
+                "description": "藏经阁拾取的残破经书，实为神级功法。",
+                "status": "planted",
+            },
+            {},
+        )
+        self.assertEqual(create_ui_resp["code"], 0)
+        ui_chain = create_ui_resp["data"]
+        self.assertEqual(ui_chain["title"], "九品心法残页·力量伏笔")
+        self.assertEqual(ui_chain["plantChapter"], 3)
+        self.assertEqual(ui_chain["climaxChapter"], 30)
+        self.assertEqual(ui_chain["category"], "力量伏笔")
+
     def test_essence_stats_endpoint(self):
         # 1. 初始空库统计
         resp, _ = router.dispatch("GET", "/api/essence/stats", {}, {})
