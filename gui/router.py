@@ -898,6 +898,11 @@ def _h_tools_emotions(_params: dict[str, Any], _body: dict[str, Any]) -> dict[st
 # 小说精华数据库处理器
 # ---------------------------------------------------------------------------
 
+def _h_essence_stats(_params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    return ok(essence_service.get_overall_stats())
+
+
 def _h_essence_books_list(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
     return ok({"books": essence_service.list_books(genre=params.get("genre"), platform=params.get("platform"))})
@@ -961,6 +966,7 @@ def _h_essence_assets_list(params: dict[str, Any], _body: dict[str, Any]) -> dic
         tag=params.get("tag"),
         genre=params.get("genre"),
         platform=params.get("platform"),
+        query=params.get("query") or params.get("q"),
     )})
 
 
@@ -1169,6 +1175,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/tools/characters$"), _h_tools_characters),
     ("GET", re.compile(r"^/api/tools/emotions$"), _h_tools_emotions),
     # 小说精华数据库
+    ("GET", re.compile(r"^/api/essence/stats$"), _h_essence_stats),
     ("GET", re.compile(r"^/api/essence/books$"), _h_essence_books_list),
     ("GET", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)$"), _h_essence_book_get),
     ("DELETE", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)$"), _h_essence_book_delete),

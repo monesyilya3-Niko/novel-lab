@@ -62,10 +62,12 @@ const GENRE_OPTIONS = [
   { value: 'wuxian', label: '诸天无限流' },
 ]
 
-const CATEGORY_MAP: Record<string, { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'default' }> = {
+const CATEGORY_MAP: Record<string, { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'default' | 'error' }> = {
   outline: { label: '骨架大纲', color: 'primary' },
-  hook: { label: '开篇钩子', color: 'error' as any },
+  hook: { label: '开篇钩子', color: 'error' },
+  opening: { label: '开篇钩子', color: 'error' },
   character: { label: '人设反差', color: 'secondary' },
+  persona: { label: '人设反差', color: 'secondary' },
   trope: { label: '爆款桥段', color: 'success' },
   style: { label: '反AI口语', color: 'warning' },
 }
@@ -453,10 +455,12 @@ function EssenceAssetsSection() {
 
   const filtered = assets.filter((a) => {
     if (!searchKw) return true
+    const kw = searchKw.toLowerCase()
     return (
-      a.title.toLowerCase().includes(searchKw.toLowerCase()) ||
-      a.tags.toLowerCase().includes(searchKw.toLowerCase()) ||
-      a.summary.toLowerCase().includes(searchKw.toLowerCase())
+      (a.title ?? '').toLowerCase().includes(kw) ||
+      (a.tags ?? '').toLowerCase().includes(kw) ||
+      (a.summary ?? '').toLowerCase().includes(kw) ||
+      (a.content ?? '').toLowerCase().includes(kw)
     )
   })
 
@@ -578,7 +582,7 @@ function EssenceAssetsSection() {
                     onClick={() => {
                       setAdoptDialog(item)
                       if (item.category === 'outline') setAdoptTarget('outline')
-                      else if (item.category === 'character') setAdoptTarget('character')
+                      else if (item.category === 'character' || item.category === 'persona') setAdoptTarget('character')
                       else setAdoptTarget('note')
                     }}
                   >
@@ -719,18 +723,18 @@ function EssenceBooksSection() {
                   </Box>
 
                   <Typography variant="body2" color="text.secondary">
-                    {b.totalChapters} 章 | {b.totalChars.toLocaleString()} 字
+                    {b.totalChapters ?? 0} 章 | {(b.totalChars ?? 0).toLocaleString()} 字
                   </Typography>
 
                   <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <Typography variant="caption" color="text.secondary">
-                      对白占比: {(b.dialogueRatio * 100).toFixed(1)}%
+                      对白占比: {((b.dialogueRatio ?? 0) * 100).toFixed(1)}%
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      高潮间隔: {b.rhythmClimaxInterval} 章/次
+                      高潮间隔: {b.rhythmClimaxInterval ?? 0} 章/次
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      AI 味道评分: {b.aiSlopScore} / 10
+                      AI 味道评分: {b.aiSlopScore ?? 0} / 10
                     </Typography>
                   </Box>
                 </CardContent>

@@ -292,6 +292,82 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(del_resp["code"], 0)
         self.assertTrue(del_resp["data"]["deleted"])
 
+    def test_essence_stats_endpoint(self):
+        # 1. 初始空库统计
+        resp, _ = router.dispatch("GET", "/api/essence/stats", {}, {})
+        self.assertEqual(resp["code"], 0)
+        data = resp["data"]
+        self.assertEqual(data["totalBooks"], 0)
+        self.assertEqual(data["total_books"], 0)
+        self.assertEqual(data["totalAssets"], 0)
+        self.assertEqual(data["totalChains"], 0)
+
+        # 2. 插入一本书与资产后校验
+        essence_service.create_or_update_book(
+            book_id="b_stat_01",
+            title="统计测试书",
+            genre="xianxia",
+            platform="qidian",
+            total_chapters=10,
+            total_chars=30000,
+        )
+        essence_service.create_asset(
+            book_id="b_stat_01",
+            category="outline",
+            title="核心大纲卡",
+            content="大纲内容",
+        )
+        resp2, _ = router.dispatch("GET", "/api/essence/stats", {}, {})
+        self.assertEqual(resp2["code"], 0)
+        data2 = resp2["data"]
+        self.assertEqual(data2["totalBooks"], 1)
+        self.assertEqual(data2["totalChars"], 30000)
+        self.assertEqual(data2["totalAssets"], 1)
+        self.assertIn("xianxia", data2["genreDistribution"])
+
+    def test_essence_assets_fuzzy_search_and_category_synonyms(self):
+        essence_service.create_or_update_book(
+            book_id="b_search_01",
+            title="斗破乾坤",
+            genre="xuanhuan",
+            platform="qidian",
+            total_chapters=50,
+            total_chars=150000,
+        )
+        # 插入开篇钩子 (category=opening)
+        essence_service.create_asset(
+            book_id="b_search_01",
+            category="opening",
+            title="三十年河东三十年河西",
+            content="莫欺少年穷！",
+            tags="退婚,逆袭",
+        )
+        # 插入人设反差 (category=persona)
+        essence_service.create_asset(
+            book_id="b_search_01",
+            category="persona",
+            title="戒指里的老爷爷药老",
+            content="灵魂体状态的九品炼药宗师",
+            tags="金手指,导师",
+        )
+
+        # 1. 模糊检索 query
+        resp_q, _ = router.dispatch("GET", "/api/essence/assets", {}, {"query": "莫欺少年穷"})
+        self.assertEqual(resp_q["code"], 0)
+        self.assertEqual(len(resp_q["data"]["assets"]), 1)
+        self.assertEqual(resp_q["data"]["assets"][0]["title"], "三十年河东三十年河西")
+
+        # 2. 同义词 category="hook" 能查出 category="opening"
+        resp_hook, _ = router.dispatch("GET", "/api/essence/assets", {}, {"category": "hook"})
+        self.assertEqual(resp_hook["code"], 0)
+        self.assertEqual(len(resp_hook["data"]["assets"]), 1)
+
+        # 3. 同义词 category="character" 能查出 category="persona"
+        resp_char, _ = router.dispatch("GET", "/api/essence/assets", {}, {"category": "character"})
+        self.assertEqual(resp_char["code"], 0)
+        self.assertEqual(len(resp_char["data"]["assets"]), 1)
+        self.assertEqual(resp_char["data"]["assets"][0]["title"], "戒指里的老爷爷药老")
+
 
 if __name__ == "__main__":
     unittest.main()

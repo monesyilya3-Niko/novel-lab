@@ -928,7 +928,7 @@ export interface EssenceBook {
 export interface EssenceAsset {
   id: number
   bookId: string
-  category: 'outline' | 'hook' | 'character' | 'trope' | 'style'
+  category: 'outline' | 'hook' | 'opening' | 'character' | 'persona' | 'trope' | 'style' | string
   title: string
   content: string
   summary: string
@@ -983,6 +983,7 @@ export const essenceApi = {
   },
   getBook: (bookId: string) => get<EssenceBook>(`/essence/books/${encodeURIComponent(bookId)}`),
   deleteBook: (bookId: string) => del<{ deleted: boolean; bookId: string }>(`/essence/books/${encodeURIComponent(bookId)}`),
+  getStats: () => get<EssenceStats>('/essence/stats'),
   analyzeMacro: (body: {
     title: string
     text: string
@@ -990,13 +991,14 @@ export const essenceApi = {
     platform?: string
     book_id?: string
   }) => post<EssenceMacroAnalysisResult>('/essence/analyze', body),
-  listAssets: (params?: { book_id?: string; category?: string; tag?: string; genre?: string; platform?: string }) => {
+  listAssets: (params?: { book_id?: string; category?: string; tag?: string; genre?: string; platform?: string; query?: string }) => {
     const q = new URLSearchParams()
     if (params?.book_id) q.set('book_id', params.book_id)
     if (params?.category) q.set('category', params.category)
     if (params?.tag) q.set('tag', params.tag)
     if (params?.genre) q.set('genre', params.genre)
     if (params?.platform) q.set('platform', params.platform)
+    if (params?.query) q.set('query', params.query)
     const qs = q.toString()
     return get<{ assets: EssenceAsset[] }>(`/essence/assets${qs ? `?${qs}` : ''}`)
   },
@@ -1030,6 +1032,16 @@ export const essenceApi = {
     status?: string
   }) => post<EssenceChain>('/essence/chains', body),
   deleteChain: (chainId: number) => del<{ deleted: boolean; chainId: number }>(`/essence/chains/${chainId}`),
+}
+
+export interface EssenceStats {
+  totalBooks: number
+  totalChars: number
+  totalChapters: number
+  totalAssets: number
+  totalChains: number
+  genreDistribution: Record<string, number>
+  categoryDistribution: Record<string, number>
 }
 
 export interface EssenceChain {

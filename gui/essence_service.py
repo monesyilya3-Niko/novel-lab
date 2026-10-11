@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import re
+import sqlite3
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
@@ -25,12 +26,38 @@ from gui.services import ServiceError
 
 _log = get_logger("essence_service")
 
-# 资产分类白名单
-ASSET_CATEGORIES = ("opening", "outline", "persona", "trope", "style", "hook")
+# 资产分类白名单（双向兼容前端同义词）
+ASSET_CATEGORIES = ("opening", "outline", "persona", "trope", "style", "hook", "character")
 
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _format_book_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+    """格式化书籍档案字典，注入前端强契约 camelCase 字段，实现双向完全兼容。"""
+    d = dict(r)
+    try:
+        d["meta"] = json.loads(d.get("meta_json") or "{}")
+    except Exception:
+        d["meta"] = {}
+    meta = d["meta"]
+
+    # 注入前端强契约字段
+    b_id = d.get("book_id", "")
+    t_chaps = d.get("total_chapters", 0)
+    t_chars = d.get("total_chars", 0)
+    d["bookId"] = b_id
+    d["totalChapters"] = t_chaps
+    d["totalChars"] = t_chars
+    d["avgChapterLen"] = meta.get("avgChapterLen", t_chars // max(t_chaps, 1))
+    d["dialogueRatio"] = meta.get("dialogueRatio", 0.0)
+    d["rhythmClimaxInterval"] = meta.get("rhythmClimaxInterval", 20)
+    d["aiSlopScore"] = meta.get("aiSlopScore", 0.0)
+    d["summary"] = meta.get("summary", f"《{d.get('title', '')}》（共 {t_chaps} 章）")
+    d["createdAt"] = d.get("created_at", "")
+    d["updatedAt"] = d.get("updated_at", "")
+    return d
 
 
 # ---------------------------------------------------------------------------
@@ -54,15 +81,7 @@ def list_books(genre: str | None = None, platform: str | None = None) -> list[di
     query += " ORDER BY updated_at DESC, id DESC"
 
     rows = conn.execute(query, params).fetchall()
-    res = []
-    for r in rows:
-        d = dict(r)
-        try:
-            d["meta"] = json.loads(d.get("meta_json") or "{}")
-        except Exception:
-            d["meta"] = {}
-        res.append(d)
-    return res
+    return [_format_book_dict(r) for r in rows]
 
 
 def get_book(book_id: str) -> dict[str, Any]:
@@ -73,12 +92,7 @@ def get_book(book_id: str) -> dict[str, Any]:
     row = conn.execute("SELECT * FROM essence_books WHERE book_id = ?", (book_id,)).fetchone()
     if not row:
         raise ServiceError(f"未找到小说精华档案: {book_id}", 404)
-    d = dict(row)
-    try:
-        d["meta"] = json.loads(d.get("meta_json") or "{}")
-    except Exception:
-        d["meta"] = {}
-    return d
+    return _format_book_dict(row)
 
 
 def create_or_update_book(
@@ -147,16 +161,48 @@ def delete_book(book_id: str) -> dict[str, Any]:
 # 2. 精华资产管理（Essence Assets）
 # ---------------------------------------------------------------------------
 
+def _format_asset_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+    """格式化资产卡片字典，注入前端 camelCase 契约字段。"""
+    d = dict(r)
+    d["bookId"] = d.get("book_id", "")
+    d["userNote"] = d.get("user_note", "")
+    d["createdAt"] = d.get("created_at", "")
+    d["updatedAt"] = d.get("updated_at", "")
+    return d
+
+
+def _format_chain_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+    """格式化暗链字典，注入前端图谱 camelCase 契约字段。"""
+    d = dict(r)
+    b_id = d.get("book_id", "")
+    hook_ch = d.get("hook_chapter", 1)
+    payoff_ch = d.get("payoff_chapter", 1)
+    clue = d.get("clue_name", "核心主线暗链")
+    hook_txt = d.get("hook_text", "")
+    analysis = d.get("analysis", "")
+
+    d["bookId"] = b_id
+    d["title"] = clue
+    d["category"] = clue.split("·")[-1] if "·" in clue else "主线暗链"
+    d["plantChapter"] = hook_ch
+    d["revealChapter"] = (hook_ch + payoff_ch) // 2
+    d["climaxChapter"] = payoff_ch
+    d["description"] = f"{hook_txt}\n\n【伏笔解析】{analysis}".strip() if analysis else hook_txt
+    d["createdAt"] = d.get("created_at", "")
+    return d
+
+
 def list_assets(
     book_id: str | None = None,
     category: str | None = None,
     tag: str | None = None,
     genre: str | None = None,
     platform: str | None = None,
+    query: str | None = None,
 ) -> list[dict[str, Any]]:
-    """查询结构化精华资产列表。"""
+    """查询结构化精华资产列表（支持同义词归一化与全文关键字检索）。"""
     conn = db.get_conn()
-    query = "SELECT * FROM essence_assets"
+    sql = "SELECT * FROM essence_assets"
     conds: list[str] = []
     params: list[Any] = []
 
@@ -164,8 +210,14 @@ def list_assets(
         conds.append("book_id = ?")
         params.append(book_id)
     if category:
-        conds.append("category = ?")
-        params.append(category)
+        cat = category.strip().lower()
+        if cat in ("hook", "opening"):
+            conds.append("category IN ('hook', 'opening')")
+        elif cat in ("character", "persona"):
+            conds.append("category IN ('character', 'persona')")
+        else:
+            conds.append("category = ?")
+            params.append(cat)
     if genre:
         conds.append("genre = ?")
         params.append(genre)
@@ -175,13 +227,18 @@ def list_assets(
     if tag:
         conds.append("tags LIKE ?")
         params.append(f"%{tag}%")
+    if query:
+        q_clean = query.strip()
+        conds.append("(title LIKE ? OR tags LIKE ? OR summary LIKE ? OR content LIKE ?)")
+        q_p = f"%{q_clean}%"
+        params.extend([q_p, q_p, q_p, q_p])
 
     if conds:
-        query += " WHERE " + " AND ".join(conds)
-    query += " ORDER BY rating DESC, updated_at DESC, id DESC"
+        sql += " WHERE " + " AND ".join(conds)
+    sql += " ORDER BY rating DESC, updated_at DESC, id DESC"
 
-    rows = conn.execute(query, params).fetchall()
-    return [dict(r) for r in rows]
+    rows = conn.execute(sql, params).fetchall()
+    return [_format_asset_dict(r) for r in rows]
 
 
 def create_asset(
@@ -221,7 +278,7 @@ def create_asset(
         asset_id = cur.lastrowid
 
     row = db.get_conn().execute("SELECT * FROM essence_assets WHERE id = ?", (asset_id,)).fetchone()
-    return dict(row)
+    return _format_asset_dict(row)
 
 
 def update_asset(asset_id: int, **fields: Any) -> dict[str, Any]:
@@ -247,7 +304,7 @@ def update_asset(asset_id: int, **fields: Any) -> dict[str, Any]:
             raise ServiceError(f"未找到资产: {asset_id}", 404)
 
     row = db.get_conn().execute("SELECT * FROM essence_assets WHERE id = ?", (asset_id,)).fetchone()
-    return dict(row)
+    return _format_asset_dict(row)
 
 
 def delete_asset(asset_id: int) -> dict[str, Any]:
@@ -263,14 +320,19 @@ def delete_asset(asset_id: int) -> dict[str, Any]:
 # 3. 伏笔回收链管理（Foreshadowing Chains）
 # ---------------------------------------------------------------------------
 
-def list_chains(book_id: str) -> list[dict[str, Any]]:
-    """查询指定小说的伏笔暗线回收链条。"""
+def list_chains(book_id: str | None = None) -> list[dict[str, Any]]:
+    """查询指定小说或全库的伏笔暗线回收链条。"""
     conn = db.get_conn()
-    rows = conn.execute(
-        "SELECT * FROM essence_chains WHERE book_id = ? ORDER BY hook_chapter ASC, id ASC",
-        (book_id,)
-    ).fetchall()
-    return [dict(r) for r in rows]
+    if book_id:
+        rows = conn.execute(
+            "SELECT * FROM essence_chains WHERE book_id = ? ORDER BY hook_chapter ASC, id ASC",
+            (book_id,)
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM essence_chains ORDER BY id ASC"
+        ).fetchall()
+    return [_format_chain_dict(r) for r in rows]
 
 
 def create_chain(
@@ -627,3 +689,36 @@ def adopt_asset_to_project(
 
         else:
             raise ServiceError(f"不支持的反哺目标类型: {target_kind}，可选: outline, character, note", 400)
+
+
+def get_overall_stats() -> dict[str, Any]:
+    """获取小说精华库全库宏观聚合统计指标（支持双向下划线与驼峰契约）。"""
+    conn = db.get_conn()
+    total_books = conn.execute("SELECT count(*) FROM essence_books").fetchone()[0]
+    total_chars = conn.execute("SELECT coalesce(sum(total_chars), 0) FROM essence_books").fetchone()[0]
+    total_chapters = conn.execute("SELECT coalesce(sum(total_chapters), 0) FROM essence_books").fetchone()[0]
+    total_assets = conn.execute("SELECT count(*) FROM essence_assets").fetchone()[0]
+    total_chains = conn.execute("SELECT count(*) FROM essence_chains").fetchone()[0]
+
+    genre_rows = conn.execute("SELECT genre, count(*) as cnt FROM essence_books GROUP BY genre ORDER BY cnt DESC").fetchall()
+    genre_distribution = {r["genre"]: r["cnt"] for r in genre_rows}
+
+    category_rows = conn.execute("SELECT category, count(*) as cnt FROM essence_assets GROUP BY category ORDER BY cnt DESC").fetchall()
+    category_distribution = {r["category"]: r["cnt"] for r in category_rows}
+
+    return {
+        "total_books": total_books,
+        "total_chars": total_chars,
+        "total_chapters": total_chapters,
+        "total_assets": total_assets,
+        "total_chains": total_chains,
+        "genre_distribution": genre_distribution,
+        "category_distribution": category_distribution,
+        "totalBooks": total_books,
+        "totalChars": total_chars,
+        "totalChapters": total_chapters,
+        "totalAssets": total_assets,
+        "totalChains": total_chains,
+        "genreDistribution": genre_distribution,
+        "categoryDistribution": category_distribution,
+    }
