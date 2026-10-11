@@ -535,10 +535,28 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(md_book["genre"], "yanqing")
 
         assets = essence_service.list_assets(book_id="curated_mudongnianchun")
-        self.assertGreaterEqual(len(assets), 4)
+        self.assertGreaterEqual(len(assets), 5)
 
         chains = essence_service.list_chains(book_id="curated_mudongnianchun")
         self.assertGreaterEqual(len(chains), 2)
+
+    def test_adopt_book_to_project(self):
+        """验证一键转入整本神作资产到写作项目。"""
+        essence_service.ensure_curated_library(clean_raw_corpus=False)
+        res = essence_service.adopt_book_to_project("curated_mudongnianchun", "test_proj")
+        self.assertTrue(res["adopted"])
+        self.assertEqual(res["total_adopted"], 5)
+
+        # 路由分发 POST /api/essence/books/{book_id}/adopt-all
+        resp, _ = router.dispatch(
+            "POST",
+            "/api/essence/books/curated_mudongnianchun/adopt-all",
+            {"project": "demo_novel"},
+            {},
+        )
+        self.assertEqual(resp["code"], 0)
+        self.assertTrue(resp["data"]["adopted"])
+        self.assertEqual(resp["data"]["total_adopted"], 5)
 
 
 if __name__ == "__main__":

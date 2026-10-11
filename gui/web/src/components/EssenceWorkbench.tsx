@@ -661,6 +661,10 @@ function EssenceAssetsSection() {
 
 function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
   const [books, setBooks] = useState<EssenceBook[]>([])
+  const [projects, setProjects] = useState<string[]>([])
+  const [adoptBookDialog, setAdoptBookDialog] = useState<EssenceBook | null>(null)
+  const [adoptProject, setAdoptProject] = useState('default')
+  const [adopting, setAdopting] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
@@ -669,8 +673,16 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
     setLoading(true)
     setError('')
     try {
-      const res = await essenceApi.listBooks()
+      const [res, projs] = await Promise.all([
+        essenceApi.listBooks(),
+        writingApi.projects().catch(() => []),
+      ])
       setBooks(res.books || [])
+      const projNames = (projs || []).map((p: WritingProject) => p.name)
+      if (projNames.length > 0) {
+        setProjects(projNames)
+        setAdoptProject(projNames[0])
+      }
     } catch (e) {
       setError(friendlyError(e))
     } finally {
@@ -713,6 +725,22 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
       onToast?.(msg)
     } catch (e) {
       setError(friendlyError(e))
+    }
+  }
+
+  const handleExecuteAdoptBook = async () => {
+    if (!adoptBookDialog || !adoptProject) return
+    setAdopting(true)
+    try {
+      const res = await essenceApi.adoptBook(adoptBookDialog.bookId, adoptProject)
+      const msg = `已将《${adoptBookDialog.title}》的全套五维资产 (${res.totalAdopted}项) 一键反哺至项目 [${adoptProject}]！`
+      setToast(msg)
+      onToast?.(msg)
+      setAdoptBookDialog(null)
+    } catch (e) {
+      setError(friendlyError(e))
+    } finally {
+      setAdopting(false)
     }
   }
 
@@ -786,7 +814,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
 
                   <Divider sx={{ my: 1.5 }} />
 
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                     <Button
                       size="small"
                       variant="outlined"
@@ -803,6 +831,15 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
                     >
                       导出节拍
                     </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      startIcon={<BookmarkAddIcon fontSize="small" />}
+                      onClick={() => setAdoptBookDialog(b)}
+                    >
+                      整本反哺
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>
@@ -810,6 +847,38 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
           ))}
         </Grid>
       )}
+
+      {/* 整本反哺对话框 */}
+      <Dialog open={Boolean(adoptBookDialog)} onClose={() => setAdoptBookDialog(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>一键整本反哺到写作工坊</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            将《{adoptBookDialog?.title}》沉淀的全部五维资产（核心大纲、原型人设、爆款桥段、反AI文风）一键注入到目标项目中。
+          </Typography>
+          <TextField
+            select
+            label="目标创作项目"
+            size="small"
+            value={adoptProject}
+            onChange={(e) => setAdoptProject(e.target.value)}
+            fullWidth
+          >
+            {projects.length === 0 ? (
+              <MenuItem value="default">default (默认项目)</MenuItem>
+            ) : (
+              projects.map((p) => (
+                <MenuItem key={p} value={p}>{p}</MenuItem>
+              ))
+            )}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAdoptBookDialog(null)}>取消</Button>
+          <Button variant="contained" color="secondary" disabled={adopting} onClick={handleExecuteAdoptBook}>
+            {adopting ? '正在注入...' : '确认注入'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={Boolean(toast)}

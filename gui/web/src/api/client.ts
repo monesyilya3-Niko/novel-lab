@@ -1017,6 +1017,8 @@ export const essenceApi = {
   deleteAsset: (assetId: number) => del<{ deleted: boolean; assetId: number }>(`/essence/assets/${assetId}`),
   adoptAsset: (body: { asset_id: number; project: string; target_kind?: string }) =>
     post<{ adopted: boolean; targetKind: string; recordId: number }>('/essence/adopt', body),
+  adoptBook: (bookId: string, project: string) =>
+    post<{ adopted: boolean; bookId: string; totalAdopted: number }>(`/essence/books/${encodeURIComponent(bookId)}/adopt-all`, { project }),
   listChains: (bookId?: string) => {
     const q = bookId ? `?book_id=${encodeURIComponent(bookId)}` : ''
     return get<{ chains: EssenceChain[] }>(`/essence/chains${q}`)

@@ -334,18 +334,26 @@ def rows_to_dicts(rows: Any) -> list[dict[str, Any]]:
     return [_row_to_dict(r) for r in rows]
 
 
+def table_exists(table_name: str) -> bool:
+    """探测指定表在当前 SQLite 库中是否存在（只读元数据查询）。"""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+    except sqlite3.Error:
+        return False
+
+
 def _db_ready() -> bool:
     """判断 schema 是否已初始化（``assets`` 表存在即视为就绪）。
 
     只读探测：未建库（如旧测试 monkeypatch STATE_ROOT 后未 init_schema）时返回 False，
     让上层（asset_index / services / state_store）回退目录扫描 / JSON，避免 OperationalError。
     """
-    conn = get_conn()
-    try:
-        conn.execute("SELECT 1 FROM assets LIMIT 1").fetchone()
-        return True
-    except sqlite3.Error:
-        return False
+    return table_exists("assets")
 
 
 def count_assets(kind: str | None = None, genre: str | None = None,
@@ -467,7 +475,7 @@ def get_genres() -> list[dict[str, Any]]:
 
 def get_task(book_id: str) -> dict[str, Any] | None:
     """按 book_id 查询分析任务。未建库时返回 None（上层回退 JSON）。"""
-    if not _db_ready():
+    if not table_exists("analysis_tasks"):
         return None
     conn = get_conn()
     row = conn.execute("SELECT * FROM analysis_tasks WHERE book_id = ?", (book_id,)).fetchone()
@@ -479,6 +487,8 @@ def upsert_task(task: dict[str, Any]) -> None:
 
     task 需含 book_id；batch_state 用 JSON 字符串落库。
     """
+    if not table_exists("analysis_tasks"):
+        return
     book_id = task.get("book_id", "")
     if not book_id:
         raise ValueError("task 缺 book_id")

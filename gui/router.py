@@ -1011,6 +1011,14 @@ def _h_essence_adopt(_params: dict[str, Any], body: dict[str, Any]) -> dict[str,
     return ok(essence_service.adopt_asset_to_project(asset_id, project, target_kind=target_kind))
 
 
+def _h_essence_book_adopt_all(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    book_id = params["book_id"]
+    b = body or {}
+    project = b.get("project") or "default"
+    return ok(essence_service.adopt_book_to_project(book_id, project))
+
+
 def _h_writing_project_meta_get(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
     return ok(writing_extra.get_project_meta(params["project"]))
@@ -1238,6 +1246,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("DELETE", re.compile(r"^/api/essence/chains/(?P<chain_id>[^/]+)$"), _h_essence_chain_delete),
     ("GET", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)/export-outline$"), _h_essence_export_outline),
     ("GET", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)/export-beats$"), _h_essence_export_beats),
+    ("POST", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)/adopt-all$"), _h_essence_book_adopt_all),
     ("POST", re.compile(r"^/api/essence/constitution/check$"), _h_essence_constitution_check),
 ]
 

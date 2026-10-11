@@ -15,6 +15,7 @@ const mockCheckConstitution = vi.fn()
 const mockListChains = vi.fn()
 const mockCreateChain = vi.fn()
 const mockDeleteChain = vi.fn()
+const mockAdoptBook = vi.fn()
 const mockProjects = vi.fn()
 
 vi.mock('../api/client', () => ({
@@ -24,6 +25,7 @@ vi.mock('../api/client', () => ({
     createAsset: (...args: any[]) => mockCreateAsset(...args),
     deleteAsset: (...args: any[]) => mockDeleteAsset(...args),
     adoptAsset: (...args: any[]) => mockAdoptAsset(...args),
+    adoptBook: (...args: any[]) => mockAdoptBook(...args),
     listBooks: (...args: any[]) => mockListBooks(...args),
     deleteBook: (...args: any[]) => mockDeleteBook(...args),
     exportOutline: (...args: any[]) => mockExportOutline(...args),

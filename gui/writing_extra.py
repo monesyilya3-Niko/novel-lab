@@ -346,6 +346,8 @@ def record_words(project: str, words: int, chapters: int = 1) -> None:
         words = int(words)
         if words == 0:
             return
+        if not db.table_exists("writing_daily_stats"):
+            return
         with db.tx() as conn:
             conn.execute(
                 "INSERT INTO writing_daily_stats (date, project, words, chapters)"

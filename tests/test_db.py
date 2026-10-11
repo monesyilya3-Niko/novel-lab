@@ -185,6 +185,13 @@ class TestDb(unittest.TestCase):
         rows = db.get_books(genre="xianxia' OR '1'='1")
         self.assertEqual(rows, [])
 
+    def test_table_exists(self):
+        """table_exists 准确判断表是否存在。"""
+        db.init_schema()
+        self.assertTrue(db.table_exists("assets"))
+        self.assertTrue(db.table_exists("analysis_tasks"))
+        self.assertFalse(db.table_exists("nonexistent_table_xyz"))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
