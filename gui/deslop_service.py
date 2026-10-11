@@ -55,6 +55,39 @@ CLICHE_PATTERNS = [
 ]
 
 _SENT_SPLIT_RE = re.compile(r"[。！？\n\r]+|[…]{2,}")
+# 句内并列分句边界（；/;）——排比同构句常以分号串联，不切开就会整段漏检。
+_CLAUSE_SPLIT_RE = re.compile(r"[；;]+")
+
+# 同构句检测：句首“引导字”集合。AI 腔的典型形态是连续多句以同一主语/动词起手
+# （他…他…他…），而旧实现要求前两字完全相同（“他看”vs“他坐”即失配），
+# 导致最普遍的一类同构句完全漏检。改为「首字相同」判定 + 排除纯虚词起手。
+_PARALLEL_LEAD_CHARS = frozenset("他她它我你")
+_PARALLEL_TAIL_LEAD_CHARS = frozenset("像每这那")
+
+
+def _is_parallel_lead(sentence: str) -> bool:
+    """判定句子是否以「可构成同构排比」的字起手。
+
+    仅认人称代词与少数指示性起手字——它们作句首时才具备"连续同构"的机械感。
+    例如「他…他…他…」是 AI 腔重灾区；而「风…雨…雷…」这类不同主语起手
+    属于正常文学排比，不应误报。
+    """
+    return bool(sentence) and sentence[0] in (_PARALLEL_LEAD_CHARS | _PARALLEL_TAIL_LEAD_CHARS)
+
+
+def _locate(text: str, needle: str, start: int) -> int:
+    """从 ``start`` 起定位 ``needle``，找不到则回落到全文查找，再不行返回 start。
+
+    用于给 issue 提供**正确**的字符偏移。旧实现直接用 ``text.find(s)``，
+    同一句在文中重复出现时索引恒指向首次出现处，前端高亮会跳到错误段落。
+    """
+    if not needle:
+        return start
+    idx = text.find(needle, max(0, start))
+    if idx >= 0:
+        return idx
+    idx = text.find(needle)
+    return idx if idx >= 0 else start
 
 
 def analyze_deslop(text: str) -> dict[str, Any]:
@@ -142,20 +175,60 @@ def analyze_deslop(text: str) -> dict[str, Any]:
         })
 
     # 6. 无由排比与连续同构句式检查
-    for i in range(len(raw_sents) - 2):
-        s1, s2, s3 = raw_sents[i], raw_sents[i+1], raw_sents[i+2]
-        # 判断三个句子的前 2-3 个字是否完全同构（如"他看见…他听见…他感到…"）
-        if len(s1) >= 4 and len(s2) >= 4 and len(s3) >= 4:
-            prefix1, prefix2, prefix3 = s1[:2], s2[:2], s3[:2]
-            if prefix1 == prefix2 == prefix3 and any(ch in prefix1 for ch in ("他", "她", "它", "像", "每", "这", "那")):
-                issues.append({
-                    "type": "parallelism",
-                    "label": "机械连续同构句",
-                    "snippet": f"{s1}；{s2}；{s3}",
-                    "index": text.find(s1) if text.find(s1) >= 0 else 0,
-                    "weight": 14,
-                    "suggestion": "连续相同句式开头显得过于工整死板，打破对仗，融合为更有节奏的错落叙述。",
-                })
+    #
+    # 实现要点（旧实现的三处缺陷，2026-10-11 修复）：
+    #   a) 旧版要求前两字完全相同 → "他看见/他听见/他感到" 这类最典型的 AI 腔同构
+    #      全部漏检。改为「首字相同」判定，并保留 2 字全同也视为同构。
+    #   b) 旧版固定 3 句滑动窗口 → 4 句同构会报 2 条重叠问题、5 句报 3 条。
+    #      改为**贪心最长链**：一次吞掉整条同构链，链内不再重复计数。
+    #   c) 旧版 index 用 text.find(s1) → 同一句在文中重复出现时，索引恒指向首次
+    #      出现处，前端高亮会跳到错误段落。改为按切句时的累计偏移定位。
+    #
+    # 切句：除句末标点外，分号串联的并列分句也要切开——排比句常写成
+    # "他看见风雪；他看见长剑；他看见破碎的梦。"，不切分号就整段是一句。
+    clauses: list[tuple[str, int]] = []
+    for s in raw_sents:
+        parts = _CLAUSE_SPLIT_RE.split(s)
+        if len(parts) == 1:
+            clauses.append((s, _locate(text, s, clauses[-1][1] if clauses else 0)))
+            continue
+        base = _locate(text, s, clauses[-1][1] if clauses else 0)
+        cursor = base
+        for p in parts:
+            p_st = p.strip()
+            if not p_st:
+                continue
+            off = _locate(text, p_st, cursor)
+            clauses.append((p_st, off))
+            cursor = off + len(p_st)
+
+    i = 0
+    n_clause = len(clauses)
+    while i < n_clause:
+        head = clauses[i][0]
+        if len(head) < 4 or not _is_parallel_lead(head):
+            i += 1
+            continue
+        # 向后贪心延伸同构链
+        j = i + 1
+        while j < n_clause:
+            nxt = clauses[j][0]
+            if len(nxt) >= 4 and _is_parallel_lead(nxt) and nxt[0] == head[0]:
+                j += 1
+            else:
+                break
+        chain_len = j - i
+        if chain_len >= 3:
+            segs = [c[0] for c in clauses[i:j]]
+            issues.append({
+                "type": "parallelism",
+                "label": "机械连续同构句",
+                "snippet": "；".join(segs[:6]) + ("…" if chain_len > 6 else ""),
+                "index": clauses[i][1],
+                "weight": 14,
+                "suggestion": "连续相同句式开头显得过于工整死板，打破对仗，融合为更有节奏的错落叙述。",
+            })
+        i = j if chain_len >= 3 else i + 1
 
     # 综合计分 (0-100，越低越健康纯正，100 极度油腻严重 AI 味)
     # 基础分 = 惩罚分归一化

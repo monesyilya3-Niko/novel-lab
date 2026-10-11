@@ -392,12 +392,23 @@ class TestResumeSkipsSuccess(unittest.TestCase):
         _cleanup_state_files()
 
     def _wait_done(self, book_id, timeout=5.0):
+        """等待分析完成 **且后台线程真正退出**。
+
+        只等 ``status == "done"`` 不够：``_run_analysis`` 先置 status 再收尾，
+        两者之间有窗口期。此时调用 ``resume()`` 会走到 ``start_analysis`` 的
+        ``rt["thread"].is_alive()`` 检查并抛 409「分析已在运行中」——
+        机器负载高时窗口期被拉长，测试间歇性 ERROR（2026-10-11 实修：
+        全量套件下约每十几次触发一次，单跑 15 次全过，是典型的时序竞态）。
+        """
         import time
         deadline = time.time() + timeout
         while time.time() < deadline:
             st = services.get_status(book_id)
             if st["status"] in ("done", "error"):
-                return st
+                rt = services._runtime.get(book_id)
+                th = rt.get("thread") if rt else None
+                if th is None or not th.is_alive():
+                    return st
             time.sleep(0.05)
         return services.get_status(book_id)
 

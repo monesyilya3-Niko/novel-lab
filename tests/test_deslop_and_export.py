@@ -66,6 +66,62 @@ class TestDeslopService(unittest.TestCase):
         self.assertEqual(res["stats"]["word_count"], 0)
         self.assertEqual(res["issues"], [])
 
+    # --- 同构句检测回归（2026-10-11 修复四处缺陷） ---------------------------
+    # 旧实现的失效模式：a) 要求前两字全同 → "他看见/他听见" 漏检；
+    # b) 固定 3 句窗口 → 长链重复报告；c) index 恒指首次出现处 → 高亮错位；
+    # d) 切句不认分号 → 分号串联的排比整段漏检。
+
+    @staticmethod
+    def _parallel_issues(res):
+        return [it for it in res["issues"] if it["type"] == "parallelism"]
+
+    def test_parallelism_detects_same_first_char_chain(self):
+        """首字相同、后续不同（AI 腔最普遍形态）必须被检出。"""
+        text = "他走进房间。他坐了下来。他看着窗外。"
+        issues = self._parallel_issues(deslop_service.analyze_deslop(text))
+        self.assertEqual(len(issues), 1, f"应检出 1 条同构句，实际 {len(issues)} 条")
+
+    def test_parallelism_chain_is_not_reported_overlapping(self):
+        """4 句同构链只报 1 条（旧版滑动窗口会报 2 条重叠问题）。"""
+        text = "他看见天空。他看见大地。他看见海洋。他看见星辰。"
+        issues = self._parallel_issues(deslop_service.analyze_deslop(text))
+        self.assertEqual(len(issues), 1, f"长链应合并为 1 条，实际 {len(issues)} 条")
+        # 整条链应完整出现在 snippet 中，而不是被截断成前 3 句
+        self.assertIn("他看见星辰", issues[0]["snippet"])
+
+    def test_parallelism_semicolon_clauses(self):
+        """分号串联的排比必须被检出（旧版切句不认分号）。"""
+        text = "他看见风雪；他看见长剑；他看见破碎的梦。"
+        issues = self._parallel_issues(deslop_service.analyze_deslop(text))
+        self.assertEqual(len(issues), 1, f"分号排比应检出 1 条，实际 {len(issues)} 条")
+
+    def test_parallelism_index_points_at_real_occurrence(self):
+        """重复文本中 index 必须指向该次真实出现位置，而非恒为首次。"""
+        seg = "他看见天空。他看见大地。他看见海洋。"
+        filler = "填充内容。" * 30
+        text = seg + filler + seg
+        issues = self._parallel_issues(deslop_service.analyze_deslop(text))
+        self.assertEqual(len(issues), 2, f"两处同构链应各报 1 条，实际 {len(issues)} 条")
+        offsets = sorted(it["index"] for it in issues)
+        second_start = len(seg) + len(filler)
+        self.assertEqual(offsets[0], 0)
+        self.assertEqual(
+            offsets[1], second_start,
+            f"第二条 index 应为 {second_start}（真实位置），实际 {offsets[1]}",
+        )
+
+    def test_parallelism_does_not_flag_distinct_subjects(self):
+        """不同主语的正常文学排比不得误报。"""
+        text = "风卷起落叶。雨打湿窗棂。雷滚过天际。"
+        issues = self._parallel_issues(deslop_service.analyze_deslop(text))
+        self.assertEqual(issues, [], f"不应误报，实际 {len(issues)} 条")
+
+    def test_parallelism_requires_three_clauses(self):
+        """仅 2 句同构不构成机械排比，不报。"""
+        text = "他看见天空。他看见大地。"
+        issues = self._parallel_issues(deslop_service.analyze_deslop(text))
+        self.assertEqual(issues, [])
+
 
 class TestWritingExportAndReorder(unittest.TestCase):
     def setUp(self):
