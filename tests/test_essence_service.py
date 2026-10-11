@@ -390,6 +390,41 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(len(resp_char["data"]["assets"]), 1)
         self.assertEqual(resp_char["data"]["assets"][0]["title"], "戒指里的老爷爷药老")
 
+    def test_essence_invalid_param_400_intercept(self):
+        # 1. DELETE asset 传入非数字 asset_id
+        with self.assertRaises(ServiceError) as cm:
+            router.dispatch("DELETE", "/api/essence/assets/invalid-id", {}, {})
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("asset_id 必须为整数", cm.exception.message)
+
+        # 2. DELETE chain 传入非数字 chain_id
+        with self.assertRaises(ServiceError) as cm:
+            router.dispatch("DELETE", "/api/essence/chains/invalid-id", {}, {})
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("chain_id 必须为整数", cm.exception.message)
+
+        # 3. POST adopt 传入非数字 asset_id
+        with self.assertRaises(ServiceError) as cm:
+            router.dispatch("POST", "/api/essence/adopt", {"asset_id": "not-an-int", "project": "default"}, {})
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("asset_id 必须为整数", cm.exception.message)
+
+        # 4. POST chain 传入非数字 hook_chapter
+        with self.assertRaises(ServiceError) as cm:
+            router.dispatch("POST", "/api/essence/chains", {
+                "book_id": "b1", "clue_name": "线索", "hook_chapter": "abc"
+            }, {})
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("hook_chapter 必须为整数", cm.exception.message)
+
+        # 5. POST asset 传入非数字 rating
+        with self.assertRaises(ServiceError) as cm:
+            router.dispatch("POST", "/api/essence/assets", {
+                "book_id": "b1", "category": "style", "title": "标题", "content": "内容", "rating": "abc"
+            }, {})
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("rating 必须为整数", cm.exception.message)
+
 
 if __name__ == "__main__":
     unittest.main()

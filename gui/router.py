@@ -402,17 +402,19 @@ def _h_writing_outline_create(_params: dict[str, Any], body: dict[str, Any]) -> 
         b.get("project") or "", kind=b.get("kind") or "chapter",
         title=b.get("title") or "", summary=b.get("summary") or "",
         status=b.get("status") or "planned",
-        sort_order=int(b.get("sort_order") or 0)))
+        sort_order=_safe_int(b.get("sort_order"), 0, "sort_order")))
 
 
 def _h_writing_outline_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    return ok(writing_extra.update_outline(int(params["oid"]), **(body or {})))
+    oid = _safe_int(params.get("oid"), 0, "oid")
+    return ok(writing_extra.update_outline(oid, **(body or {})))
 
 
 def _h_writing_outline_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    writing_extra.delete_outline(int(params["oid"]))
+    oid = _safe_int(params.get("oid"), 0, "oid")
+    writing_extra.delete_outline(oid)
     return ok({"deleted": True})
 
 
@@ -444,12 +446,14 @@ def _h_writing_character_create(_params: dict[str, Any], body: dict[str, Any]) -
 
 def _h_writing_character_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    return ok(writing_extra.update_character(int(params["cid"]), **(body or {})))
+    cid = _safe_int(params.get("cid"), 0, "cid")
+    return ok(writing_extra.update_character(cid, **(body or {})))
 
 
 def _h_writing_character_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    writing_extra.delete_character(int(params["cid"]))
+    cid = _safe_int(params.get("cid"), 0, "cid")
+    writing_extra.delete_character(cid)
     return ok({"deleted": True})
 
 
@@ -468,12 +472,14 @@ def _h_writing_note_create(_params: dict[str, Any], body: dict[str, Any]) -> dic
 
 def _h_writing_note_update(params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    return ok(writing_extra.update_note(int(params["nid"]), **(body or {})))
+    nid = _safe_int(params.get("nid"), 0, "nid")
+    return ok(writing_extra.update_note(nid, **(body or {})))
 
 
 def _h_writing_note_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import writing_extra
-    writing_extra.delete_note(int(params["nid"]))
+    nid = _safe_int(params.get("nid"), 0, "nid")
+    writing_extra.delete_note(nid)
     return ok({"deleted": True})
 
 
@@ -982,25 +988,27 @@ def _h_essence_asset_create(_params: dict[str, Any], body: dict[str, Any]) -> di
         tags=b.get("tags", ""),
         genre=b.get("genre", "general"),
         platform=b.get("platform", "general"),
-        rating=int(b.get("rating", 5)),
+        rating=_safe_int(b.get("rating"), 5, "rating"),
         user_note=b.get("user_note") or b.get("userNote") or "",
     ))
 
 
 def _h_essence_asset_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
-    return ok(essence_service.delete_asset(int(params["asset_id"])))
+    asset_id = _safe_int(params.get("asset_id"), 0, "asset_id")
+    return ok(essence_service.delete_asset(asset_id))
 
 
 def _h_essence_adopt(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
     b = body or {}
-    asset_id = b.get("asset_id") if b.get("asset_id") is not None else b.get("assetId")
+    asset_id_raw = b.get("asset_id") if b.get("asset_id") is not None else b.get("assetId")
     project = b.get("project")
     target_kind = b.get("target_kind") or b.get("targetKind") or "outline"
-    if asset_id is None:
+    if asset_id_raw is None:
         raise ServiceError("缺少 asset_id", 400)
-    return ok(essence_service.adopt_asset_to_project(int(asset_id), project, target_kind=target_kind))
+    asset_id = _safe_int(asset_id_raw, 0, "asset_id")
+    return ok(essence_service.adopt_asset_to_project(asset_id, project, target_kind=target_kind))
 
 
 def _h_writing_project_meta_get(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
@@ -1046,8 +1054,8 @@ def _h_essence_chain_create(_params: dict[str, Any], body: dict[str, Any]) -> di
     return ok(essence_service.create_chain(
         book_id=b.get("book_id") or b.get("bookId") or "",
         clue_name=clue_full,
-        hook_chapter=int(hook_ch),
-        payoff_chapter=int(payoff_ch),
+        hook_chapter=_safe_int(hook_ch, 1, "hook_chapter"),
+        payoff_chapter=_safe_int(payoff_ch, 1, "payoff_chapter"),
         hook_text=hook_txt,
         payoff_text=b.get("payoff_text", ""),
         status=b.get("status", "planted"),
@@ -1057,7 +1065,8 @@ def _h_essence_chain_create(_params: dict[str, Any], body: dict[str, Any]) -> di
 
 def _h_essence_chain_delete(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
     from gui import essence_service
-    return ok(essence_service.delete_chain(int(params["chain_id"])))
+    chain_id = _safe_int(params.get("chain_id"), 0, "chain_id")
+    return ok(essence_service.delete_chain(chain_id))
 
 
 

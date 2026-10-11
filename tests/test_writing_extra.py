@@ -247,6 +247,14 @@ class WritingExtraTest(unittest.TestCase):
         self.assertEqual(payload["code"], 0)
         self.assertIn("today_words", payload["data"])
 
+        # 非法非数字 sort_order 拦截测试：必须为 400 业务错误，绝不崩溃成 500
+        with self.assertRaises(ServiceError) as cm:
+            router.dispatch("POST", "/api/writing/outlines", {
+                "project": PROJ, "title": "第一卷", "sort_order": "not-an-int"
+            }, {})
+        self.assertEqual(cm.exception.code, 400)
+        self.assertIn("sort_order 必须为整数", cm.exception.message)
+
     def test_project_meta_crud_and_router(self):
         from gui import router
         # 1. 默认查询
