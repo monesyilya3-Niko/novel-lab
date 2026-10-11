@@ -44,7 +44,7 @@ feat|fix|docs|refactor|test|chore: 摘要
 正文说明动机（可选）。
 ```
 
-一次提交只做一件事。版本与 CHANGELOG 由 release-please 自动维护，不要手改 `CHANGELOG.md`。
+一次提交只做一件事。**版本号由 Agent 自主递增**（授权见 `AGENTS.md` §7「发布与版本授权」），递增时须同步 7 处标记点并重建前端 dist；`CHANGELOG.md` 不要手改——发版说明由 `.github/workflows/release.yml` 在推送 `v*` tag 时从 Conventional Commits 自动生成（release-please 方案已评估弃用，见该 workflow 注释）。
 
 ## 提交什么、绝不提交什么
 

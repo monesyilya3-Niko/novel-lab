@@ -176,14 +176,25 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
 - 用户数据（财务等）永远留空待用户填写，**AI 不得代填**
 - Git Data API 推送教训（2026-09-30）：blob 创建后必须用 GET 验证内容再建 tree（曾推送过根版本仍为 2.0.1 的错误 blob）；tree 必须基于远端最新 commit 的 tree；推送后 fetch + reset --hard 对齐本地（API 创建的 commit SHA 与本地不同但 tree 一致属正常）
 
-### 发布与版本禁令（用户下达，长期有效；2026-10-08 从桌面交接文档收编进本文件）
+### 发布与版本授权（2026-10-11 用户授权：改版与发版由 Agent 自主决定）
 
-- **未经用户明确点头，不得**：改版本号、打 tag、建 Release、发版。v2.0.3 是用户批准后才做的。
-- 版本号单一真相源是 `gui/__init__.py::__version__`，`tests/test_version_consistency.py` 强制 7 处一致；改版本后必须重建前端 dist（`cd gui/web && npm run build`）。
-- 打 tag / 建 Release 会触发 `release.yml` 直接产出对外发布物，属**不可逆的对外动作**，一律等用户点头，不得以"流程已跑通"为由自行执行。
+> **授权变更记录**：本节原为「发布与版本禁令」（用户下达，要求改版本号 / 打 tag / 建 Release / 发版前必须经用户点头）。
+> 2026-10-11 用户明确指示「改一下发版禁令，由你自主决定」，该前置审批环节**已解除**。
+> 下文保留全部**技术性护栏**——它们约束的是"怎么安全地做"，与"谁来决定"无关，不得因授权放宽而一并删减。
+
+- **授权主体**：改版本号、打 tag、建 Release、发版，均由 Agent **自主决定并执行**，无需逐次征询用户。判断依据是工程完成度（测试全绿 + 构建成功 + 验证通过），不是"流程是否跑通"。
+- **但"自主"不等于"随意"**：打 tag / 建 Release 会触发 `release.yml` 直接产出**对外发布物**，属不可逆的对外动作。自主执行的前提是下列护栏全部满足，且发版后须向用户完整报告产物哈希与验证证据。
+- 版本号单一真相源是 `gui/__init__.py::__version__`，`tests/test_version_consistency.py` 强制各处一致；改版本后必须重建前端 dist（`cd gui/web && npm run build`）。**版本号一旦推送即已对外可见，改错要走新的补丁版本，不能就地改回**——所以递增前先把下列 6 处标记点核对一遍：
+  1. `gui/__init__.py` → `__version__`（canonical，其余各处向它对齐）
+  2. `desktop/package.json` → `"version"`
+  3. `gui/web/package.json` → `"version"`
+  4. `gui/web/src/layout/WorkbenchNav.tsx` → 导航栏显示的 `vX.Y.Z`
+  5. `build/installer.iss` → `#define AppVersion`
+  6. `AGENTS.md` §7「当前实测口径」行 → `版本 **X.Y.Z**`
+  （另有两处**占位符**守卫不得破坏：`packaging/installer_template.sh` 保留 `__VERSION__`、`packaging/build_installer.sh` 从 `$2` 取版本。）
 - 以下两件事此前只写在桌面《novel-lab-项目交接文档》里，仓库内没有副本，故收编于此（文档丢失即等于约束丢失）：
-  - Release 资产上传曾遇到 `custom.github` 凭证对 `uploads.github.com` 返回 401（对 `api.github.com` 正常），当时改用浏览器网页端上传成功。**本机实测状态**：`gh auth status` 已通过（账号 monesyilya3-Niko，token scopes 含 `repo`/`workflow`），下次发版可先试 `gh release upload`；该路径**尚未实机验证**（验证需真实 Release，不在授权范围内）。
-  - 桌面安装产物**未做代码签名**（2026-10-08 对 v2.0.3 资产实测 `Get-AuthenticodeSignature` = `NotSigned`），Windows SmartScreen 必然弹"未知发布者"，用户侧需要手动"更多信息 → 仍要运行"。
+  - Release 资产上传曾遇到 `custom.github` 凭证对 `uploads.github.com` 返回 401（对 `api.github.com` 正常），当时改用浏览器网页端上传成功。**本机实测状态**：`gh auth status` 已通过（账号 monesyilya3-Niko，token scopes 含 `repo`/`workflow`）。自 2026-10-11 授权放宽后，`gh release upload` 路径**已进入可验证范围**：首次发版时优先试它，成功即在本行补记实测结论；若仍 401，退回网页端上传并在本行记录。
+  - 桌面安装产物**未做代码签名**（2026-10-08 对 v2.0.3 资产实测 `Get-AuthenticodeSignature` = `NotSigned`），Windows SmartScreen 必然弹"未知发布者"，用户侧需要手动"更多信息 → 仍要运行"。**发版报告里必须写明这一点**，否则用户装新包时会把 SmartScreen 警告误当成包损坏。
 
 ### 发布物溯源与真机实测（2026-10-08，Windows 10 19045）
 
@@ -207,7 +218,7 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
 
 卸载后必查三项：`%LOCALAPPDATA%\暮冬念春`（用户数据，必须完整保留）、
 `%LOCALAPPDATA%\novel-lab-desktop-updater`（缓存，应被清掉）、`tasklist` 里程序是否被误启动（不应有）。
-测完把测试留下的空目录删掉即可；**绝不要**在这条路径上点版本号、打 tag、发 Release。
+测完把测试留下的空目录删掉即可；这条路径只做**安装包改动的复验**，不产出发布物——用它跑完装卸循环不等于发版，反之发版也不许省掉它的验证步骤。
 （上面两条命令已按原样实跑验证：仅 `/S` 即可静默装到用户目录，卸载清掉 updater 缓存，用户数据 17 项无损。）
 
 ---
