@@ -725,3 +725,250 @@ def get_overall_stats() -> dict[str, Any]:
         "genreDistribution": genre_distribution,
         "categoryDistribution": category_distribution,
     }
+
+
+# ---------------------------------------------------------------------------
+# 6. 大纲与轻提纲 Markdown 导出引擎 (Outline & Beats Exporter)
+# ---------------------------------------------------------------------------
+
+def export_book_outline_markdown(book_id: str) -> str:
+    """基于书籍档案、五维资产与暗链图谱，导出专业的小说全书结构大纲 Markdown。"""
+    book = get_book(book_id)
+    assets = list_assets(book_id=book_id)
+    chains = list_chains(book_id=book_id)
+
+    lines = [
+        f"# 《{book.get('title', '未命名作品')}》全书结构大纲与解构报告",
+        "",
+        "> 本文档由小说精华数据库 (Novel Essence Database) 自动解构导出。",
+        "",
+        "## 一、全书基础档案",
+        "",
+        f"- **题材定位**：{book.get('genre', '通用')}",
+        f"- **目标平台**：{book.get('platform', '全平台')}",
+        f"- **全书体量**：共 {book.get('totalChapters', 0)} 章 · 约 {book.get('totalChars', 0):,} 字",
+        f"- **平均单章字数**：约 {book.get('avgChapterLen', 0):,} 字",
+        f"- **对白占比**：{book.get('dialogueRatio', 0.0) * 100:.1f}%",
+        f"- **高潮爆发周期**：约每 {book.get('rhythmClimaxInterval', 5)} 章一次波峰爆发",
+        f"- **AI 味指数**：{book.get('aiSlopScore', 1.0)} / 10.0",
+        "",
+    ]
+
+    # 开篇与黄金三章
+    opening_assets = [a for a in assets if a.get("category") in ("opening", "hook")]
+    if opening_assets:
+        lines.append("## 二、黄金三章开篇与核心钩子")
+        lines.append("")
+        for a in opening_assets:
+            lines.append(f"### {a.get('title')}")
+            if a.get("summary"):
+                lines.append(f"> **概括**：{a['summary']}")
+                lines.append("")
+            lines.append(a.get("content", ""))
+            lines.append("")
+
+    # 人设与角色矩阵
+    persona_assets = [a for a in assets if a.get("category") in ("persona", "character")]
+    if persona_assets:
+        lines.append("## 三、核心人物小传与角色矩阵")
+        lines.append("")
+        for a in persona_assets:
+            lines.append(f"### {a.get('title')}")
+            lines.append(a.get("content", ""))
+            lines.append("")
+
+    # 节奏与高潮爆点模型
+    trope_assets = [a for a in assets if a.get("category") in ("trope", "outline")]
+    if trope_assets:
+        lines.append("## 四、高潮爆点与爽点波峰模型")
+        lines.append("")
+        for a in trope_assets:
+            lines.append(f"### {a.get('title')}")
+            lines.append(a.get("content", ""))
+            lines.append("")
+
+    # 伏笔暗线
+    if chains:
+        lines.append("## 五、伏笔暗链图谱与回收清单")
+        lines.append("")
+        lines.append("| 伏笔名称 | 埋设章 | 显露章 | 高潮兑现章 | 状态 | 伏笔说明 |")
+        lines.append("|---|---|---|---|---|---|")
+        for c in chains:
+            desc = (c.get("description") or "").replace("\n", " ").replace("|", r"\|")
+            lines.append(
+                f"| {c.get('title', '主线暗链')} | 第 {c.get('plantChapter', 1)} 章 | "
+                f"第 {c.get('revealChapter', 1)} 章 | 第 {c.get('climaxChapter', 1)} 章 | "
+                f"{c.get('status', 'resolved')} | {desc[:60]}... |"
+            )
+        lines.append("")
+
+    # 行文文风指南
+    style_assets = [a for a in assets if a.get("category") == "style"]
+    if style_assets:
+        lines.append("## 六、行文文风与对白节奏指南")
+        lines.append("")
+        for a in style_assets:
+            lines.append(f"### {a.get('title')}")
+            lines.append(a.get("content", ""))
+            lines.append("")
+
+    return "\n".join(lines).strip() + "\n"
+
+
+def export_chapter_beats_markdown(book_id: str) -> str:
+    """导出分章节拍与剧情轻提纲 Markdown。"""
+    book = get_book(book_id)
+    chains = list_chains(book_id=book_id)
+    total_chapters = book.get("totalChapters", 0)
+    avg_len = book.get("avgChapterLen", 2000)
+
+    # 聚合各章节上的伏笔事件
+    chapter_events: dict[int, list[str]] = {}
+    for c in chains:
+        p_ch = c.get("plantChapter", 1)
+        r_ch = c.get("revealChapter", 1)
+        cl_ch = c.get("climaxChapter", 1)
+        c_title = c.get("title", "暗链")
+        chapter_events.setdefault(p_ch, []).append(f"🌱 埋设伏笔: {c_title}")
+        if r_ch != p_ch and r_ch != cl_ch:
+            chapter_events.setdefault(r_ch, []).append(f"🔍 伏笔微露: {c_title}")
+        chapter_events.setdefault(cl_ch, []).append(f"💥 伏笔兑现/高潮: {c_title}")
+
+    lines = [
+        f"# 《{book.get('title', '未命名作品')}》分章节拍与轻提纲清单",
+        "",
+        f"- 全书共 {total_chapters} 章节 · 均长约 {avg_len} 字",
+        "",
+        "| 章节序号 | 节奏定位 | 剧情节拍与暗线事件 | 推荐字数 |",
+        "|---|---|---|---|",
+    ]
+
+    for ch in range(1, total_chapters + 1):
+        events = chapter_events.get(ch, [])
+        is_opening = ch <= 3
+        is_climax = bool(any("💥" in e for e in events))
+        if is_opening:
+            rhythm = "🚀 黄金开篇"
+        elif is_climax:
+            rhythm = "🔥 核心高潮"
+        elif events:
+            rhythm = "⚡ 转折铺垫"
+        else:
+            rhythm = "🌊 叙事实进"
+
+        event_str = "；".join(events) if events else "主线平稳推进与细节积累"
+        rec_words = f"{int(avg_len * 1.3):,}" if is_climax else f"{avg_len:,}"
+        lines.append(f"| 第 {ch:03d} 章 | {rhythm} | {event_str} | 约 {rec_words} 字 |")
+
+    lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+# ---------------------------------------------------------------------------
+# 7. 小说宪法与正典守卫 (Novel Constitution & Canon Guard)
+# ---------------------------------------------------------------------------
+
+DEFAULT_CONSTITUTION_RULES = [
+    {
+        "id": "no_supernatural",
+        "name": "严禁超自然与奇幻穿帮",
+        "category": "worldview",
+        "terms": ["修仙", "灵气", "金丹", "元婴", "飞剑", "洞府", "魔尊", "天道", "系统提示", "宿主", "金手指", "异能", "魔法", "法杖"],
+        "severity": "high",
+        "penalty": 25,
+    },
+    {
+        "id": "no_anachronism",
+        "name": "严禁时代脱节或现代高科技穿越",
+        "category": "worldview",
+        "terms": ["智能手机", "互联网", "芯片", "液晶屏", "航母", "核潜艇"],
+        "severity": "medium",
+        "penalty": 15,
+    },
+    {
+        "id": "no_toxic_cliche",
+        "name": "严禁恶俗网文毒点台词",
+        "category": "dialogue",
+        "terms": ["女人你这是在玩火", "天凉了让王氏集团破产吧", "桀桀桀"],
+        "severity": "medium",
+        "penalty": 15,
+    },
+]
+
+
+def check_constitution_compliance(
+    text: str,
+    rules: list[dict[str, Any]] | None = None,
+    characters_forbidden: dict[str, list[str]] | None = None,
+) -> dict[str, Any]:
+    """小说宪法/正典合规性审查（支持自定义世界观红线与角色声线禁语）。"""
+    if not text or not isinstance(text, str):
+        return {
+            "compliance_score": 100,
+            "is_compliant": True,
+            "violations": [],
+            "character_voice_alerts": [],
+            "summary": "文本为空，默认合规",
+        }
+
+    active_rules = rules if rules is not None else DEFAULT_CONSTITUTION_RULES
+    violations: list[dict[str, Any]] = []
+    char_alerts: list[dict[str, Any]] = []
+    score = 100
+
+    lines = text.splitlines()
+
+    # 1. 规则项匹配
+    for r in active_rules:
+        r_id = r.get("id", "custom")
+        r_name = r.get("name", "未命名规则")
+        penalty = r.get("penalty", 10)
+        terms = r.get("terms", [])
+
+        for line_idx, line in enumerate(lines, 1):
+            for t in terms:
+                if t in line:
+                    pos = line.find(t)
+                    start = max(0, pos - 15)
+                    end = min(len(line), pos + len(t) + 15)
+                    snippet = line[start:end].strip()
+                    violations.append({
+                        "rule_id": r_id,
+                        "rule_name": r_name,
+                        "matched_term": t,
+                        "line_no": line_idx,
+                        "snippet": f"...{snippet}...",
+                        "severity": r.get("severity", "medium"),
+                    })
+                    score -= penalty
+
+    # 2. 角色特定禁语/从不说的话排查
+    if characters_forbidden:
+        for char_name, forbidden_phrases in characters_forbidden.items():
+            for line_idx, line in enumerate(lines, 1):
+                if char_name in line:
+                    for phrase in forbidden_phrases:
+                        if phrase in line:
+                            char_alerts.append({
+                                "character": char_name,
+                                "forbidden_phrase": phrase,
+                                "line_no": line_idx,
+                                "snippet": line.strip()[:60],
+                            })
+                            score -= 15
+
+    score = max(0, min(100, score))
+    is_compliant = score >= 80 and not any(v.get("severity") == "high" for v in violations)
+
+    if is_compliant:
+        summary = f"小说宪法合规检测通过 (得分: {score}/100)"
+    else:
+        summary = f"检测到 {len(violations)} 处可能违规违宪项与 {len(char_alerts)} 处角色声线冲突 (得分: {score}/100)"
+
+    return {
+        "compliance_score": score,
+        "is_compliant": is_compliant,
+        "violations": violations,
+        "character_voice_alerts": char_alerts,
+        "summary": summary,
+    }

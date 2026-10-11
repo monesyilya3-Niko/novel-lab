@@ -425,6 +425,92 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(cm.exception.code, 400)
         self.assertIn("rating 必须为整数", cm.exception.message)
 
+    def test_export_book_outline_and_beats_markdown(self):
+        # 创建测试书籍与配套资产
+        essence_service.create_or_update_book(
+            book_id="b_export_test",
+            title="星河战记",
+            genre="科幻末世",
+            platform="起点中文网",
+            total_chapters=10,
+            total_chars=35000,
+        )
+        essence_service.create_asset(
+            book_id="b_export_test",
+            category="opening",
+            title="开篇黄金危机钩",
+            content="主角在荒原废墟中遭遇巡逻队...",
+            summary="开篇高压求生",
+        )
+        essence_service.create_asset(
+            book_id="b_export_test",
+            category="persona",
+            title="主角林恩",
+            content="性格隐忍机智，擅长枪械改装",
+        )
+        essence_service.create_chain(
+            book_id="b_export_test",
+            clue_name="怀表里的神秘芯片",
+            hook_chapter=1,
+            payoff_chapter=8,
+            hook_text="林恩拾得一枚斑驳怀表",
+            status="resolved",
+        )
+
+        # 1. 直接调用导出
+        outline_md = essence_service.export_book_outline_markdown("b_export_test")
+        self.assertIn("# 《星河战记》全书结构大纲与解构报告", outline_md)
+        self.assertIn("开篇黄金危机钩", outline_md)
+        self.assertIn("主角林恩", outline_md)
+        self.assertIn("怀表里的神秘芯片", outline_md)
+
+        beats_md = essence_service.export_chapter_beats_markdown("b_export_test")
+        self.assertIn("# 《星河战记》分章节拍与轻提纲清单", beats_md)
+        self.assertIn("第 001 章", beats_md)
+        self.assertIn("埋设伏笔", beats_md)
+
+        # 2. 路由 GET 验证
+        resp_out, _ = router.dispatch("GET", "/api/essence/books/b_export_test/export-outline", {}, {})
+        self.assertEqual(resp_out["code"], 0)
+        self.assertIn("星河战记", resp_out["data"]["markdown"])
+
+        resp_beats, _ = router.dispatch("GET", "/api/essence/books/b_export_test/export-beats", {}, {})
+        self.assertEqual(resp_beats["code"], 0)
+        self.assertIn("分章节拍", resp_beats["data"]["markdown"])
+
+    def test_constitution_compliance_check(self):
+        # 1. 违宪文本：现代现实文出现超自然与恶俗台词
+        bad_text = (
+            "林晨站在街角。\n"
+            "他心念一动，体内元婴飞快运转，一道灵气灌注双目。\n"
+            "女人你这是在玩火，他冷冷地说道。\n"
+        )
+        res_bad = essence_service.check_constitution_compliance(bad_text)
+        self.assertFalse(res_bad["is_compliant"])
+        self.assertLess(res_bad["compliance_score"], 80)
+        self.assertTrue(any(v["matched_term"] == "元婴" for v in res_bad["violations"]))
+        self.assertTrue(any(v["matched_term"] == "灵气" for v in res_bad["violations"]))
+        self.assertTrue(any(v["matched_term"] == "女人你这是在玩火" for v in res_bad["violations"]))
+
+        # 2. 角色声线红线触发
+        voice_text = "温霜禾看着窗外，大声说：我好痛苦，我非常悲伤！"
+        char_forbidden = {"温霜禾": ["我好痛苦", "非常悲伤"]}
+        res_voice = essence_service.check_constitution_compliance(voice_text, characters_forbidden=char_forbidden)
+        self.assertGreater(len(res_voice["character_voice_alerts"]), 0)
+        self.assertEqual(res_voice["character_voice_alerts"][0]["character"], "温霜禾")
+
+        # 3. 正常合规文本
+        good_text = "江春屿坐在长椅上，把围巾往上拉了拉。风穿过操场，落叶沙沙响着。"
+        res_good = essence_service.check_constitution_compliance(good_text)
+        self.assertTrue(res_good["is_compliant"])
+        self.assertEqual(res_good["compliance_score"], 100)
+        self.assertEqual(len(res_bad["violations"]), 3)
+
+        # 4. 路由 POST 接口验证
+        resp_api, _ = router.dispatch("POST", "/api/essence/constitution/check", {"text": bad_text}, {})
+        self.assertEqual(resp_api["code"], 0)
+        self.assertFalse(resp_api["data"]["is_compliant"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1069,6 +1069,31 @@ def _h_essence_chain_delete(params: dict[str, Any], _body: dict[str, Any]) -> di
     return ok(essence_service.delete_chain(chain_id))
 
 
+def _h_essence_export_outline(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    book_id = params.get("book_id", "")
+    content = essence_service.export_book_outline_markdown(book_id)
+    return ok({"book_id": book_id, "bookId": book_id, "markdown": content})
+
+
+def _h_essence_export_beats(params: dict[str, Any], _body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    book_id = params.get("book_id", "")
+    content = essence_service.export_chapter_beats_markdown(book_id)
+    return ok({"book_id": book_id, "bookId": book_id, "markdown": content})
+
+
+def _h_essence_constitution_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import essence_service
+    b = body or {}
+    text = b.get("text") or b.get("content") or ""
+    rules = b.get("rules")
+    characters_forbidden = b.get("characters_forbidden") or b.get("charactersForbidden")
+    return ok(essence_service.check_constitution_compliance(
+        text=text, rules=rules, characters_forbidden=characters_forbidden
+    ))
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -1211,6 +1236,9 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/essence/chains$"), _h_essence_chains_list),
     ("POST", re.compile(r"^/api/essence/chains$"), _h_essence_chain_create),
     ("DELETE", re.compile(r"^/api/essence/chains/(?P<chain_id>[^/]+)$"), _h_essence_chain_delete),
+    ("GET", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)/export-outline$"), _h_essence_export_outline),
+    ("GET", re.compile(r"^/api/essence/books/(?P<book_id>[^/]+)/export-beats$"), _h_essence_export_beats),
+    ("POST", re.compile(r"^/api/essence/constitution/check$"), _h_essence_constitution_check),
 ]
 
 
