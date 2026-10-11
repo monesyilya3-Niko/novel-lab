@@ -74,7 +74,10 @@ def clean_title_and_author(raw_title: str) -> tuple[str, str, str]:
     """清洗原始书名，提取干净书名、作者与推测题材。"""
     t = raw_title.strip()
     author = "佚名"
-    genre = "general"
+    genre = "xuanhuan"
+
+    # 提取并剔除常见爬虫/发布后缀，如（正文全）、【含文后...】、(校对版)等
+    t = re.sub(r'[\(（【\[](?:正文全|含文后[^\)）】\]]*|校对版|未删减版|精校版|VIP完结|完结)[\)）】\]]', '', t)
 
     # 若格式为 书名-作者
     if "-" in t:
@@ -91,8 +94,9 @@ def clean_title_and_author(raw_title: str) -> tuple[str, str, str]:
         author = m_author.group(1).strip()
         t = t[:m_author.start()].strip()
 
-    t = re.sub(r'^[0-9零一二三四五六七八九十]+[\.\-、\s]*', '', t)
-    t = re.sub(r'^[0-9]+[\-—]+', '', t)
+    # 只清洗真正带有明确分隔符的纯数字序号前缀，如 '01. 书名', '002-书名', '12_书名'
+    # 绝不能匹配汉字数字（如八荒、八步、八零），避免书名被残害
+    t = re.sub(r'^[0-9]+[\.\-—_、\s]+', '', t)
     t = t.strip("-—_ .")
     if not t:
         t = raw_title.strip()
@@ -124,7 +128,7 @@ def clean_title_and_author(raw_title: str) -> tuple[str, str, str]:
     return t, author, genre
 
 
-def is_acceptable_webnovel(raw_title: str, clean_title: str, chapters_cnt: int, total_chars: int) -> bool:
+def is_acceptable_webnovel(raw_title: str, clean_title: str, chapters_cnt: int, total_chars: int, first_ch_name: str = "") -> bool:
     """严苛把关：只有符合纯正长篇网文标准的候选作品才能准予入库。"""
     for b in FOREIGN_BLACKLIST:
         if b in raw_title or b in clean_title:
@@ -139,6 +143,14 @@ def is_acceptable_webnovel(raw_title: str, clean_title: str, chapters_cnt: int, 
     # 单章平均字数必须在 1,000 字以上（主流网络小说长篇标准）
     if total_chars / max(chapters_cnt, 1) < 1000:
         return False
+    # 首章完整度强校验：严禁任何断头书（必须以第1章/序章/引子/楔子开头）
+    if first_ch_name:
+        is_clean_start = bool(re.search(
+            r'(第[0-9零]*[1一]章|第[0-9零]*[1一]节|第[0-9零]*[1一]回|第[0-9零]*[1一]卷|Chapter 0?1\b|第0章|序|引子|楔子)',
+            first_ch_name.strip(),
+        ))
+        if not is_clean_start:
+            return False
     return True
 
 
@@ -173,9 +185,16 @@ def init_db_connection() -> sqlite3.Connection:
 
 
 def check_book_exists(conn: sqlite3.Connection, book_id: str, title: str) -> bool:
-    """检查小说是否已在本地库和精华库中完全建立。"""
-    r1 = conn.execute("SELECT book_id, source_path FROM books WHERE book_id = ? OR title = ?", (book_id, title)).fetchone()
-    r2 = conn.execute("SELECT book_id FROM essence_books WHERE book_id = ? OR title = ?", (book_id, title)).fetchone()
+    """检查小说是否已在本地库和精华库中完全建立（支持书名归一化去重）。"""
+    clean_t = re.sub(r'[\(（【\[].*?[\)）】\]]', '', title).strip()
+    r1 = conn.execute(
+        "SELECT book_id, source_path FROM books WHERE book_id = ? OR title = ? OR title = ?",
+        (book_id, title, clean_t),
+    ).fetchone()
+    r2 = conn.execute(
+        "SELECT book_id FROM essence_books WHERE book_id = ? OR title = ? OR title = ?",
+        (book_id, title, clean_t),
+    ).fetchone()
     if r1 and r2:
         src_path = Path(r1[1]) if r1[1] else (config.CORPUS_DIR / f"{r1[0]}.txt")
         return src_path.exists() and src_path.stat().st_size > 1000
@@ -414,10 +433,10 @@ def main() -> int:
         print("\n[测试完成] 单本测试模式结束。")
         return 0
 
-    # 2. 从 200MB 真实长篇网文聚集区开始扫描流式抽取
-    print(f"\n[Phase 2] 从数据集深度区间（200MB+）严选扫描真长篇网文 (当前已入库: {current_count}/{args.limit})...")
+    # 2. 从 190MB 真实长篇网文聚集区开始扫描流式抽取（确保首书不截断）
+    print(f"\n[Phase 2] 从数据集深度区间（190MB+）严选扫描真长篇网文 (当前已入库: {current_count}/{args.limit})...")
     chunk_size = 16 * 1024 * 1024  # 16MB 分块
-    current_offset = 200 * 1024 * 1024  # 200MB 起步
+    current_offset = 190 * 1024 * 1024  # 190MB 起步，完整捕获《艾泽拉斯圣光轨迹》与《艾泽拉斯死亡轨迹》
     max_scan_offset = 3500 * 1024 * 1024  # 扫描至 3500MB
 
     current_book_title: str | None = None
@@ -458,7 +477,8 @@ def main() -> int:
                             clean_t, author, genre = clean_title_and_author(current_book_title)
                             book_chars = sum(len(c.get("text", "")) for c in current_book_chapters)
 
-                            if is_acceptable_webnovel(current_book_title, clean_t, len(current_book_chapters), book_chars):
+                            first_ch = current_book_chapters[0].get("chapter", "").strip() if current_book_chapters else ""
+                            if is_acceptable_webnovel(current_book_title, clean_t, len(current_book_chapters), book_chars, first_ch):
                                 b_id = sanitize_book_id(clean_t)
 
                                 if not check_book_exists(conn, b_id, clean_t):
@@ -497,8 +517,8 @@ def main() -> int:
     # 扫描结束处理最后缓存的一本书（若满足条件）
     if current_count < args.limit and current_book_title and len(current_book_chapters) >= 60:
         clean_t, author, genre = clean_title_and_author(current_book_title)
-        book_chars = sum(len(c.get("text", "")) for c in current_book_chapters)
-        if is_acceptable_webnovel(current_book_title, clean_t, len(current_book_chapters), book_chars):
+        first_ch = current_book_chapters[0].get("chapter", "").strip() if current_book_chapters else ""
+        if is_acceptable_webnovel(current_book_title, clean_t, len(current_book_chapters), book_chars, first_ch):
             b_id = sanitize_book_id(clean_t)
             if not check_book_exists(conn, b_id, clean_t) and not args.dry_run:
                 rec = ingest_book_atomic(conn, b_id, clean_t, author, genre, "general", current_book_chapters)
