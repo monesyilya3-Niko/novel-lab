@@ -9,6 +9,9 @@ const mockDeleteAsset = vi.fn()
 const mockAdoptAsset = vi.fn()
 const mockListBooks = vi.fn()
 const mockDeleteBook = vi.fn()
+const mockExportOutline = vi.fn()
+const mockExportBeats = vi.fn()
+const mockCheckConstitution = vi.fn()
 const mockListChains = vi.fn()
 const mockCreateChain = vi.fn()
 const mockDeleteChain = vi.fn()
@@ -23,6 +26,9 @@ vi.mock('../api/client', () => ({
     adoptAsset: (...args: any[]) => mockAdoptAsset(...args),
     listBooks: (...args: any[]) => mockListBooks(...args),
     deleteBook: (...args: any[]) => mockDeleteBook(...args),
+    exportOutline: (...args: any[]) => mockExportOutline(...args),
+    exportBeats: (...args: any[]) => mockExportBeats(...args),
+    checkConstitution: (...args: any[]) => mockCheckConstitution(...args),
     listChains: (...args: any[]) => mockListChains(...args),
     createChain: (...args: any[]) => mockCreateChain(...args),
     deleteChain: (...args: any[]) => mockDeleteChain(...args),
@@ -73,12 +79,13 @@ describe('EssenceWorkbench', () => {
     })
   })
 
-  it('渲染四大顶层标签页', () => {
+  it('渲染五大顶层标签页', () => {
     render(<EssenceWorkbench />)
     expect(screen.getByText('离线精读与解构提炼')).toBeInTheDocument()
     expect(screen.getByText('五维精华资产库')).toBeInTheDocument()
     expect(screen.getByText('伏笔暗线图谱')).toBeInTheDocument()
     expect(screen.getByText('已精读书籍档案')).toBeInTheDocument()
+    expect(screen.getByText('宪法正典审查')).toBeInTheDocument()
   })
 
   it('切换到伏笔暗线图谱并加载展示暗线', async () => {
@@ -207,8 +214,13 @@ describe('EssenceWorkbench', () => {
     })
   })
 
-  it('已精读书籍档案列表与删除', async () => {
+  it('已精读书籍档案列表与删除及导出大纲/节拍', async () => {
     mockDeleteBook.mockResolvedValue({ deleted: true, bookId: 'book_01' })
+    mockExportOutline.mockResolvedValue({ bookId: 'book_01', markdown: '# 全书五维大纲\n\n测试大纲内容' })
+    mockExportBeats.mockResolvedValue({ bookId: 'book_01', markdown: '# 分章节拍轻提纲\n\n测试节拍内容' })
+
+    window.URL.createObjectURL = vi.fn().mockReturnValue('blob:test-url')
+    window.URL.revokeObjectURL = vi.fn()
 
     render(<EssenceWorkbench />)
 
@@ -221,5 +233,73 @@ describe('EssenceWorkbench', () => {
 
     expect(await screen.findByText('仙逆')).toBeInTheDocument()
     expect(screen.getByText('120 章 | 360,000 字')).toBeInTheDocument()
+
+    // 触发导出大纲
+    const exportOutlineBtn = screen.getByRole('button', { name: '导出大纲' })
+    fireEvent.click(exportOutlineBtn)
+    await waitFor(() => {
+      expect(mockExportOutline).toHaveBeenCalledWith('book_01')
+    })
+
+    // 触发导出节拍
+    const exportBeatsBtn = screen.getByRole('button', { name: '导出节拍' })
+    fireEvent.click(exportBeatsBtn)
+    await waitFor(() => {
+      expect(mockExportBeats).toHaveBeenCalledWith('book_01')
+    })
+  })
+
+  it('切换到宪法正典审查并执行合规检测', async () => {
+    mockCheckConstitution.mockResolvedValue({
+      compliance_score: 90,
+      is_compliant: true,
+      violations: [
+        {
+          rule_id: 'no_anachronism',
+          rule_name: '严禁时代脱节或现代高科技穿越',
+          matched_term: '智能手机',
+          line_no: 1,
+          snippet: '...他拿起智能手机...',
+          severity: 'medium',
+        },
+      ],
+      character_voice_alerts: [
+        {
+          character: '苏念',
+          forbidden_phrase: '绝望',
+          line_no: 2,
+          snippet: '苏念眼中满是绝望。',
+        },
+      ],
+      summary: '小说宪法合规检测通过 (得分: 90/100)',
+    })
+
+    render(<EssenceWorkbench />)
+
+    // 切换到宪法审查标签页
+    fireEvent.click(screen.getByText('宪法正典审查'))
+    expect(await screen.findByText('小说宪法正典审查 (Canon Guard)')).toBeInTheDocument()
+
+    // 输入正文并审查
+    const textInput = screen.getByLabelText('待审查小说正文或章节文本')
+    fireEvent.change(textInput, { target: { value: '他拿起智能手机。\n苏念眼中满是绝望。' } })
+
+    const charInput = screen.getByLabelText('自定义角色声线禁语 (可选，每行一条: 角色名: 禁语1, 禁语2)')
+    fireEvent.change(charInput, { target: { value: '苏念: 绝望' } })
+
+    fireEvent.click(screen.getByRole('button', { name: '开始宪法正典审查' }))
+
+    await waitFor(() => {
+      expect(mockCheckConstitution).toHaveBeenCalledWith({
+        text: '他拿起智能手机。\n苏念眼中满是绝望。',
+        characters_forbidden: { 苏念: ['绝望'] },
+      })
+    })
+
+    expect(await screen.findByText('✅ 宪法正典合规')).toBeInTheDocument()
+    expect(screen.getByText('合规得分: 90 / 100')).toBeInTheDocument()
+    expect(screen.getByText('严禁时代脱节或现代高科技穿越')).toBeInTheDocument()
+    expect(screen.getByText('角色: 苏念')).toBeInTheDocument()
   })
 })
+

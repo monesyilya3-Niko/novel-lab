@@ -29,6 +29,8 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import AddIcon from '@mui/icons-material/Add'
+import GavelIcon from '@mui/icons-material/Gavel'
+import DownloadIcon from '@mui/icons-material/Download'
 import {
   essenceApi,
   writingApi,
@@ -74,24 +76,34 @@ const CATEGORY_MAP: Record<string, { label: string; color: 'primary' | 'secondar
 
 export default function EssenceWorkbench() {
   const [tab, setTab] = useState(0)
+  const [globalToast, setGlobalToast] = useState('')
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Paper sx={{ p: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)}>
+          <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
             <Tab icon={<AutoAwesomeIcon fontSize="small" />} iconPosition="start" label="离线精读与解构提炼" />
             <Tab icon={<LayersIcon fontSize="small" />} iconPosition="start" label="五维精华资产库" />
             <Tab icon={<AccountTreeIcon fontSize="small" />} iconPosition="start" label="伏笔暗线图谱" />
             <Tab icon={<MenuBookIcon fontSize="small" />} iconPosition="start" label="已精读书籍档案" />
+            <Tab icon={<GavelIcon fontSize="small" />} iconPosition="start" label="宪法正典审查" />
           </Tabs>
         </Box>
 
         {tab === 0 && <MacroExtractSection onAssetSaved={() => setTab(1)} />}
         {tab === 1 && <EssenceAssetsSection />}
         {tab === 2 && <EssenceChainsSection />}
-        {tab === 3 && <EssenceBooksSection />}
+        {tab === 3 && <EssenceBooksSection onToast={setGlobalToast} />}
+        {tab === 4 && <ConstitutionCheckSection />}
       </Paper>
+
+      <Snackbar
+        open={Boolean(globalToast)}
+        autoHideDuration={3000}
+        onClose={() => setGlobalToast('')}
+        message={globalToast}
+      />
     </Box>
   )
 }
@@ -647,7 +659,7 @@ function EssenceAssetsSection() {
 // 3. 已精读书籍档案
 // ---------------------------------------------------------------------------
 
-function EssenceBooksSection() {
+function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
   const [books, setBooks] = useState<EssenceBook[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -670,6 +682,40 @@ function EssenceBooksSection() {
     loadBooks()
   }, [])
 
+  const downloadMarkdownFile = (filename: string, content: string) => {
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleExportOutline = async (book: EssenceBook) => {
+    try {
+      const res = await essenceApi.exportOutline(book.bookId)
+      downloadMarkdownFile(`《${book.title}》全书五维大纲.md`, res.markdown)
+      const msg = `已导出《${book.title}》全书五维大纲`
+      setToast(msg)
+      onToast?.(msg)
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
+  const handleExportBeats = async (book: EssenceBook) => {
+    try {
+      const res = await essenceApi.exportBeats(book.bookId)
+      downloadMarkdownFile(`《${book.title}》分章节拍轻提纲.md`, res.markdown)
+      const msg = `已导出《${book.title}》分章节拍轻提纲`
+      setToast(msg)
+      onToast?.(msg)
+    } catch (e) {
+      setError(friendlyError(e))
+    }
+  }
+
   const handleDelete = async (bookId: string) => {
     if (!window.confirm(`确定删除《${bookId}》的书籍精读档案吗？关联的提炼资产也会被级联删除。`)) return
     try {
@@ -687,7 +733,7 @@ function EssenceBooksSection() {
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          本地精读档案库：沉淀每部精读长篇的字数、对白率、节奏模型，支持全生命周期管理。
+          本地精读档案库：沉淀每部精读长篇的字数、对白率、节奏模型，支持全生命周期管理与结构化提纲导出。
         </Typography>
         <Button variant="outlined" size="small" onClick={loadBooks}>
           刷新档案
@@ -736,6 +782,27 @@ function EssenceBooksSection() {
                     <Typography variant="caption" color="text.secondary">
                       AI 味道评分: {b.aiSlopScore ?? 0} / 10
                     </Typography>
+                  </Box>
+
+                  <Divider sx={{ my: 1.5 }} />
+
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<DownloadIcon fontSize="small" />}
+                      onClick={() => handleExportOutline(b)}
+                    >
+                      导出大纲
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<DownloadIcon fontSize="small" />}
+                      onClick={() => handleExportBeats(b)}
+                    >
+                      导出节拍
+                    </Button>
                   </Box>
                 </CardContent>
               </Card>
@@ -1138,4 +1205,211 @@ function EssenceChainsSection() {
     </Box>
   )
 }
+
+// ---------------------------------------------------------------------------
+// 5. 小说宪法与正典审查 (Novel Constitution & Canon Guard)
+// ---------------------------------------------------------------------------
+
+function ConstitutionCheckSection() {
+  const [text, setText] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState('')
+  const [charVoiceInput, setCharVoiceInput] = useState('')
+  const [result, setResult] = useState<{
+    compliance_score: number
+    is_compliant: boolean
+    violations: {
+      rule_id: string
+      rule_name: string
+      matched_term: string
+      line_no: number
+      snippet: string
+      severity: string
+    }[]
+    character_voice_alerts: {
+      character: string
+      forbidden_phrase: string
+      line_no: number
+      snippet: string
+    }[]
+    summary: string
+  } | null>(null)
+
+  const handleCheck = async () => {
+    if (!text.trim()) {
+      setError('请输入待审查的小说正文或章节草稿')
+      return
+    }
+    setError('')
+    setChecking(true)
+
+    const charactersForbidden: Record<string, string[]> = {}
+    if (charVoiceInput.trim()) {
+      for (const line of charVoiceInput.split('\n')) {
+        const parts = line.split(/[:：]/)
+        if (parts.length >= 2) {
+          const charName = parts[0].trim()
+          const phrases = parts[1].split(/[,，、]/).map((p) => p.trim()).filter(Boolean)
+          if (charName && phrases.length > 0) {
+            charactersForbidden[charName] = phrases
+          }
+        }
+      }
+    }
+
+    try {
+      const res = await essenceApi.checkConstitution({
+        text: text.trim(),
+        characters_forbidden: Object.keys(charactersForbidden).length > 0 ? charactersForbidden : undefined,
+      })
+      setResult(res)
+    } catch (e) {
+      setError(friendlyError(e))
+    } finally {
+      setChecking(false)
+    }
+  }
+
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+
+      <Box>
+        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+          小说宪法正典审查 (Canon Guard)
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          审查世界观底线（严禁修仙/灵气/系统等超自然穿帮、严禁时代脱节科技词、严禁恶俗网文毒点台词），并可校验角色声线禁语（该角色绝不应说的话）。
+        </Typography>
+      </Box>
+
+      <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TextField
+          multiline
+          rows={7}
+          label="待审查小说正文或章节文本"
+          placeholder="粘贴待审查的段落或完整章节内容..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          fullWidth
+        />
+
+        <TextField
+          size="small"
+          label="自定义角色声线禁语 (可选，每行一条: 角色名: 禁语1, 禁语2)"
+          placeholder="例如: 陆沉: 遵命, 绝望&#10;林清雪: 粗鄙"
+          value={charVoiceInput}
+          onChange={(e) => setCharVoiceInput(e.target.value)}
+          fullWidth
+          helperText="配置特定角色绝不会说的词汇或口癖，防止人设塌房与语调失真"
+        />
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<GavelIcon />}
+            onClick={handleCheck}
+            disabled={checking}
+          >
+            {checking ? '审查中...' : '开始宪法正典审查'}
+          </Button>
+        </Box>
+      </Paper>
+
+      {result && (
+        <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Chip
+                label={result.is_compliant ? '✅ 宪法正典合规' : '⚠️ 存在违宪/破格隐患'}
+                color={result.is_compliant ? 'success' : 'error'}
+                sx={{ fontWeight: 'bold' }}
+              />
+              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                合规得分: {result.compliance_score} / 100
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              {result.summary}
+            </Typography>
+          </Box>
+
+          <Divider />
+
+          {/* 违规项列表 */}
+          <Box>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              世界观与底线偏离列表 ({result.violations.length} 项)
+            </Typography>
+            {result.violations.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                🎉 未发现任何超自然穿帮、时代脱节或毒点台词！
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {result.violations.map((v, idx) => (
+                  <Card key={idx} variant="outlined" sx={{ p: 1.5, borderColor: v.severity === 'high' ? 'error.main' : 'warning.main' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Chip
+                          size="small"
+                          label={v.severity === 'high' ? '严重违宪' : '中度偏离'}
+                          color={v.severity === 'high' ? 'error' : 'warning'}
+                        />
+                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                          {v.rule_name}
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        第 {v.line_no} 行命中: 「{v.matched_term}」
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'action.hover', p: 0.5, borderRadius: 1 }}>
+                      {v.snippet}
+                    </Typography>
+                  </Card>
+                ))}
+              </Box>
+            )}
+          </Box>
+
+          {/* 角色声线冲突列表 */}
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+              角色声线禁语冲突 ({result.character_voice_alerts.length} 项)
+            </Typography>
+            {result.character_voice_alerts.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">
+                ✨ 未检测到任何角色人设禁语冲突。
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {result.character_voice_alerts.map((a, idx) => (
+                  <Card key={idx} variant="outlined" sx={{ p: 1.5, borderColor: 'secondary.main' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Chip size="small" label={`角色: ${a.character}`} color="secondary" />
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                          禁说词汇: 「{a.forbidden_phrase}」
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary">
+                        第 {a.line_no} 行
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" sx={{ mt: 1, fontFamily: 'monospace', bgcolor: 'action.hover', p: 0.5, borderRadius: 1 }}>
+                      {a.snippet}
+                    </Typography>
+                  </Card>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </Paper>
+      )}
+    </Box>
+  )
+}
+
 

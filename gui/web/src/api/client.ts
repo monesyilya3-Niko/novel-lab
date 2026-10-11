@@ -1032,6 +1032,40 @@ export const essenceApi = {
     status?: string
   }) => post<EssenceChain>('/essence/chains', body),
   deleteChain: (chainId: number) => del<{ deleted: boolean; chainId: number }>(`/essence/chains/${chainId}`),
+
+  /** 导出全书五维大纲 Markdown */
+  exportOutline: (bookId: string) =>
+    get<{ bookId: string; markdown: string }>(`/essence/books/${encodeURIComponent(bookId)}/export-outline`),
+
+  /** 导出分章节拍轻提纲 Markdown */
+  exportBeats: (bookId: string) =>
+    get<{ bookId: string; markdown: string }>(`/essence/books/${encodeURIComponent(bookId)}/export-beats`),
+
+  /** 宪法正典审查（返回合规分数与违禁列表） */
+  checkConstitution: (body: {
+    text: string
+    rules?: any[]
+    characters_forbidden?: Record<string, string[]>
+  }) =>
+    post<{
+      compliance_score: number
+      is_compliant: boolean
+      violations: {
+        rule_id: string
+        rule_name: string
+        matched_term: string
+        line_no: number
+        snippet: string
+        severity: string
+      }[]
+      character_voice_alerts: {
+        character: string
+        forbidden_phrase: string
+        line_no: number
+        snippet: string
+      }[]
+      summary: string
+    }>('/essence/constitution/check', body),
 }
 
 export interface EssenceStats {
