@@ -138,7 +138,11 @@ def read_text(
     except OSError as exc:
         raise _fmt(msgs, "unreadable", path=str(raw), field=field) from exc
     try:
-        return data.decode("utf-8")
+        # utf-8-sig：剥离 Windows 记事本「另存为 UTF-8」写入的 BOM（EF BB BF）。
+        # BOM 留在正文首字符会让首章标题匹配失败（实测被切章器识别为
+        # 「（无标题开头）」）。utf-8-sig 解普通 UTF-8 同样正确，仅额外剥 BOM，
+        # 与 scripts/chapter_loader.read_text_file 口径一致。
+        return data.decode("utf-8-sig")
     except UnicodeDecodeError:
         try:
             return data.decode("gbk")
