@@ -52,6 +52,48 @@ CLICHE_PATTERNS = [
     (r"倒吸了一口(?:凉气|冷气)", "倒吸凉气俗套", "换为屏息、身形后仰或喉咙发紧等更生动的体感。"),
     (r"瞳孔(?:猛然|剧烈)?收缩", "瞳孔收缩俗套", "避免高频使用此模板，可用眼底暗沉、视线锁定等代替。"),
     (r"嘴角(?:微微)?勾起(?:一抹|一丝)?(?:玩味|戏谑|冰冷|嘲讽|残忍|淡淡)?的(?:笑意|弧度|冷笑)", "嘴角弧度模板", "极度泛滥的脸谱化微表情模板，建议替换为具体的眼神、视线转移或短促台词。"),
+    (r"(?:眼中|眼底|眼眸|眸中)(?:闪过|掠过|浮现)(?:了)?(?:一丝|一抹|一缕)?", "眼中闪过套路", "直接写出他当场说的话、做出的决定或具体动作，不要替读者标注情绪。"),
+]
+
+# 5. 否定铺垫后接肯定翻转（2026-10-11 新增，对标业界★★★★★级 AI 句式）
+#
+# 依据：外部成熟实践（GitHub zenstory-ai/oh-story-claudecode 的
+# skills/story-deslop/references/banned-words.md，MIT）将「不是A，（而）是B」
+# 列为最高毒级句式——它是中文 AI 生成文本最具标志性的判断式结构：
+# 先否定一个说法、再抛出"真正的"答案，读起来像议论文而非小说。
+# 本项目此前完全未覆盖该句式（行为实测命中 0）。
+NEGATION_FLIP_PATTERNS = [
+    (r"不是[^。！？；\n]{1,20}[，,](?:而)?是", "不是A而是B翻转", "删掉否定铺垫，直接写 B；让读者自己看出反差，别替他先否一次。"),
+    (r"并非[^。！？；\n]{1,20}[，,](?:而)?是", "并非A而是B翻转", "同上：直接陈述，去掉'并非…而是…'的议论文腔。"),
+    (r"不再[^。！？；\n]{1,20}[，,]?而是", "不再A而是B翻转", "直接写现在的状态，不必先声明'不再'。"),
+]
+
+# 6. 「，带着……」万能状语（2026-10-11 新增）
+#
+# 依据：同上参考源列为 ★★★★ 毒级"。AI 极爱用「动作，带着某种情绪/气质」
+# 补一个抽象状语收尾，这是"告诉而非展示"的典型。
+DANGLING_ZHE_PATTERNS = [
+    (r"[，,](?:带着|带着着)(?:一丝|一抹|几分|些许|某种|一种)?[^。！？；\n]{1,12}(?:的)?(?:笑意|嘲讽|无奈|决然|坚毅|温柔|冷意|杀意|情绪|意味)", "带着…万能状语", "删掉这个状语留主句，或换成具体动作——'带着'后面挂抽象名词是 AI 的标志性写法。"),
+    (r"声音不大[，,](?:却|但)?(?:带着|透着)", "声音不大却带着套路", "直接写声音的实际特征（沙哑、发紧、压得很低）或干脆只写台词。"),
+]
+
+# 7. 认知直述（2026-10-11 新增）
+#
+# 依据：同上参考源列为 ★★★★ 毒级。AI 惯用「他/她知道…」「他明白…」
+# 直接把角色的认知结论告诉读者，取代了通过行为让读者自行推断的过程。
+TELLING_COGNITION_PATTERNS = [
+    (r"(?:他|她|它)(?:心里|心中)?(?:清楚地?|当然|自然|早已)?(?:知道|明白|清楚|意识到|明白过来)[^。！？\n]{0,30}", "认知直述", "用行为展示认知：让他去做某件事、说出某句话，而不是先宣布'他知道'。"),
+    (r"(?:他|她)这才(?:明白|意识到|反应过来)", "这才意识到套路", "直接呈现转变后的行动，删掉'这才意识到'这层宣告。"),
+    (r"从(?:这一刻|那天|那以后)开始[，,]?", "从此刻开始套路", "章末升华式收束，改为落在具体物件、动作或对话上。"),
+]
+
+# 8. 机械列举式排比（2026-10-11 新增）
+#
+# 「有的…有的…有的…」「一边…一边…一边…」是网文 AI 腔高频结构，
+# 与第 6 项同构句检测互补：那边管句首同字，这边管关联词串联。
+ENUMERATION_PATTERNS = [
+    (r"有的[^。！？；\n]{1,15}[，,](?:还有的|有的)[^。！？；\n]{1,15}[，,]?有的", "有的…有的…排比", "改为错落的具体描写，别用'有的…有的…'这类工整清单。"),
+    (r"一边[^。！？；\n]{1,12}?一边[^。！？；\n]{1,12}?一边", "一边…一边…堆砌", "人做不了三个并列动作，拆成先后或只留一个。"),
 ]
 
 _SENT_SPLIT_RE = re.compile(r"[。！？\n\r]+|[…]{2,}")
@@ -113,53 +155,31 @@ def analyze_deslop(text: str) -> dict[str, Any]:
 
     issues: list[dict[str, Any]] = []
 
-    # 1. 扫描假大空修辞
-    for pat, label, suggestion in HOLLOW_RHETORIC_PATTERNS:
-        for m in re.finditer(pat, text):
-            issues.append({
-                "type": "hollow_rhetoric",
-                "label": label,
-                "snippet": m.group(0),
-                "index": m.start(),
-                "weight": 12,
-                "suggestion": suggestion,
-            })
-
-    # 2. 直陈式情绪
-    for pat, label, suggestion in DIRECT_EMOTION_PATTERNS:
-        for m in re.finditer(pat, text):
-            issues.append({
-                "type": "direct_emotion",
-                "label": label,
-                "snippet": m.group(0),
-                "index": m.start(),
-                "weight": 8,
-                "suggestion": suggestion,
-            })
-
-    # 3. 同义反复
-    for pat, label, suggestion in TAUTOLOGY_PATTERNS:
-        for m in re.finditer(pat, text):
-            issues.append({
-                "type": "tautology",
-                "label": label,
-                "snippet": m.group(0),
-                "index": m.start(),
-                "weight": 10,
-                "suggestion": suggestion,
-            })
-
-    # 4. 俗套口癖
-    for pat, label, suggestion in CLICHE_PATTERNS:
-        for m in re.finditer(pat, text):
-            issues.append({
-                "type": "cliche",
-                "label": label,
-                "snippet": m.group(0),
-                "index": m.start(),
-                "weight": 5,
-                "suggestion": suggestion,
-            })
+    # 1-8. 规则表驱动扫描。
+    # weight 依据业界毒级分档（参考 zenstory-ai/oh-story-claudecode 的
+    # banned-words.md）：★★★★★ 句式给最高权重，★★★ 及以下递减。
+    rule_groups = (
+        ("hollow_rhetoric", HOLLOW_RHETORIC_PATTERNS, 12),
+        ("direct_emotion", DIRECT_EMOTION_PATTERNS, 8),
+        ("tautology", TAUTOLOGY_PATTERNS, 10),
+        ("cliche", CLICHE_PATTERNS, 5),
+        # 以下四组 2026-10-11 新增，补齐行为实测出的覆盖缺口
+        ("negation_flip", NEGATION_FLIP_PATTERNS, 15),      # ★★★★★ 最毒
+        ("dangling_zhe", DANGLING_ZHE_PATTERNS, 11),        # ★★★★
+        ("telling_cognition", TELLING_COGNITION_PATTERNS, 11),  # ★★★★
+        ("enumeration", ENUMERATION_PATTERNS, 8),           # ★★★
+    )
+    for itype, patterns, weight in rule_groups:
+        for pat, label, suggestion in patterns:
+            for m in re.finditer(pat, text):
+                issues.append({
+                    "type": itype,
+                    "label": label,
+                    "snippet": m.group(0),
+                    "index": m.start(),
+                    "weight": weight,
+                    "suggestion": suggestion,
+                })
 
     # 5. 「让」字密度专项
     rang_count = text.count("让")

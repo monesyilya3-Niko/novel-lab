@@ -122,6 +122,59 @@ class TestDeslopService(unittest.TestCase):
         issues = self._parallel_issues(deslop_service.analyze_deslop(text))
         self.assertEqual(issues, [])
 
+    # --- 2026-10-11 新增规则组：补齐业界高毒级句式覆盖 ---------------------
+    # 依据外部成熟实践（GitHub zenstory-ai/oh-story-claudecode, MIT 的
+    # banned-words.md / deslop-gates.md 规则体系）做行为对照测试后补入。
+    # 移植的是**规则与毒级分档**，实现仍为纯标准库正则，不引入其 JS 依赖。
+
+    @staticmethod
+    def _types(res):
+        return {it["type"] for it in res["issues"]}
+
+    def test_negation_flip_detected(self):
+        """「不是A，而是B」——业界列为最高毒级的标志性 AI 判断式句式。"""
+        for text in ("他不是冷漠，而是绝望。", "这并非巧合，而是安排。"):
+            res = deslop_service.analyze_deslop(text)
+            self.assertIn("negation_flip", self._types(res), f"未检出: {text}")
+
+    def test_negation_flip_weight_is_highest(self):
+        """该句式毒级最高，权重应高于普通俗套口癖（cliche=5）。"""
+        res = deslop_service.analyze_deslop("他不是冷漠，而是绝望。")
+        flip = [it for it in res["issues"] if it["type"] == "negation_flip"]
+        self.assertTrue(flip)
+        self.assertGreater(flip[0]["weight"], 5)
+
+    def test_dangling_zhe_detected(self):
+        """「，带着……」万能状语。"""
+        res = deslop_service.analyze_deslop("他笑了一下，带着一丝不易察觉的嘲讽。")
+        self.assertIn("dangling_zhe", self._types(res))
+
+    def test_telling_cognition_detected(self):
+        """「他知道…」认知直述：应改为用行为展示。"""
+        for text in ("他知道这一切都来不及了。", "他这才意识到自己错了。"):
+            res = deslop_service.analyze_deslop(text)
+            self.assertIn("telling_cognition", self._types(res), f"未检出: {text}")
+
+    def test_enumeration_detected(self):
+        """机械列举式排比。"""
+        res = deslop_service.analyze_deslop("有的人来了，有的人走了，有的人站着。")
+        self.assertIn("enumeration", self._types(res))
+
+    def test_enumeration_two_items_not_flagged(self):
+        """反向守卫：「一边…一边」两项属正常写法，不得误报。"""
+        res = deslop_service.analyze_deslop("他一边走一边看。")
+        self.assertNotIn("enumeration", self._types(res))
+
+    def test_new_rules_do_not_false_positive_on_natural_prose(self):
+        """反向守卫：自然白话散文不得被新增规则误伤。"""
+        text = (
+            "他在雪地里走了一整夜，皮靴踩碎冰壳发出沉闷的脆响。"
+            "推开木门时，炉火已经熄了，只有余烬微微泛着暗红。"
+        )
+        res = deslop_service.analyze_deslop(text)
+        self.assertEqual(res["issues"], [], f"误报: {res['issues']}")
+        self.assertEqual(res["verdict"], "NATURAL")
+
 
 class TestWritingExportAndReorder(unittest.TestCase):
     def setUp(self):
