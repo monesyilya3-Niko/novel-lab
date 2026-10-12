@@ -559,6 +559,89 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(resp["data"]["total_adopted"], 5)
 
 
+class TestGarbageCleanupWildcard(unittest.TestCase):
+    """ensure_curated_library 的垃圾清理不得误伤用户书（2026-10-12 修）。
+
+    缺陷：清理用 LIKE 'book_%'，而 SQL 的  是**单字符通配符**——
+    它会同时匹配 bookA1 / bookabc 等，而 book_id 可由 API 调用方任意指定
+    （router 的 extract 端点取 b.get("book_id")）。实测：用户以 bookA1 建的
+    书与资产，在下次 ensure_curated_library 时被静默删除（数据丢失）。
+
+    修法：LIKE ? ESCAPE '\\\\' + 模式 'book\\\\_%'，让下划线只匹配字面量。
+
+    注意现有用例的 book_id 恰好是 book_xuanhuan_01（真以 book_ 开头），
+    因此从未暴露此缺陷——本用例专门用 bookA1 / bookabc 这类 ID。
+    """
+
+    def setUp(self):
+        self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="wildcard_")))
+        self._iso.__enter__()
+        db.init_schema()
+        db.apply_migrations()
+
+    def tearDown(self):
+        db.close()
+        self._iso.__exit__(None, None, None)
+
+    def test_user_books_not_matching_literal_prefix_survive(self):
+        """bookA1 / bookabc 这类 ID 不属于 book_ 前缀，必须幸存。"""
+        for bid in ("bookA1", "bookabc", "bookZ9"):
+            essence_service.create_or_update_book(
+                book_id=bid, title=f"用户书{bid}", genre="xuanhuan")
+            essence_service.create_asset(
+                book_id=bid, category="hook", title="用户资产", content="用户内容")
+
+        essence_service.ensure_curated_library(clean_raw_corpus=True)
+
+        conn = db.get_conn()
+        for bid in ("bookA1", "bookabc", "bookZ9"):
+            n = conn.execute(
+                "SELECT COUNT(*) FROM essence_books WHERE book_id=?", (bid,)).fetchone()[0]
+            self.assertEqual(n, 1, f"用户书 {bid} 被垃圾清理误删（LIKE 通配符缺陷）")
+            na = conn.execute(
+                "SELECT COUNT(*) FROM essence_assets WHERE book_id=?", (bid,)).fetchone()[0]
+            self.assertEqual(na, 1, f"用户书 {bid} 的资产被误删")
+
+    def test_literal_book_prefix_garbage_is_cleaned(self):
+        """反向守卫：真正以 book_ 开头的垃圾记录仍须被清理。"""
+        for bid in ("book_1", "book_x", "book_生僻语料"):
+            essence_service.create_or_update_book(
+                book_id=bid, title="垃圾书", genre="xuanhuan")
+
+        essence_service.ensure_curated_library(clean_raw_corpus=True)
+
+        conn = db.get_conn()
+        for bid in ("book_1", "book_x", "book_生僻语料"):
+            n = conn.execute(
+                "SELECT COUNT(*) FROM essence_books WHERE book_id=?", (bid,)).fetchone()[0]
+            self.assertEqual(n, 0, f"垃圾书 {bid} 未被清理（清理逻辑失效）")
+
+    def test_cleanup_does_not_touch_curated_or_other(self):
+        """curated_ 前缀与普通 ID 都不受影响。"""
+        essence_service.create_or_update_book(
+            book_id="curated_mycustom", title="我的定制", genre="xuanhuan")
+        essence_service.create_or_update_book(
+            book_id="novel001", title="普通书", genre="xuanhuan")
+
+        essence_service.ensure_curated_library(clean_raw_corpus=True)
+
+        conn = db.get_conn()
+        for bid in ("curated_mycustom", "novel001"):
+            n = conn.execute(
+                "SELECT COUNT(*) FROM essence_books WHERE book_id=?", (bid,)).fetchone()[0]
+            self.assertEqual(n, 1, f"{bid} 不应被清理")
+
+    def test_clean_raw_corpus_false_skips_cleanup(self):
+        """clean_raw_corpus=False 时完全跳过清理。"""
+        essence_service.create_or_update_book(
+            book_id="book_keepme", title="保留", genre="xuanhuan")
+        essence_service.ensure_curated_library(clean_raw_corpus=False)
+        conn = db.get_conn()
+        n = conn.execute(
+            "SELECT COUNT(*) FROM essence_books WHERE book_id='book_keepme'").fetchone()[0]
+        self.assertEqual(n, 1, "clean_raw_corpus=False 时不应清理")
+
+
 if __name__ == "__main__":
     unittest.main()
 

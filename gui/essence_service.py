@@ -1651,11 +1651,24 @@ def ensure_curated_library(clean_raw_corpus: bool = True) -> dict[str, Any]:
     cleaned_count = 0
     with db.tx() as tx_conn:
         if clean_raw_corpus:
-            # 清除早期生僻原始语料扫入的无价值生书（仅清理 book_ 开头的生僻批量记录）
-            tx_conn.execute("DELETE FROM essence_chains WHERE book_id LIKE 'book_%'")
-            tx_conn.execute("DELETE FROM essence_assets WHERE book_id LIKE 'book_%'")
-            tx_conn.execute("DELETE FROM essence_tasks WHERE book_id LIKE 'book_%'")
-            cur = tx_conn.execute("DELETE FROM essence_books WHERE book_id LIKE 'book_%'")
+            # 清除早期生僻原始语料扫入的无价值生书（仅清理 `book_` 前缀的生僻批量记录）。
+            #
+            # ⚠️ 必须用 ESCAPE 转义下划线（2026-10-12 修）：
+            # SQL 的 LIKE 中 `_` 是**单字符通配符**，`LIKE 'book_%'` 会同时匹配
+            # `bookA1` / `bookabc` 等——而 book_id 可由 API 调用方任意指定
+            # （router 的 extract 端点取 b.get("book_id")）。实测复现：
+            # 用户以 `bookA1` 建的书与资产，在下次 ensure_curated_library 时被静默删除。
+            # 用 ESCAPE '\' 让 `\_` 只匹配字面下划线。
+            _GARBAGE = "book\\_%"          # 匹配字面 "book_" 开头的 ID
+            _ESC = "ESCAPE '\\'"
+            tx_conn.execute(
+                f"DELETE FROM essence_chains WHERE book_id LIKE ? {_ESC}", (_GARBAGE,))
+            tx_conn.execute(
+                f"DELETE FROM essence_assets WHERE book_id LIKE ? {_ESC}", (_GARBAGE,))
+            tx_conn.execute(
+                f"DELETE FROM essence_tasks WHERE book_id LIKE ? {_ESC}", (_GARBAGE,))
+            cur = tx_conn.execute(
+                f"DELETE FROM essence_books WHERE book_id LIKE ? {_ESC}", (_GARBAGE,))
             cleaned_count = cur.rowcount
 
         # 灌装 8 大精选神作档案
