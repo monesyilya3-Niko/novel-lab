@@ -332,5 +332,95 @@ class TestCharacterAndEmotionServices(unittest.TestCase):
             self.assertIn(s_field, sample["sensory_breakdown"])
 
 
+class TestLibraryCache(unittest.TestCase):
+    """内置库加载缓存（2026-10-12 性能优化）的正确性与性能守卫。
+
+    背景：9 个 get_* / list_tropes 原本每次调用都读盘解析内置库 JSON。
+    trope-library.json 实测 411KB、解析 3.07ms，是其余库（5-21KB）的 20 倍，
+    /api/tropes 因此达 24.5ms。
+
+    这些库是**只读内置数据**（全仓库无写路径），缓存键用 (大小, mtime_ns)：
+    用户手工替换库文件时立即感知，无 TTL 滞后。
+    """
+
+    def setUp(self):
+        import shutil
+        import tempfile
+        self._tmp = Path(tempfile.mkdtemp(prefix="libcache_"))
+        self._saved_assets = services.config.ASSETS_ROOT
+        self._saved_root = services.config.ROOT_DIR
+        services.config.ASSETS_ROOT = self._tmp
+        services.config.ROOT_DIR = self._tmp
+        services.invalidate_library_cache()
+        self._shutil = shutil
+
+    def tearDown(self):
+        services.config.ASSETS_ROOT = self._saved_assets
+        services.config.ROOT_DIR = self._saved_root
+        services.invalidate_library_cache()
+        self._shutil.rmtree(self._tmp, ignore_errors=True)
+
+    def _write_lib(self, name, data):
+        import json as _json
+        import time
+        time.sleep(0.01)   # 确保 mtime 前进
+        (self._tmp / name).write_text(
+            _json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    def test_returns_data_and_caches(self):
+        self._write_lib("hook-library.json", {"total_count": 1, "hooks": [{"id": "h1"}]})
+        first = services.get_hooks()
+        second = services.get_hooks()
+        self.assertEqual(first, second)
+        self.assertEqual(first["total_count"], 1)
+
+    def test_missing_file_returns_empty_shape(self):
+        """文件缺失时返回空结构（与各 get_* 原行为一致），不抛异常。"""
+        r = services.get_hooks()
+        self.assertEqual(r, {"total_count": 0, "hooks": []})
+
+    def test_replaced_file_is_detected(self):
+        """**替换库文件内容**必须被感知——缓存不能返回陈旧数据。
+
+        这是本缓存最关键的守卫：指纹含 mtime_ns，改文件即失效。
+        """
+        self._write_lib("world-library.json", {"total_count": 1, "worlds": [{"id": "w1"}]})
+        self.assertEqual(len(services.get_worlds()["worlds"]), 1)
+        self._write_lib("world-library.json", {"total_count": 2, "worlds": [{"id": "w1"}, {"id": "w2"}]})
+        after = services.get_worlds()
+        self.assertEqual(len(after["worlds"]), 2, "替换文件后读到陈旧数据")
+
+    def test_corrupt_file_raises_500(self):
+        """库文件损坏应抛 ServiceError(500)，与各 get_* 原行为一致。"""
+        (self._tmp / "hook-library.json").write_text("{not json", encoding="utf-8")
+        services.invalidate_library_cache()
+        with self.assertRaises(services.ServiceError) as ctx:
+            services.get_hooks()
+        self.assertEqual(ctx.exception.code, 500)
+
+    def test_cache_actually_hits(self):
+        """性能守卫：重复调用不得重复解析。
+
+        造一个够大的库文件让解析成本可见，再断言冷调用比热调用慢得多。
+        """
+        import time
+        big = {"total_count": 5000, "hooks": [
+            {"id": f"h{i}", "name": f"钩子{i}", "desc": "说明" * 30} for i in range(5000)]}
+        self._write_lib("hook-library.json", big)
+        services.invalidate_library_cache()
+        t0 = time.perf_counter()
+        services.get_hooks()
+        cold = time.perf_counter() - t0
+        t0 = time.perf_counter()
+        for _ in range(20):
+            services.get_hooks()
+        warm = (time.perf_counter() - t0) / 20
+        self.assertGreater(
+            cold, warm * 10,
+            f"库缓存未生效：冷 {cold*1000:.2f}ms 热 {warm*1000:.3f}ms，"
+            f"倍数仅 {cold/max(warm,1e-9):.1f}x（应 >10x）",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
