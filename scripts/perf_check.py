@@ -271,9 +271,12 @@ def t5_call_timeout(base, server_root):
             for f in _glob.glob(os.path.join(server_root, "gui", "state",
                                              f"gui_state_{book_id}.json")):
                 try:
-                    err_text = json.load(open(f)).get("last_error", "") or ""
+                    # 用 with 关闭句柄：json.load(open(f)) 的文件对象无引用计数兜底，
+                    # 在循环里会让句柄累积到 GC 才释放（Windows 上尤其明显）。
+                    with open(f, encoding="utf-8") as _fh:
+                        err_text = json.load(_fh).get("last_error", "") or ""
                     mirror_found = True
-                except OSError:
+                except (OSError, ValueError):
                     pass
         if mirror_found:
             assert "timed out" in err_text.lower(), \
