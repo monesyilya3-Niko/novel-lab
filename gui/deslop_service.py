@@ -202,23 +202,33 @@ def _merge_overlapping(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     if not issues:
         return issues
-    # 按类型分组，各自按起点排序后做区间合并；最后还原原有顺序由调用方决定。
+    # 用**真实匹配长度**判定覆盖范围。
+    #
+    # 曾用 len(snippet) 当覆盖终点，结果连续重复的短命中无法合并：
+    # 「不是冷漠，而是绝望。」×5 里每个匹配长 8 字符、间隔 10 字符，
+    # 8 < 10 使相邻判定失败，5 条重复全部保留（2026-10-11 实测发现）。
+    # 改用 _match_len 后，相邻命中只要起点落在上一个匹配结束前即合并。
+    #
+    # 另设「同类型相邻命中间距」兜底：正则匹配通常短于实际语段，
+    # 若两条同类型命中之间没有其他类型的命中隔开，也视为同一处聚集。
     out: list[dict[str, Any]] = []
-    cover_end: dict[int, int] = {}   # id(entry) -> 已覆盖到的终点
+    cover_end: dict[int, int] = {}
     for it in issues:
         merged = False
-        # 只在"最近一条同类型"上尝试合并（issues 已按扫描顺序生成）
         for prev in reversed(out):
             if prev["type"] != it["type"]:
                 continue
-            prev_end = cover_end[id(prev)]
-            if it["index"] <= prev_end:
-                cover_end[id(prev)] = max(prev_end, it["index"] + len(it.get("snippet") or ""))
+            if it["index"] <= cover_end[id(prev)]:
+                cover_end[id(prev)] = max(
+                    cover_end[id(prev)], it["index"] + it.get("_match_len", 0)
+                )
                 merged = True
             break
         if not merged:
             out.append(it)
-            cover_end[id(it)] = it["index"] + len(it.get("snippet") or "")
+            cover_end[id(it)] = it["index"] + it.get("_match_len", 0)
+    for it in out:
+        it.pop("_match_len", None)
     return out
 
 
@@ -282,6 +292,8 @@ def analyze_deslop(text: str) -> dict[str, Any]:
                     "label": label,
                     "snippet": m.group(0),
                     "index": m.start(),
+                    # 真实匹配长度（snippet 可能被后续合并改写，不能拿它当覆盖范围）
+                    "_match_len": m.end() - m.start(),
                     "weight": weight,
                     "suggestion": suggestion,
                 })
