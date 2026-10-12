@@ -1048,6 +1048,12 @@ def _h_essence_chain_create(_params: dict[str, Any], body: dict[str, Any]) -> di
     b = body or {}
     clue = b.get("clue_name") or b.get("title") or ""
     cat = b.get("category", "")
+    # 类型校验（2026-10-12 补）：cat 非字符串时 `cat not in clue` 抛
+    # "argument of type 'int' is not iterable" 变 500。
+    # 这里选择**报错**而非静默降级为 ""：category 是调用方显式传入的业务字段，
+    # 静默忽略会让"传了但没生效"无处可查，与本项目「400 时指名出错参数」的口径一致。
+    if not isinstance(cat, str):
+        raise ServiceError("category 必须为字符串", 400)
     if cat and cat not in clue:
         clue_full = f"{clue}·{cat}"
     else:

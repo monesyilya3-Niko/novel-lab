@@ -42,6 +42,11 @@ def _sanitize_name(name: str) -> str:
         raise ServiceError(f"非法风格名: {name!r}", 400)
     if not re.fullmatch(r"[A-Za-z0-9_\-一-鿿]+", n):
         raise ServiceError(f"风格名只允许中英文/数字/下划线/连字符: {name!r}", 400)
+    # 长度上限（2026-10-12 补）：名直接拼进文件路径，超长会撞 Windows MAX_PATH
+    # 以 FileNotFoundError 变 500（实测 10000 字符名触发）。
+    # 60 与 writing_service 的项目名上限保持同一量级。
+    if len(n) > 60:
+        raise ServiceError("风格名过长（最多 60 个字符）", 400)
     return n
 
 

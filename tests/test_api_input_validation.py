@@ -91,6 +91,27 @@ class TestDirtyBodiesGet400(unittest.TestCase):
          {"project": "极端", "chapter_no": 10 ** 20, "content": "正文" * 200}, "过大"),
         ("/api/platform/format",
          {"platform_id": "qidian", "chapter_num": 1.5, "title": "t", "content": "c"}, "整数"),
+        # --- 2026-10-12 第二轮扩展扫描补入 -----------------------------------
+        # 做法改进：第一轮每个字段只试了几个脏值，漏了字段×值的组合覆盖。
+        # 第二轮对全部字段名 × 全部脏值（int/float/bool/None/list/dict/超长/NUL）
+        # 逐一试打，暴露 13 处；下面钉住修复后的行为。
+        ("/api/analyze/start", {"book_id": ["a"]}, "字符串"),
+        ("/api/analyze/pause", {"book_id": ["a"]}, "字符串"),
+        ("/api/analyze/resume", {"book_id": ["a"]}, "字符串"),
+        ("/api/analyze/full", {"book_id": ["a"]}, "字符串"),
+        ("/api/writing/projects", {"name": "\x00"}, "控制字符"),
+        ("/api/writing/inject", {"voice": 12345}, "字符串"),
+        ("/api/writing/score", {"voice": 12345, "text": "正文" * 100}, "字符串"),
+        ("/api/writing/score", {"voice": "voice:x", "text": 12345}, "字符串"),
+        ("/api/writing/assemble", {"name": "n", "genre": 123}, "字符串"),
+        ("/api/writing/assemble", {"name": 123, "genre": "g"}, "字符串"),
+        ("/api/quality/check", {"target": 12345}, "字符串"),
+        ("/api/quality/book", {"target": 12345}, "字符串"),
+        ("/api/quality/qc", {"text": 12345}, "字符串"),
+        ("/api/quality/qc", {"voice": 12345, "text": "正文"}, "字符串"),
+        ("/api/system/compliance", {"voice": 12345}, "资产引用"),
+        ("/api/style/save", {"name": "a" * 10000, "style_card": {}}, "过长"),
+        ("/api/essence/chains", {"book_id": "b", "clue_name": "x", "category": 12345}, "字符串"),
     ]
 
     def test_every_dirty_body_is_4xx_not_500(self):

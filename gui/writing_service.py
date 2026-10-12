@@ -75,6 +75,10 @@ def _sanitize_project(project: str) -> str:
 
 def _load_asset_json(ref: str) -> dict[str, Any]:
     """把 '<kind>:<id>' 资产引用解析为 JSON dict。CRITICAL：防路径穿越。"""
+    # 类型校验（2026-10-12 补）：请求体传 {"voice": 12345} 时下面
+    # `":" not in ref` 抛 "argument of type 'int' is not iterable" 变 500。
+    if not isinstance(ref, str):
+        raise ServiceError(f"资产引用必须为字符串: {ref!r}", 400)
     if not ref or ":" not in ref:
         raise ServiceError(f"非法资产引用: {ref!r}", 400)
     kind, _, asset_id = ref.partition(":")
@@ -238,6 +242,10 @@ def create_project(name: str) -> dict[str, Any]:
         raise ServiceError("项目名不能为空", 400)
     if len(clean) > 60:
         raise ServiceError("项目名过长（最多 60 个字符）", 400)
+    # 控制字符校验（2026-10-12 补）：原正则 [^\s/\\]+ 只挡空白与斜杠，
+    # "\x00" 能通过，然后 mkdir 抛 "embedded null character in path" 变 500。
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in clean):
+        raise ServiceError("项目名不能包含控制字符", 400)
     if clean in (".", "..") or not _PROJECT_ID_RE.match(clean):
         raise ServiceError("项目名不能包含 / 或 \\", 400)
     if clean == "default":
@@ -341,6 +349,13 @@ def inject(voice: str, structure: str | None = None, commercial: str | None = No
 def score(voice: str, text: str | None = None, chapter_path: str | None = None,
           label: str = "", genre_pack: str | None = None) -> dict[str, Any]:
     """双维度打分：一致性五维 + 章节质量十二维。"""
+    # 类型校验（2026-10-12 补）：text 非字符串时一路传到 engine_adapter.score_text
+    # 内部才崩，变 500；label 非字符串同理。与 quality_service 三个质检入口
+    # 保持同一措辞与状态码。
+    if text is not None and not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    if not isinstance(label, str):
+        raise ServiceError("label 必须为字符串", 400)
     if not text and not chapter_path:
         raise ServiceError("需要 text 或 chapter_path", 400)
     if chapter_path:
@@ -387,6 +402,13 @@ def score(voice: str, text: str | None = None, chapter_path: str | None = None,
 
 def assemble(name: str, genre: str, skip_craft: bool = False) -> dict[str, Any]:
     """组装 pass1-5 → 4 类资产入库。genre 必填（D7）。"""
+    # 类型校验（2026-10-12 补）：请求体塞 {"genre": 123} 时 `not genre` 为 False
+    # （数字非空），下一句 genre.strip() 直接 AttributeError → 500。
+    # name 同理：非字符串会在下面的 `ch in name` 处 TypeError。
+    if not isinstance(genre, str):
+        raise ServiceError("genre 必须为字符串", 400)
+    if not isinstance(name, str):
+        raise ServiceError("name 必须为字符串", 400)
     if not genre or not genre.strip():
         raise ServiceError("genre 不能为空（铁律一：题材隔离）", 400)
     genre = genre.strip()

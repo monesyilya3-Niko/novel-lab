@@ -94,6 +94,9 @@ def compliance_scan(voice: str | None = None,
     results = []
 
     if voice:
+        # 类型校验（2026-10-12 补）：voice 非字符串时 .split() 抛 AttributeError 变 500。
+        if not isinstance(voice, str):
+            raise ServiceError(f"非法资产引用: {voice!r}", 400)
         # HIGH：路径穿越防护
         name = voice.split(":")[-1]
         if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):

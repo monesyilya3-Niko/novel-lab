@@ -392,6 +392,11 @@ def split_chapter_batches(book_id: str, idx: int, batch_size: int | None = None)
 
 
 def _get_book_or_raise(book_id: str) -> dict[str, Any]:
+    # 类型校验（2026-10-12 补）：book_id 在下面被用作 dict key，
+    # 请求体传 {"book_id": ["a"]} 会以 "unhashable type: 'list'" 变 500。
+    # 这里是 9 个调用点的共同入口，在此收口一处即可全覆盖。
+    if not isinstance(book_id, str):
+        raise ServiceError("book_id 必须为字符串", 400)
     book = _books_get(book_id)
     if book is None:
         raise ServiceError(f"书籍 {book_id} 未导入（请先 import）", 404)
@@ -603,6 +608,10 @@ def _count_total_batches(chapters: list[Any], batch_size: int) -> int:
 
 def pause(book_id: str) -> dict[str, Any]:
     """暂停（当前批完成后停）。"""
+    # 与 _get_book_or_raise 同口径：本函数不走那个入口（直接查 _runtime），
+    # 故单独校验，否则 {"book_id": ["a"]} 会以 unhashable 变 500。
+    if not isinstance(book_id, str):
+        raise ServiceError("book_id 必须为字符串", 400)
     ctx = _runtime.get(book_id)
     if ctx is None:
         raise ServiceError("没有运行中的分析任务", 404)

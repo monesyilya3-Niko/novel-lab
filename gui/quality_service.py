@@ -126,6 +126,10 @@ def resolve_chapter_target(target: str, *, novel_dir: str | None = None) -> Path
     """
     import shutil
     import uuid
+    # 类型校验（2026-10-12 补）：Path(12345) 抛 TypeError 变 500。
+    # target 是 check/book/qc 三个质检入口的公共参数，在此收口。
+    if not isinstance(target, str):
+        raise ServiceError("target 必须为字符串", 400)
     if not target:
         raise ServiceError("target 不能为空", 400)
     p = Path(target)
@@ -277,6 +281,10 @@ def clean_stale_scratch() -> int:
 
 def _safe_asset_path(ref: str) -> Path | None:
     """安全解析资产引用路径（防路径穿越）。"""
+    # 类型校验（2026-10-12 补）：ref 非字符串时 .split() 抛 AttributeError 变 500。
+    # 本函数语义是"非法引用返回 None"，故非字符串同样返回 None。
+    if not isinstance(ref, str):
+        return None
     name = ref.split(":")[-1]
     if not name or any(ch in name for ch in ("/", "\\", "..", "\x00", "\n", "\r")):
         return None
@@ -446,6 +454,22 @@ def qc(target: str | None = None, text: str | None = None,
        novel_dir: str | None = None, llm_hook: bool = False) -> dict[str, Any]:
     """启动 qc 长任务（四层十二维）。并发上限 2（D6）。"""
     task_id = f"q-{uuid.uuid4().hex[:12]}"
+
+    # text 类型校验（2026-10-12 补）。check() / book() 早有此校验，qc() 漏了：
+    # 请求体塞 {"text": 12345} 会一路走到 _materialize_text 的 write_text(12345)，
+    # 抛 TypeError 变成 500「内部错误」，用户不知道是哪个参数错了。
+    # 与另两个入口保持同一措辞与状态码。
+    if text is not None and not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+
+    # 资产引用类型校验（2026-10-12 补）。注意与「资产不存在」的区别：
+    # _checked_asset_path 对非法/缺失引用一律返回 None（调用方"跳过该资产"的语义），
+    # 那对「用户没传这个可选资产」是对的；但「传了个数字」是**参数用错**，
+    # 静默跳过会让调用方以为生效了。故此处只拦类型错误，不改变缺失即跳过的行为。
+    for _field, _val in (("voice", voice), ("genre_pack", genre_pack),
+                         ("asset", asset), ("book", book), ("novel_dir", novel_dir)):
+        if _val is not None and not isinstance(_val, str):
+            raise ServiceError(f"{_field} 必须为字符串", 400)
 
     # 资产内容契约：voice 只接受 voice 卡。校验必须在建 scratch / 登记任务 / 启动后台
     # 线程**之前**完成——否则错误会被吞进任务注册表，前端只能轮询到 error，而非同步 400。
