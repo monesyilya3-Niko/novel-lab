@@ -17,31 +17,76 @@ _log = get_logger("system_service")
 
 
 # ---------------------------------------------------------------------------
-# 系统状态
+# 目录体积缓存（2026-10-12 性能优化）
+#
+# 背景：``system_status()`` 对 4 个目录做 rglob 全遍历统计字节数，实测
+# assets 16.5ms + corpus 17.7ms ≈ 36ms，占该端点总耗时的绝大部分。
+# 而 corpus/ 是用户语料盘（实测已有 678MB / 109 文件，真实用户可达几十 GB、
+# 上千文件），成本随文件数线性增长——每次请求都全盘 stat 显然不可接受。
+#
+# 设计：与 scripts/genre_registry.py 的题材缓存同构（TTL + 指纹），
+# 保持项目内缓存策略一致。指纹用目录 mtime（这里只统计**体积**，
+# 改文件内容会改文件大小但目录 mtime 不变——故同时把文件数入指纹，
+# 并对体积这一维度接受 TTL 窗口内的滞后：体积数字不要求实时到秒）。
+#
+# 铁律三：纯标准库。
 # ---------------------------------------------------------------------------
+_DIR_SIZE_CACHE: dict[str, tuple[float, int]] = {}   # path_str -> (ts, size)
 
-def system_status() -> dict[str, Any]:
-    """系统状态总览：磁盘、数据库、模型、任务。"""
-    # 磁盘占用
-    def _dir_size(p: Path) -> int:
-        if not p.is_dir():
-            return 0
-        total = 0
+
+def _dir_size_cached(p: Path) -> int:
+    """目录总字节数；带 TTL 缓存。"""
+    import time
+    key = str(p)
+    now = time.monotonic()
+    cached = _DIR_SIZE_CACHE.get(key)
+    if cached and (now - cached[0]) < _cache_ttl():
+        return cached[1]
+
+    total = 0
+    if p.is_dir():
         for f in p.rglob("*"):
             try:
                 if f.is_file():
                     total += f.stat().st_size
             except OSError:
                 continue
-        return total
+    _DIR_SIZE_CACHE[key] = (now, total)
+    return total
 
-    assets_size = _dir_size(config.ASSETS_ROOT)
-    reports_size = _dir_size(config.REPORTS_DIR)
-    corpus_size = _dir_size(config.CORPUS_DIR)
-    novel_size = _dir_size(config.NOVEL_DIR)
+
+def invalidate_dir_size_cache() -> None:
+    """清空目录体积缓存（测试隔离环境切换时调用）。"""
+    _DIR_SIZE_CACHE.clear()
+
+
+def _cache_ttl() -> float:
+    """缓存 TTL（秒）。环境变量 NOVEL_LAB_SYS_TTL 可覆盖，0 表示每次重算。"""
+    raw = os.environ.get("NOVEL_LAB_SYS_TTL", "").strip()
+    if raw == "":
+        return 5.0
+    try:
+        val = float(raw)
+    except ValueError:
+        return 5.0
+    return val if val >= 0 else 5.0
+
+
+# ---------------------------------------------------------------------------
+# 系统状态
+# ---------------------------------------------------------------------------
+
+def system_status() -> dict[str, Any]:
+    """系统状态总览：磁盘、数据库、模型、任务。"""
+    # 磁盘占用（带缓存，见 _DIR_SIZE_CACHE 注释）
+    assets_size = _dir_size_cached(config.ASSETS_ROOT)
+    reports_size = _dir_size_cached(config.REPORTS_DIR)
+    corpus_size = _dir_size_cached(config.CORPUS_DIR)
+    novel_size = _dir_size_cached(config.NOVEL_DIR)
     db_size = config.DB_PATH.stat().st_size if config.DB_PATH.is_file() else 0
 
-    # 资产/报告计数
+    # 资产/报告计数（按扩展名过滤，与体积统计口径不同——
+    # 体积含目录内所有文件，计数只认对应类型，两者不可混用）
     assets_count = len(list(config.ASSETS_ROOT.glob("*.json"))) if config.ASSETS_ROOT.is_dir() else 0
     reports_count = len(list(config.REPORTS_DIR.rglob("*.md"))) if config.REPORTS_DIR.is_dir() else 0
 

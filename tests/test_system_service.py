@@ -66,6 +66,76 @@ class TestSystemStatus(unittest.TestCase):
         r = system_service.system_status()
         self.assertGreaterEqual(r["counts"]["assets"], 1)
 
+    def test_dir_size_cache_reflects_disk(self):
+        """目录体积缓存（2026-10-12）必须反映真实磁盘，且能感知新增文件。
+
+        缓存键是路径字符串 + TTL。风险点：测试隔离会切换 config.*_ROOT，
+        若缓存不随路径隔离而失效，测试就会量到上一次运行留下的旧值。
+        这里通过 invalidate + 新增文件来验证缓存确实重新统计。
+        """
+        import os
+        os.environ["NOVEL_LAB_SYS_TTL"] = "0"   # 关闭 TTL 快路径，每次重算
+        try:
+            system_service.invalidate_dir_size_cache()
+            before = system_service.system_status()["disk"]["assets_bytes"]
+
+            # 加一个 2KB 文件
+            blob = config.ASSETS_ROOT / "cache-probe.json"
+            blob.write_text("x" * 2048, encoding="utf-8")
+            system_service.invalidate_dir_size_cache()
+            after = system_service.system_status()["disk"]["assets_bytes"]
+
+            self.assertGreater(after, before,
+                               f"新增文件后体积未变：{before} -> {after}")
+            self.assertGreaterEqual(after - before, 2048,
+                                    "体积增量小于新增文件大小")
+        finally:
+            blob = config.ASSETS_ROOT / "cache-probe.json"
+            blob.unlink(missing_ok=True)
+            os.environ.pop("NOVEL_LAB_SYS_TTL", None)
+            system_service.invalidate_dir_size_cache()
+
+    def test_dir_size_cache_actually_hits(self):
+        """性能守卫：TTL 内重复调用必须跳过目录遍历（否则每次请求全盘 stat）。
+
+        注意：隔离目录里文件很少时，遍历本身就快（<3ms），冷热差异会被
+        计时噪声淹没。故本用例**先造出足够多的文件**让遍历成本可见，
+        再断言倍数——否则在干净的测试环境里这个守卫恒假绿。
+        """
+        import os
+        import time
+        os.environ.pop("NOVEL_LAB_SYS_TTL", None)   # 用默认 TTL
+        probe_dir = config.ASSETS_ROOT / "_perf_probe"
+        created = []
+        try:
+            probe_dir.mkdir(parents=True, exist_ok=True)
+            for i in range(300):
+                p = probe_dir / f"f{i}.json"
+                p.write_text("x" * 64, encoding="utf-8")
+                created.append(p)
+
+            system_service.invalidate_dir_size_cache()
+            t0 = time.perf_counter()
+            system_service.system_status()
+            cold = time.perf_counter() - t0
+            t0 = time.perf_counter()
+            for _ in range(10):
+                system_service.system_status()
+            warm = (time.perf_counter() - t0) / 10
+            self.assertGreater(
+                cold, warm * 5,
+                f"目录体积缓存未生效：冷 {cold*1000:.1f}ms 热 {warm*1000:.2f}ms，"
+                f"倍数仅 {cold/max(warm,1e-9):.1f}x（应 >5x）",
+            )
+        finally:
+            for p in created:
+                p.unlink(missing_ok=True)
+            try:
+                probe_dir.rmdir()
+            except OSError:
+                pass
+            system_service.invalidate_dir_size_cache()
+
 
 class TestComplianceScan(unittest.TestCase):
     def test_scan_all(self):
