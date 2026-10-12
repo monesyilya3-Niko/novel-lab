@@ -121,6 +121,28 @@
 - **`prose.sections` 各节**：为原创性写作指导文本（实测每节 37–84 字的提示性描述），不含第三方小说的逐字原文片段，因此不触发小说版权面
 - **`provenance.evidence`**：仅为样本量与统计特征描述（可用本数、抽样数、段落中位字数、对话占比），属事实性数据，不构成受版权保护的表达
 
-## 7. 责任声明
+## 7. 去 AI 味检测规则的借鉴说明（2026-10-11）
+
+`gui/deslop_service.py` 的四组句式规则与六类密度门控阈值，其**方法论与毒级分档**
+借鉴自同一上游 `zenstory-ai/oh-story-claudecode`（MIT）的：
+
+- `skills/story-deslop/references/banned-words.md`（禁用词分级表）
+- `skills/story-deslop/references/deslop-gates.md`（门禁判据与删除保护）
+- `skills/story-deslop/scripts/check-ai-patterns.js`（密度门控与真人语料校准阈值）
+
+**与 §2 资产衍生的区别**：本次为**规则与方法的借鉴**，非文本复制——
+`gui/deslop_service.py` 是纯标准库 Python 正则实现，未引入上游任何 JS 代码，
+未逐字复制上游文本；毒级分档（★★★★★ 等）与"每千字密度门控"属方法层面，
+阈值已按本项目文本规模重新设定，非照搬上游数值。
+
+**归因**：上游仓库 https://github.com/zenstory-ai/oh-story-claudecode ，
+MIT License，Copyright (c) 2025-2026 oh-story-claudecode，
+许可证副本见 `LICENSES/oh-story-claudecode/LICENSE`。
+
+**未触发守卫的原因**：`tests/test_third_party_notices.py` 守卫的是
+`assets/*.json` 的 `provenance` 字段齐备性；本次改动为代码层规则借鉴，
+不新增资产文件，故不进入该守卫范围。此处记录以保持溯源链完整可查。
+
+## 8. 责任声明
 
 本文件为合规归因记录，不构成法律意见。若上游许可证发生变更，或计划对外分发并需逐文件标注版权，应重新评估归因方式。
