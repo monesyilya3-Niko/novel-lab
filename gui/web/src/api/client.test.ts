@@ -103,3 +103,57 @@ describe('typedRequest 请求核心', () => {
     vi.useRealTimers()
   })
 })
+
+// ---------------------------------------------------------------------------
+// 后端 snake_case → 前端 camelCase 的自动转换契约（2026-10-12 补）
+//
+// 背景：这是一次**审计误判**留下的守卫。审计时观察到 /api/writing/projects
+// 后端返回 snake_case（read_only / target_words），而前端类型声明 camelCase，
+// 于是判定"p.readOnly 恒为 undefined、过滤逻辑静默失效"——**这是错的**：
+// typedRequest 的返回路径（client.ts 第 171 行 `return deepToCamel<T>(json.data)`）
+// 已经做了全局转换，只是没追到那一层。
+//
+// 教训：只看后端响应判断前端行为是不可靠的，必须追到请求出口的返回路径。
+// 本组测试把这个契约钉死——若有人移除 deepToCamel，这里立刻变红。
+// ---------------------------------------------------------------------------
+describe('响应字段名自动转 camelCase（typedRequest 契约）', () => {
+  it('/api/writing/projects 的 read_only 转为 readOnly', async () => {
+    vi.mocked(fetch).mockImplementationOnce(
+      mockFetchOnce({
+        code: 0,
+        data: [
+          { id: 'p1', name: '我的书', read_only: false, target_words: 1000000 },
+          { id: 'default', name: 'default（CLI 只读）', read_only: true, target_words: 1000000 },
+        ],
+        message: '',
+      }) as never,
+    )
+    const { writingApi } = await import('./client')
+    const projects = await writingApi.projects()
+    expect(projects[0].readOnly).toBe(false)
+    expect(projects[1].readOnly).toBe(true)
+    expect(projects[0].targetWords).toBe(1000000)
+    // 关键断言：基于 readOnly 的过滤必须真的能过滤掉 default
+    expect(projects.filter((p) => !p.readOnly).map((p) => p.id)).toEqual(['p1'])
+  })
+
+  it('嵌套对象与数组的键也递归转换', async () => {
+    vi.mocked(fetch).mockImplementationOnce(
+      mockFetchOnce({
+        code: 0,
+        data: {
+          total_assets: 55,
+          assets_by_kind: { prose_card: 32 },
+          recent_activity: [{ book_id: 'bk-1', created_at: '2026-01-01' }],
+        },
+        message: '',
+      }) as never,
+    )
+    const { getOverview } = await import('./client')
+    const ov = (await getOverview()) as unknown as Record<string, unknown>
+    expect(ov.totalAssets).toBe(55)
+    expect(ov.assetsByKind).toEqual({ proseCard: 32 })
+    expect((ov.recentActivity as Record<string, unknown>[])[0].bookId).toBe('bk-1')
+    expect((ov.recentActivity as Record<string, unknown>[])[0].createdAt).toBe('2026-01-01')
+  })
+})
