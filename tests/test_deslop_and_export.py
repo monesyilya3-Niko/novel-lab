@@ -116,6 +116,49 @@ class TestDeslopService(unittest.TestCase):
         issues = self._parallel_issues(deslop_service.analyze_deslop(text))
         self.assertEqual(issues, [], f"不应误报，实际 {len(issues)} 条")
 
+    def test_parallelism_does_not_flag_first_person_narration(self):
+        """第一人称连续「我」起句是正常写法，不得误报。
+
+        2026-10-11 实测修正：首字集原本含「我」「你」，导致第一人称叙事
+        被一律判为机械同构。而本项目 platform_service.PLATFORMS 里
+        知乎盐言的定位正是「第一人称代入」——误报会打在最主流用户群上。
+        修正为只收第三人称代词：叙述者反复点名「他」才是 AI 腔特征。
+        """
+        first_person = (
+            "我走进那间屋子。我看见了墙上那张照片。我想起十年前的事。",
+            "我没说话。我不想解释。我不需要谁来理解。",
+            "你知道吗。你觉得呢。你倒是说句话啊。",
+        )
+        for text in first_person:
+            res = deslop_service.analyze_deslop(text)
+            self.assertEqual(
+                self._parallel_issues(res), [],
+                f"第一/第二人称叙事被误报为机械同构: {text}",
+            )
+
+    def test_parallelism_still_flags_third_person(self):
+        """反向守卫：第三人称连续同主语仍须检出（修正不能过头）。"""
+        for text in (
+            "他走进房间。他坐了下来。他看着窗外。",
+            "她走进房间。她坐了下来。她看着窗外。",
+        ):
+            res = deslop_service.analyze_deslop(text)
+            self.assertEqual(
+                len(self._parallel_issues(res)), 1,
+                f"第三人称同构漏检: {text}",
+            )
+
+    def test_parallel_lead_char_set_excludes_first_person(self):
+        """直接守卫首字集本身：不得再包含第一/第二人称代词。
+
+        此前的缺口正是"判定集无任何测试守卫"——改坏了也没人知道。
+        """
+        chars = deslop_service._PARALLEL_LEAD_CHARS | deslop_service._PARALLEL_TAIL_LEAD_CHARS
+        for ch in ("我", "你", "您", "咱"):
+            self.assertNotIn(ch, chars, f"首字集不应包含第一/第二人称代词 {ch!r}")
+        for ch in ("他", "她", "它"):
+            self.assertIn(ch, chars, f"首字集应包含第三人称代词 {ch!r}")
+
     def test_parallelism_requires_three_clauses(self):
         """仅 2 句同构不构成机械排比，不报。"""
         text = "他看见天空。他看见大地。"
