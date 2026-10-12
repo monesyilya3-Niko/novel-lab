@@ -678,10 +678,13 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
         writingApi.projects().catch(() => []),
       ])
       setBooks(res.books || [])
-      const projNames = (projs || []).map((p: WritingProject) => p.name)
+      const validProjects = (projs || []).filter((p: WritingProject) => !p.readOnly && p.name !== 'default' && p.id !== 'default')
+      const projNames = validProjects.map((p: WritingProject) => p.name)
+      setProjects(projNames)
       if (projNames.length > 0) {
-        setProjects(projNames)
         setAdoptProject(projNames[0])
+      } else {
+        setAdoptProject('')
       }
     } catch (e) {
       setError(friendlyError(e))
@@ -855,26 +858,33 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
           <Typography variant="body2" color="text.secondary">
             将《{adoptBookDialog?.title}》沉淀的全部五维资产（核心大纲、原型人设、爆款桥段、反AI文风）一键注入到目标项目中。
           </Typography>
-          <TextField
-            select
-            label="目标创作项目"
-            size="small"
-            value={adoptProject}
-            onChange={(e) => setAdoptProject(e.target.value)}
-            fullWidth
-          >
-            {projects.length === 0 ? (
-              <MenuItem value="default">default (默认项目)</MenuItem>
-            ) : (
-              projects.map((p) => (
+          {projects.length === 0 ? (
+            <Alert severity="warning">
+              当前暂无可用的自定义创作项目（默认 CLI 项目为只读）。请先前往「写作工坊」新建作品后，再进行整本反哺注入。
+            </Alert>
+          ) : (
+            <TextField
+              select
+              label="目标创作项目"
+              size="small"
+              value={adoptProject}
+              onChange={(e) => setAdoptProject(e.target.value)}
+              fullWidth
+            >
+              {projects.map((p) => (
                 <MenuItem key={p} value={p}>{p}</MenuItem>
-              ))
-            )}
-          </TextField>
+              ))}
+            </TextField>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAdoptBookDialog(null)}>取消</Button>
-          <Button variant="contained" color="secondary" disabled={adopting} onClick={handleExecuteAdoptBook}>
+          <Button
+            variant="contained"
+            color="secondary"
+            disabled={adopting || projects.length === 0 || !adoptProject}
+            onClick={handleExecuteAdoptBook}
+          >
             {adopting ? '正在注入...' : '确认注入'}
           </Button>
         </DialogActions>

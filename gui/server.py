@@ -840,8 +840,10 @@ class GuiServer:
         try:
             from gui import essence_service
             conn = db.get_conn()
-            curated_cnt = conn.execute("SELECT count(*) FROM essence_books WHERE book_id LIKE 'curated_%'").fetchone()[0]
-            if curated_cnt == 0:
+            curated_books_cnt = conn.execute("SELECT count(*) FROM essence_books WHERE book_id LIKE 'curated_%'").fetchone()[0]
+            curated_assets_cnt = conn.execute("SELECT count(*) FROM essence_assets WHERE book_id LIKE 'curated_%'").fetchone()[0]
+            expected_assets_cnt = sum(len(b.get("assets", [])) for b in essence_service.CURATED_MASTERPIECES)
+            if curated_books_cnt < len(essence_service.CURATED_MASTERPIECES) or curated_assets_cnt < expected_assets_cnt:
                 essence_service.ensure_curated_library(clean_raw_corpus=False)
         except Exception as exc:  # noqa: BLE001
             _log.warning("精选神作档案就绪初始化跳过: %s", exc)
