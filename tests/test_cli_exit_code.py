@@ -81,5 +81,58 @@ class TestCliExitCodePropagation(unittest.TestCase):
         self.assertEqual(offenders, [], f"以下文件用了 sys.exit 但没 import sys：{offenders}")
 
 
+class TestVerdictReflectedInExitCode(unittest.TestCase):
+    """判定结果必须反映到退出码（2026-10-12 审计修复 CLI-03/04）。
+
+    缺陷背景：`检查` 与 `质检` 两个子命令算完判定后**裸 return 0**——
+    质量 FAIL、一致性 FAIL、乃至含 critical 级问题，退出码都是 0。
+    这与直连脚本的语义**相反**：
+      scripts/chapter_check.py  -> sys.exit(0 if verdict == "PASS" else 1)
+      scripts/book_quality.py   -> sys.exit(0 if verdict == "PASS" else 1)
+
+    退出码是 CI / 脚本编排的唯一判定依据，恒 0 等于把门禁变成装饰。
+
+    本组用**静态断言**锁定 return 表达式（行为级测试需起子进程跑完整
+    pipeline，成本高且依赖 LLM 配置；这里钉住关键表达式即可防回退）。
+    """
+
+    def setUp(self):
+        self.novel_src = (ROOT / "novel.py").read_text(encoding="utf-8")
+
+    def test_check_command_reads_verdict(self):
+        """`检查` 的收尾必须依据 qc['verdict']，不能裸 return 0。"""
+        self.assertIn(
+            'return 0 if qc.get("verdict") == "PASS" else 1',
+            self.novel_src,
+            "「检查」的退出码未反映判定——FAIL 会静默返回 0",
+        )
+
+    def test_qc_command_reads_verdict(self):
+        """`质检` 的收尾必须依据 result['verdict']。"""
+        self.assertIn(
+            'return 0 if result.get("verdict") == "PASS" else 1',
+            self.novel_src,
+            "「质检」的退出码未反映判定——FAIL 会静默返回 0",
+        )
+
+    def test_no_bare_return_zero_after_verdict(self):
+        """反向守卫：判定已算出却裸 return 0 的模式不得再出现。
+
+        原缺陷形态是：算完 verdict → `return 0`（不带条件）。
+        这里扫描「检查」「质检」两个分支区间，确保没有无条件 return 0。
+        """
+        # 定位两个命令分支
+        for cmd in ('args.cmd == "检查"', 'args.cmd == "质检"'):
+            start = self.novel_src.index(cmd)
+            # 到下一个 args.cmd == 为止
+            nxt = self.novel_src.find("args.cmd ==", start + len(cmd))
+            block = self.novel_src[start:nxt] if nxt > 0 else self.novel_src[start:]
+            bare_return = "\n" + " " * 8 + "return 0\n"
+            self.assertNotIn(
+                bare_return, block,
+                f"{cmd} 分支里仍有裸 return 0——判定结果被丢弃",
+            )
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main())

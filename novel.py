@@ -552,7 +552,12 @@ def main():
                 print("\n需改进:")
                 for i in qc['issues']:
                     print(f"  ⚠ {i}")
-        return 0
+        # 退出码反映判定（2026-10-12 审计修复 CLI-03）：
+        # 原实现算完 verdict 后裸 return 0，质量 FAIL 也报成功——
+        # 与直连脚本语义相反（scripts/chapter_check.py:722 是
+        # `sys.exit(0 if verdict == "PASS" else 1)`）。
+        # 退出码是 CI/脚本编排的判定依据，恒 0 等于把门禁变成装饰。
+        return 0 if qc.get("verdict") == "PASS" else 1
 
     if args.cmd == "质检":
         import book_quality
@@ -598,7 +603,11 @@ def main():
                 limit_note = (f"（--json 输出最多 {result['issues_limit']} 条）"
                               if result.get("issues_truncated") else "")
                 print(f"  {hint}{limit_note}")
-        return 0
+        # 退出码反映判定（2026-10-12 审计修复 CLI-04）：
+        # 原实现只在 result.get("error") 时 return 1，判定 FAIL（含 critical 级
+        # 问题）仍裸 return 0——与直连脚本语义相反
+        # （scripts/book_quality.py:760 是 `sys.exit(0 if verdict == "PASS" else 1)`）。
+        return 0 if result.get("verdict") == "PASS" else 1
 
     if args.cmd == "聚合":
         return run_script("pass5_aggregate.py", ["--genre", args.genre] +

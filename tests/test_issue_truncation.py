@@ -289,7 +289,9 @@ class TestTruncationHintInCli(unittest.TestCase):
                 sys.argv = old_argv
 
         out = buf.getvalue()
-        self.assertEqual(rc, 0)
+        # 2026-10-12：退出码现反映判定（原先恒 0）。本组夹具含问题，
+        # verdict 非 PASS，故退出码应为 1——断言与判定一致，而非硬编码 0。
+        self.assertEqual(rc, 1, "含问题的夹具应返回非零退出码（判定未反映到退出码）")
         self.assertIn("⚠", out, "截断时必须有提示行")
         self.assertIn(str(EXPECTED_LIMIT), out)
 
@@ -307,7 +309,9 @@ class TestTruncationHintInCli(unittest.TestCase):
             finally:
                 sys.argv = old_argv
 
-        self.assertEqual(rc, 0)
+        # 本夹具是小文本（verdict 应为 PASS），故退出码 0——与判定一致。
+        # （2026-10-12：退出码现反映判定，不再恒 0。）
+        self.assertEqual(rc, 0, "PASS 的夹具应返回 0")
         self.assertNotIn("仅显示前", buf.getvalue())
 
     # ---- 第二轮收口：渲染条数 < total_issues 就必须提示，且条数 == 实际渲染行数 ----
@@ -350,7 +354,9 @@ class TestTruncationHintInCli(unittest.TestCase):
             total = self._total_issues(root)
             rc, out = self._run_novel_qc(root)
 
-        self.assertEqual(rc, 0)
+        # 2026-10-12：退出码现反映判定（原先恒 0）。本组夹具含问题，
+        # verdict 非 PASS，故退出码应为 1——断言与判定一致，而非硬编码 0。
+        self.assertEqual(rc, 1, "含问题的夹具应返回非零退出码（判定未反映到退出码）")
         self.assertGreater(total, 20, "夹具必须超过本命令的渲染条数（20）")
         self.assertLessEqual(total, EXPECTED_LIMIT, "夹具不得触发响应体截断")
         rendered = self._count_issue_lines(out)
@@ -367,7 +373,9 @@ class TestTruncationHintInCli(unittest.TestCase):
             total = self._total_issues(root)
             rc, out = self._run_novel_qc(root)
 
-        self.assertEqual(rc, 0)
+        # 2026-10-12：退出码现反映判定（原先恒 0）。本组夹具含问题，
+        # verdict 非 PASS，故退出码应为 1——断言与判定一致，而非硬编码 0。
+        self.assertEqual(rc, 1, "含问题的夹具应返回非零退出码（判定未反映到退出码）")
         self.assertEqual(self._count_issue_lines(out), total,
                          "13 条问题必须全部列出（否则应给出提示）")
         self.assertNotIn("仅显示前", out, "未砍短时不得出现截断提示")
