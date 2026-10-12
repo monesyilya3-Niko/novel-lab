@@ -106,6 +106,34 @@ class StdlibOnlyGuard(unittest.TestCase):
                     offenders.append(f"{rel}: import {mod}（应走 engine_adapter 薄封装）")
         self.assertEqual(offenders, [], "依赖方向违规（gui 层 import scripts/ 模块）：\n" + "\n".join(offenders))
 
+    def test_only_db_layer_imports_sqlite3(self) -> None:
+        """AGENTS.md §2：`gui/db.py` 是唯一 import sqlite3 的层。
+
+        2026-10-11 实修：essence_service.py 曾为类型标注 `sqlite3.Row` 直接
+        import sqlite3，构成对该约束的违反——而此前**没有任何测试守卫**它
+        （test_no_third_party_imports_any_level 只管第三方库，sqlite3 是标准库，
+        天然放过）。现在 db.py 导出 `RowLike` 别名供各层标注使用，无需触碰
+        sqlite3 本身。
+
+        注意：此处检查的是 import 语句，不是文本出现次数——文件头的文档字符串
+        里提到 sqlite3 属正常描述。
+        """
+        offenders: list[str] = []
+        for path in _iter_py_files():
+            rel = path.relative_to(ROOT).as_posix()
+            if not rel.startswith("gui/") or rel == "gui/db.py":
+                continue  # db.py 是唯一例外
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                mods: set[str] = set()
+                if isinstance(node, ast.Import):
+                    mods.update(alias.name.split(".")[0] for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+                    mods.add(node.module.split(".")[0])
+                if "sqlite3" in mods:
+                    offenders.append(f"{rel}:{node.lineno}: import sqlite3（应改用 db.RowLike）")
+        self.assertEqual(offenders, [], "依赖方向违规（非 db 层 import sqlite3）：\n" + "\n".join(offenders))
+
     def test_scoped_files_actually_covered(self) -> None:
         files = _iter_py_files()
         self.assertGreater(len(files), 30, f"扫描范围异常（仅 {len(files)} 个文件），检查 RUNTIME_DIRS")

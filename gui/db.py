@@ -28,6 +28,15 @@ from typing import Any
 
 from gui import config
 
+# 供服务层标注「SQLite 行对象」用的类型别名。
+#
+# 背景：``gui/db.py`` 是唯一 import sqlite3 的层（AGENTS.md §2 依赖方向禁令）。
+# 但服务层需要给「可能拿到 Row、也可能拿到 dict」的参数标类型，此前
+# essence_service 为此自行 import sqlite3，构成对依赖方向的违反。
+# 该导入仅用于标注（运行时不需要 sqlite3），故在此导出别名供各层复用：
+# 服务层写 ``db.RowLike`` 即可，无需触碰 sqlite3 本身。
+RowLike = sqlite3.Row | dict[str, Any]
+
 # ---------------------------------------------------------------------------
 # 连接管理：每线程独立连接（不是进程级单连接）
 #

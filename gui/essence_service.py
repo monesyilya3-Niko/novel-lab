@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
 from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
@@ -34,7 +33,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _format_book_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+def _format_book_dict(r: db.RowLike) -> dict[str, Any]:
     """格式化书籍档案字典，注入前端强契约 camelCase 字段，实现双向完全兼容。"""
     d = dict(r)
     try:
@@ -163,7 +162,7 @@ def delete_book(book_id: str) -> dict[str, Any]:
 # 2. 精华资产管理（Essence Assets）
 # ---------------------------------------------------------------------------
 
-def _format_asset_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+def _format_asset_dict(r: db.RowLike) -> dict[str, Any]:
     """格式化资产卡片字典，注入前端 camelCase 契约字段。"""
     d = dict(r)
     d["bookId"] = d.get("book_id", "")
@@ -175,7 +174,7 @@ def _format_asset_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
     return d
 
 
-def _format_chain_dict(r: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+def _format_chain_dict(r: db.RowLike) -> dict[str, Any]:
     """格式化暗链字典，注入前端图谱 camelCase 契约字段。"""
     d = dict(r)
     b_id = d.get("book_id", "")
