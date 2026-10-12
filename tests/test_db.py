@@ -192,6 +192,73 @@ class TestDb(unittest.TestCase):
         self.assertTrue(db.table_exists("analysis_tasks"))
         self.assertFalse(db.table_exists("nonexistent_table_xyz"))
 
+    def test_backup_captures_wal_writes(self):
+        """备份必须包含 WAL 中未 checkpoint 的写入（2026-10-12 修）。
+
+        缺陷背景：backup_to 的**回退分支**原本是裸 ``shutil.copy2(src, dst)``。
+        WAL 模式下，刚建的表与数据可能整个还在 ``-wal`` 文件里——实测
+        只复制主库得到的"备份"打开后报 ``no such table``，即备份无效。
+
+        本用例验证正常路径（Connection.backup）确实包含最新写入。
+        """
+        db.init_schema()
+        db.apply_migrations()
+        conn = db.get_conn()
+        with db.tx() as c:
+            c.execute("INSERT INTO assets (asset_key,kind,name,path) "
+                      "VALUES ('wal_probe','voice','探针','p')")
+
+        dst = self._tmp / "wal_backup.db"
+        db.backup_to(dst)
+
+        import sqlite3 as _sq
+        chk = _sq.connect(str(dst))
+        try:
+            n = chk.execute(
+                "SELECT COUNT(*) FROM assets WHERE asset_key='wal_probe'").fetchone()[0]
+            self.assertEqual(n, 1, "备份未包含 WAL 中的最新写入")
+        finally:
+            chk.close()
+
+    def test_naive_copy_without_wal_is_incomplete(self):
+        """反向守卫：证明"只复制主库"在 WAL 未合并时确实丢数据。
+
+        这不是在测产品代码，而是把**缺陷的成因**固化成可执行证据：
+        若将来有人"简化"回退分支为裸 copy2，本用例会说明为什么不行。
+
+        注意：本用例必须用一个**全新的库连接**，确保 WAL 里有未合并内容。
+        若沿用 setUpClass 的共享连接，前序测试的 checkpoint 会让 WAL 变空，
+        断言就失去意义（实测踩过：该守卫一度假红）。
+        """
+        import sqlite3 as _sq
+
+        fresh = self._tmp / "fresh_wal.db"
+        conn = _sq.connect(str(fresh))
+        try:
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("CREATE TABLE t (v TEXT)")
+            conn.execute("INSERT INTO t VALUES ('还在WAL里')")
+            conn.commit()
+            # 此时表结构与数据都在 -wal 中（主库仅 4KB 空壳）
+
+            naive = self._tmp / "fresh_naive.db"
+            import shutil as _sh
+            _sh.copy2(fresh, naive)      # 只复制主库，不带 -wal
+
+            chk = _sq.connect(str(naive))
+            try:
+                tables = {r[0] for r in chk.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'")}
+                self.assertNotIn(
+                    "t", tables,
+                    "裸 copy2 竟拿到了完整表——该缺陷的前提不成立，"
+                    "应重新评估回退分支的实现方式",
+                )
+            finally:
+                chk.close()
+        finally:
+            conn.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

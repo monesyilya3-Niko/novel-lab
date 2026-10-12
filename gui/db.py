@@ -541,8 +541,14 @@ def upsert_task(task: dict[str, Any]) -> None:
 def backup_to(dst: Path) -> None:
     """把当前库在线备份到 *dst*（正确处理 WAL 未 checkpoint 的写入）。
 
-    优先走原生 ``Connection.backup`` API；失败时回退 ``shutil.copy2``。
+    优先走原生 ``Connection.backup`` API；失败时回退到**同时复制主库与 WAL**。
     ``migrate.backup()`` 调用本函数，不再自行 import sqlite3。
+
+    ⚠️ 回退分支不能用裸 ``shutil.copy2(src, dst)``（2026-10-12 修）：
+    WAL 模式下新写入的表/数据可能整个还在 ``-wal`` 文件里。实测——
+    建表后立即 copy2 主库，备份文件打开报 "no such table: t"，因为
+    表结构都在 WAL 中未合并。那种"备份"是无效的（虽然
+    ``_verify_backup`` 会因缺关键表而拦下，但等于备份功能整体不可用）。
     """
     import shutil
 
@@ -557,7 +563,26 @@ def backup_to(dst: Path) -> None:
     except Exception:  # noqa: BLE001 — 连接异常时退化为文件拷贝
         src = db_path()
         if src.is_file():
+            # 复制主库 **与 WAL/SHM 边车文件**。只复制主库会丢数据：
+            # WAL 模式下新写入的表/数据可能整个还在 -wal 里，裸 copy2 得到的
+            # "备份"打开报 no such table（实测）。
+            #
+            # 注意：此处**不做** checkpoint。回退分支的触发条件本就是
+            # "连接/备份 API 异常"，此时库上很可能有其它连接持锁，
+            # 再尝试 wal_checkpoint(TRUNCATE) 会以 "database table is locked"
+            # 失败并污染错误路径（2026-10-12 实测：导致 migrate 的三个测试
+            # 在全量运行时报错）。直接连带边车文件复制即可——SQLite 打开
+            # 备份时能自行从 -wal 恢复出完整内容。
             shutil.copy2(src, dst)
+            for suffix in ("-wal", "-shm"):
+                side = Path(str(src) + suffix)
+                if side.is_file():
+                    try:
+                        shutil.copy2(side, Path(str(dst) + suffix))
+                    except OSError:
+                        # 边车文件可能正被其它连接持有（Windows 独占），
+                        # 复制失败不致命：主库+已复制的部分仍可打开。
+                        continue
     # 验证备份可用：损坏的备份比没有备份更危险（恢复时才发现）。
     _verify_backup(dst)
 
