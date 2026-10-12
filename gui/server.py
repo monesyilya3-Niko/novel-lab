@@ -692,6 +692,51 @@ def _read_lock_pid(path: Path) -> int | None:
     return pid if pid > 0 else None
 
 
+def ensure_curated_seed_once() -> dict[str, Any]:
+    """启动时的一次性精选神作灌装保障（2026-10-11 引入；2026-10-12 加"已灌装"标记）。
+
+    为什么需要"一次性标记"而不是「数量不足就补」：
+    后者无法区分两种情况——
+      a) 从未灌装过（新用户 / 库刚建）→ 应该补
+      b) 用户**显式删除**了不想看的精选书 → 不该复活
+    实测（审计发现）：用户删掉一本 curated 书后，下次启动被静默恢复，
+    用户无法摆脱不想要的书，删除动作看起来"没生效"。
+
+    现行语义：settings.json 记 `curated_seeded` 标记。只在**从未灌装过**
+    且库中没有任何 curated 记录时灌装一次；之后即便数量不足也不再自动补。
+    需要恢复时，用户可显式调 ``essence_service.ensure_curated_library()``
+    或删掉 settings.json 里的该标记。
+
+    失败只记日志，不阻断启动（与 builtin_sync 同口径）。
+    """
+    try:
+        from gui import essence_service, system_service
+
+        settings = system_service._load_settings_file()
+        if settings.get("curated_seeded"):
+            return {"action": "skipped", "reason": "already_seeded"}
+
+        # LIKE 里的 `_` 是通配符，必须 ESCAPE（同 essence_service 的垃圾清理修复）
+        conn = db.get_conn()
+        n_curated = conn.execute(
+            "SELECT count(*) FROM essence_books WHERE book_id LIKE 'curated\\_%' ESCAPE '\\'"
+        ).fetchone()[0]
+
+        seeded = False
+        if n_curated == 0:
+            essence_service.ensure_curated_library(clean_raw_corpus=False)
+            seeded = True
+
+        # 无论本次是否真灌装（老库可能已有人工数据），都落标记，
+        # 避免把"用户已整理过的库"当成"未初始化"反复补写。
+        settings["curated_seeded"] = True
+        system_service._save_settings_file(settings)
+        return {"action": "seeded" if seeded else "marked", "curated_books": n_curated}
+    except Exception as exc:  # noqa: BLE001 — 不阻断启动
+        _log.warning("精选神作档案就绪初始化跳过: %s", exc)
+        return {"action": "failed", "error": str(exc)}
+
+
 class GuiServer:
     """封装 ThreadingHTTPServer 的启动 / 停机。"""
 
@@ -836,17 +881,8 @@ class GuiServer:
         from gui import builtin_sync
         builtin_sync.sync_at_startup()
 
-        # 小说精华库传世神作就绪保障（2026-10-11）
-        try:
-            from gui import essence_service
-            conn = db.get_conn()
-            curated_books_cnt = conn.execute("SELECT count(*) FROM essence_books WHERE book_id LIKE 'curated_%'").fetchone()[0]
-            curated_assets_cnt = conn.execute("SELECT count(*) FROM essence_assets WHERE book_id LIKE 'curated_%'").fetchone()[0]
-            expected_assets_cnt = sum(len(b.get("assets", [])) for b in essence_service.CURATED_MASTERPIECES)
-            if curated_books_cnt < len(essence_service.CURATED_MASTERPIECES) or curated_assets_cnt < expected_assets_cnt:
-                essence_service.ensure_curated_library(clean_raw_corpus=False)
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("精选神作档案就绪初始化跳过: %s", exc)
+        # 小说精华库传世神作就绪保障（2026-10-11；2026-10-12 加"已灌装"标记）
+        ensure_curated_seed_once()
 
         # 管理员系统：首次启动生成随机初始密码（只打印一次）。
         # P1-2 修复（2026-09-29）：桌面端无控制台窗口（windowsHide），只写日志

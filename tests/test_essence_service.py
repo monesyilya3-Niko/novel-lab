@@ -23,7 +23,7 @@ if str(ROOT) not in sys.path:
 sys.path.insert(0, str(_TESTS_DIR))
 import _isolation  # noqa: E402
 
-from gui import db, essence_service, router
+from gui import db, essence_service, router, server, system_service
 from gui.services import ServiceError
 
 
@@ -640,6 +640,72 @@ class TestGarbageCleanupWildcard(unittest.TestCase):
         n = conn.execute(
             "SELECT COUNT(*) FROM essence_books WHERE book_id='book_keepme'").fetchone()[0]
         self.assertEqual(n, 1, "clean_raw_corpus=False 时不应清理")
+
+
+class TestCuratedSeedOnce(unittest.TestCase):
+    """启动时的一次性精选灌装保障（2026-10-12 修）。
+
+    缺陷背景（审计发现并实测复现）：原 server 启动逻辑是「curated 数量
+    不足就补」，无法区分"从未灌装"与"用户显式删除"。用户删掉一本精选书
+    后，下次启动会被静默复活——用户无法摆脱不想要的书。
+
+    修法：settings.json 记 curated_seeded 一次性标记。只在从未灌装且库中
+    无 curated 记录时灌装；之后数量不足也不再补。
+    """
+
+    def setUp(self):
+        self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="seedonce_")))
+        self._iso.__enter__()
+        db.init_schema()
+        db.apply_migrations()
+        # 清理可能残留的标记（隔离目录应为空，双保险）
+        s = system_service._load_settings_file()
+        s.pop("curated_seeded", None)
+        system_service._save_settings_file(s)
+
+    def tearDown(self):
+        db.close()
+        self._iso.__exit__(None, None, None)
+
+    def _count_curated(self):
+        return db.get_conn().execute(
+            "SELECT count(*) FROM essence_books WHERE book_id LIKE ? ESCAPE ?",
+            ("curated" + chr(92) + "_%", chr(92))).fetchone()[0]
+
+    def test_first_start_seeds(self):
+        r = server.ensure_curated_seed_once()
+        self.assertEqual(r["action"], "seeded")
+        self.assertEqual(self._count_curated(), len(essence_service.CURATED_MASTERPIECES))
+
+    def test_second_start_skips(self):
+        server.ensure_curated_seed_once()
+        r = server.ensure_curated_seed_once()
+        self.assertEqual(r["action"], "skipped")
+        self.assertEqual(r.get("reason"), "already_seeded")
+
+    def test_user_deletion_is_respected(self):
+        """核心守卫：用户删掉的精选书不得被下次启动复活。"""
+        server.ensure_curated_seed_once()
+        before = self._count_curated()
+        self.assertGreater(before, 0)
+
+        essence_service.delete_book("curated_doupocangqiong")
+        after_delete = self._count_curated()
+        self.assertEqual(after_delete, before - 1)
+
+        server.ensure_curated_seed_once()          # 模拟重启
+        self.assertEqual(
+            self._count_curated(), after_delete,
+            "用户删除的精选书被启动逻辑复活了",
+        )
+
+    def test_existing_manual_library_gets_marked_not_reseeded(self):
+        """老库已有人工 curated 数据时：只落标记，不重复灌装。"""
+        essence_service.create_or_update_book(
+            book_id="curated_myown", title="我自己整理的", genre="xuanhuan")
+        r = server.ensure_curated_seed_once()
+        self.assertEqual(r["action"], "marked", "已有 curated 数据时不应灌装")
+        self.assertEqual(self._count_curated(), 1, "不应把 8 本灌进已有库")
 
 
 if __name__ == "__main__":
