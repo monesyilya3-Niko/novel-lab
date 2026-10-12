@@ -165,6 +165,51 @@ class TestDeslopService(unittest.TestCase):
         res = deslop_service.analyze_deslop("他一边走一边看。")
         self.assertNotIn("enumeration", self._types(res))
 
+    # --- 密度型检测（2026-10-11 新增） -------------------------------------
+    # 单个「仿佛」「了一下」是正常中文，单点匹配必然误报；聚集才构成 AI 腔。
+    # 移植业界「每千字密度门控」方法论，阈值按本项目文本规模重设。
+
+    def test_micro_tic_density_flagged_when_clustered(self):
+        """「了一下」式微动作口癖聚集时报。"""
+        text = "他看了一眼，顿了一下，颤了一下，停了一下，想了一下。" * 2
+        res = deslop_service.analyze_deslop(text)
+        self.assertIn("micro_tic", self._types(res))
+
+    def test_metaphor_density_flagged_when_clustered(self):
+        """比喻词成片出现时报（advisory 级）。"""
+        text = "好像要下雨。仿佛有风。宛如梦境。如同昨日。像刀一样。像是要哭。犹如潮水。"
+        res = deslop_service.analyze_deslop(text)
+        self.assertIn("metaphor_density", self._types(res))
+
+    def test_cliched_modifier_density_flagged(self):
+        """弱化副词（缓缓/微微/轻轻/淡淡）聚集时报。"""
+        text = "她缓缓走来，微微低头，轻轻开口，淡淡一笑，一丝不安，一抹红晕，些许迟疑，几分犹豫。"
+        res = deslop_service.analyze_deslop(text)
+        self.assertIn("cliched_modifier", self._types(res))
+
+    def test_reasoning_chain_flagged(self):
+        """论证连接词（这意味着/也就是说）是小说叙事里最出戏的 AI 腔。"""
+        text = "这意味着失败。也就是说没戏。关键在于时机。"
+        res = deslop_service.analyze_deslop(text)
+        self.assertIn("reasoning_chain", self._types(res))
+
+    def test_density_rules_do_not_flag_isolated_usage(self):
+        """反向守卫：孤立使用「微微」「看了一眼」属正常中文，不得误报。
+
+        这是密度门控存在的全部理由——若退化成单点匹配，正常稿件会被
+        大量误伤，用户会直接关掉这个功能。
+        """
+        text = (
+            "他在雪地里走了一整夜，皮靴踩碎冰壳发出沉闷的脆响。"
+            "推开木门时，炉火已经熄了，只有余烬微微泛着暗红。"
+            "他看了一眼窗外，天快亮了。"
+        )
+        res = deslop_service.analyze_deslop(text)
+        density_types = {"micro_tic", "metaphor_density", "cliched_modifier",
+                         "reasoning_chain", "action_list", "negation_pair"}
+        hit = density_types & self._types(res)
+        self.assertEqual(hit, set(), f"孤立使用被误报为聚集: {hit}")
+
     def test_new_rules_do_not_false_positive_on_natural_prose(self):
         """反向守卫：自然白话散文不得被新增规则误伤。"""
         text = (

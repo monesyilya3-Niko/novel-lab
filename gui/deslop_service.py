@@ -96,6 +96,75 @@ ENUMERATION_PATTERNS = [
     (r"一边[^。！？；\n]{1,12}?一边[^。！？；\n]{1,12}?一边", "一边…一边…堆砌", "人做不了三个并列动作，拆成先后或只留一个。"),
 ]
 
+# 9. 密度型检测（2026-10-11 新增）
+#
+# 设计依据：单个「仿佛」「微微」「了一下」都是正常中文，**单点匹配必然误报**；
+# 它们形成 AI 腔的条件是"高密度聚集"。业界成熟做法（参考 zenstory-ai/
+# oh-story-claudecode 的 check-ai-patterns.js，MIT；其阈值在 5584 章 qimao
+# 长篇 + 3983 篇 heiyan 短篇的真人语料上做过误报率校准）是：统计每千字命中数，
+# 越过阈值才报警。本实现移植该**方法论**（密度门控 + 每千字归一），
+# 阈值按本项目的文本规模重新设定。
+#
+# 与前面各组的区别：前面是"命中即报"（单句可判定），这里是"聚集才报"。
+DENSITY_RULES = [
+    {
+        "type": "micro_tic",
+        "label": "「了一下」式微动作口癖",
+        # 「了+量词」是中文自然构词，但 AI 高频用它给每个动作挂尾巴：
+        # "看了一眼""顿了一下""颤了一下"连排时，读感机械。
+        "pattern": re.compile(r"了(?:[一两三几半])?[下阵圈道声眼口气会]"),
+        "min_hits": 5,
+        "per_kilo": 6.0,
+        "weight": 6,
+        "suggestion": "同一场景里连续给动作挂「了一下」尾巴会显得机械，删掉大部分，只留真正需要强调节拍的那一处。",
+    },
+    {
+        "type": "negation_pair",
+        "label": "「没有…也没有…」配对否定",
+        "pattern": re.compile(r"(?:没有|没|不)[^，。！？；,!?\n]{1,10}[，,；]\s*[^，。！？；,!?\n]{0,6}?也(?:没有|没|不)"),
+        "min_hits": 3,
+        "per_kilo": 4.0,
+        "weight": 7,
+        "suggestion": "连续用「没有A，也没有B」铺排是 AI 的排除法句式，改为直接写实际存在的那一项。",
+    },
+    {
+        "type": "metaphor_density",
+        "label": "比喻词密度超标",
+        "pattern": re.compile(r"好像|像是|仿佛|宛如|如同|犹如|(?<![不头图画影录摄肖])像(?![头像素])"),
+        "min_hits": 7,
+        "per_kilo": 3.0,
+        "weight": 5,
+        "suggestion": "比喻成片出现会变成修辞堆叠。删到必要的数量，其余回到具体白描——不是把「像」换成另一组比喻词。",
+    },
+    {
+        "type": "cliched_modifier",
+        "label": "弱化副词/套词密度超标",
+        "pattern": re.compile(r"缓缓|微微|轻轻|淡淡|一丝|一抹|些许|几分|隐约"),
+        "min_hits": 8,
+        "per_kilo": 12.0,
+        "weight": 5,
+        "suggestion": "「缓缓/微微/轻轻/淡淡」每千字合计控制在 3 个以内；成串出现或每个动作都垫一个时，删掉大部分。",
+    },
+    {
+        "type": "action_list",
+        "label": "监控式动作流水账",
+        "pattern": re.compile(r"伸手|抬手|探手|拿起|拿过|取出|取过|掏出|摸出|抓起|攥住|握住|捏住|按住|推开|拉开|打开|关上|放下|递给|挑开|掀开|扯开|拧开|倒出|端起|转身|回头|抬头|低头|弯腰|俯身|走到|走向|坐下|站起|看向|看着|盯着|扫过"),
+        "min_hits": 5,
+        "per_kilo": 8.0,
+        "weight": 6,
+        "suggestion": "连续堆叠通用动作动词并用逗号串成步骤表，读感像无视角温度的监控记录；合并动作、删掉可推断的步骤。",
+    },
+    {
+        "type": "reasoning_chain",
+        "label": "解释链/推理腔",
+        "pattern": re.compile(r"这意味着|也就是说|换句话说|真正的问题|问题在于|关键在于|在这种情况下|按照这个逻辑|只有这样"),
+        "min_hits": 3,
+        "per_kilo": 3.0,
+        "weight": 8,
+        "suggestion": "小说叙事不需要「这意味着/换句话说」这类论证连接词，读者能从事实自行推断。",
+    },
+]
+
 _SENT_SPLIT_RE = re.compile(r"[。！？\n\r]+|[…]{2,}")
 # 句内并列分句边界（；/;）——排比同构句常以分号串联，不切开就会整段漏检。
 _CLAUSE_SPLIT_RE = re.compile(r"[；;]+")
@@ -249,6 +318,27 @@ def analyze_deslop(text: str) -> dict[str, Any]:
                 "suggestion": "连续相同句式开头显得过于工整死板，打破对仗，融合为更有节奏的错落叙述。",
             })
         i = j if chain_len >= 3 else i + 1
+
+    # 9. 密度型检测：单个词是正常中文，聚集才构成 AI 腔。
+    # 门槛取「绝对命中数」与「每千字密度」双重判定——短文本靠前者防误报，
+    # 长文本靠后者防漏报（长文里 5 次「了一下」完全正常）。
+    kilo = max(cn_count / 1000.0, 0.3)   # 与计分口径一致的千字基数下限
+    for rule in DENSITY_RULES:
+        hits = rule["pattern"].findall(text)
+        n_hit = len(hits)
+        if n_hit < rule["min_hits"]:
+            continue
+        density = n_hit / kilo
+        if density <= rule["per_kilo"]:
+            continue
+        issues.append({
+            "type": rule["type"],
+            "label": rule["label"],
+            "snippet": f"共 {n_hit} 处（千字密度 {density:.1f}，阈值 {rule['per_kilo']}）",
+            "index": 0,
+            "weight": rule["weight"],
+            "suggestion": rule["suggestion"],
+        })
 
     # 综合计分 (0-100，越低越健康纯正，100 极度油腻严重 AI 味)
     # 基础分 = 惩罚分归一化
