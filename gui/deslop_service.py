@@ -186,6 +186,42 @@ def _is_parallel_lead(sentence: str) -> bool:
     return bool(sentence) and sentence[0] in (_PARALLEL_LEAD_CHARS | _PARALLEL_TAIL_LEAD_CHARS)
 
 
+def _merge_overlapping(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """把同类型、位置重叠的命中合并为一条。
+
+    背景：``re.finditer`` 对连续重复输入逐位置报告。例如文本里出现
+    「一边一边一边…」时，enumeration 正则在每个位置都匹配成功，产出大量
+    指向同一现象的条目，把 ``issues[:30]`` 的配额占满，真正的其他问题
+    反而被截断看不见。
+
+    合并规则：同 ``type`` 且新条目起点 ≤ 上一条覆盖终点 → 并入上一条
+    （扩展其覆盖终点），不新增。不同类型即使位置重叠也各自保留——
+    它们描述的是不同性质的问题。
+
+    只在"重叠"时合并，因此正常的、彼此分离的多处命中不受影响。
+    """
+    if not issues:
+        return issues
+    # 按类型分组，各自按起点排序后做区间合并；最后还原原有顺序由调用方决定。
+    out: list[dict[str, Any]] = []
+    cover_end: dict[int, int] = {}   # id(entry) -> 已覆盖到的终点
+    for it in issues:
+        merged = False
+        # 只在"最近一条同类型"上尝试合并（issues 已按扫描顺序生成）
+        for prev in reversed(out):
+            if prev["type"] != it["type"]:
+                continue
+            prev_end = cover_end[id(prev)]
+            if it["index"] <= prev_end:
+                cover_end[id(prev)] = max(prev_end, it["index"] + len(it.get("snippet") or ""))
+                merged = True
+            break
+        if not merged:
+            out.append(it)
+            cover_end[id(it)] = it["index"] + len(it.get("snippet") or "")
+    return out
+
+
 def _locate(text: str, needle: str, start: int) -> int:
     """从 ``start`` 起定位 ``needle``，找不到则回落到全文查找，再不行返回 start。
 
@@ -249,6 +285,15 @@ def analyze_deslop(text: str) -> dict[str, Any]:
                     "weight": weight,
                     "suggestion": suggestion,
                 })
+
+    # 4.5 重叠命中合并（2026-10-11）。
+    #
+    # 正则 finditer 在连续重复的输入上会逐位置各报一次：例如「一边」×10000
+    # 会让 enumeration 规则产出上万条**同一现象**的条目，把 issues 列表刷满
+    # （实测 30 条上限全被同一段占据，真实问题被挤出视野）。
+    # 同构句那边已用贪心链解决同类问题，这里对规则表统一做一次合并：
+    # 同 type 且新命中起点落在上一条的覆盖范围内 → 并入上一条，不新增条目。
+    issues = _merge_overlapping(issues)
 
     # 5. 「让」字密度专项
     rang_count = text.count("让")

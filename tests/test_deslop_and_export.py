@@ -210,6 +210,24 @@ class TestDeslopService(unittest.TestCase):
         hit = density_types & self._types(res)
         self.assertEqual(hit, set(), f"孤立使用被误报为聚集: {hit}")
 
+    def test_repeated_pattern_chain_reported_once(self):
+        """连续重复的输入不得逐位置刷屏。
+
+        实测缺陷：`re.finditer` 对「一边」×10000 会在每个位置各匹配一次，
+        enumeration 规则产出上万条目，把 issues[:30] 配额占满，真实问题
+        被挤出视野。同构句那边已用贪心链解决，此处对规则表统一做重叠合并。
+        """
+        res = deslop_service.analyze_deslop("一边" * 500)
+        enum = [it for it in res["issues"] if it["type"] == "enumeration"]
+        self.assertEqual(len(enum), 1, f"重复链应合并为 1 条，实际 {len(enum)} 条")
+
+    def test_separated_hits_are_not_merged(self):
+        """反向守卫：彼此分离的多处命中不得被合并（合并只针对位置重叠）。"""
+        text = "他一边走一边看一边想。" + "正常叙述内容。" * 50 + "她一边哭一边笑一边喊。"
+        res = deslop_service.analyze_deslop(text)
+        enum = [it for it in res["issues"] if it["type"] == "enumeration"]
+        self.assertEqual(len(enum), 2, f"两处分离命中应各报 1 条，实际 {len(enum)} 条")
+
     def test_new_rules_do_not_false_positive_on_natural_prose(self):
         """反向守卫：自然白话散文不得被新增规则误伤。"""
         text = (
