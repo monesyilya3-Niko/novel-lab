@@ -11,11 +11,14 @@ import Typography from '@mui/material/Typography'
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { WorkbenchKey } from '../layout/WorkbenchNav'
+import { readStorage, writeStorage } from '../safeStorage'
 
 const STORAGE_KEY = 'novellab.onboarded'
 
 export function isOnboarded(): boolean {
-  return window.localStorage.getItem(STORAGE_KEY) === '1'
+  // 走 safeStorage：隐私模式/禁用站点数据时直接访问会抛 SecurityError。
+  // 读不到就当作"未引导过"，让用户能看到引导（而不是崩掉）。
+  return readStorage(STORAGE_KEY) === '1'
 }
 
 interface Step {
@@ -35,7 +38,7 @@ export default function OnboardingWizard({
 
   const finish = (go?: WorkbenchKey | unknown) => {
     const target = typeof go === 'string' ? (go as WorkbenchKey) : undefined
-    window.localStorage.setItem(STORAGE_KEY, '1')
+    writeStorage(STORAGE_KEY, '1')
     onDone()
     if (target) onNavigate(target)
   }

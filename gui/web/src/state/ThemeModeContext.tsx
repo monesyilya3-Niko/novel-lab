@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { readStorage, writeStorage } from '../safeStorage'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -25,7 +26,10 @@ interface ThemeModeState {
 const ThemeModeContext = createContext<ThemeModeState | null>(null)
 
 function readStored(): ThemeMode {
-  const v = window.localStorage.getItem(STORAGE_KEY)
+  // 走 safeStorage：本函数是 useState 的初始化器，在**渲染期间**执行。
+  // 直接访问 localStorage 在隐私模式/禁用站点数据时抛 SecurityError，
+  // 异常会冒泡出渲染，导致整个应用白屏（本 Provider 包住所有组件）。
+  const v = readStorage(STORAGE_KEY)
   return v === 'light' || v === 'dark' || v === 'system' ? v : 'system'
 }
 
@@ -43,7 +47,7 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
 
   const setMode = (m: ThemeMode) => {
     setModeState(m)
-    window.localStorage.setItem(STORAGE_KEY, m)
+    writeStorage(STORAGE_KEY, m)
   }
 
   const value = useMemo<ThemeModeState>(
