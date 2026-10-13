@@ -108,8 +108,39 @@ class TestDesktopPackagingManifest(unittest.TestCase):
                         (BACKEND / "gui" / "__init__.py").is_file())
 
 
+    def test_prompts_packaged(self):
+        """ELE-01（2026-10-13 审计）：prompts/*.md 必须进安装包。
 
-class TestDesktopPathPicker(unittest.TestCase):
+        pipeline.load_prompt 按 PROMPTS_DIR 读取 pass1~pass5 模板来拼 LLM 请求；
+        此前 sync_backend 完全没同步 prompts/ —— 装机版的「拆书」/「分析」
+        一调用 load_prompt 就 FileNotFoundError，**核心功能 100% 失败**。
+        """
+        for name in ("pass1_structure.md", "pass2_character.md", "pass3_style.md",
+                     "pass4_commercial.md", "pass5_craft.md", "analysis-pipeline.md"):
+            self.assertTrue((BACKEND / "prompts" / name).is_file(),
+                            f"安装包内缺失 backend/prompts/{name}")
+
+    def test_prompts_generated_output_dir_excluded(self):
+        """反向守卫：prompts/generated/ 是运行时输出目录，不该随包发布。"""
+        gen = BACKEND / "prompts" / "generated"
+        if gen.exists():
+            self.assertEqual(
+                list(gen.rglob("*")), [],
+                "prompts/generated/ 下有文件被误打包（那是用户运行时产物）")
+
+    def test_samples_packaged(self):
+        """ELE-02（2026-10-13 审计）：samples/ 必须进安装包。
+
+        gui/router._samples_dir() 按 GUI_DIR 的父目录找 samples/，供新手
+        一键导入试手。此前未同步 —— 装机版「一键导入示例」静默变成空列表。
+        """
+        shipped = len(list((ROOT / "samples").glob("*.txt")))
+        self.assertGreater(shipped, 0, "仓库 samples/ 本身为空，测试失去意义")
+        self.assertEqual(
+            len(list((BACKEND / "samples").glob("*.txt"))), shipped,
+            "打包示例语料数应与仓库 samples/ 实测一致")
+
+
     """桌面版"选择路径"桥必须真的进包。
 
     这条链路有三个环节可以各自单独断掉，而且断掉的症状都是"页面里那个按钮

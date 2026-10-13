@@ -63,6 +63,13 @@ EXCLUDE_REL_FILES = {
     Path("scripts/perf_isolated.sh"),
 }
 
+# prompts/generated/ 是**输出目录**（inject.py 与 writing_service 把生成的
+# 写作 prompt 写到这里），属用户运行时数据，不该随包发布。
+# 但 prompts/*.md（pass1_structure.md ~ pass5_craft.md、analysis-pipeline.md）
+# 是**内置提示词模板**——pipeline.load_prompt 按 PROMPTS_DIR 读取它们来拼
+# LLM 请求，缺了整条拆书链就跑不起来（见 ELE-01）。
+EXCLUDE_REL_DIRS_FROM_PROMPTS = {Path("generated")}
+
 
 def _excluded(rel_from_root: Path) -> bool:
     """rel_from_root 为相对仓库根的路径；命中排除表则不进安装包。"""
@@ -71,8 +78,14 @@ def _excluded(rel_from_root: Path) -> bool:
     return any(d in rel_from_root.parents for d in EXCLUDE_REL_DIRS)
 
 
-def sync_dir(src: Path, dst: Path, label: str) -> int:
-    """同步目录，返回复制的文件数。"""
+def sync_dir(src: Path, dst: Path, label: str,
+             exclude_rel_dirs: set[Path] | None = None) -> int:
+    """同步目录，返回复制的文件数。
+
+    Args:
+        exclude_rel_dirs: 相对 **src** 的子目录（如 ``Path("generated")``），
+            命中则跳过其下全部内容。用于排除输出目录等非随包内容。
+    """
     if not src.exists():
         print(f"跳过 {label}：源不存在 {src}", file=sys.stderr)
         return 0
@@ -88,6 +101,14 @@ def sync_dir(src: Path, dst: Path, label: str) -> int:
             rel = item.relative_to(src)
             if _excluded(item.relative_to(ROOT)):
                 continue
+            if exclude_rel_dirs:
+                try:
+                    rel_to_src = item.relative_to(src)
+                except ValueError:
+                    rel_to_src = rel
+                if any(d in rel_to_src.parents or d == rel_to_src
+                       for d in exclude_rel_dirs):
+                    continue
             target = dst / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item, target)
@@ -113,6 +134,18 @@ def main() -> int:
     # 语料与报告：corpus/、reports/ 同理
     total += sync_dir(ROOT / "corpus", BACKEND / "corpus", "corpus/")
     total += sync_dir(ROOT / "reports", BACKEND / "reports", "reports/")
+    # 内置提示词模板：repo 根 prompts/*.md -> backend/prompts/
+    # （pipeline.load_prompt 按 PROMPTS_DIR 读取 pass1~pass5 模板拼 LLM 请求。
+    #  2026-10-13 审计 ELE-01 发现此前**完全没同步**：装机版的「拆书」/「分析」
+    #  一调用 load_prompt 就 FileNotFoundError，核心功能 100% 失败。
+    #  注意排除 prompts/generated/——那是运行时输出目录，非随包内容。）
+    total += sync_dir(ROOT / "prompts", BACKEND / "prompts", "prompts/",
+                      exclude_rel_dirs=EXCLUDE_REL_DIRS_FROM_PROMPTS)
+    # 内置示例语料：repo 根 samples/ -> backend/samples/
+    # （gui/router._samples_dir() 按 GUI_DIR 的父目录找 samples/，供新手
+    #  一键导入试手。2026-10-13 审计 ELE-02 发现此前未同步——「一键导入示例」
+    #  静默变成空列表，用户以为功能坏了。原创内容，可安全随包发布。）
+    total += sync_dir(ROOT / "samples", BACKEND / "samples", "samples/")
     # 内置资产版本清单：repo 根 assets-manifest.json -> backend/assets-manifest.json
     # （builtin_sync.load_manifest 按 ROOT_DIR 实时读取；缺失则降级为旧行为，
     #  但会丢失"官方旧版可升级"分类，因此打包必须携带）
