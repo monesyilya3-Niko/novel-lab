@@ -719,12 +719,27 @@ def prune(dry_run: bool = False) -> dict[str, Any]:
     Returns:
         dict: {"assets_pruned": [...], "reports_pruned": [...], "dry_run": bool}
     """
-    # 复用 check() 的扫描对账结果作为唯一判据，避免「两处各自解析路径」造成口径分叉。
+    # 复用 check() 的扫描对账结果作为判据。
     # （曾试过用 config.ROOT_DIR / rel 解析存量相对路径，但 _rel_path 在源目录不在
     #  ROOT_DIR 内时走的是 `<目录名>/<文件名>` 回退分支，解析会失真。）
     diff = check()
     gone_asset_paths = set(diff["assets"]["extra"])
     gone_report_paths = set(diff["reports"]["extra"])
+
+    # ── 安全闸（2026-10-12 审计修复 D7）────────────────────────────────
+    # prune 是**破坏性**操作，而它的唯一判据是"磁盘扫描不到"。若源目录
+    # 临时不可见（网络盘断开、权限变更、杀软隔离、root 配置错误），
+    # scan_assets() 返回空 → 库中每一行都被判为 extra → **整表清空**。
+    # 实测复现：assets/ 不存在时，3 行全部进 assets_pruned。
+    #
+    # 判据：磁盘侧扫到 0 个文件、而库里有行——这几乎只可能是扫描失败而非
+    # "用户真的删光了"。此时拒绝执行（dry_run 仍可查看将被删的清单）。
+    # 部分不可见（扫到一些、漏掉另一些）无法可靠识别，不在本闸覆盖范围。
+    suspicious = []
+    if diff["assets"]["disk"] == 0 and diff["assets"]["db"] > 0:
+        suspicious.append(f"assets（库中 {diff['assets']['db']} 行，磁盘扫描到 0 个文件）")
+    if diff["reports"]["disk"] == 0 and diff["reports"]["db"] > 0:
+        suspicious.append(f"reports（库中 {diff['reports']['db']} 行，磁盘扫描到 0 个文件）")
 
     assets_gone = [(str(r.get("asset_key") or ""), r.get("path"))
                    for r in db.list_asset_rows(limit=100000)
@@ -732,6 +747,15 @@ def prune(dry_run: bool = False) -> dict[str, Any]:
     reports_gone = [(str(r.get("report_key") or ""), r.get("path"))
                     for r in db.list_reports()
                     if r.get("path") in gone_report_paths]
+
+    if suspicious and not dry_run:
+        raise RuntimeError(
+            "prune 已中止：源目录疑似不可见——"
+            + "；".join(suspicious)
+            + "。这通常意味着路径配置错误或目录暂时无法访问，"
+              "继续执行会清空索引表。请确认目录可访问后重试"
+              "（dry_run=True 仍可查看将被删除的清单）。"
+        )
 
     if not dry_run and (assets_gone or reports_gone):
         # 破坏性操作：先备份现有库，保证可回滚（与 run_migrate 同口径）。

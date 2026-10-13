@@ -807,5 +807,93 @@ class TestUpsertAssetDualConflict(unittest.TestCase):
         self.assertEqual(rows[0]["name"], "v2")
 
 
+class TestPruneSafetyGate(unittest.TestCase):
+    """prune 的安全闸（2026-10-12 审计修复 D7）。
+
+    缺陷背景：prune 是**破坏性**操作，唯一判据是"磁盘扫描不到"。若源目录
+    临时不可见（网络盘断开、权限变更、杀软隔离、配置错误），scan_assets()
+    返回空 → 库中每一行都被判为 extra → **整表清空**。
+
+    实测复现：assets/ 不存在时，3 行全部进 assets_pruned。
+
+    修法：磁盘侧扫到 0 个文件、而库里有行时拒绝执行（dry_run 仍可查看）。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="prune_gate_"))
+        self._orig = {
+            "ASSETS_ROOT": config.ASSETS_ROOT,
+            "REPORTS_DIR": config.REPORTS_DIR,
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.ASSETS_ROOT = self._tmp / "assets"
+        config.REPORTS_DIR = self._tmp / "reports"
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_JSON_DIR = self._tmp / "gui_state_json"
+        config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
+        config.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def _seed(self, n=3):
+        """造 n 个真实文件 + 对应库行（路径用 _rel_path 口径，避免夹具失真）。"""
+        conn = db.get_conn()
+        for i in range(n):
+            fp = config.ASSETS_ROOT / f"f{i}.json"
+            fp.write_text("{}", encoding="utf-8")
+            conn.execute(
+                "INSERT INTO assets (asset_key,kind,name,path) VALUES (?,?,?,?)",
+                (f"k{i}", "voice", f"n{i}", migrate._rel_path(fp)))
+        conn.commit()
+
+    def test_invisible_dir_is_blocked(self):
+        """核心守卫：目录不可见时必须拒绝执行，不得清空索引表。"""
+        self._seed(3)
+        orig = config.ASSETS_ROOT
+        config.ASSETS_ROOT = self._tmp / "根本不存在的目录"
+        try:
+            with self.assertRaises(RuntimeError) as cm:
+                migrate.prune(dry_run=False)
+            self.assertIn("疑似不可见", str(cm.exception))
+        finally:
+            config.ASSETS_ROOT = orig
+        # 表必须完好
+        self.assertEqual(
+            db.get_conn().execute("SELECT COUNT(*) FROM assets").fetchone()[0], 3,
+            "被阻断的 prune 竟然改了库")
+
+    def test_dry_run_still_allowed_when_invisible(self):
+        """dry_run 只读，不该被安全闸拦——用户需要能看到待删清单。"""
+        self._seed(3)
+        orig = config.ASSETS_ROOT
+        config.ASSETS_ROOT = self._tmp / "不存在"
+        try:
+            r = migrate.prune(dry_run=True)
+            self.assertEqual(len(r["assets_pruned"]), 3)
+        finally:
+            config.ASSETS_ROOT = orig
+
+    def test_normal_prune_still_works(self):
+        """反向守卫：磁盘真少了文件时，prune 必须正常工作。"""
+        self._seed(2)
+        (config.ASSETS_ROOT / "f0.json").unlink()   # 用户删了 1 个
+        r = migrate.prune(dry_run=False)
+        self.assertEqual(len(r["assets_pruned"]), 1, "正常 prune 被误拦或漏删")
+        self.assertEqual(
+            db.get_conn().execute("SELECT COUNT(*) FROM assets").fetchone()[0], 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
