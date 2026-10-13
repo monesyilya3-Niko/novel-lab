@@ -293,5 +293,96 @@ class TestValidateKindChoicesSync(unittest.TestCase):
         self.assertIn("voice-card", keys)
 
 
+class TestStatusCommandHealth(unittest.TestCase):
+    """`novel 状态` 的退出码必须反映健康度（2026-10-12 审计修复 CLI-09）。
+
+    缺陷背景：对损坏的资产 / 项目 / 模型配置文件只打印"（损坏，跳过）"
+    却**仍 return 0** —— 于是该命令无法用作门禁（CI 里"有损坏也报成功"）。
+
+    修法：任一文件损坏即 return 1，但内容照常打印（信息不丢）。
+    """
+
+    def setUp(self):
+        import importlib.util
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp(prefix="status_"))
+        spec = importlib.util.spec_from_file_location("novel_status", ROOT / "novel.py")
+        self.novel = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.novel)
+        self._orig_root = self.novel.ROOT
+        self.novel.ROOT = self.tmp
+        for d in ("assets", "reports", "novel", "config"):
+            (self.tmp / d).mkdir(parents=True, exist_ok=True)
+
+    def tearDown(self):
+        import shutil
+        self.novel.ROOT = self._orig_root
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _run(self):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = self.novel.cmd_status()
+        return rc, buf.getvalue()
+
+    def test_healthy_project_returns_zero(self):
+        (self.tmp / "assets" / "good-voice-card.json").write_text(
+            '{"meta":{"confidence":0.9,"genre":"x"}}', encoding="utf-8")
+        rc, _ = self._run()
+        self.assertEqual(rc, 0, "健康项目不应报非零")
+
+    def test_damaged_asset_returns_nonzero(self):
+        """核心守卫：损坏资产必须让退出码非零（可作门禁）。"""
+        (self.tmp / "assets" / "bad-voice-card.json").write_text(
+            "{ 坏掉的 json", encoding="utf-8")
+        rc, out = self._run()
+        self.assertEqual(rc, 1, "有损坏却返回 0——无法用于门禁")
+        self.assertIn("损坏", out, "损坏信息仍应打印（不能因改退出码而丢信息）")
+
+    def test_damaged_project_state_returns_nonzero(self):
+        d = self.tmp / "novel" / "proj"
+        d.mkdir()
+        (d / "state.json").write_text("{ bad", encoding="utf-8")
+        rc, _ = self._run()
+        self.assertEqual(rc, 1)
+
+    def test_damaged_model_config_returns_nonzero(self):
+        (self.tmp / "config" / "models.json").write_text("{ bad", encoding="utf-8")
+        rc, _ = self._run()
+        self.assertEqual(rc, 1)
+
+
+class TestAutoQcHookRobustness(unittest.TestCase):
+    """「分析」的自动质检 Hook（2026-10-12 审计修复 CLI-08）。
+
+    两处缺陷：
+      a) `if corpus_file.exists():` 无 else —— 语料不在 corpus/ 时什么都不打印，
+         用户看到 "[Hook] 自动质检:" 后是空的，以为质检跑过了。
+      b) 整个质检段无 try —— Hook 崩溃会冒泡中断「分析」，而此时报告**已发布**，
+         用户以为整个分析失败。Hook 是辅助信息，不该拖垮主流程。
+
+    本组用**静态断言**锁定这两处结构（行为级需跑完整 pipeline 且依赖 LLM 配置，
+    成本高；结构断言足以防回退）。
+    """
+
+    def setUp(self):
+        self.src = (ROOT / "novel.py").read_text(encoding="utf-8")
+
+    def test_hook_has_else_branch_when_corpus_missing(self):
+        self.assertIn("if not corpus_file.exists():", self.src)
+        self.assertIn("未执行", self.src, "语料缺失时应明确说明未执行")
+
+    def test_hook_is_wrapped_in_try(self):
+        """Hook 崩溃不得冒泡——必须被捕获并降级为提示。"""
+        self.assertIn("质检 Hook 执行失败", self.src,
+                      "Hook 异常未被降级处理：崩溃会中断已发布报告的分析命令")
+
+    def test_hook_failure_message_points_to_manual_command(self):
+        """降级提示应告诉用户如何手动质检，而不是留下一个无助的警告。"""
+        self.assertIn("如需质检，请单独跑", self.src)
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main())

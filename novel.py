@@ -256,10 +256,17 @@ def cmd_reset_admin_password() -> int:
 
 
 def cmd_status():
-    """项目概览：资产/章节/报告状态。"""
+    """项目概览：资产/章节/报告状态。
+
+    ⚠️ 退出码反映健康度（2026-10-12 审计修复 CLI-09）：
+    原实现对损坏的资产/项目文件只打印"（损坏，跳过）"却**仍 return 0**，
+    于是 `novel 状态` 无法用作门禁——CI 里"有损坏也报成功"。
+    现在只要有任一文件损坏就返回 1（内容照常打印，信息不丢）。
+    """
     print("=" * 50)
     print("novel-lab 项目状态")
     print("=" * 50)
+    damaged: list[str] = []
     assets = sorted((ROOT / "assets").glob("*-voice-card.json"))
     assets = [a for a in assets if not a.name.startswith("synthetic_")]
     print(f"\n[资产] {len(assets)} 本已拆:")
@@ -268,6 +275,7 @@ def cmd_status():
             vc = json.loads(a.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             print(f"  - {a.name}: （损坏，跳过）")
+            damaged.append(a.name)
             continue
         meta = vc.get("meta", {})
         conf = meta.get("confidence", 0)
@@ -291,6 +299,7 @@ def cmd_status():
                 state = json.loads(s.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, OSError):
                 print(f"  - {s.parent.name}: （损坏，跳过）")
+                damaged.append(str(s))
                 continue
             print(f"  - {state.get('name','?')}: 第{state.get('current_chapter',1)}章/"
                   f"第{state.get('current_arc',1)}卷, 今日{state.get('word_count_today',0)}字")
@@ -304,10 +313,15 @@ def cmd_status():
             print(f"\n[模型] {list(models.get('models', {}).keys())}")
         except (json.JSONDecodeError, OSError):
             print("\n[模型] 配置文件损坏")
+            damaged.append(str(models_path))
     else:
         print("\n[模型] 未配置外部模型 —— LLM 层由 WorkBuddy 内置智能承担"
               "（pass1-5 分析与写作改写由 AI 直接读文本完成，无 API 依赖）")
     print("\n提示: 'novel 拆书 --help' 查看各子命令详细用法")
+    if damaged:
+        print(f"\n✗ 状态检查发现 {len(damaged)} 处损坏文件（上述已标注），"
+              f"退出码为非零以便门禁使用。")
+        return 1
     return 0
 
 
@@ -511,27 +525,48 @@ def main():
         finally:
             shutil.rmtree(staging, ignore_errors=True)
         # 3. 自动质检 Hook（借鉴 oh-story：拆书完成后自动检查）
+        #
+        # 两处修复（2026-10-12 审计 CLI-08）：
+        #   a) 原先 `if corpus_file.exists():` 无 else —— 语料不在 corpus/ 时
+        #      **什么都不打印**，用户看到"[Hook] 自动质检:" 后是空的，
+        #      以为质检跑过了。补 else 明确说明"未执行"。
+        #   b) 整段质检无 try 包裹 —— Hook 崩溃会冒泡中断「分析」命令，
+        #      而此时报告**已发布**，用户以为整个分析失败。
+        #      Hook 是辅助信息，不该拖垮主流程；改为捕获后降级为提示。
         print("\n[Hook] 自动质检:")
         corpus_file = ROOT / "corpus" / f"{name}.txt"
-        if corpus_file.exists():
-            import book_quality
-            qa = book_quality.book_quality_check(str(corpus_file), str(vc) if vc.exists() else None)
-            sev = qa.get("severity", {})
-            if qa["total_issues"] == 0:
-                print(f"  ✅ 质检通过（{qa['total_chapters']}章 0问题）")
-            else:
-                print(f"  ⚠ 质检 {qa['total_issues']} 个问题（{sev.get('critical',0)}严重/{sev.get('high',0)}高/{sev.get('medium',0)}中）")
-                # 本 Hook 实际渲染的问题行数：切片与下方提示共用，避免两处各写一份字面量。
-                hook_issue_rows = 5
-                shown_issues = qa["issues"][:hook_issue_rows]
-                for issue in shown_issues:
-                    print(f"    · {issue['detail'][:60]}")
-                # 2026-09-17（第二轮收口）：只要实际渲染条数少于总数就必须说明（不只是
-                # 超过 5 条时），否则读者会以为问题只有列出来的这几条。提示中的条数取
-                # 实际渲染行数，不写字面量；未砍短时不新增任何输出。
-                hint = book_quality.format_truncation_hint(qa["total_issues"], len(shown_issues))
-                if hint:
-                    print(f"    {hint}")
+        if not corpus_file.exists():
+            print(f"  ⚠ 未执行：corpus/{name}.txt 不存在（质检需要语料原文）")
+            print("    如需质检，请把语料放到 corpus/ 后单独跑 `novel 质检 <目录>`")
+        else:
+            try:
+                import book_quality
+                qa = book_quality.book_quality_check(
+                    str(corpus_file), str(vc) if vc.exists() else None)
+                sev = qa.get("severity", {})
+                if qa["total_issues"] == 0:
+                    print(f"  ✅ 质检通过（{qa['total_chapters']}章 0问题）")
+                else:
+                    print(f"  ⚠ 质检 {qa['total_issues']} 个问题"
+                          f"（{sev.get('critical',0)}严重/{sev.get('high',0)}高/"
+                          f"{sev.get('medium',0)}中）")
+                    # 本 Hook 实际渲染的问题行数：切片与下方提示共用，
+                    # 避免两处各写一份字面量。
+                    hook_issue_rows = 5
+                    shown_issues = qa["issues"][:hook_issue_rows]
+                    for issue in shown_issues:
+                        print(f"    · {issue['detail'][:60]}")
+                    # 2026-09-17（第二轮收口）：只要实际渲染条数少于总数就必须
+                    # 说明（不只是超过 5 条时），否则读者会以为问题只有列出来的
+                    # 这几条。提示中的条数取实际渲染行数，不写字面量。
+                    hint = book_quality.format_truncation_hint(
+                        qa["total_issues"], len(shown_issues))
+                    if hint:
+                        print(f"    {hint}")
+            except Exception as exc:  # noqa: BLE001 — Hook 是辅助信息，不得拖垮主流程
+                print(f"  ⚠ 质检 Hook 执行失败（不影响已发布的报告）: "
+                      f"{type(exc).__name__}: {exc}")
+                print("    如需质检，请单独跑 `novel 质检 <目录>`")
 
         print("\n分析完成。资产目录: assets/ | 报告目录: reports/")
         return 0
