@@ -36,8 +36,7 @@ def _report_char_len(path: Path) -> int:
         return 0
 
 
-def combined_report_ok(book_chars: int, craft_chars: int,
-                       *, require_both: bool = False) -> dict[str, Any]:
+def combined_report_ok(book_chars: int, craft_chars: int) -> dict[str, Any]:
     """铁律二判定（**纯长度，不读盘**）——供「写盘前校验」使用。
 
     2026-09-23 新增（总工排查）：GUI 的 ``_generate_reports`` 原先是「先写盘 → 再校验」，
@@ -51,17 +50,6 @@ def combined_report_ok(book_chars: int, craft_chars: int,
     Args:
         book_chars: 拆书报告字符数
         craft_chars: 笔法分析字符数
-        require_both: 是否要求两份都非空。
-
-            **默认 False**（保持既有语义）：GUI 路径下 craft-card 可能不存在
-            （用户没配笔法分析），此时只交付拆书报告是**允许**的——
-            见 ``tests/test_report_write_gate.py::test_craft_missing_reports_only_book_and_does_not_fake_craft_id``。
-
-            **CLI 的「拆书」「批量」应显式传 True**：这两个命令承诺产出
-            「拆书报告 + 笔法分析」两份，缺一份即半套交付，不该判合格
-            （2026-10-12 审计发现：实测"只有笔法报告 12000 字、拆书报告
-            完全不存在"会被判 ok=True）。
-
     Returns:
         dict: {book_chars, craft_chars, total, ok, min_chars, missing}
     """
@@ -74,8 +62,6 @@ def combined_report_ok(book_chars: int, craft_chars: int,
     if craft <= 0:
         missing.append("craft")
     ok = total >= MIN_REPORT_CHARS
-    if require_both and missing:
-        ok = False
     return {
         "book_chars": book,
         "craft_chars": craft,
@@ -86,8 +72,7 @@ def combined_report_ok(book_chars: int, craft_chars: int,
     }
 
 
-def check_combined_report_length(reports_dir, name: str,
-                                 *, require_both: bool = False) -> dict[str, Any]:
+def check_combined_report_length(reports_dir, name: str) -> dict[str, Any]:
     """铁律二「真·合计口径」校验：拆书报告 + 笔法分析 合计 ≥ MIN_REPORT_CHARS。
 
     【为何必须有此共享函数】该硬校验原先只内联在 CLI 的 ``novel.py 分析`` 里，
@@ -98,8 +83,6 @@ def check_combined_report_length(reports_dir, name: str,
     Args:
         reports_dir: 报告目录（``config.REPORTS_DIR``）
         name: 书名/书 id（不含后缀）
-        require_both: 透传给 ``combined_report_ok``——是否要求两份都非空。
-            CLI 的「拆书」「批量」应传 True（承诺两份齐全，缺一份即半套交付）。
 
     Returns:
         dict: {
@@ -116,8 +99,7 @@ def check_combined_report_length(reports_dir, name: str,
     craft_path = base / REPORT_NAME_CRAFT.format(name=name)
     # 判定口径统一走 combined_report_ok（单一来源），本函数只负责「读盘 + 附加路径」。
     result = combined_report_ok(
-        _report_char_len(book_path), _report_char_len(craft_path),
-        require_both=require_both)
+        _report_char_len(book_path), _report_char_len(craft_path))
     result["book_path"] = str(book_path)
     result["craft_path"] = str(craft_path)
     return result

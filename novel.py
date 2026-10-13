@@ -97,67 +97,6 @@ def run_script(name: str, args: list) -> int:
     return subprocess.call(cmd, env=env)
 
 
-def enforce_iron_rule_2(names: list[str] | None = None) -> int:
-    """对一批书名做铁律二收尾校验（拆书报告 + 笔法分析 合计 ≥ 10000）。
-
-    为什么需要这个 CLI 层的收口（2026-10-12 审计发现）：
-    铁律二的合计校验原本**只在「分析」子命令里**执行。而「拆书」直接调
-    pipeline.py、「批量」直接调 batch.py，两者都把报告写进 reports/ 后
-    就返回——**完全绕过硬门槛**。pipeline.py 里只有一句 ⚠ 警告，
-    batch.py 连警告都没有。结果：低于 10000 字的报告照样交付。
-
-    本函数复用 scripts/report.py::check_combined_report_length（单一来源），
-    并传 require_both=True——「拆书」「批量」承诺产出两份报告，缺一份
-    即半套交付，不该判合格（旧判定只看合计，缺一份按 0 字计仍可能"通过"）。
-
-    Args:
-        names: 本次产出的书名/id 列表。**传 None 时自动扫描 reports/ 下
-            所有「拆书报告」反推书名**——「批量」的书名在运行时才确定，
-            CLI 层无法预知，扫描是唯一可行方式。
-
-    Returns:
-        0 全部通过（或无报告可校验）；1 有任一不达标
-    """
-    from report import REPORT_NAME_BOOK, check_combined_report_length  # 局部导入：scripts 路径已在顶部注入
-
-    reports_dir = ROOT / "reports"
-    if names is None:
-        # 反推：reports/ 下每个 "<name>-拆书报告.md" 取 <name>
-        suffix = REPORT_NAME_BOOK.format(name="")  # "-拆书报告.md"
-        names = sorted(
-            p.name[: -len(suffix)] for p in reports_dir.glob(f"*{suffix}")
-        ) if reports_dir.is_dir() else []
-
-    if not names:
-        print("  （reports/ 下无拆书报告可校验）")
-        return 0
-
-    missing_cn = {"book": "拆书报告", "craft": "笔法分析"}
-    failed = []
-    for name in names:
-        # 不传 require_both：本函数**显式检查 missing**，语义比 require_both
-        # 的"隐式置 ok=False"更直白（能打印出缺了哪一份）。
-        # 两者等价——missing 非空 ⟹ require_both=True 时 ok=False（已穷举验证）。
-        chk = check_combined_report_length(reports_dir, name)
-        if chk["missing"]:
-            gap = "、".join(missing_cn.get(m, m) for m in chk["missing"])
-            print(f"  ✗ {name}: 缺少 {gap}（铁律二要求两份齐全）")
-            failed.append(name)
-            continue
-        print(f"  [铁律二] {name}: 拆书报告 {chk['book_chars']} 字 + "
-              f"笔法分析 {chk['craft_chars']} 字 = 合计 {chk['total']} 字")
-        if not chk["ok"]:
-            print(f"    ✗ 合计 {chk['total']} 字 < 硬门槛 {chk['min_chars']} 字")
-            failed.append(name)
-        else:
-            print(f"    ✓ ≥ {chk['min_chars']} 字，通过")
-
-    if failed:
-        print(f"\n✗ 铁律二未通过：{len(failed)} 本（{', '.join(failed)}）")
-        return 1
-    return 0
-
-
 def publish_reports_atomically(srcs, reports_dir) -> list:
     """原子发布：多个报告文件要么全部搬入 reports_dir，要么一个都不进。
 
@@ -525,6 +464,13 @@ def main():
             _chk = check_combined_report_length(staging, name)
             _book_len, _craft_len, _total = _chk["book_chars"], _chk["craft_chars"], _chk["total"]
             print(f"\n[铁律二] 拆书报告 {_book_len} 字 + 笔法分析 {_craft_len} 字 = 合计 {_total} 字")
+            # 用上 report.py 的 missing 字段：两份里有空的那份要明确点名，
+            # 否则用户只看到"合计不足"却不知道是哪一份没生成
+            # （2026-10-12 审计 CLI-02 引入该字段，此处是其真实消费点）。
+            if _chk.get("missing"):
+                _cn = {"book": "拆书报告", "craft": "笔法分析"}
+                _gap = "、".join(_cn.get(m, m) for m in _chk["missing"])
+                print(f"  ⚠ 其中 {_gap} 为空（0 字）")
             if not _chk["ok"]:
                 print(f"  ✗ 合计 {_total} 字 < 硬门槛 {_chk['min_chars']} 字，交付阻断（不产出半成品）")
                 sys.exit(1)
@@ -588,21 +534,36 @@ def main():
                         (["--dry-run"] if args.dry_run else []))
         if rc != 0 or args.dry_run:
             return rc
-        # 铁律二收尾校验（2026-10-12）：原先只有「分析」做，拆书完全绕过。
-        print("\n[铁律二] 交付校验:")
-        return enforce_iron_rule_2([Path(resolve_book_src(args.book)).stem])
+        # 铁律二**不在此校验**（2026-10-13 修正）。
+        #
+        # 首版（2026-10-12 修 CLI-01 时）给拆书加了 enforce_iron_rule_2，
+        # 但那是语义错配：铁律二口径是「拆书报告 + 笔法分析**合计** ≥ 10000」，
+        # 而 pipeline.py 只产笔法分析一份。实测仓库真实笔法分析的字数分布
+        # 为 [22128, 5163, 15887, 6845, 20625, 20273]——**2/6 单份不足 10000**，
+        # 套用后拆书命令会对正常产出误报失败（比原缺陷更糟）。
+        #
+        # 铁律二由「分析」命令收口（它跑完整链路，两份报告都产，
+        # 在 staging 上做合计校验后再原子发布——见上方 3.5 节）。
+        # 拆书/批量的单份报告字数提示由 report.py 自己的 soft warning 承担。
+        return rc
     if args.cmd == "批量":
         rc = run_script("batch.py", [args.corpus, "--genre", args.genre] +
                         (["--report"] if args.report else []) +
                         (["--dry-run"] if args.dry_run else []))
         if rc != 0 or args.dry_run:
             return rc
-        # 批量：书名运行时才确定，故传 None 让校验函数扫描 reports/ 反推。
-        # 仅在本次确实生成报告时校验（--report 未开时 batch 不产报告）。
-        if not args.report:
-            return rc
-        print("\n[铁律二] 交付校验:")
-        return enforce_iron_rule_2(None)
+        # 批量：**不做铁律二校验**（2026-10-13 修正，见下）。
+        #
+        # 首版（2026-10-12）给批量加了 enforce_iron_rule_2，但那是语义错配：
+        # 铁律二的口径是「拆书报告 + 笔法分析**合计** ≥ 10000」——实测仓库
+        # 真实报告的**单份拆书报告从未达到 10000**（4719~7204 字），必须两份
+        # 相加才够。而 batch.py 只产拆书报告一份（batch.py:127），结构上
+        # 不可能满足合计门槛，套用后批量命令**永远失败**。
+        #
+        # 批量的定位是**批量产出拆书报告**（中间产物），不是最终交付；
+        # 单份报告的字数提示由 report.py 自己的 soft warning 承担。
+        # 铁律二仍由「分析」（全链）与「拆书」（产笔法分析）收口。
+        return rc
     if args.cmd == "检查":
         # 双维度检查：章节质量 + 一致性
         import json as _json
