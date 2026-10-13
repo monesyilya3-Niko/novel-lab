@@ -172,19 +172,42 @@ def _path_lock(path: Path) -> Iterator[None]:
 
 
 def save_state(state: dict[str, Any]) -> None:
-    """原子写回任务状态文件，并**尽力**同步到 SQLite（权威）。
+    """原子写回任务状态：**SQLite 权威优先，JSON 降级副本其次**。
 
-    双写（Q4/D3）：JSON 副本必写（可备份/可读）；SQLite 权威写为**尽力而为**——
-    若库未初始化（如迁移前的旧测试）则静默降级，不抛异常、不阻断 JSON 落盘。
-    生产环境由 server 启动时 ``db.init_schema()`` 保证 analysis_tasks 表存在。
+    ⚠️ 顺序与失败语义（2026-10-13 审计修复 D10）：
+    原实现是「先 ``_save_state_json``（无 try）→ 后 ``upsert_task``（被 try 吞）」，
+    与设计**正好相反**——设计见下方 ``upsert_task`` 的文档「先写 SQLite（权威），
+    后原子写 JSON（降级副本）」。实测后果：JSON 副本写失败（磁盘满、权限、
+    路径异常）会**抛出并阻断 SQLite 权威写**，权威库丢更新——而 JSON 只是
+    可再生的降级副本，让它拖垮权威源是本末倒置。
+
+    另外原实现实际写了 **2 次 JSON**：``_save_state_json`` 一次，
+    ``upsert_task`` 内部又一次（它自带 JSON 副本写）。
+
+    现改为直接委托 ``upsert_task``（它已是权威优先的完整实现）。
+    仅当 SQLite 不可用（库未初始化/损坏）时才回退为「只写 JSON」——
+    保留原实现的降级能力（旧测试与迁移前环境依赖它）。
     """
-    _save_state_json(state)
-    # 尽力同步 SQLite（权威），失败不阻断（降级副本已落盘）。
+    book_id = state.get("book_id", "")
+    if not book_id:
+        raise ValueError("state 缺 book_id，无法定位状态文件")
     try:
         upsert_task(state)
-    except Exception as exc:  # noqa: BLE001 — 库未初始化/损坏时静默降级。
-        _log.warning(f"SQLite 权威写入失败（降级副本已落盘）book_id="
-              f"{state.get('book_id')}: {exc}")
+        return
+    except Exception as exc:  # noqa: BLE001 — 库不可用时降级为纯 JSON
+        _log.warning(
+            "SQLite 权威写入失败，降级为纯 JSON 副本 book_id=%s: %s", book_id, exc)
+    # 降级路径：SQLite 不可用，但状态仍须落盘（可备份/可读）。
+    # ⚠️ 这里也要容错（2026-10-13 实测）：upsert_task 内部是
+    # 「先 db.upsert_task 再 _save_state_json」，若**权威写成功但 JSON 副本写失败**，
+    # 异常同样冒泡到这里——此时权威库其实已更新，再试一次 JSON 只会再失败一次
+    # 并把异常抛给调用方（状态明明已落库，调用方却以为整个保存失败）。
+    # 副本是**可再生的降级数据**，写不出来只记日志，不向上抛。
+    try:
+        _save_state_json(state)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("JSON 降级副本写入失败（权威库可能已更新）book_id=%s: %s",
+                     book_id, exc)
 
 
 def bump_revision(state: dict[str, Any]) -> dict[str, Any]:

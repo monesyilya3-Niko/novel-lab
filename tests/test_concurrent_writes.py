@@ -199,5 +199,93 @@ class StateFileConcurrentWriteTest(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class TestSaveStateAuthorityFirst(unittest.TestCase):
+    """save_state 的权威优先语义（2026-10-13 审计修复 D10）。
+
+    缺陷背景：原实现是「先 _save_state_json（无 try）→ 后 upsert_task（被 try
+    吞）」，与设计**正好相反**（upsert_task 的文档写明"先写 SQLite（权威），
+    后原子写 JSON（降级副本）"）。实测后果：JSON 副本写失败（磁盘满、权限、
+    路径异常）会**抛出并阻断 SQLite 权威写**，权威库丢更新——而 JSON 只是
+    可再生的降级副本，让它拖垮权威源是本末倒置。
+
+    修法：直接委托 upsert_task（权威优先的完整实现）；仅当 SQLite 不可用时
+    才回退为"只写 JSON"，且副本写失败也不再向上抛。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="authfirst_"))
+        self._iso = _isolation.isolate_paths(self._tmp)
+        self._iso.__enter__()
+        db.init_schema()
+        db.apply_migrations()
+
+    def tearDown(self):
+        self._iso.__exit__(None, None, None)
+
+    def test_normal_save_writes_both(self):
+        """反向守卫：正常路径两侧都写。"""
+        from gui import state_store
+        state_store.save_state({"book_id": "b1", "status": "running", "state_revision": 1})
+        n = db.get_conn().execute(
+            "SELECT COUNT(*) FROM analysis_tasks WHERE book_id='b1'").fetchone()[0]
+        self.assertEqual(n, 1, "SQLite 未写入")
+        self.assertTrue(state_store.state_path_for("b1").is_file(), "JSON 副本未写入")
+
+    def test_json_failure_does_not_block_authority(self):
+        """核心守卫：JSON 副本写失败时，SQLite 权威写必须仍然成功。"""
+        from gui import config, state_store
+
+        blocker = self._tmp / "blocker_file"
+        blocker.write_text("x", encoding="utf-8")
+        orig = config.STATE_JSON_DIR
+        config.STATE_JSON_DIR = blocker      # 目录位置是个文件 → mkdir 失败
+        try:
+            state_store.save_state(
+                {"book_id": "b2", "status": "running", "state_revision": 1})
+        finally:
+            config.STATE_JSON_DIR = orig
+
+        n = db.get_conn().execute(
+            "SELECT COUNT(*) FROM analysis_tasks WHERE book_id='b2'").fetchone()[0]
+        self.assertEqual(n, 1, "JSON 副本失败阻断了 SQLite 权威写（权威库丢更新）")
+
+    def test_json_failure_does_not_raise(self):
+        """副本写失败不得向上抛——权威库可能已更新，抛异常会让调用方误判。"""
+        from gui import config, state_store
+
+        blocker = self._tmp / "blocker2"
+        blocker.write_text("x", encoding="utf-8")
+        orig = config.STATE_JSON_DIR
+        config.STATE_JSON_DIR = blocker
+        try:
+            try:
+                state_store.save_state({"book_id": "b3", "status": "running"})
+            except Exception as exc:  # noqa: BLE001
+                self.fail(f"副本失败却抛出了异常: {type(exc).__name__}: {exc}")
+        finally:
+            config.STATE_JSON_DIR = orig
+
+    def test_degrades_to_json_only_when_db_unavailable(self):
+        """反向守卫：SQLite 不可用时仍须写 JSON（保留原降级能力）。"""
+        from gui import db as _db
+        from gui import state_store
+
+        orig = _db.upsert_task
+        _db.upsert_task = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("库损坏"))
+        try:
+            state_store.save_state({"book_id": "b4", "status": "running"})
+        finally:
+            _db.upsert_task = orig
+
+        self.assertTrue(state_store.state_path_for("b4").is_file(),
+                        "库不可用时连 JSON 降级副本都没写")
+
+    def test_missing_book_id_still_raises(self):
+        """反向守卫：缺 book_id 仍应抛（这是调用方的编程错误，不是可降级场景）。"""
+        from gui import state_store
+        with self.assertRaises(ValueError):
+            state_store.save_state({"status": "running"})
+
+
 if __name__ == "__main__":
     unittest.main()

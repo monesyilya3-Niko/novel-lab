@@ -327,7 +327,43 @@ def rollback() -> Path | None:
     db._verify_backup(src)
     # 重建连接指向恢复后的库（下次 get_conn 会因 _conn_path 已清空而重连）。
     db._reset_conn()
+    # ── 同步 JSON 派生副本（2026-10-13 审计修复 D11）─────────────────────
+    # rollback 原先只恢复 index.db，**不碰** STATE_JSON_DIR 下的派生副本。
+    # 而 state_store.load_state() 只读 JSON（不读 SQLite）——实测回滚后
+    # SQLite 是 idle/rev=1、JSON 仍是 done/rev=5，**双源分裂**：
+    # 服务层按 JSON 认为任务已完成，库却是回滚前的旧状态。
+    # SQLite 是权威源，故以它为准重建 JSON。
+    _resync_json_from_db()
     return latest
+
+
+def _resync_json_from_db() -> int:
+    """以 SQLite（权威）为准，重建全部 JSON 派生副本。返回重建条数。
+
+    仅处理库中**存在**的 task：JSON 里多出来的（库中无对应行）保持不动——
+    那可能是尚未落库的进行中状态，删掉会丢数据。
+    """
+    try:
+        from gui import state_store
+    except Exception:  # noqa: BLE001 — 循环依赖或环境异常时不阻断回滚
+        return 0
+    rebuilt = 0
+    try:
+        rows = db.get_conn().execute(
+            "SELECT book_id FROM analysis_tasks").fetchall()
+    except Exception:  # noqa: BLE001 — 表不存在（旧库）时无事可做
+        return 0
+    for row in rows:
+        book_id = row["book_id"] if hasattr(row, "keys") else row[0]
+        if not book_id:
+            continue
+        try:
+            task = state_store.load_task(book_id)   # 权威源重建
+            state_store._save_state_json(task)      # 写回 JSON 副本
+            rebuilt += 1
+        except Exception:  # noqa: BLE001 — 单条失败不阻断其余
+            continue
+    return rebuilt
 
 
 # ---------------------------------------------------------------------------

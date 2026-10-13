@@ -966,5 +966,75 @@ class TestUpsertBookStatus(unittest.TestCase):
         self.assertEqual(self._status(), "done")
 
 
+class TestRollbackResyncsJsonCopies(unittest.TestCase):
+    """rollback 必须同步 JSON 派生副本（2026-10-13 审计修复 D11）。
+
+    缺陷背景：rollback 只恢复 index.db，**不碰** STATE_JSON_DIR 下的派生副本。
+    而 state_store.load_state() **只读 JSON**（不读 SQLite）——实测回滚后
+    SQLite 是 idle/rev=1、JSON 仍是 done/rev=5，**双源分裂**：服务层按 JSON
+    认为任务已完成，库却是回滚前的旧状态。
+
+    修法：回滚后以 SQLite（权威）为准重建 JSON 副本。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="d11_"))
+        self._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_JSON_DIR = self._tmp / "gui_state_json"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+        db.apply_migrations()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def test_rollback_resyncs_json_copy(self):
+        """核心守卫：回滚后 JSON 副本必须与 SQLite 一致。"""
+        from gui import state_store
+
+        state_store.save_state({"book_id": "b", "status": "idle", "state_revision": 1})
+        migrate.backup()
+        # 推进到回滚点之后
+        state_store.save_state({"book_id": "b", "status": "done", "state_revision": 5})
+
+        migrate.rollback()
+
+        st = state_store.load_state("b")
+        row = db.get_conn().execute(
+            "SELECT status, state_revision FROM analysis_tasks WHERE book_id='b'").fetchone()
+        self.assertIsNotNone(row, "回滚后库中应有该 task")
+        self.assertEqual(st.get("status"), row["status"],
+                         "回滚后 JSON 与 SQLite 状态不一致（双源分裂）")
+        self.assertEqual(st.get("state_revision"), row["state_revision"],
+                         "回滚后 JSON 与 SQLite revision 不一致")
+
+    def test_rollback_keeps_json_for_tasks_absent_from_db(self):
+        """反向守卫：库中无对应行的 JSON 不得被删（可能是未落库的进行中状态）。"""
+        from gui import state_store
+
+        # 只写 JSON、不落库（模拟"尚未 upsert 的进行中状态"）
+        state_store._save_state_json(
+            {"book_id": "json-only", "status": "running", "state_revision": 9})
+        migrate.backup()
+        migrate.rollback()
+
+        st = state_store.load_state("json-only")
+        self.assertEqual(st.get("state_revision"), 9,
+                         "库中无对应行的 JSON 副本被误删/覆盖")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
