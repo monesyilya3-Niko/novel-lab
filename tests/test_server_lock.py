@@ -197,5 +197,78 @@ class TestStaleLock(unittest.TestCase):
         self.assertTrue(s2._acquire_lock(), "释放后应可重新获取")
 
 
+class TestParentWatchdog(unittest.TestCase):
+    """Electron 模式下的父进程看护（2026-10-13 审计修复 ELE-03）。
+
+    缺陷背景：桌面版主进程被**强杀**（任务管理器结束进程、崩溃、断电）时，
+    Electron 的 before-quit / window-all-closed 都不会触发，stopBackend()
+    没机会执行 → 后端成孤儿进程，仍持有单实例锁与端口 → 此后每次启动都
+    报"后端服务未能启动"，用户既不知原因也无从恢复。
+
+    修法：后端自己探活父进程 pid，父死则 server.shutdown() 自行退出。
+
+    ⚠️ 本组锁定一个**实测得出的关键事实**：Windows 上父进程退出后
+    os.getppid() **仍返回原 pid**（不像 Linux 会变成 1）——故看护必须
+    用主动探活（server._pid_is_alive），不能用 getppid 比较。
+    """
+
+    def setUp(self):
+        self.src = (ROOT / "gui" / "launch.py").read_text(encoding="utf-8")
+
+    def test_watchdog_uses_liveness_probe_not_getppid_compare(self):
+        """核心守卫：看护必须探活，不得用 getppid 比较。"""
+        self.assertIn("_pid_is_alive", self.src,
+                      "看护未使用探活——Windows 上 getppid 在父死后不变，比较法无效")
+        self.assertNotIn("os.getppid() != parent_pid", self.src,
+                         "退回 getppid 比较法了——实测在 Windows 上无效")
+
+    def test_watchdog_only_in_electron_mode(self):
+        """看护只在 --no-browser（Electron）下启用。
+
+        浏览器直连模式（用户直接跑 python gui/launch.py）没有"父进程"概念，
+        误判会杀掉正常服务。
+        """
+        # 调用点（带缩进的语句，非函数定义）必须在 if args.no_browser: 之下
+        marker = "        _start_parent_watchdog(server)"
+        self.assertIn(marker, self.src,
+                      "看护未被调用（或缩进变了——应位于 if args.no_browser: 块内）")
+        idx_call = self.src.index(marker)
+        idx_guard = self.src.rindex("if args.no_browser:", 0, idx_call)
+        self.assertLess(idx_guard, idx_call)
+
+    def test_watchdog_shuts_down_server(self):
+        """看护检测到父死必须调 server.shutdown()（而非仅打印）。
+
+        断言必须**排除 docstring 与注释**：看护函数的 docstring 里就写着
+        ``server.shutdown()`` 这句说明文字——只做子串搜索会被它满足，
+        把真正的调用删掉测试仍绿（变异测试实证过两次）。
+        这里改为逐行扫描「非注释、非 docstring」的代码行。
+        """
+        start = self.src.index("def _start_parent_watchdog")
+        end = self.src.index("def main(")
+        block = self.src[start:end]
+
+        # 剥掉 docstring：找函数体第一个三引号块并移除
+        import re as _re
+        body_src = _re.sub(r'"""[\s\S]*?"""', "", block, count=1)
+        # 剥掉注释行
+        code_lines = [l for l in body_src.splitlines()
+                      if l.strip() and not l.strip().startswith("#")]
+        code = "\n".join(code_lines)
+
+        self.assertIn("if not is_alive(parent_pid):", code,
+                      "看护未按探活结果判断")
+        self.assertIn("server.shutdown()", code,
+                      "看护只打印不关服务——孤儿进程问题未解决")
+        self.assertIn("daemon=True", code, "看护线程必须是 daemon")
+
+    def test_watchdog_thread_is_daemon(self):
+        """看护线程必须是 daemon，否则会阻止主进程退出。"""
+        start = self.src.index("def _start_parent_watchdog")
+        end = self.src.index("def main(")
+        block = self.src[start:end]
+        self.assertIn("daemon=True", block)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

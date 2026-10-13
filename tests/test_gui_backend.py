@@ -399,16 +399,28 @@ class TestResumeSkipsSuccess(unittest.TestCase):
         ``rt["thread"].is_alive()`` 检查并抛 409「分析已在运行中」——
         机器负载高时窗口期被拉长，测试间歇性 ERROR（2026-10-11 实修：
         全量套件下约每十几次触发一次，单跑 15 次全过，是典型的时序竞态）。
+
+        2026-10-13 追加加固：还要等 **status 与线程退出之间的一致性**稳定。
+        实测在全量套件下仍偶发 ``called`` 非空（resume 重跑了批），
+        怀疑是"新线程已启动但读到旧状态"——故额外要求线程退出后
+        再确认一次状态未回退（``status`` 仍为终态），缩小竞态窗口。
         """
         import time
         deadline = time.time() + timeout
+        stable = 0
         while time.time() < deadline:
             st = services.get_status(book_id)
             if st["status"] in ("done", "error"):
                 rt = services._runtime.get(book_id)
                 th = rt.get("thread") if rt else None
                 if th is None or not th.is_alive():
-                    return st
+                    # 连续两次采样都处于终态且无线程，才认为真正稳定
+                    stable += 1
+                    if stable >= 2:
+                        return st
+                    time.sleep(0.05)
+                    continue
+            stable = 0
             time.sleep(0.05)
         return services.get_status(book_id)
 
@@ -429,9 +441,22 @@ class TestResumeSkipsSuccess(unittest.TestCase):
         # 重置调用记录，再 resume，并等待 resume 线程真正跑完。
         self.called.clear()
         services.resume(book_id)
+        # ⚠️ 必须先等新线程**真正启动**（2026-10-13 加固）：
+        # resume 是异步的——它调 start_analysis 启动线程后立即返回。
+        # 若直接调 _wait_done，可能在"新线程尚未启动、状态仍是上一轮的
+        # done"时命中终态检查而**提前返回**，此时 _run_analysis 甚至还没
+        # 走到第一批的跳过判断，后续断言就建立在未完成的执行之上。
+        # 等 _runtime 里出现**存活线程**再等它结束，消除该窗口。
+        import time
+        deadline = time.time() + 3.0
+        while time.time() < deadline:
+            rt = services._runtime.get(book_id)
+            th = rt.get("thread") if rt else None
+            if th is not None and th.is_alive():
+                break
+            time.sleep(0.01)
         self._wait_done(book_id)
         # 额外小睡确保后台线程完成调度（避免竞态）。
-        import time
         time.sleep(0.3)
 
         # 核心断言：已 success 的批不应再次调用 run_batch。
