@@ -729,5 +729,83 @@ class TestSyncAssetKeyConvention(unittest.TestCase):
         self.assertTrue(migrate.check()["ok"], "重索引后库与磁盘应对账一致")
 
 
+class TestUpsertAssetDualConflict(unittest.TestCase):
+    """_upsert_asset 的双唯一约束消解（2026-10-12 审计修复 D2）。
+
+    缺陷背景：原实现用链式 ``ON CONFLICT(asset_key) ... ON CONFLICT(path) ...``，
+    但 SQLite 的链式冲突子句**只处理第一个命中的目标**。当 asset_key 撞行 A、
+    path 撞行 B（两行不同）时，第一子句更新完行 A 后其 path 落到行 B 已有的
+    值上，第二子句不再介入 → ``UNIQUE constraint failed: assets.path``，
+    被 db.tx() 整体回滚 → **迁移永久失败**。
+
+    实测复现（修复前）：
+        库中 ('K1','P1') 与 ('K2','P2')，插入 ('K1', ..., 'P2') → IntegrityError
+
+    修法：先显式消解 path 冲突，再走常规 upsert。区分两种情况：
+      - 仅 path 冲突 -> UPDATE 原地改写（保留 id/created_at）
+      - 双冲突       -> 删被取代的行（path 行）后 INSERT
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="dual_conflict_"))
+        self._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_JSON_DIR = self._tmp / "gui_state_json"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def _upsert(self, key, kind, name, path):
+        migrate._upsert_asset(db.get_conn(), key, kind, name, path,
+                              None, None, None, None, "{}")
+
+    def test_dual_conflict_does_not_raise(self):
+        """核心守卫：key 撞 A、path 撞 B 时不得抛 IntegrityError。"""
+        self._upsert("K1", "voice", "A", "P1")
+        self._upsert("K2", "voice", "B", "P2")
+        self._upsert("K1", "trope", "X", "P2")   # 修复前在此抛异常
+
+        rows = {r["path"]: (r["asset_key"], r["kind"]) for r in
+                db.get_conn().execute("SELECT asset_key, kind, path FROM assets")}
+        self.assertEqual(len(rows), 1, f"应只剩 1 行，实际 {rows}")
+        self.assertEqual(rows["P2"], ("K1", "trope"))
+
+    def test_path_only_conflict_updates_in_place(self):
+        """仅 path 冲突：原地改写，id 必须保留（不得删旧插新）。"""
+        self._upsert("trope:idx", "trope", "idx", "P3")
+        id_before = db.get_conn().execute(
+            "SELECT id FROM assets WHERE path='P3'").fetchone()[0]
+
+        self._upsert("genre-prose-card-index:idx", "genre-prose-card-index", "idx", "P3")
+
+        row = db.get_conn().execute(
+            "SELECT asset_key, kind, id FROM assets WHERE path='P3'").fetchone()
+        self.assertEqual(row["asset_key"], "genre-prose-card-index:idx")
+        self.assertEqual(row["kind"], "genre-prose-card-index")
+        self.assertEqual(row["id"], id_before, "id 变了——应为原地更新")
+
+    def test_same_key_is_idempotent(self):
+        """同 key 重复 upsert 必须幂等（更新非键列，不插新行）。"""
+        self._upsert("K", "voice", "v1", "P")
+        self._upsert("K", "voice", "v2", "P")
+        rows = db.get_conn().execute("SELECT asset_key, name FROM assets").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["name"], "v2")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -389,20 +389,59 @@ def _upsert_book(conn: Any, book_id: str, title: str, source_path: str | None,
 def _upsert_asset(conn: Any, asset_key: str, kind: str, name: str, path: str,
                   book_id: str | None, genre: str | None, size: int | None,
                   mtime: float | None, meta_json: str) -> None:
-    """资产 UPSERT（幂等）。链式 ``ON CONFLICT``（SQLite 3.35.0+）覆盖两个唯一约束：
+    """资产 UPSERT（幂等）。处理 ``asset_key`` 与 ``path`` 两个唯一约束。
 
-    1. ``asset_key`` 冲突（``kind:stem`` 相同）→ 更新非键列，重复迁移不重复插行。
-    2. ``path`` 冲突（同一文件已存在别的 ``asset_key``）→ **存量库被旧代码迁移过**的
-       场景：老版本把 ``genre-prose-card-index.json`` 判为 ``trope``、把 ``*-distilled``
-       判为对应基础卡，库里留有 ``trope:genre-prose-card-index`` /
-       ``voice:xxx-voice-card-distilled`` 这类旧 kind 行（path 与文件一致）。新代码推断出的
-       ``asset_key`` 与旧行不冲突，但 ``assets.path`` 是 UNIQUE——只处理 asset_key 会
-       ``IntegrityError``，被 ``db.tx()`` 整体回滚，迁移**永久失败**、新 kind 进不了库。
-       故按 path 命中时把历史行**原地**改写成新 ``asset_key`` + 新 ``kind``
-       （``path`` 已等于 ``excluded.path``，无需回写）：既不删行、不重建库，也避免
-       ``asset_key`` 与 ``get_asset_detail``/``_item_id`` 的 ``kind:stem`` 口径漂移。
+    历史行改写的必要性：**存量库被旧代码迁移过**时，老版本把
+    ``genre-prose-card-index.json`` 判为 ``trope``、把 ``*-distilled`` 判为
+    对应基础卡，库里留有 ``trope:genre-prose-card-index`` 这类旧 kind 行
+    （path 与文件一致）。新代码推断出的 ``asset_key`` 与旧行不冲突，但
+    ``assets.path`` 是 UNIQUE——只处理 asset_key 会 ``IntegrityError``，
+    被 ``db.tx()`` 整体回滚，迁移**永久失败**。
+
+    ⚠️ 为何不能只用链式 ``ON CONFLICT``（2026-10-12 审计修复 D2）：
+    SQLite 的链式冲突子句**只处理第一个命中的目标**。当 ``asset_key`` 撞
+    行 A、``path`` 撞行 B（两行不同）时，第一子句更新完行 A 后，其
+    ``path`` 可能落到行 B 已有的值上，第二子句不再介入 → 抛
+    ``UNIQUE constraint failed: assets.path``，整个迁移回滚。
+
+    实测复现（修复前）：
+        库中 ('K1','P1') 与 ('K2','P2')
+        插入 ('K1', ..., 'P2') → IntegrityError: UNIQUE constraint failed: assets.path
+
+    修法：**先把 path 冲突的历史行原地改写**（UPDATE 成新 asset_key/kind，
+    保留 id 与 created_at），再走常规 upsert。这样冲突被拆成两步，
+    链式子句不再需要同时处理两个目标。
+
+    为何坚持「原地更新」而非「删旧插新」：assets.id 是主键，被删除后
+    AUTOINCREMENT 不复用；历史行原地升级能保持 id 稳定，避免任何按 id
+    建立的引用（日志、外部脚本）失效。回归锚点见
+    tests/test_migrate.py::test_legacy_rows_upgraded_in_place。
     """
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    # 第一步：消解 path 冲突。
+    # 若同一 path 已挂在**别的** asset_key 下，说明这是旧代码迁移留下的行。
+    existing = conn.execute(
+        "SELECT asset_key FROM assets WHERE path = ?", (path,)).fetchone()
+    if existing is not None and existing[0] != asset_key:
+        holder = conn.execute(
+            "SELECT path FROM assets WHERE asset_key = ?", (asset_key,)).fetchone()
+        if holder is not None:
+            # 双冲突（key 撞行 A、path 撞行 B，两行不同）——两个 UNIQUE 互相牵制，
+            # 这是链式 ON CONFLICT 无法表达的根因。删行 A 会让它对应文件的
+            # created_at 丢失；删行 B（本次要取代的那行）更符合"新口径覆盖旧口径"。
+            # 故删 B 后 INSERT，而不是改写 B。
+            conn.execute("DELETE FROM assets WHERE path = ?", (path,))
+        else:
+            # 仅 path 冲突：原地改写保留 id/created_at（回归锚点见
+            # tests/test_migrate.py::test_legacy_rows_upgraded_in_place）。
+            conn.execute(
+                """UPDATE assets SET asset_key = ?, kind = ?, name = ?, book_id = ?,
+                       genre = ?, size = ?, mtime = ?, meta_json = ?, updated_at = ?
+                   WHERE path = ?""",
+                (asset_key, kind, name, book_id, genre, size, mtime, meta_json, now, path),
+            )
+
     conn.execute(
         """
         INSERT INTO assets (asset_key, kind, name, path, book_id, genre, size, mtime,
@@ -412,16 +451,6 @@ def _upsert_asset(conn: Any, asset_key: str, kind: str, name: str, path: str,
             kind = excluded.kind,
             name = excluded.name,
             path = excluded.path,
-            book_id = excluded.book_id,
-            genre = excluded.genre,
-            size = excluded.size,
-            mtime = excluded.mtime,
-            meta_json = excluded.meta_json,
-            updated_at = excluded.updated_at
-        ON CONFLICT(path) DO UPDATE SET
-            asset_key = excluded.asset_key,
-            kind = excluded.kind,
-            name = excluded.name,
             book_id = excluded.book_id,
             genre = excluded.genre,
             size = excluded.size,
