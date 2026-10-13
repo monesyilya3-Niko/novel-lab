@@ -19,6 +19,7 @@ novel-lab CLI 统一入口 — 一条命令覆盖全部工作流
 """
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -31,6 +32,34 @@ sys.path.insert(0, str(SCRIPTS))  # 使 scripts/ 下的模块可直接 import
 PY = sys.executable
 
 
+def _configure_console_encoding() -> None:
+    """让 stdout/stderr 在 GBK 控制台下不因特殊符号崩栈（2026-10-12 审计修复 CLI-05）。
+
+    背景：CLI 大量使用 ✓ / ✗ / ⚠ / 🔴 等符号，而 Windows 中文控制台默认
+    GBK 编码——实测 `PYTHONIOENCODING=gbk` 下 `print('✓')` 直接抛
+    ``UnicodeEncodeError: 'gbk' codec can't encode character '\\u2713'``。
+    最讽刺的是这发生在**报错路径**上：本想告诉用户"质检失败"，
+    结果先崩在打印失败信息的那一行。
+
+    修法：把 stdout/stderr 的错误处理器改为 ``backslashreplace``——
+    不可编码的字符降级为 ``\\u2713`` 这类转义而非抛异常。
+    内容仍是可读的，且不会中断输出。
+
+    只在需要时改（已是 utf-8 的环境不动，避免影响重定向/管道行为）。
+    铁律三：纯标准库。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            enc = (stream.encoding or "").lower()
+            # utf-8 环境无需处理；errors 已是容错模式也跳过
+            if "utf" in enc or getattr(stream, "errors", "") == "backslashreplace":
+                continue
+            stream.reconfigure(errors="backslashreplace")
+        except (AttributeError, ValueError, OSError):
+            # reconfigure 在部分流上不可用（如已被包装的管道）；失败不影响主流程
+            continue
+
+
 def run_script(name: str, args: list) -> int:
     """运行 scripts/ 下的脚本，透传参数。"""
     script = SCRIPTS / name
@@ -38,7 +67,11 @@ def run_script(name: str, args: list) -> int:
         print(f"✗ 脚本不存在: {script}")
         return 1
     cmd = [PY, str(script)] + [str(a) for a in args]
-    return subprocess.call(cmd)
+    # 子进程同样可能打印 ✓/✗ 等符号：GBK 控制台下需相同的容错设置，
+    # 否则 novel.py 自己活下来了、被调用的脚本却崩在输出上（CLI-05）。
+    env = dict(os.environ)
+    env.setdefault("PYTHONIOENCODING", "utf-8:backslashreplace")
+    return subprocess.call(cmd, env=env)
 
 
 def enforce_iron_rule_2(names: list[str] | None = None) -> int:
@@ -715,4 +748,5 @@ def main():
 
 
 if __name__ == "__main__":
+    _configure_console_encoding()
     sys.exit(main())

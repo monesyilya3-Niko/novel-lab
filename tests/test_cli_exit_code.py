@@ -134,5 +134,91 @@ class TestVerdictReflectedInExitCode(unittest.TestCase):
             )
 
 
+class TestConsoleEncodingTolerance(unittest.TestCase):
+    """CLI 在 GBK 控制台下不得因特殊符号崩栈（2026-10-12 审计修复 CLI-05）。
+
+    缺陷背景：CLI 大量使用 ✓ / ✗ / ⚠ / 🔴 等符号，而 Windows 中文控制台
+    默认 GBK——实测 `PYTHONIOENCODING=gbk` 下 print('✓') 直接抛
+    UnicodeEncodeError。最讽刺的是这发生在**报错路径**上：本想告诉用户
+    "质检失败"，结果先崩在打印失败信息那一行。
+
+    修法：novel.py 入口调 _configure_console_encoding()，把 stdout/stderr
+    的错误处理器设为 backslashreplace（不可编码字符降级为 ✓ 转义）；
+    run_script 给子进程注入 PYTHONIOENCODING 使其同样容错。
+    """
+
+    # GBK 无法编码的符号（实测确认）
+    NON_GBK = ["✓", "✗", "⚠", "✅", "❌", "🔴"]
+
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("novel_cli_enc", ROOT / "novel.py")
+        self.novel = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.novel)
+
+    def test_these_symbols_really_are_non_gbk(self):
+        """前置事实核验：本测试依据的符号确实无法 GBK 编码。
+
+        若某天这些符号变得可编码（例如换用 GB18030），本组测试的前提
+        就不成立，应重新评估——故显式断言，避免守卫变成空转。
+        """
+        for ch in self.NON_GBK:
+            with self.assertRaises(UnicodeEncodeError, msg=f"{ch!r} 竟然可 GBK 编码"):
+                ch.encode("gbk")
+
+    def test_reconfigure_makes_symbols_printable_under_gbk(self):
+        """核心守卫：GBK 编码下打印这些符号不得抛异常。"""
+        import io
+        # 造一个 GBK 编码且 strict 的流，模拟 Windows 中文控制台
+        raw = io.BytesIO()
+        gbk_stream = io.TextIOWrapper(raw, encoding="gbk", errors="strict")
+
+        orig_out, orig_err = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = gbk_stream, gbk_stream
+        try:
+            self.novel._configure_console_encoding()
+            for ch in self.NON_GBK:
+                print(ch)          # 修复前这里会抛 UnicodeEncodeError
+            gbk_stream.flush()
+        finally:
+            sys.stdout, sys.stderr = orig_out, orig_err
+
+        out = raw.getvalue().decode("gbk", "replace")
+        # 降级为转义序列，内容是可见的
+        self.assertIn("\\u2713", out, "未降级为可读转义")
+
+    def test_utf8_stream_untouched(self):
+        """反向守卫：已是 UTF-8 的流不应被改动（避免影响重定向/管道）。"""
+        import io
+        utf8_stream = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
+        before = utf8_stream.errors
+        orig_out, orig_err = sys.stdout, sys.stderr
+        sys.stdout, sys.stderr = utf8_stream, utf8_stream
+        try:
+            self.novel._configure_console_encoding()
+            self.assertEqual(utf8_stream.errors, before, "UTF-8 流被无谓改动了")
+        finally:
+            sys.stdout, sys.stderr = orig_out, orig_err
+
+    def test_entrypoint_actually_calls_configure(self):
+        """入口必须真的调用配置函数——否则本模块其余测试都是空转。
+
+        （变异测试发现：只测 _configure_console_encoding 本身，
+        把入口里的调用删掉测试仍绿。）
+        """
+        src_text = (ROOT / "novel.py").read_text(encoding="utf-8")
+        self.assertRegex(
+            src_text,
+            r"__main__[\s\S]{0,200}_configure_console_encoding\(\)",
+            "novel.py 入口未调用 _configure_console_encoding()——GBK 下仍会崩",
+        )
+
+    def test_subprocess_gets_encoding_env(self):
+        """子进程（scripts/*.py）也必须拿到容错编码设置。"""
+        src = (ROOT / "novel.py").read_text(encoding="utf-8")
+        self.assertIn("PYTHONIOENCODING", src,
+                      "run_script 未给子进程注入编码设置——被调脚本仍会崩在输出上")
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main())
