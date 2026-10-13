@@ -80,5 +80,124 @@ class ConcurrentWriteTest(unittest.TestCase):
             self.assertEqual(cnt, WRITES_PER_THREAD, f"线程 {tid} 丢写")
 
 
+class StateFileConcurrentWriteTest(unittest.TestCase):
+    """状态文件并发原子写（2026-10-13 审计修复 CONC-01）。
+
+    缺陷背景：state_store._save_state_json 用**固定 tmp 名**
+    ``<path>.tmp``。并发写同一 book_id 时（后台分析线程 + HTTP 线程
+    同时保存状态），两个写者用同一个 tmp 文件——实测 30 线程产生
+    22 个 PermissionError: WinError 32（一个线程正写 tmp 时，另一个的
+    os.replace 撞上文件占用），状态保存静默失败。
+
+    修法分两层（第二层是实测发现的必需项）：
+      1. 唯一 tmp 名（pid + tid + 计数器）——避免写者互相窃取 tmp
+      2. **按路径加锁** ——仅改 tmp 名不够：实测仍有 18 个
+         ``WinError 5 拒绝访问``，那是 Windows 对同一目标路径并发
+         ``os.replace`` 的限制，必须串行化「写 tmp + 替换」
+    """
+
+    def setUp(self):
+        self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="stateconc_")))
+        self._iso.__enter__()
+
+    def tearDown(self):
+        self._iso.__exit__(None, None, None)
+
+    def test_concurrent_saves_same_book_no_error(self):
+        """核心守卫：30 线程并发写同一 book_id 必须零异常。"""
+        from gui import state_store
+
+        errors: list[str] = []
+        lock = threading.Lock()
+
+        def writer(i: int) -> None:
+            try:
+                state_store.save_state(
+                    {"book_id": "shared", "status": f"s{i}", "n": i})
+            except Exception as exc:  # noqa: BLE001
+                with lock:
+                    errors.append(f"T{i}: {type(exc).__name__}: {exc}")
+
+        threads = [threading.Thread(target=writer, args=(i,)) for i in range(30)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(errors, [], f"并发写状态文件出现异常：{errors[:3]}")
+
+    def test_final_file_is_valid_json(self):
+        """并发写后文件必须完整可读（原子替换未被破坏）。"""
+        import json as _json
+
+        from gui import state_store
+
+        def writer(i: int) -> None:
+            state_store.save_state({"book_id": "bk", "status": f"s{i}", "n": i})
+
+        threads = [threading.Thread(target=writer, args=(i,)) for i in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        path = state_store.state_path_for("bk")
+        data = _json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(data["book_id"], "bk")
+        self.assertIn(data["status"], [f"s{i}" for i in range(20)])
+
+    def test_no_tmp_leftovers(self):
+        """并发写不得留下临时文件堆积。"""
+        from gui import state_store
+
+        def writer(i: int) -> None:
+            state_store.save_state({"book_id": "bk2", "status": f"s{i}"})
+
+        threads = [threading.Thread(target=writer, args=(i,)) for i in range(20)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        parent = state_store.state_path_for("bk2").parent
+        leftovers = list(parent.glob("*.tmp"))
+        self.assertEqual(leftovers, [], f"残留临时文件：{leftovers[:3]}")
+
+    def test_tmp_names_are_unique(self):
+        """唯一 tmp 名（跨进程场景的第二层防御）。
+
+        同进程内按路径锁已足够，故本用例**直接验证命名规则**而非并发行为：
+        固定名 ``<path>.tmp`` 在跨进程写同一文件时会互相窃取；唯一名
+        （含 pid/tid/序号）不会。用源码断言锁定该规则。
+        """
+        src_text = (_ROOT / "gui" / "state_store.py").read_text(encoding="utf-8")
+        self.assertIn("os.getpid()", src_text,
+                      "tmp 名缺少 pid 段——跨进程写会互相窃取临时文件")
+        self.assertIn("threading.get_ident()", src_text, "tmp 名缺少线程 id 段")
+        # 不得退回固定名
+        self.assertNotIn('path.with_suffix(path.suffix + ".tmp")', src_text,
+                         "tmp 名退回固定形式——跨进程并发会互相窃取")
+
+    def test_different_books_do_not_block_each_other(self):
+        """反向守卫：不同 book_id 的写入应可并行（锁按路径分桶，不是全局锁）。"""
+        from gui import state_store
+
+        errors: list[str] = []
+
+        def writer(bid: str) -> None:
+            try:
+                for i in range(10):
+                    state_store.save_state({"book_id": bid, "status": f"s{i}"})
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{bid}: {exc}")
+
+        threads = [threading.Thread(target=writer, args=(f"book{n}",)) for n in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(errors, [])
+
+
 if __name__ == "__main__":
     unittest.main()

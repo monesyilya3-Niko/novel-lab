@@ -9,12 +9,25 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from gui import config, db
 from gui.logging_setup import get_logger
+
+# 原子写临时文件的唯一后缀计数器（见 _save_state_json 注释：CONC-01）。
+# 用锁保护自增，保证同一进程内序号不重复；pid/tid 已能跨进程跨线程区分。
+_TMP_COUNTER_LOCK = threading.Lock()
+_TMP_COUNTER = [0]
+
+# 按目标路径的写锁表（CONC-01）：Windows 对同一目标路径并发 os.replace
+# 会返回 WinError 5，故同一路径的「写 tmp + 替换」必须串行化。
+_PATH_LOCKS: dict[str, threading.Lock] = {}
+_PATH_LOCKS_GUARD = threading.Lock()
 
 _log = get_logger("state_store")
 
@@ -99,17 +112,63 @@ def load_state(book_id: str) -> dict[str, Any]:
 
 
 def _save_state_json(state: dict[str, Any]) -> None:
-    """原子写回任务状态文件（JSON 降级副本，纯文件写入）。"""
+    """原子写回任务状态文件（JSON 降级副本，纯文件写入）。
+
+    ⚠️ 必须按路径加锁（2026-10-13 审计修复 CONC-01）：
+    并发写同一 book_id 时（后台分析线程 + HTTP 线程同时保存状态），
+    原实现用固定 tmp 名 ``<path>.tmp``，实测 30 线程产生 22 个
+    ``PermissionError: WinError 32``（一个线程正写 tmp 时另一个的
+    ``os.replace`` 撞上文件占用）。
+
+    仅改唯一 tmp 名**不够**：实测仍有 18 个 ``WinError 5 拒绝访问``——
+    那是 Windows 对**同一目标路径**并发 ``os.replace`` 的限制
+    （多线程同时替换同一个目标文件，系统拒绝）。
+    故按路径持锁串行化「写 tmp + 替换」，唯一 tmp 名作为第二层防御保留
+    （防止锁失效或跨进程场景下的互相窃取）。
+    """
     book_id = state.get("book_id", "")
     if not book_id:
         raise ValueError("state 缺 book_id，无法定位状态文件")
     path = state_path_for(book_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8") as fh:
-        json.dump(state, fh, ensure_ascii=False, indent=2)
-        fh.write("\n")
-    os.replace(tmp, path)
+    # 唯一临时名：pid + 线程 id + 单调计数器。
+    #
+    # 注：在**同进程内**，下面的按路径锁已足以避免冲突——本行是第二层
+    # 防御，针对锁覆盖不到的场景：跨进程写同一状态文件（如 CLI 与 GUI
+    # 同时运行）。那种场景下两个进程各自的锁互不可见，固定 tmp 名会让
+    # 它们互相窃取临时文件；唯一名让每个写者各写各的，os.replace 仍是
+    # 原子的（Windows 上跨进程同目标并发 replace 可能失败，但那是
+    # 罕见场景且失败是显式的——不会静默丢数据）。
+    with _TMP_COUNTER_LOCK:
+        _TMP_COUNTER[0] += 1
+        seq = _TMP_COUNTER[0]
+    tmp = path.with_suffix(f"{path.suffix}.{os.getpid()}.{threading.get_ident()}.{seq}.tmp")
+    with _path_lock(path):
+        try:
+            with tmp.open("w", encoding="utf-8") as fh:
+                json.dump(state, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+            os.replace(tmp, path)
+        except Exception:
+            # 失败时清掉自己的临时文件，避免残留堆积（尽力而为，不掩盖原异常）。
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
+
+
+@contextmanager
+def _path_lock(path: Path) -> Iterator[None]:
+    """按目标路径取进程内互斥锁（Windows 下 os.replace 同目标并发会失败）。"""
+    key = str(path)
+    with _PATH_LOCKS_GUARD:
+        lock = _PATH_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _PATH_LOCKS[key] = lock
+    with lock:
+        yield
 
 
 def save_state(state: dict[str, Any]) -> None:
