@@ -895,5 +895,76 @@ class TestPruneSafetyGate(unittest.TestCase):
             db.get_conn().execute("SELECT COUNT(*) FROM assets").fetchone()[0], 1)
 
 
+class TestUpsertBookStatus(unittest.TestCase):
+    """_upsert_book 的 status 更新（2026-10-12 审计修复 D4）。
+
+    缺陷背景：原实现的 ON CONFLICT DO UPDATE **不含 status**，于是
+    books.status 永远卡在首次写入的值。实测：先 idle 登记一本仅导入未拆的
+    书，拆完后再传 done —— status 仍是 idle。
+    后果：「已拆书」统计永久失真（拆完的书一直算未拆）。
+
+    修法：status 参与更新，但只允许 idle -> done 单向推进（防止将来调用
+    顺序变化造成 done 被改回 idle 的降级）。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="book_status_"))
+        self._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_JSON_DIR = self._tmp / "gui_state_json"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def _status(self, bid="bk"):
+        return db.get_conn().execute(
+            "SELECT status FROM books WHERE book_id=?", (bid,)).fetchone()["status"]
+
+    def _upsert(self, status, bid="bk"):
+        migrate._upsert_book(db.get_conn(), bid, bid, None, None, status)
+
+    def test_status_updates_idle_to_done(self):
+        """核心守卫：拆完书后 status 必须推进到 done。"""
+        self._upsert("idle")
+        self.assertEqual(self._status(), "idle")
+        self._upsert("done")
+        self.assertEqual(self._status(), "done",
+                         "status 卡在 idle——「已拆书」统计失真")
+
+    def test_done_is_not_downgraded(self):
+        """反向守卫：已 done 的书不得因后续 idle 调用被降级。"""
+        self._upsert("done")
+        self._upsert("idle")
+        self.assertEqual(self._status(), "done", "done 被降级回 idle")
+
+    def test_new_book_uses_given_status(self):
+        self._upsert("done", "bk2")
+        self.assertEqual(
+            db.get_conn().execute(
+                "SELECT status FROM books WHERE book_id='bk2'").fetchone()["status"],
+            "done")
+
+    def test_repeated_upsert_is_idempotent(self):
+        for _ in range(3):
+            self._upsert("done")
+        rows = db.get_conn().execute("SELECT COUNT(*) FROM books").fetchall()
+        self.assertEqual(rows[0][0], 1)
+        self.assertEqual(self._status(), "done")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

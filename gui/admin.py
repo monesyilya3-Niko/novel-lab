@@ -756,7 +756,18 @@ def _delete_book_locked(book_id: str, username: str, ip: str) -> dict[str, Any]:
         from gui import db
         if db._db_ready():
             with db.tx() as conn:
-                for table in ("books", "assets", "reports", "analysis_tasks"):
+                # 2026-10-12 审计修复 D5：补上 essence_* 四表。
+                # 原先只删 books/assets/reports/analysis_tasks，而
+                # essence_service.delete_book 只删 essence_* —— 两个删除入口
+                # **各删一半**。实测：走 admin 删除后，essence_books /
+                # essence_assets / essence_chains / essence_tasks 全部残留成
+                # 孤儿（界面上看不到书，数据却还在，且没有任何入口能清掉）。
+                #
+                # 这里用容错方式（表不存在则跳过），与下面既有的表循环一致：
+                # 老库的 schema 可能还没有 0003 迁移出来的 essence_* 表。
+                for table in ("books", "assets", "reports", "analysis_tasks",
+                              "essence_books", "essence_assets",
+                              "essence_chains", "essence_tasks"):
                     try:
                         cur = conn.execute(f"DELETE FROM {table} WHERE book_id = ?", (book_id,))
                         db_removed += cur.rowcount or 0

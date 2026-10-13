@@ -371,6 +371,18 @@ _rel_path = rel_path
 
 def _upsert_book(conn: Any, book_id: str, title: str, source_path: str | None,
                  genre: str | None, status: str) -> None:
+    """书 UPSERT（幂等）。
+
+    ⚠️ ``status`` 必须参与更新（2026-10-12 审计修复 D4）：
+    原实现的 ``DO UPDATE`` 里没有 status，于是 ``books.status`` 永远卡在
+    **首次写入**的值。实测：先用 ``_upsert_book(..., 'idle')`` 登记一本仅导入
+    未拆的书，拆完后再调 ``_upsert_book(..., 'done')`` —— status 仍是 idle。
+    后果：「已拆书」统计永久失真（拆完的书一直算未拆）。
+
+    为什么不是简单的 ``status = excluded.status``：为避免将来调用顺序变化
+    造成**降级**（done 被改回 idle），这里只允许「idle → done」单向推进。
+    正常迁移路径里三个调用点的集合互斥，本不会互相覆盖；本约束是防线。
+    """
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     conn.execute(
         """
@@ -380,6 +392,10 @@ def _upsert_book(conn: Any, book_id: str, title: str, source_path: str | None,
             title = excluded.title,
             source_path = COALESCE(excluded.source_path, books.source_path),
             genre = COALESCE(excluded.genre, books.genre),
+            status = CASE
+                WHEN books.status = 'done' THEN 'done'
+                ELSE excluded.status
+            END,
             updated_at = excluded.updated_at
         """,
         (book_id, title, source_path, genre, status, now, now),

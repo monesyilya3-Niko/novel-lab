@@ -177,6 +177,51 @@ class TestAdminDeleteBook(_AdminBase):
                 (book_id,)).fetchone()[0]
         return total
 
+    def _seed_essence(self, book_id):
+        """往 essence_* 四表插该书记录（需要先跑 0003 迁移）。"""
+        from gui import db
+        db.init_schema()
+        db.apply_migrations()
+        with db.tx() as conn:
+            conn.execute("INSERT INTO essence_books(book_id, title, genre)"
+                         " VALUES (?, 'T', 'xuanhuan')", (book_id,))
+            conn.execute("INSERT INTO essence_assets(book_id, category, title, content)"
+                         " VALUES (?, 'hook', 'a', 'c')", (book_id,))
+            conn.execute("INSERT INTO essence_chains(book_id, clue_name)"
+                         " VALUES (?, 'clue')", (book_id,))
+            conn.execute("INSERT INTO essence_tasks(book_id, status)"
+                         " VALUES (?, 'idle')", (book_id,))
+
+    def _essence_row_count(self, book_id):
+        from gui import db
+        conn = db.get_conn()
+        total = 0
+        for table in ("essence_books", "essence_assets",
+                      "essence_chains", "essence_tasks"):
+            total += conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE book_id = ?",
+                (book_id,)).fetchone()[0]
+        return total
+
+    def test_delete_book_also_clears_essence_tables(self):
+        """核心守卫（D5）：走 admin 删除时 essence_* 不得留孤儿。
+
+        缺陷背景：admin.delete_book 只删 books/assets/reports/analysis_tasks，
+        而 essence_service.delete_book 只删 essence_* —— 两个入口各删一半。
+        实测：走 admin 删除后精华档案全部残留，且没有任何入口能清掉。
+        """
+        self._init()
+        self._make_book()
+        self._seed_db("book1")
+        self._seed_essence("book1")
+        self.assertEqual(self._essence_row_count("book1"), 4)
+
+        admin.delete_book("book1", "admin", "127.0.0.1")
+
+        self.assertEqual(self._essence_row_count("book1"), 0,
+                         "精华档案残留成孤儿：界面看不到书、数据却还在")
+        self.assertEqual(self._db_row_count("book1"), 0)
+
     def test_delete_book_ok(self):
         self._init()
         self._make_book()
