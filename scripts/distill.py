@@ -126,22 +126,57 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    result = run_distill(args.genre, book_names=args.books)
+    # ── 题材存在性校验（2026-10-12 审计修复 CLI-07）─────────────────────
+    # 原实现只校验字符合法性（_GENRE_RE），**不校验题材是否真实存在**。
+    # 实测：`novel 蒸馏 --genre definitely-not-a-genre` 会写出 4 个
+    # **0 规则**的空壳资产（voice-card/craft-card/structure-obs/
+    # commercial-obs 各一个）并 EXIT=0——既是"假成功"，又把垃圾文件灌进
+    # assets/ 污染资产库与后续校验。
+    #
+    # 判据取自 genre_registry（磁盘派生，与铁律一"磁盘是唯一真相源"一致），
+    # 不另造题材清单。校验**先于** run_distill，因为后者会落盘——
+    # 与项目既有的"校验先于副作用"原则同口径。
+    genre = args.genre
+    if not _GENRE_RE.fullmatch(genre):
+        print(f"✗ 非法 genre 名（仅允许字母/数字/下划线/连字符）: {genre!r}")
+        return 1
+    try:
+        import genre_registry
+        known = genre_registry.known_genres()
+    except Exception as exc:  # noqa: BLE001 — 注册表不可用时不阻断，退化为警告
+        print(f"⚠ 题材注册表不可用，跳过存在性校验: {exc}")
+        known = None
+    if known is not None and genre not in known:
+        hint = "、".join(sorted(known)[:8])
+        print(f"✗ 题材不存在: {genre!r}（无任何该题材的资产卡）")
+        print(f"  已知题材示例: {hint}{'…' if len(known) > 8 else ''}")
+        print("  请先用 `novel 拆书` 拆解该题材的书，或检查题材名是否写错。")
+        return 1
+
+    result = run_distill(genre, book_names=args.books)
 
     for path in result["written"]:
         print(f"已落盘: {path}")
 
     # 简要摘要。
     print("\n蒸馏摘要:")
+    total_rules = 0
     for dimension in DIMENSIONS:
         stats = result["dimensions"][dimension]["stats"]
         meta = result["dimensions"][dimension]["meta"]
+        total_rules += int(stats["total_rules"] or 0)
         print(
             f"  [{dimension}] 书数={meta['books_count']} "
             f"规则={stats['total_rules']} (硬{stats['hard_rules']}/"
             f"软{stats['soft_rules']}/个人{stats['personal_styles']}) "
             f"冲突={stats['conflicts']} 盲区={stats['blindspots']}"
         )
+
+    # 题材合法但确实无资产时（如资产卡全被删），同样不该产出空壳当成功。
+    if total_rules == 0:
+        print("\n✗ 蒸馏结果为 0 条规则：该题材下没有可用于聚合的资产卡"
+              "（产出空壳会污染资产库）。已落盘的文件请手动删除。")
+        return 1
 
     return 0
 

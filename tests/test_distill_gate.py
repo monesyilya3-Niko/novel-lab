@@ -367,5 +367,84 @@ class TestRunDistillContract(unittest.TestCase):
         writer.assert_not_called()
 
 
+class TestDistillCliGenreGate(unittest.TestCase):
+    """CLI「蒸馏」的题材存在性门禁（2026-10-12 审计修复 CLI-07）。
+
+    缺陷背景：原实现只校验字符合法性（_GENRE_RE），**不校验题材是否真实存在**。
+    实测：`novel 蒸馏 --genre definitely-not-a-genre` 写出 4 个 0 规则的空壳
+    资产并 EXIT=0——既是"假成功"，又把垃圾文件灌进 assets/。
+
+    修法：main() 里先查 genre_registry.known_genres()（磁盘派生，与铁律一一致），
+    不存在则 return 1；且**校验先于落盘**，不产生任何文件。
+    另外：即便题材合法，规则总数为 0 也判失败（不产出空壳当成功）。
+
+    注意层次区分：本文件的 TestValidateDistilledPayload 允许 rules=[] 是
+    **库函数**（write_distilled_outputs）的语义；这里拒绝 0 规则是 **CLI 命令**
+    的语义——两者不冲突，且 CLI 门禁发生在调用库函数之前。
+    """
+
+    def _main(self, argv):
+        """跑 distill.main()，捕获 stdout。"""
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc = DISTILL.main(argv)
+        return rc, buf.getvalue()
+
+    def test_unknown_genre_returns_1_and_writes_nothing(self):
+        """核心守卫：不存在的题材必须失败，且**不落盘**。"""
+        with mock.patch.object(DISTILL, "run_distill") as rd:
+            rc, out = self._main(["--genre", "definitely-not-a-genre"])
+        self.assertEqual(rc, 1, "题材不存在却返回成功")
+        self.assertIn("题材不存在", out)
+        rd.assert_not_called(), "校验失败却仍调用了 run_distill（会落盘空壳）"
+
+    def test_unknown_genre_hints_known_ones(self):
+        """错误信息应给出已知题材，帮用户发现拼写错误。"""
+        with mock.patch.object(DISTILL, "run_distill"):
+            rc, out = self._main(["--genre", "definitely-not-a-genre"])
+        self.assertEqual(rc, 1)
+        self.assertIn("已知题材", out)
+
+    def test_zero_rules_is_treated_as_failure(self):
+        """题材合法但一条规则都没蒸出来：不该当作成功（会产出空壳污染资产库）。"""
+        zero = {
+            d: {"meta": {"dimension": d, "genre": "g", "books_count": 0},
+                "stats": {"total_rules": 0, "hard_rules": 0, "soft_rules": 0,
+                          "personal_styles": 0, "conflicts": 0, "blindspots": 0}}
+            for d in DISTILL.DIMENSIONS
+        }
+        with mock.patch.object(DISTILL, "run_distill",
+                               return_value={"genre": "g", "written": [],
+                                             "dimensions": zero}):
+            rc, out = self._main(["--genre", "campus-redemption"])
+        self.assertEqual(rc, 1, "0 条规则却返回成功")
+        self.assertIn("0 条规则", out)
+
+    def test_illegal_genre_chars_rejected(self):
+        """反向守卫：字符非法（路径穿越尝试）同样被拦。"""
+        with mock.patch.object(DISTILL, "run_distill") as rd:
+            rc, out = self._main(["--genre", "../../etc"])
+        self.assertEqual(rc, 1)
+        rd.assert_not_called()
+
+    def test_known_genre_proceeds(self):
+        """反向守卫：已知题材不得被误拦——必须真的走到 run_distill。"""
+        ok = {
+            d: {"meta": {"dimension": d, "genre": "g", "books_count": 2},
+                "stats": {"total_rules": 5, "hard_rules": 3, "soft_rules": 2,
+                          "personal_styles": 0, "conflicts": 0, "blindspots": 0}}
+            for d in DISTILL.DIMENSIONS
+        }
+        with mock.patch.object(DISTILL, "run_distill",
+                               return_value={"genre": "campus-redemption",
+                                             "written": ["/tmp/x.json"],
+                                             "dimensions": ok}) as rd:
+            rc, _ = self._main(["--genre", "campus-redemption"])
+        self.assertEqual(rc, 0, "合法题材被误拦")
+        rd.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()
