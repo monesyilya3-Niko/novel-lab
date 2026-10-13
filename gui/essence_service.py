@@ -245,6 +245,24 @@ def list_assets(
     return [_format_asset_dict(r) for r in rows]
 
 
+def _require_book_exists(book_id: str) -> None:
+    """确认 ``essence_books`` 里存在该 book_id，否则 404。
+
+    ⚠️ 写路径必须校验父行存在（2026-10-13 审计修复 D8）：
+    create_asset / create_chain 原先只校验 book_id 的类型与非空，
+    **不查父行**——实测可用不存在的 book_id 建出"孤儿资产/孤儿暗线"
+    （资产行存在、父书行不存在）。后果：界面列出该资产，点进去找不到书，
+    且删除书时的级联清理（按 book_id 删子表）永远不会触及它——数据永久残留。
+
+    在**事务外**查询：写路径随后会开自己的事务，此处只做前置校验。
+    """
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT 1 FROM essence_books WHERE book_id = ?", (book_id,)).fetchone()
+    if row is None:
+        raise ServiceError(f"未找到小说精华档案: {book_id}（请先创建书籍档案）", 404)
+
+
 def create_asset(
     book_id: str,
     category: str,
@@ -266,6 +284,8 @@ def create_asset(
         raise ServiceError("title 必须为非空字符串", 400)
     if not content or not isinstance(content, str):
         raise ServiceError("content 必须为非空字符串", 400)
+    # 父行存在性（D8）：不校验会产出孤儿资产，级联清理永远触不到它。
+    _require_book_exists(book_id)
 
     now = _now_iso()
     with db.tx() as conn:
@@ -354,6 +374,8 @@ def create_chain(
         raise ServiceError("book_id 必须为非空字符串", 400)
     if not clue_name or not isinstance(clue_name, str):
         raise ServiceError("clue_name 必须为非空字符串", 400)
+    # 父行存在性（D8）：与 create_asset 同源问题，不校验会产出孤儿暗线。
+    _require_book_exists(book_id)
 
     now = _now_iso()
     with db.tx() as conn:
@@ -637,14 +659,34 @@ def extract_opening_slice(chapters: list[tuple[str, str]]) -> dict[str, Any]:
 # 5. 一键反哺至现有写作工坊（One-Click Adopt）
 # ---------------------------------------------------------------------------
 
+def _require_project(project: str) -> str:
+    """项目名校验——**复用写入侧的同一规则**（2026-10-13 审计修复 D17）。
+
+    原先 essence_service 的两处反哺入口只查"非空 + 是字符串"，比写入侧
+    （writing_extra._require_project）**宽松得多**。实测：用 'default'
+    （CLI 只读项目）、'../etc'、'a/b'、含 NUL 的名字调
+    adopt_asset_to_project，全部被放行并写入了 writing_outlines ——
+    而同样这些名字走写入侧 API 会被 400 拒绝。
+
+    后果：数据被注入到写入侧不认的"项目"里（含路径穿越形态），
+    界面上看不到、清理逻辑也覆盖不到。
+
+    单一来源：直接调 writing_extra._require_project（它内部与
+    writing_service._sanitize_project 同规则）。两者无循环依赖
+    （writing_extra 不 import essence_service）。
+    """
+    from gui import writing_extra
+    return writing_extra._require_project(project)
+
+
 def adopt_asset_to_project(
     asset_id: int,
     project: str,
     target_kind: str = "outline",
 ) -> dict[str, Any]:
     """将提炼出的精华资产一键转入项目写作工坊（大纲 / 人物卡 / 灵感便签）。"""
-    if not project or not isinstance(project, str):
-        raise ServiceError("project 必须为非空字符串", 400)
+    # D17：与写入侧同规则校验（拦 default / 路径穿越 / 控制字符）。
+    project = _require_project(project)
 
     asset_row = db.get_conn().execute("SELECT * FROM essence_assets WHERE id = ?", (asset_id,)).fetchone()
     if not asset_row:
@@ -699,8 +741,8 @@ def adopt_book_to_project(book_id: str, project: str) -> dict[str, Any]:
     """将指定精华书籍的全部核心资产一键批量转入用户项目的写作工坊。"""
     if not book_id or not isinstance(book_id, str):
         raise ServiceError("book_id 必须为非空字符串", 400)
-    if not project or not isinstance(project, str):
-        raise ServiceError("project 必须为非空字符串", 400)
+    # D17：与写入侧同规则校验（与 adopt_asset_to_project 一致）。
+    project = _require_project(project)
 
     get_book(book_id)
     assets = list_assets(book_id=book_id)

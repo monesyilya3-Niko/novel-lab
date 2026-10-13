@@ -34,6 +34,23 @@ class TestEssenceService(unittest.TestCase):
         db.init_schema()
         db.apply_migrations()
 
+    def _ensure_book(self, book_id: str) -> None:
+        """确保书档案存在（2026-10-13：create_asset/create_chain 现在校验父行）。
+
+        审计修复 D8 后，写路径要求 essence_books 里有对应行，否则 404。
+        生产路径（extract → create_or_update_book → create_asset）本就先建书，
+        测试夹具此前省略了这步——此处补齐。
+        """
+        # ⚠️ 只在书**不存在**时才建：测试可能先用真实标题建过书，
+        # 无条件 create_or_update_book 会把它覆盖成 book_id（初版实测踩到）。
+        try:
+            essence_service.get_book(book_id)
+            return
+        except ServiceError:
+            pass
+        essence_service.create_or_update_book(
+            book_id=book_id, title=book_id, genre="xuanhuan")
+
     def tearDown(self):
         db.close()
         self._iso.__exit__(None, None, None)
@@ -68,6 +85,7 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(b_get["total_chapters"], 100)
 
         # 3. 创建关联资产与伏笔链
+        self._ensure_book("book_xuanhuan_01")
         a = essence_service.create_asset(
             book_id="book_xuanhuan_01",
             category="persona",
@@ -75,6 +93,7 @@ class TestEssenceService(unittest.TestCase):
             content="表面平平无奇，暗藏掌天瓶，杀伐果决",
             tags="隐忍,反差,修仙",
         )
+        self._ensure_book("book_xuanhuan_01")
         c = essence_service.create_chain(
             book_id="book_xuanhuan_01",
             clue_name="神秘绿瓶",
@@ -95,6 +114,7 @@ class TestEssenceService(unittest.TestCase):
 
     def test_asset_crud_and_tag_filtering(self):
         # 创建两条资产
+        self._ensure_book("book_01")
         a1 = essence_service.create_asset(
             book_id="book_01",
             category="opening",
@@ -105,6 +125,7 @@ class TestEssenceService(unittest.TestCase):
             platform="fanqie",
             rating=5,
         )
+        self._ensure_book("book_02")
         a2 = essence_service.create_asset(
             book_id="book_02",
             category="trope",
@@ -169,6 +190,7 @@ class TestEssenceService(unittest.TestCase):
 
     def test_adopt_asset_to_writing_workbench(self):
         # 1. 创建一条精华资产
+        self._ensure_book("book_01")
         asset = essence_service.create_asset(
             book_id="book_01",
             category="persona",
@@ -263,6 +285,8 @@ class TestEssenceService(unittest.TestCase):
         self.assertEqual(cm.exception.code, 400)
 
     def test_essence_chains_router_endpoints(self):
+        # 0. 先建书档案（审计修复 D8 后，写路径要求父行存在，否则 404）
+        self._ensure_book("test_book_chains")
         # 1. 创建伏笔暗线
         create_resp, _ = router.dispatch(
             "POST",
@@ -333,6 +357,7 @@ class TestEssenceService(unittest.TestCase):
             total_chapters=10,
             total_chars=30000,
         )
+        self._ensure_book("b_stat_01")
         essence_service.create_asset(
             book_id="b_stat_01",
             category="outline",
@@ -357,6 +382,7 @@ class TestEssenceService(unittest.TestCase):
             total_chars=150000,
         )
         # 插入开篇钩子 (category=opening)
+        self._ensure_book("b_search_01")
         essence_service.create_asset(
             book_id="b_search_01",
             category="opening",
@@ -365,6 +391,7 @@ class TestEssenceService(unittest.TestCase):
             tags="退婚,逆袭",
         )
         # 插入人设反差 (category=persona)
+        self._ensure_book("b_search_01")
         essence_service.create_asset(
             book_id="b_search_01",
             category="persona",
@@ -435,6 +462,7 @@ class TestEssenceService(unittest.TestCase):
             total_chapters=10,
             total_chars=35000,
         )
+        self._ensure_book("b_export_test")
         essence_service.create_asset(
             book_id="b_export_test",
             category="opening",
@@ -442,12 +470,14 @@ class TestEssenceService(unittest.TestCase):
             content="主角在荒原废墟中遭遇巡逻队...",
             summary="开篇高压求生",
         )
+        self._ensure_book("b_export_test")
         essence_service.create_asset(
             book_id="b_export_test",
             category="persona",
             title="主角林恩",
             content="性格隐忍机智，擅长枪械改装",
         )
+        self._ensure_book("b_export_test")
         essence_service.create_chain(
             book_id="b_export_test",
             clue_name="怀表里的神秘芯片",
@@ -706,6 +736,124 @@ class TestCuratedSeedOnce(unittest.TestCase):
         r = server.ensure_curated_seed_once()
         self.assertEqual(r["action"], "marked", "已有 curated 数据时不应灌装")
         self.assertEqual(self._count_curated(), 1, "不应把 8 本灌进已有库")
+
+
+class TestWritePathParentValidation(unittest.TestCase):
+    """精华写路径的父行与项目名校验（2026-10-13 审计修复 D8/D17）。
+
+    **D8**：create_asset / create_chain 原先只校验 book_id 的类型与非空，
+    **不查父行**——实测可用不存在的 book_id 建出"孤儿资产/孤儿暗线"
+    （资产行存在、父书行不存在）。后果：界面列出该资产、点进去找不到书，
+    且删除书时的级联清理（按 book_id 删子表）永远触不到它 → 数据永久残留。
+
+    **D17**：adopt_asset_to_project / adopt_book_to_project 原先只查
+    "非空 + 是字符串"，比写入侧（writing_extra._require_project）
+    **宽松得多**。实测 'default' / '../etc' / 'a/b' / 含 NUL 的名字
+    全部被放行并写入了 writing_outlines —— 而同样这些名字走写入侧 API
+    会被 400 拒绝。数据被注入到界面上看不到、清理逻辑覆盖不到的"项目"里。
+    """
+
+    def setUp(self):
+        self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="writepath_")))
+        self._iso.__enter__()
+        db.init_schema()
+        db.apply_migrations()
+
+    def tearDown(self):
+        db.close()
+        self._iso.__exit__(None, None, None)
+
+    # --- D8：父行存在性 ---
+
+    def test_create_asset_rejects_missing_book(self):
+        with self.assertRaises(ServiceError) as cm:
+            essence_service.create_asset(
+                book_id="ghost-book", category="hook", title="t", content="c")
+        self.assertEqual(cm.exception.code, 404)
+        n = db.get_conn().execute(
+            "SELECT COUNT(*) FROM essence_assets WHERE book_id='ghost-book'").fetchone()[0]
+        self.assertEqual(n, 0, "孤儿资产被写入了")
+
+    def test_create_chain_rejects_missing_book(self):
+        with self.assertRaises(ServiceError) as cm:
+            essence_service.create_chain(book_id="ghost-book", clue_name="线")
+        self.assertEqual(cm.exception.code, 404)
+
+    def test_create_asset_works_when_book_exists(self):
+        """反向守卫：书存在时正常创建（不得因新校验误伤）。"""
+        essence_service.create_or_update_book(
+            book_id="real-book", title="真书", genre="xuanhuan")
+        a = essence_service.create_asset(
+            book_id="real-book", category="hook", title="t", content="c")
+        self.assertIsNotNone(a.get("id"))
+
+    def test_no_orphan_assets_after_operations(self):
+        """整体不变量：任何操作后都不应存在父行缺失的资产。"""
+        essence_service.create_or_update_book(
+            book_id="b1", title="书", genre="xuanhuan")
+        essence_service.create_asset(
+            book_id="b1", category="hook", title="t", content="c")
+        try:
+            essence_service.create_asset(
+                book_id="ghost", category="hook", title="t", content="c")
+        except ServiceError:
+            pass
+        n = db.get_conn().execute(
+            "SELECT COUNT(*) FROM essence_assets "
+            "WHERE book_id NOT IN (SELECT book_id FROM essence_books)").fetchone()[0]
+        self.assertEqual(n, 0, f"存在 {n} 条孤儿资产")
+
+    # --- D17：项目名与写入侧同规则 ---
+
+    def _seed_asset(self) -> int:
+        essence_service.create_or_update_book(
+            book_id="b2", title="书", genre="xuanhuan")
+        a = essence_service.create_asset(
+            book_id="b2", category="hook", title="资产", content="内容")
+        return a["id"]
+
+    def test_adopt_rejects_illegal_project_names(self):
+        """核心守卫：与写入侧同规则——default / 路径穿越 / 控制字符都拒绝。"""
+        aid = self._seed_asset()
+        for bad in ("default", "../etc", "a/b", "x\x00y", ""):
+            with self.subTest(project=bad):
+                with self.assertRaises(ServiceError) as cm:
+                    essence_service.adopt_asset_to_project(aid, bad, "outline")
+                self.assertEqual(cm.exception.code, 400)
+
+    def test_adopt_book_rejects_illegal_project_names(self):
+        essence_service.create_or_update_book(
+            book_id="b3", title="书", genre="xuanhuan")
+        essence_service.create_asset(
+            book_id="b3", category="hook", title="资产", content="内容")
+        for bad in ("default", "../etc"):
+            with self.subTest(project=bad):
+                with self.assertRaises(ServiceError) as cm:
+                    essence_service.adopt_book_to_project("b3", bad)
+                self.assertEqual(cm.exception.code, 400)
+
+    def test_adopt_accepts_legal_project(self):
+        """反向守卫：合法项目名必须能正常注入。"""
+        aid = self._seed_asset()
+        r = essence_service.adopt_asset_to_project(aid, "我的书", "outline")
+        self.assertTrue(r.get("adopted"))
+        n = db.get_conn().execute(
+            "SELECT COUNT(*) FROM writing_outlines WHERE project='我的书'").fetchone()[0]
+        self.assertEqual(n, 1)
+
+    def test_no_illegal_project_rows(self):
+        """整体不变量：库中不应出现非法 project 的行。"""
+        aid = self._seed_asset()
+        for bad in ("default", "../etc", "a/b"):
+            try:
+                essence_service.adopt_asset_to_project(aid, bad, "outline")
+            except ServiceError:
+                pass
+        n = db.get_conn().execute(
+            "SELECT COUNT(*) FROM writing_outlines "
+            "WHERE project='default' OR project LIKE '%..%' OR project LIKE '%/%'"
+        ).fetchone()[0]
+        self.assertEqual(n, 0, f"库中有 {n} 条非法 project 的行")
 
 
 if __name__ == "__main__":
