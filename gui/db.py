@@ -164,8 +164,29 @@ def init_schema() -> None:
 
     直接执行建表 SQL（等价于 0001_init.sql 的 DDL），保证即便迁移登记表为空、
     基础 schema 也能先落地；后续 ``apply_migrations`` 再按版本号执行缺失迁移。
+
+    ⚠️ 不得用 ``executescript``（2026-10-13 审计修复 D13）：
+    ``executescript`` 会先**隐式提交当前事务**再执行脚本。若调用方已在
+    ``with db.tx()`` 里（例如业务逻辑中途确保 schema 存在），一次
+    ``init_schema()`` 就会把那个事务提交掉——后续抛错时回滚失效，
+    半成品数据留在库里。实测复现：事务内 INSERT 后调 init_schema，
+    ``in_transaction`` 由 True 变 False，raise 触发 rollback 后该行仍残留。
+
+    改为逐条 execute（复用 ``split_sql_statements``，与 apply_migrations 同口径），
+    且**只在没有活动事务时才 commit**——DDL 的隐式提交已被避免，但显式
+    ``commit()`` 同样会提交调用方的事务。实测：仅去掉 executescript 仍不够，
+    末尾的 commit 照样把 in_transaction 由 True 变 False。
     """
-    _exec_sql_file(Path(__file__).parent / "migrations" / "0001_init.sql")
+    sql_path = Path(__file__).parent / "migrations" / "0001_init.sql"
+    if not sql_path.is_file():
+        return
+    conn = get_conn()
+    # 记录进入时的状态：若调用方已在事务中，我们不得提交它。
+    had_tx = conn.in_transaction
+    for stmt in split_sql_statements(sql_path.read_text(encoding="utf-8")):
+        conn.execute(stmt)
+    if not had_tx:
+        conn.commit()
 
 
 def split_sql_statements(script: str) -> list[str]:
@@ -250,8 +271,15 @@ def apply_migrations() -> list[int]:
             continue
         # 整条迁移（DDL + 版本登记）在一个显式事务内执行。
         # 注意：不能用 executescript（会隐式提交，破坏原子性），改为逐条 execute。
+        #
+        # ⚠️ 必须用 BEGIN IMMEDIATE（2026-10-13 审计修复 D18）：
+        # 裸 ``BEGIN`` 是 DEFERRED —— 它**不立即取写锁**，等到第一条写语句
+        # 才尝试升级。两个进程并发迁移时（桌面版 + CLI 同时启动是真实场景），
+        # 双方都可能先读到旧快照，随后一条升级锁失败 → ``database is locked``，
+        # 迁移中断。IMMEDIATE 在 BEGIN 时就取写锁，把冲突前移到起点：
+        # 后来者直接等锁（受 busy_timeout 约束），而不是走到一半才失败。
         conn = get_conn()
-        conn.execute("BEGIN")
+        conn.execute("BEGIN IMMEDIATE")
         try:
             for stmt in split_sql_statements(sql_path.read_text(encoding="utf-8")):
                 conn.execute(stmt)
@@ -613,8 +641,25 @@ def _verify_backup(dst: Path) -> None:
 
 
 def reset_all() -> None:
-    """清空所有表（测试隔离用，非生产接口）。"""
+    """清空所有表（测试隔离用，非生产接口）。
+
+    ⚠️ 表清单**动态发现**，不再手写（2026-10-13 审计修复 D20）：
+    原实现硬编码 6 张表（assets/reports/books/analysis_tasks/genres/
+    schema_migrations），而迁移 0002~0004 又加了 9 张（essence_* ×4、
+    writing_* ×5）。实测：往各表插一行后调 reset_all，6 张老表归零、
+    **9 张新表各残留 1 行**——测试隔离不彻底，数据跨轮累积
+    （项目历史上有过同类事故：gui/state 泄漏导致测试持续失败）。
+
+    改为查 sqlite_master 清空全部业务表：新增迁移时自动覆盖，
+    不会再出现"加了表忘了加进清单"。
+    """
     conn = get_conn()
+    tables = [
+        r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%'"
+        )
+    ]
     with tx() as c:
-        for t in ("assets", "reports", "books", "analysis_tasks", "genres", "schema_migrations"):
-            c.execute(f"DELETE FROM {t}")
+        for t in tables:
+            c.execute(f"DELETE FROM {t}")   # noqa: S608 — 表名来自 sqlite_master，非用户输入

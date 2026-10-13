@@ -260,5 +260,162 @@ class TestDb(unittest.TestCase):
             conn.close()
 
 
+class TestSchemaInitTransactionSafety(unittest.TestCase):
+    """init_schema 不得吞掉调用方事务（2026-10-13 审计修复 D13）。
+
+    缺陷背景：init_schema 经 _exec_sql_file 调 ``conn.executescript()``，
+    而 executescript **先隐式提交当前事务**再执行脚本。若调用方已在
+    ``with db.tx()`` 里，一次 init_schema() 就把那个事务提交掉——
+    后续抛错时回滚失效，半成品数据留在库里。
+
+    实测（修复前）：事务内 INSERT → init_schema() → in_transaction
+    由 True 变 False → raise 触发 rollback 后该行仍残留。
+
+    修法两步（第一步单独做不够）：
+      1. 改逐条 execute（复用 split_sql_statements）
+      2. **末尾的 commit 只在没有活动事务时执行** —— 显式 commit 同样会
+         提交调用方的事务，实测仅去掉 executescript 仍不生效
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = Path(tempfile.mkdtemp(prefix="schematx_"))
+        cls._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+        }
+        config.STATE_ROOT = cls._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+        db.apply_migrations()
+
+    @classmethod
+    def tearDownClass(cls):
+        db.close()
+        for k, v in cls._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _isolation.remove_tree(cls._tmp)
+
+    def test_init_schema_preserves_caller_transaction(self):
+        """核心守卫：事务内调 init_schema 后，回滚必须仍然有效。"""
+        conn = db.get_conn()
+        marker = "tx_marker_001"
+        try:
+            with db.tx() as c:
+                c.execute("INSERT INTO books (book_id, title, status) VALUES (?, '书', 'idle')",
+                          (marker,))
+                self.assertTrue(conn.in_transaction, "进入事务后应处于事务中")
+                db.init_schema()          # 关键调用
+                self.assertTrue(conn.in_transaction,
+                                "init_schema 提交了调用方的事务——回滚将失效")
+                raise RuntimeError("模拟业务失败")
+        except RuntimeError:
+            pass
+        n = conn.execute("SELECT COUNT(*) FROM books WHERE book_id = ?",
+                         (marker,)).fetchone()[0]
+        self.assertEqual(n, 0, "事务未被回滚——init_schema 吞掉了调用方事务")
+
+    def test_init_schema_works_outside_transaction(self):
+        """反向守卫：事务外调用仍应正常建表（幂等）。"""
+        db.init_schema()
+        db.init_schema()          # 幂等
+        tables = [r[0] for r in db.get_conn().execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")]
+        self.assertIn("books", tables)
+        self.assertIn("schema_migrations", tables)
+
+
+class TestMigrationUsesImmediateTransaction(unittest.TestCase):
+    """迁移事务必须用 BEGIN IMMEDIATE（2026-10-13 审计修复 D18）。
+
+    缺陷背景：apply_migrations 用裸 ``BEGIN``（DEFERRED）——它**不立即取写锁**，
+    等到第一条写语句才尝试升级。两个进程并发迁移时（桌面版 + CLI 同时启动
+    是真实场景），双方都可能先读到旧快照，随后一条升级锁失败 →
+    ``database is locked``，迁移中断。
+
+    修法：BEGIN IMMEDIATE 在起点就取写锁，把冲突前移——后来者直接等锁
+    （受 busy_timeout 约束），而不是走到一半才失败。
+
+    用静态断言而非多进程实测：后者在 Windows 上启动开销大且不稳定
+    （实测跑 multiprocessing 会挂住），而该行为是 SQLite 的确定性语义。
+    """
+
+    def test_apply_migrations_uses_begin_immediate(self):
+        src_text = (ROOT / "gui" / "db.py").read_text(encoding="utf-8")
+        start = src_text.index("def apply_migrations()")
+        end = src_text.index("def ", start + 10)
+        block = src_text[start:end]
+        self.assertIn('conn.execute("BEGIN IMMEDIATE")', block,
+                      "迁移事务退回裸 BEGIN 了——并发迁移会撞锁失败")
+        self.assertNotIn('conn.execute("BEGIN")', block,
+                         "仍有裸 BEGIN（DEFERRED）——迁移必须用 IMMEDIATE")
+
+
+class TestResetAllCoversAllTables(unittest.TestCase):
+    """reset_all 必须清空全部业务表（2026-10-13 审计修复 D20）。
+
+    缺陷背景：表清单硬编码 6 张（assets/reports/books/analysis_tasks/
+    genres/schema_migrations），而迁移 0002~0004 又加了 9 张
+    （essence_* ×4、writing_* ×5）。实测：往各表插数据后 reset_all，
+    6 张老表归零、**9 张新表各残留 1 行**——测试隔离不彻底。
+
+    修法：从 sqlite_master 动态发现表，新增迁移时自动覆盖。
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls._tmp = Path(tempfile.mkdtemp(prefix="resetall_"))
+        cls._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+        }
+        config.STATE_ROOT = cls._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+        db.apply_migrations()
+
+    @classmethod
+    def tearDownClass(cls):
+        db.close()
+        for k, v in cls._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _isolation.remove_tree(cls._tmp)
+
+    def test_all_business_tables_emptied(self):
+        """核心守卫：所有业务表（含 0002~0004 新表）都必须被清空。"""
+        conn = db.get_conn()
+        # 往新表插数据（老表由 db.init_schema 保证存在）
+        conn.execute("INSERT INTO essence_books (book_id, title, genre)"
+                     " VALUES ('rb', '书', 'xuanhuan')")
+        conn.execute("INSERT INTO essence_assets (book_id, category, title, content)"
+                     " VALUES ('rb', 'hook', 'a', 'c')")
+        conn.execute("INSERT INTO books (book_id, title, status) VALUES ('rb', '书', 'idle')")
+        conn.commit()
+
+        db.reset_all()
+
+        for table in ("essence_books", "essence_assets", "books"):
+            n = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+            self.assertEqual(n, 0, f"{table} 未被 reset_all 清空（表清单漏了它）")
+
+    def test_table_list_is_discovered_dynamically(self):
+        """结构守卫：表清单不得退回硬编码——否则将来加表又会漏。"""
+        src_text = (ROOT / "gui" / "db.py").read_text(encoding="utf-8")
+        start = src_text.index("def reset_all()")
+        block = src_text[start:start + 1200]
+        self.assertIn("sqlite_master", block,
+                      "reset_all 又变成硬编码表清单了——新增迁移会再次漏清")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
