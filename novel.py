@@ -60,6 +60,29 @@ def _configure_console_encoding() -> None:
             continue
 
 
+def _validate_dispatch_keys() -> list[str]:
+    """返回 scripts/validate.py::DISPATCH 支持的全部资产类型键。
+
+    「校验」子命令的 --kind choices 由此派生，而非手写列表——
+    单一来源，新增校验器时 CLI 自动跟上（2026-10-12 审计修复 CLI-06：
+    原手写列表落后于 DISPATCH，distilled / genre-prose-card-index /
+    tool-library 三类资产无法通过 CLI 校验）。
+
+    导入失败时回退到历史 7 项，保证 CLI 仍可用。
+    """
+    try:
+        import validate as validate_mod
+        keys = sorted(validate_mod.DISPATCH.keys())
+        return keys or _FALLBACK_KINDS
+    except Exception:  # noqa: BLE001 — 校验器加载失败不应让 CLI 起不来
+        return _FALLBACK_KINDS
+
+
+# 历史 7 项（validate 不可用时的兜底）
+_FALLBACK_KINDS = ["voice-card", "genre-pack", "trope-library", "craft-card",
+                   "structure-obs", "commercial-obs", "genre-prose-card"]
+
+
 def run_script(name: str, args: list) -> int:
     """运行 scripts/ 下的脚本，透传参数。"""
     script = SCRIPTS / name
@@ -394,7 +417,11 @@ def main():
 
     p8 = sub.add_parser("校验", help="schema 校验")
     p8.add_argument("asset")
-    p8.add_argument("--kind", choices=["voice-card", "genre-pack", "trope-library", "craft-card", "structure-obs", "commercial-obs", "genre-prose-card"])
+    # choices 从 validate.DISPATCH 派生（2026-10-12 审计修复 CLI-06）：
+    # 原先是手写的 7 项硬编码列表，而 DISPATCH 已有 10 个校验器——
+    # distilled / genre-prose-card-index / tool-library 三类资产用户
+    # 根本无法通过 CLI 校验（choices 直接拒绝）。派生自单一来源即可永不漂移。
+    p8.add_argument("--kind", choices=sorted(_validate_dispatch_keys()))
 
     p12 = sub.add_parser("笔法报告", help="craft-card → 笔法深度分析报告")
     p12.add_argument("craft_card", help="craft-card JSON 文件路径")

@@ -220,5 +220,78 @@ class TestConsoleEncodingTolerance(unittest.TestCase):
                       "run_script 未给子进程注入编码设置——被调脚本仍会崩在输出上")
 
 
+class TestValidateKindChoicesSync(unittest.TestCase):
+    """「校验」--kind choices 必须与 validate.DISPATCH 同步（2026-10-12 CLI-06）。
+
+    缺陷背景：choices 原先是手写的 7 项硬编码列表，而 DISPATCH 已有 10 个
+    校验器——distilled / genre-prose-card-index / tool-library 三类资产
+    用户根本无法通过 CLI 校验（argparse 直接拒绝该 --kind 值）。
+
+    修法：choices 从 DISPATCH 派生（单一来源），永不漂移。
+    """
+
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("novel_cli_kind", ROOT / "novel.py")
+        self.novel = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.novel)
+
+    def test_choices_match_dispatch_exactly(self):
+        import validate as validate_mod
+        expected = sorted(validate_mod.DISPATCH.keys())
+        self.assertEqual(
+            self.novel._validate_dispatch_keys(), expected,
+            "CLI --kind choices 与 validate.DISPATCH 不一致——新增校验器时"
+            "用户无法通过 CLI 使用它",
+        )
+
+    def test_previously_missing_kinds_are_offered(self):
+        """回归锚点：这三个曾因硬编码列表落后而被拒。"""
+        keys = self.novel._validate_dispatch_keys()
+        for k in ("distilled", "tool-library", "genre-prose-card-index"):
+            self.assertIn(k, keys, f"{k} 又不在 CLI choices 里了")
+
+    def test_parser_actually_uses_derived_choices(self):
+        """argparse 构建出的 --kind choices 必须是派生值，不是手写列表。
+
+        （变异测试发现：只测 _validate_dispatch_keys() 本身，
+        把 argparse 那行改回手写列表测试仍绿——必须测真实的 parser。）
+        """
+        import contextlib
+        import io
+        # 构造 parser 需要跑 main() 的参数解析部分；这里直接抓 --help 输出
+        buf = io.StringIO()
+        old_argv = sys.argv
+        sys.argv = ["novel.py", "校验", "--help"]
+        try:
+            with contextlib.redirect_stdout(buf), contextlib.suppress(SystemExit):
+                self.novel.main()
+        finally:
+            sys.argv = old_argv
+        help_text = buf.getvalue()
+        # 三个曾缺失的 kind 必须出现在 help 里
+        for k in ("distilled", "tool-library", "genre-prose-card-index"):
+            self.assertIn(k, help_text,
+                          f"{k} 未出现在「校验 --kind」的 choices 中")
+
+    def test_fallback_when_validate_unavailable(self):
+        """validate 导入失败时回退到历史 7 项，CLI 仍可用。"""
+        import builtins
+        real_import = builtins.__import__
+
+        def fake_import(name, *a, **kw):
+            if name == "validate":
+                raise ImportError("模拟缺失")
+            return real_import(name, *a, **kw)
+
+        builtins.__import__ = fake_import
+        try:
+            keys = self.novel._validate_dispatch_keys()
+        finally:
+            builtins.__import__ = real_import
+        self.assertEqual(keys, self.novel._FALLBACK_KINDS)
+        self.assertIn("voice-card", keys)
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main())
