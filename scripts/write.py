@@ -133,7 +133,7 @@ def run_conflict_check(novel_dir: Path, content: str) -> None:
 def main():
     ap = argparse.ArgumentParser(description="M2.2 章节生成 + 入库（资产驱动）")
     ap.add_argument("--prompt", required=True, help="注入的写作 prompt（inject.py 产物）")
-    ap.add_argument("--chapter", type=int, required=True, help="章节号")
+    ap.add_argument("--chapter", type=int, required=True, help="章节号（≥1）")
     ap.add_argument("--task", required=True, help="本章要点（场景/事件/钩子要求）")
     ap.add_argument("--novel-dir", default="novel", help="novel-writing 项目目录")
     ap.add_argument("--novel-name", default="新书", help="书名")
@@ -145,13 +145,38 @@ def main():
     ap.add_argument("--dry-run", action="store_true", help="只打印将调用的内容，不调 LLM")
     args = ap.parse_args()
 
+    # ── 章号下限校验（2026-10-13 审计修复 CLI-15）──────────────────────
+    # 原实现无下限：--chapter -1 会静默写出 chapters/arc-0/chapter--01.txt
+    # （arc = (chapter_no-1)//30+1 对负数得 0），并把 state.json 的
+    # current_chapter 记成 -1。用户改用 --chapter 1 后两个文件共存，
+    # 此后该书的质检/检查（按章号排序与去重）全部不可用。
+    # 必须在**任何文件系统写操作之前**拒绝——包括下面的
+    # ensure_novel_structure（它会建目录与 state.json）。
+    if args.chapter < 1:
+        sys.exit(f"章节号必须 ≥ 1，收到 {args.chapter}")
+    # 上限与 GUI 侧一致（_safe_chapter_no / chapter_no ≤ 100000）：
+    # 章号直接拼进文件名与排序键，过大值会造成 MAX_PATH 或排序异常。
+    if args.chapter > 100000:
+        sys.exit(f"章节号过大（上限 100000），收到 {args.chapter}")
+
     prompt_path = Path(args.prompt)
     if not prompt_path.exists():
         sys.exit(f"写作 prompt 不存在: {prompt_path}（先跑 inject.py 生成）")
     system = prompt_path.read_text(encoding="utf-8")
 
     novel_dir = Path(args.novel_dir)
-    state_file = ensure_novel_structure(novel_dir, args.novel_name)
+    # ⚠️ 建目录延后到 dry-run 检查之后（2026-10-13 审计修复 CLI-18）：
+    # 原实现无条件先调 ensure_novel_structure（建 settings/chapters/tracker
+    # 三目录 + 写 state.json），再检查 --dry-run——于是「只打印将调用的内容」
+    # 的预演动作凭空多出一个 novel/ 目录与 state.json。若该目录恰与既有项目
+    # 同名（默认值就是裸相对串 novel），预演还会静默复用/污染既有项目状态。
+    # 与其它子命令 dry-run 的零副作用语义不一致。
+    #
+    # dry-run 之前只用 novel_dir 拼路径（下面的 outline_path），不读 state_file，
+    # 故延后建目录不影响预演输出。
+    state_file = None
+    if not args.dry_run:
+        state_file = ensure_novel_structure(novel_dir, args.novel_name)
 
     # 解析章节质量达标线：CLI 显式 > 题材包 quality_thresholds > 默认 75
     # （提前解析，供「无外部模型」提示文本与主循环两处复用同一事实来源）

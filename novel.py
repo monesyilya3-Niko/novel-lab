@@ -618,12 +618,21 @@ def main():
                 print("\n需改进:")
                 for i in qc['issues']:
                     print(f"  ⚠ {i}")
-        # 退出码反映判定（2026-10-12 审计修复 CLI-03）：
-        # 原实现算完 verdict 后裸 return 0，质量 FAIL 也报成功——
-        # 与直连脚本语义相反（scripts/chapter_check.py:722 是
-        # `sys.exit(0 if verdict == "PASS" else 1)`）。
-        # 退出码是 CI/脚本编排的判定依据，恒 0 等于把门禁变成装饰。
-        return 0 if qc.get("verdict") == "PASS" else 1
+        # 退出码反映**双维度**判定（2026-10-12 修 CLI-03；2026-10-13 修 CLI-14）：
+        # CLI-03 让质量维度的 verdict 参与退出码；但同一命令还算了**一致性**
+        # 评分（vc_score），它当时被忽略——实测：一致性 56 分（远低于 75 线）
+        # 赫然打印在输出里，命令却 EXIT=0，CI/脚本编排据此放行声线走样的章节。
+        # 用户改用直连 consistency.py 会得到相反结论——两条路径语义分裂。
+        #
+        # 现要求两个维度都达标才返回 0。一致性 PASS 线取 75，与直连脚本
+        # （scripts/consistency.py --threshold 默认 75）及项目其它维度一致。
+        # 未传 --voice 时 vc_score 为 None，只按质量维度判（保持原行为）。
+        CONSISTENCY_PASS_LINE = 75.0
+        quality_ok = qc.get("verdict") == "PASS"
+        consistency_ok = vc_score is None or vc_score >= CONSISTENCY_PASS_LINE
+        if not consistency_ok:
+            print(f"\n✗ 一致性评分 {vc_score:.1f} < {CONSISTENCY_PASS_LINE:.0f}，判定不通过")
+        return 0 if (quality_ok and consistency_ok) else 1
 
     if args.cmd == "质检":
         import book_quality

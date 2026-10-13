@@ -100,12 +100,19 @@ class TestVerdictReflectedInExitCode(unittest.TestCase):
         self.novel_src = (ROOT / "novel.py").read_text(encoding="utf-8")
 
     def test_check_command_reads_verdict(self):
-        """`检查` 的收尾必须依据 qc['verdict']，不能裸 return 0。"""
-        self.assertIn(
-            'return 0 if qc.get("verdict") == "PASS" else 1',
-            self.novel_src,
-            "「检查」的退出码未反映判定——FAIL 会静默返回 0",
-        )
+        """`检查` 的收尾必须同时依据质量与一致性两个维度。
+
+        CLI-03（2026-10-12）先让质量维度的 verdict 参与退出码；
+        CLI-14（2026-10-13）补齐一致性维度——实测一致性 56 分（远低于 75 线）
+        被打印出来，命令却 EXIT=0，CI 据此放行声线走样的章节。
+        """
+        self.assertIn("quality_ok", self.novel_src,
+                      "「检查」的退出码未反映质量判定")
+        self.assertIn("consistency_ok", self.novel_src,
+                      "「检查」的退出码未反映一致性判定——双维度命令退化为单维度门禁")
+        self.assertIn("return 0 if (quality_ok and consistency_ok) else 1",
+                      self.novel_src,
+                      "「检查」的收尾必须要求两个维度都达标")
 
     def test_qc_command_reads_verdict(self):
         """`质检` 的收尾必须依据 result['verdict']。"""

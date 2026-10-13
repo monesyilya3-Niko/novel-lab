@@ -856,6 +856,80 @@ class TestWritePathParentValidation(unittest.TestCase):
         self.assertEqual(n, 0, f"库中有 {n} 条非法 project 的行")
 
 
+class TestEssenceWritePathTypeValidation(unittest.TestCase):
+    """essence 写路径的字段类型校验（2026-10-13 审计修复 D16）。
+
+    缺陷背景：create_asset 对 summary/tags/genre/platform/user_note
+    **无类型校验**，直接调 .strip()——前端传对象或数组（JSON 常见形态）
+    会以 AttributeError 变 500「内部错误，请稍后重试」，调用方不知道
+    哪个参数错了。update_asset 更隐蔽：它把值直接传给 SQL 参数，
+    dict/list 让 sqlite3 抛 ProgrammingError，而 rating='abc' 会被
+    SQLite 的类型宽松**静默写入**（列声明 INTEGER 但允许存任意类型）。
+
+    AGENTS.md 已记录过一轮全路由脏输入扫描（要求一律 400 并指名参数），
+    essence 这批写路径未覆盖。
+    """
+
+    def setUp(self):
+        self._iso = _isolation.isolate_paths(Path(tempfile.mkdtemp(prefix="d16_")))
+        self._iso.__enter__()
+        db.init_schema()
+        db.apply_migrations()
+        essence_service.create_or_update_book(
+            book_id="b", title="书", genre="xuanhuan")
+
+    def tearDown(self):
+        db.close()
+        self._iso.__exit__(None, None, None)
+
+    def test_create_asset_rejects_non_string_fields(self):
+        """核心守卫：五个文本字段传脏值一律 400 且指名参数。"""
+        for field in ("summary", "tags", "genre", "platform", "user_note"):
+            with self.subTest(field=field):
+                kw = {"book_id": "b", "category": "hook", "title": "t", "content": "c"}
+                kw[field] = {"x": 1} if field != "tags" else [1]
+                with self.assertRaises(ServiceError) as cm:
+                    essence_service.create_asset(**kw)
+                self.assertEqual(cm.exception.code, 400)
+                self.assertIn(field, cm.exception.message,
+                              "错误信息未指名出错的参数")
+
+    def test_create_asset_accepts_normal_values(self):
+        """反向守卫：正常字符串不得被误伤。"""
+        a = essence_service.create_asset(
+            book_id="b", category="hook", title="t", content="c",
+            summary="摘要", tags="标签", genre="xuanhuan",
+            platform="qidian", user_note="备注")
+        self.assertIsNotNone(a.get("id"))
+
+    def test_update_asset_rejects_non_string_fields(self):
+        a = essence_service.create_asset(
+            book_id="b", category="hook", title="t", content="c")
+        for field, val in (("summary", {"x": 1}), ("tags", [1]), ("title", 123)):
+            with self.subTest(field=field):
+                with self.assertRaises(ServiceError) as cm:
+                    essence_service.update_asset(a["id"], **{field: val})
+                self.assertEqual(cm.exception.code, 400)
+
+    def test_update_asset_rejects_non_int_rating(self):
+        """rating 必须为整数——'abc' 曾被 SQLite 静默写入（列类型宽松）。"""
+        a = essence_service.create_asset(
+            book_id="b", category="hook", title="t", content="c")
+        for bad in ("abc", 2.5, True, None):
+            with self.subTest(rating=bad):
+                with self.assertRaises(ServiceError) as cm:
+                    essence_service.update_asset(a["id"], rating=bad)
+                self.assertEqual(cm.exception.code, 400)
+
+    def test_update_asset_accepts_normal_values(self):
+        """反向守卫：正常更新不得被误伤。"""
+        a = essence_service.create_asset(
+            book_id="b", category="hook", title="t", content="c")
+        r = essence_service.update_asset(a["id"], title="新标题", rating=8)
+        self.assertEqual(r.get("title"), "新标题")
+        self.assertEqual(r.get("rating"), 8)
+
+
 if __name__ == "__main__":
     unittest.main()
 

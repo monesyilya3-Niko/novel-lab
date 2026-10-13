@@ -72,5 +72,48 @@ class TestQcErrorPathReadable(unittest.TestCase):
             self.assertNotIn("Traceback", (p.stdout or "") + (p.stderr or ""))
 
 
+class TestQcVoiceCardErrorReadable(unittest.TestCase):
+    """「质检 --voice」指向坏路径时必须给可读错误（2026-10-13 审计修复 CLI-19）。
+
+    缺陷背景：book_quality 直接 json.loads(read_text(...))，文件不存在时抛
+    裸 FileNotFoundError 栈（15 行 traceback，最后一行才是原因）。用户手写
+    路径打错一个字，看到的是"程序崩了"而非"路径不存在"；同仓库的「检查」
+    子命令对同类错误给一行中文提示，两条路径体感分裂。
+    """
+
+    def _chapters_dir(self, td: str) -> Path:
+        d = Path(td) / "chapters"
+        d.mkdir()
+        (d / "第1章.txt").write_text(
+            "第一章\n" + "正文内容。" * 300, encoding="utf-8")
+        return d
+
+    def test_missing_voice_card_readable_error(self):
+        with tempfile.TemporaryDirectory() as td:
+            chapters = self._chapters_dir(td)
+            missing = Path(td) / "definitely_missing.json"
+            p = _run_qc(str(chapters), "--voice", str(missing))
+            out = (p.stdout or "") + (p.stderr or "")
+            self.assertNotEqual(p.returncode, 0, "voice-card 不存在却返回 0")
+            self.assertNotIn("Traceback", out, f"抛出了未捕获异常回溯:\n{out}")
+            self.assertIn("voice-card", out, f"提示未指明是 voice-card 问题:\n{out}")
+            # 断言**具体措辞**：只查 "voice-card" 会被第二层 try/except 的
+            # "读取失败" 满足——那层也拦得住，但提示不如"不存在"精确
+            # （变异测试发现：移除 is_file 检查后仅靠 except 仍绿）。
+            self.assertIn("不存在", out,
+                          f"未给出'不存在'这一精确诊断（可能退化为笼统的读取失败）:\n{out}")
+
+    def test_corrupt_voice_card_readable_error(self):
+        with tempfile.TemporaryDirectory() as td:
+            chapters = self._chapters_dir(td)
+            bad = Path(td) / "bad.json"
+            bad.write_text("{ 坏 json", encoding="utf-8")
+            p = _run_qc(str(chapters), "--voice", str(bad))
+            out = (p.stdout or "") + (p.stderr or "")
+            self.assertNotEqual(p.returncode, 0)
+            self.assertNotIn("Traceback", out, f"损坏 JSON 抛出了回溯:\n{out}")
+            self.assertIn("voice-card", out)
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main(verbosity=2))

@@ -284,6 +284,15 @@ def create_asset(
         raise ServiceError("title 必须为非空字符串", 400)
     if not content or not isinstance(content, str):
         raise ServiceError("content 必须为非空字符串", 400)
+    # 其余文本字段的类型校验（2026-10-13 审计修复 D16）：
+    # 原实现直接对它们调 .strip()——前端把 summary 传成对象或 tags 传成数组
+    # （JSON 常见形态）会以 AttributeError 变 500「内部错误，请稍后重试」，
+    # 调用方不知道哪个参数错了。AGENTS.md 已记录过一轮全路由脏输入扫描
+    # （要求一律 400 并指名参数），essence 这批写路径未覆盖。
+    for _field, _val in (("summary", summary), ("tags", tags), ("genre", genre),
+                         ("platform", platform), ("user_note", user_note)):
+        if not isinstance(_val, str):
+            raise ServiceError(f"{_field} 必须为字符串", 400)
     # 父行存在性（D8）：不校验会产出孤儿资产，级联清理永远触不到它。
     _require_book_exists(book_id)
 
@@ -308,12 +317,26 @@ def create_asset(
 def update_asset(asset_id: int, **fields: Any) -> dict[str, Any]:
     """更新指定精华资产（支持更新标题、内容、评分、个人批注与标签）。"""
     allowed = {"title", "summary", "content", "tags", "genre", "platform", "rating", "user_note"}
+    # 字段类型校验（2026-10-13 审计修复 D16 的同类问题）：
+    # 原实现把值**直接传给 SQL 参数**——传 dict/list 会让 sqlite3 抛
+    # ProgrammingError（"type 'dict' is not supported"）→ 500；
+    # 更隐蔽的是 rating='abc' 会被 SQLite 的类型宽松**静默写入**
+    # （列声明 INTEGER 但 SQLite 允许存任意类型），此后排序/统计失真。
+    _text_fields = {"title", "summary", "content", "tags", "genre", "platform", "user_note"}
     updates: list[str] = []
     params: list[Any] = []
     for k, v in fields.items():
-        if k in allowed:
-            updates.append(f"{k} = ?")
-            params.append(v)
+        if k not in allowed:
+            continue
+        if k in _text_fields:
+            if not isinstance(v, str):
+                raise ServiceError(f"{k} 必须为字符串", 400)
+        elif k == "rating":
+            # bool 是 int 子类，但语义上不是评分——显式排除（与 _safe_int 同口径）
+            if isinstance(v, bool) or not isinstance(v, int):
+                raise ServiceError("rating 必须为整数", 400)
+        updates.append(f"{k} = ?")
+        params.append(v)
     if not updates:
         raise ServiceError("无有效更新字段", 400)
 

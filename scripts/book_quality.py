@@ -621,7 +621,26 @@ def book_quality_check(chapter_dir: str, voice_card_path: str = None, prev_chapt
     # 加载 voice-card（可选）
     voice_card = None
     if voice_card_path:
-        voice_card = json.loads(Path(voice_card_path).read_text(encoding='utf-8'))
+        # ⚠️ 可读错误处理（2026-10-13 审计修复 CLI-19）：
+        # 原实现直接 json.loads(read_text(...))，文件不存在时抛裸
+        # FileNotFoundError 栈（15 行 traceback，最后一行才是原因）——
+        # 用户手写路径打错一个字，看到的是"程序崩了"而非"路径不存在"。
+        # 同仓库的「检查」子命令对同类错误给一行中文提示，两条路径体感分裂。
+        # 这里返回结构化 error（调用方 book_quality_check 已有 error 通道，
+        # CLI 会把它渲染成可读信息并非零退出）。
+        vc_path = Path(voice_card_path)
+        if not vc_path.is_file():
+            return {
+                "error": f"voice-card 不存在: {voice_card_path}",
+                "error_type": "voice_card_missing",
+            }
+        try:
+            voice_card = json.loads(vc_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
+            return {
+                "error": f"voice-card 读取失败: {voice_card_path} — {exc}",
+                "error_type": "voice_card_unreadable",
+            }
 
     # 自动探测实体表（可选）。章节传入路径可能是 novel_dir/chapters（目录）或
     # 单章文件，实体表约定位于 novel_dir/settings/entities.json：
