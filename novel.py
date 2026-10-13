@@ -242,7 +242,17 @@ def resolve_book_src(book: str) -> Path:
 
 def cmd_reset_admin_password() -> int:
     """本地重置管理员密码：生成随机新密码，输出到终端一次。"""
-    sys.path.insert(0, str(ROOT / "gui"))
+    # 2026-10-12 审计修复 CLI-11：删除原先的
+    #   sys.path.insert(0, str(ROOT / "gui"))
+    # 那行有两个问题：
+    #   a) **完全多余** —— 实测不加也能 `from gui import admin`
+    #      （ROOT 已在 sys.path，gui/ 是可导入包）。
+    #   b) 把 gui/ 塞进顶层模块搜索路径，会让 gui/config.py、gui/db.py
+    #      以**顶层模块名** config / db 暴露。scripts/ 也在 sys.path 里，
+    #      两者同名就会按插入顺序互相遮蔽（实测 insert(0) 后顶层 config
+    #      指向 gui/config.py）。这与 AGENTS.md §2 的依赖方向约定相悖，
+    #      且冲突是隐式的——将来谁在 scripts/ 加个 config.py 就会踩坑。
+    # 统一用包路径 `from gui import admin` 导入即可。
     from gui import admin
     try:
         new_pw = admin.reset_password()

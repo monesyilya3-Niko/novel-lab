@@ -384,5 +384,53 @@ class TestAutoQcHookRobustness(unittest.TestCase):
         self.assertIn("如需质检，请单独跑", self.src)
 
 
+class TestSysPathHygiene(unittest.TestCase):
+    """CLI 不得把 gui/ 塞进顶层模块搜索路径（2026-10-12 审计修复 CLI-11）。
+
+    缺陷背景：cmd_reset_admin_password 曾执行
+    ``sys.path.insert(0, str(ROOT / "gui"))`` 再 ``from gui import admin``。
+
+    两个问题：
+      a) **完全多余** —— 实测不加也能导入（ROOT 已在 sys.path，gui 是可导入包）
+      b) 把 gui/ 加入顶层搜索路径后，gui/config.py、gui/db.py 会以**顶层模块名**
+         config / db 暴露。scripts/ 也在 sys.path 中，同名模块会按插入顺序互相
+         遮蔽（实测 insert(0) 后顶层 config 指向 gui/config.py）——这与
+         AGENTS.md §2 的依赖方向约定相悖，且冲突是隐式的。
+
+    修法：删掉该行，统一用包路径 ``from gui import admin``。
+
+    ⚠️ 本组只做静态检查：实际调用会重置真实管理员密码（有副作用）。
+    """
+
+    def _active_syspath_lines(self):
+        """返回活代码里的 sys.path 操作（排除注释行）。"""
+        out = []
+        for raw in (ROOT / "novel.py").read_text(encoding="utf-8").split('\n'):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "sys.path" in line:
+                out.append(line)
+        return out
+
+    def test_gui_not_added_to_sys_path(self):
+        lines = self._active_syspath_lines()
+        bad = [l for l in lines if '"gui"' in l or "'gui'" in l or "/ \"gui\"" in l]
+        self.assertEqual(bad, [], f"gui/ 被加进了顶层搜索路径：{bad}")
+
+    def test_scripts_path_is_provided(self):
+        """反向守卫：scripts/ 的 sys.path 注入是设计意图，不得被误删。"""
+        lines = self._active_syspath_lines()
+        self.assertTrue(
+            any("SCRIPTS" in l for l in lines),
+            "scripts/ 的 sys.path 注入被删了——scripts 下模块会导入失败",
+        )
+
+    def test_reset_password_imports_via_package_path(self):
+        """重置密码应走包路径导入，而非依赖 sys.path 技巧。"""
+        src_text = (ROOT / "novel.py").read_text(encoding="utf-8")
+        self.assertIn("from gui import admin", src_text)
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main())
