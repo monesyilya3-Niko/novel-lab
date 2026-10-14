@@ -201,6 +201,7 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
   （另有两处**占位符**守卫不得破坏：`packaging/installer_template.sh` 保留 `__VERSION__`、`packaging/build_installer.sh` 从 `$2` 取版本。）
 - 以下两件事此前只写在桌面《novel-lab-项目交接文档》里，仓库内没有副本，故收编于此（文档丢失即等于约束丢失）：
   - Release 资产上传曾遇到 `custom.github` 凭证对 `uploads.github.com` 返回 401（对 `api.github.com` 正常），当时改用浏览器网页端上传成功。**本机实测状态**：`gh auth status` 已通过（账号 monesyilya3-Niko，token scopes 含 `repo`/`workflow`）。自 2026-10-11 授权放宽后，`gh release upload` 路径**已进入可验证范围**：首次发版时优先试它，成功即在本行补记实测结论；若仍 401，退回网页端上传并在本行记录。
+  - **v2.2.0 实测结论（2026-10-14，已跑通，不再有 401）**：`gh release upload` 与 `gh api -X POST <uploads.github.com url>` 都能成功上传（93,724,986 字节）。但**两个路径都会丢失文件名里的非 ASCII 字符**——传 `暮冬念春-Setup-2.2.0-win64.exe` 上去后只剩 `-Setup-2.2.0-win64.exe`；`gh release upload <file>#<中文名>` 的 `#` 重命名语法同样无效。可用做法是**主名用 ASCII、中文名放进 `label`**（`gh api ...?name=novel-lab-Setup-2.2.0-win64.exe&label=暮冬念春-...`），页面显示 label，下载时仍落 ASCII 名。下次发版直接照此办理，别再逐个试。上传后务必 `gh release download` 回来比 SHA-256（v2.2.0 实测与本地、与 CI artifact 三方一致：`435C6E99…F39212`）。
   - 桌面安装产物**未做代码签名**（2026-10-08 对 v2.0.3 资产实测 `Get-AuthenticodeSignature` = `NotSigned`），Windows SmartScreen 必然弹"未知发布者"，用户侧需要手动"更多信息 → 仍要运行"。**发版报告里必须写明这一点**，否则用户装新包时会把 SmartScreen 警告误当成包损坏。
 
 ### 发布物溯源与真机实测（2026-10-08，Windows 10 19045）
