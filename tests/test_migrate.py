@@ -1036,6 +1036,128 @@ class TestRollbackResyncsJsonCopies(unittest.TestCase):
                          "库中无对应行的 JSON 副本被误删/覆盖")
 
 
+class TestPruneBackupsNeverWipesAll(unittest.TestCase):
+    """备份保留策略不得删光全部备份（2026-10-14 审计修复 D21 第 1 点）。
+
+    缺陷背景：prune_backups 原实现 keep <= 0 时 `stale = backups`
+    → **删光全部备份**。实测：keep=0 删 3/3、keep=-5 删 2/2。
+    若调用方把配置项（如环境变量未设时的空串）转成 0，数据安全网会被
+    静默清空——而备份是 rollback 的唯一依托，删光等于失去最后一道恢复手段。
+
+    修法：keep < 1 一律按 1 处理（至少留一个）。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="pruneg_"))
+        self._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+        }
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def _seed(self, n=3):
+        for i in range(n):
+            (config.STATE_ROOT / f"index.db.bak-2026010{i+1}-000000").write_bytes(b"x")
+
+    def _count(self):
+        return len(list(config.STATE_ROOT.glob("*.bak-*")))
+
+    def test_keep_zero_keeps_at_least_one(self):
+        self._seed(3)
+        migrate.prune_backups(keep=0)
+        self.assertEqual(self._count(), 1, "keep=0 删光了全部备份（失去恢复手段）")
+
+    def test_keep_negative_keeps_at_least_one(self):
+        self._seed(3)
+        migrate.prune_backups(keep=-5)
+        self.assertEqual(self._count(), 1, "keep=-5 删光了全部备份")
+
+    def test_normal_keep_still_works(self):
+        """反向守卫：正常 keep 值仍按预期保留 N 个。"""
+        self._seed(5)
+        migrate.prune_backups(keep=2)
+        self.assertEqual(self._count(), 2)
+
+
+class TestRollbackPicksTimestampedBackup(unittest.TestCase):
+    """rollback 必须按时间戳选备份，不受非本函数产物干扰（D21 第 2 点）。
+
+    缺陷背景：原实现 sorted(glob("index.db.bak-*"))[-1] 取"最新"。
+    glob 会一并匹配非本函数产物（如手工放的 index.db.bak-manual），
+    而 'm' > '2' 使其在字符串序中排到最后 → rollback 会去恢复那个手工文件
+    而非真正最新的备份。实测：存在 index.db.bak-manual 时 latest 指向它。
+
+    修法：正则白名单（^index\.db\.bak-\d{8}-\d{6}$）+ 按内嵌时间戳排序。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="rbpick_"))
+        self._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+        }
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def test_rollback_selects_newest_timestamped_backup(self):
+        """核心守卫：真实调用 rollback，验证它选中的是时间戳最新的备份。
+
+        用真实备份（经 db.backup_to 生成，内容合法可过 _verify_backup），
+        再混入一个字符串序更大的手工文件（index.db.bak-manual）。
+        修复前 sorted()[-1] 会选中手工文件（'m' > '2'），修复后应选
+        20260102 那个。
+        """
+        import sqlite3
+        d = config.STATE_ROOT
+        # 造两个内容合法的真备份（_verify_backup 要求关键表存在）
+        for stamp, marker in (("20260101-000000", "old"), ("20260102-000000", "new")):
+            bak = d / f"index.db.bak-{stamp}"
+            con = sqlite3.connect(str(bak))
+            con.executescript(
+                "CREATE TABLE books (book_id TEXT);"
+                "CREATE TABLE assets (asset_key TEXT);"
+                "CREATE TABLE reports (report_key TEXT);")
+            con.execute("INSERT INTO books VALUES (?)", (marker,))
+            con.commit()
+            con.close()
+        # 手工文件：字符串序 'm' > '2'，修复前会被误选
+        (d / "index.db.bak-manual").write_bytes(b"not-a-backup")
+
+        chosen = migrate.rollback()
+        self.assertIsNotNone(chosen, "rollback 未选中任何备份")
+        self.assertEqual(
+            chosen.name, "index.db.bak-20260102-000000",
+            f"选错了备份（可能是被手工文件干扰）: {chosen.name}")
+        # 恢复的库应含 new 标记（证明恢复的是 20260102 那份）
+        con = sqlite3.connect(str(config.DB_PATH))
+        row = con.execute("SELECT book_id FROM books").fetchone()
+        con.close()
+        self.assertEqual(row[0], "new", "恢复的内容不是最新备份的")
+
+
 class TestSyncAssetReportsSuccess(unittest.TestCase):
     """sync_asset 必须报告是否真的入库（2026-10-14 审计修复 D12）。
 

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 import time
@@ -197,11 +198,18 @@ def prune_backups(keep: int = BACKUP_KEEP) -> list[Path]:
     """备份保留策略：只保留最近 ``keep`` 个 ``*.bak-*``，删除更旧的。
 
     备份文件名形如 ``index.db.bak-{YYYYmmdd-HHMMSS}``，时间戳可直接字符串排序，
-    故按名字升序排列即时间先后。保留末位 ``keep`` 个，其余删除；``keep <= 0``
-    时清空全部备份（谨慎使用）。
+    故按名字升序排列即时间先后。保留末位 ``keep`` 个，其余删除。
+
+    ⚠️ ``keep <= 0`` 有**最小保留保护**（2026-10-14 审计修复 D21）：
+    原实现 ``keep <= 0`` 时 ``stale = backups`` → **删光全部备份**。
+    实测：keep=0 删 3/3、keep=-5 删 2/2。若调用方把配置项（如环境变量
+    未设时的空串）转成 0，数据安全网会被静默清空——而备份是 rollback 的
+    唯一依托，删光等于失去最后一道恢复手段。
+    现改为：``keep < 1`` 一律按 1 处理（至少留一个）。确需清空请显式
+    逐个 unlink，不要经由本函数。
 
     Args:
-        keep: 保留的最近备份数量，默认 ``BACKUP_KEEP``（3）。
+        keep: 保留的最近备份数量，默认 ``BACKUP_KEEP``（3）。小于 1 按 1 处理。
 
     Returns:
         被删除的备份路径列表（按从旧到新）。
@@ -210,10 +218,10 @@ def prune_backups(keep: int = BACKUP_KEEP) -> list[Path]:
     if not parent.is_dir():
         return []
     backups = sorted(parent.glob("*.bak-*"))  # 名字含可排序时间戳 → 升序即时间先后
-    keep = max(int(keep), 0)
+    keep = max(int(keep), 1)   # D21：至少保留 1 个，禁止经此函数删光
     if len(backups) <= keep:
         return []
-    stale = backups[: len(backups) - keep] if keep > 0 else backups
+    stale = backups[: len(backups) - keep]
     removed: list[Path] = []
     for old in stale:
         try:
@@ -275,10 +283,24 @@ def rollback() -> Path | None:
             "请先停止服务后再试。"
         )
     src = db.db_path()
-    backups = sorted(src.parent.glob("index.db.bak-*"))
+    # 只认**符合时间戳格式**的备份（2026-10-14 审计修复 D21 第 2 点）：
+    # 原实现用 sorted(glob("index.db.bak-*"))[-1] 取"最新"。备份文件名是
+    # index.db.bak-{YYYYmmdd-HHMMSS}（固定宽度数字），本函数自身产物排序正确；
+    # 但 glob 会**一并匹配非本函数产物**（如手工放的 index.db.bak-manual），
+    # 而 'm' > '2' 使其在字符串序中排到最后 → rollback 会去恢复那个手工文件
+    # 而非真正最新的备份。实测：存在 index.db.bak-manual 时 latest 指向它。
+    #
+    # 改为正则白名单 + 按文件名时间戳排序（比 mtime 更可靠：备份可能被复制
+    # 到别处再拷回，mtime 会变，而文件名内嵌的时间戳是其固有属性）。
+    _BACKUP_RE = re.compile(r"^index\.db\.bak-(\d{8}-\d{6})$")
+    backups = [
+        p for p in src.parent.glob("index.db.bak-*")
+        if _BACKUP_RE.match(p.name)
+    ]
     if not backups:
         return None
-    latest = backups[-1]
+    # 按文件名内嵌时间戳排序（正则已保证格式统一，字符串序即时间序）。
+    latest = sorted(backups, key=lambda p: _BACKUP_RE.match(p.name).group(1))[-1]
     # B1：先校验备份，坏备份拒绝恢复。
     db._verify_backup(latest)
     db.close()  # 先关闭连接，避免 Windows 文件锁。
