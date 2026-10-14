@@ -199,8 +199,11 @@ def _reindex_copied(dst: Path, copied: list[str]) -> list[str]:
         return reindexed
     for name in copied:
         try:
-            migrate.sync_asset(dst / name)
-            reindexed.append(name)
+            # sync_asset 返回是否真的入库（2026-10-14 审计修复 D12）：
+            # 它对「文件不存在 / JSON 损坏 / 非 dict」静默返回 False——
+            # 原先无论成败都计入 reindexed，报告数字虚高。
+            if migrate.sync_asset(dst / name):
+                reindexed.append(name)
         except Exception as exc:  # noqa: BLE001 — 单文件失败不影响其余。
             _log.warning("内置资产重索引失败 %s: %s", name, exc)
     return reindexed

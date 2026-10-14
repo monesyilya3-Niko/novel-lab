@@ -841,11 +841,14 @@ def _print_result(result: dict[str, Any]) -> None:
         print(f"  unrecognized  = {result['unrecognized']}")
 
 
-def sync_asset(fp: Path) -> None:
+def sync_asset(fp: Path) -> bool:
     """单文件重索引：组装写完 assets/*.json 后调用，幂等 upsert 进 SQLite。
 
-    复用 infer_kind / infer_book_id / infer_genre + _upsert_asset（db.tx 内）。
-    不调 run_migrate()（避免每次 backup() 与全量扫描）。
+    **返回是否真的入库**（2026-10-14 审计修复 D12）：
+    原先返回 None，且对「文件不存在 / JSON 解析失败 / 非 dict」三类情况
+    **静默 return**——调用方（builtin_sync._reindex_copied）无法区分
+    "成功入库"与"静默跳过"，把它们一并计入 reindexed，报告数字虚高
+    （用户看到"已重索引 5 个"，实际可能只有 2 个真进了库）。
 
     ``asset_key`` 与 ``path`` 必须与 :func:`run_migrate` / :meth:`AssetIndex._item_id`
     同口径（``f"{kind}:{stem}"`` / ``_rel_path``）：详情定位走
@@ -856,18 +859,25 @@ def sync_asset(fp: Path) -> None:
 
     fp = Path(fp)
     if not fp.is_file():
-        return
+        return False
     try:
         content = json.loads(fp.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
-        return
+        return False
     if not isinstance(content, dict):
-        return
+        return False
 
     stem = fp.stem
     kind = infer_kind(stem, content)
     book_id = infer_book_id(stem)
     genre = infer_genre(stem, content)
+    # 显示名口径必须与 run_migrate 一致（2026-10-14 审计修复 D14）：
+    # run_migrate 用 `meta.name or stem`，而此处原先写死 `stem`——
+    # 同一文件经两条路径入库会得到**不同的 name**，索引口径漂移
+    # （GUI 资产库的显示名随入库路径而变）。
+    meta = content.get("meta") if isinstance(content, dict) else None
+    display_name = (meta or {}).get("name") if isinstance(meta, dict) else None
+    name = display_name or stem
     meta_json = json.dumps(content.get("meta", {}), ensure_ascii=False)
     try:
         size = fp.stat().st_size
@@ -877,8 +887,9 @@ def sync_asset(fp: Path) -> None:
 
     with _db.tx() as conn:
         _upsert_asset(
-            conn, asset_key=f"{kind}:{stem}", kind=kind, name=stem, path=_rel_path(fp),
+            conn, asset_key=f"{kind}:{stem}", kind=kind, name=name, path=_rel_path(fp),
             book_id=book_id, genre=genre, size=size, mtime=mtime, meta_json=meta_json)
+    return True
 
 
 def main(argv: list[str] | None = None) -> int:

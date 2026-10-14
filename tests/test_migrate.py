@@ -1036,5 +1036,95 @@ class TestRollbackResyncsJsonCopies(unittest.TestCase):
                          "库中无对应行的 JSON 副本被误删/覆盖")
 
 
+class TestSyncAssetReportsSuccess(unittest.TestCase):
+    """sync_asset 必须报告是否真的入库（2026-10-14 审计修复 D12）。
+
+    缺陷背景：sync_asset 原返回 None，且对「文件不存在 / JSON 解析失败 /
+    非 dict」三类情况**静默 return**。调用方 builtin_sync._reindex_copied
+    无法区分"成功入库"与"静默跳过"，把两者一并计入 reindexed——报告数字
+    虚高（用户看到"已重索引 5 个"，实际可能只有 2 个真进了库）。
+
+    修法：返回 bool。其余调用方（advanced_service / writing_service）
+    忽略返回值，改动向后兼容。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="syncok_"))
+        self._orig = {
+            "ASSETS_ROOT": config.ASSETS_ROOT,
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+            "STATE_JSON_DIR": config.STATE_JSON_DIR,
+        }
+        config.ASSETS_ROOT = self._tmp / "assets"
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_JSON_DIR = self._tmp / "gui_state_json"
+        config.ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+        db.apply_migrations()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def test_returns_true_on_success(self):
+        fp = config.ASSETS_ROOT / "good-voice-card.json"
+        fp.write_text(json.dumps({"meta": {"genre": "xuanhuan"}}), encoding="utf-8")
+        self.assertTrue(migrate.sync_asset(fp), "成功入库却返回假值")
+
+    def test_returns_false_on_corrupt_json(self):
+        fp = config.ASSETS_ROOT / "bad-voice-card.json"
+        fp.write_text("{ 坏 json", encoding="utf-8")
+        self.assertFalse(migrate.sync_asset(fp), "损坏 JSON 却报告成功")
+
+    def test_returns_false_on_non_dict(self):
+        fp = config.ASSETS_ROOT / "arr-voice-card.json"
+        fp.write_text("[1, 2, 3]", encoding="utf-8")
+        self.assertFalse(migrate.sync_asset(fp), "非 dict 却报告成功")
+
+    def test_returns_false_on_missing_file(self):
+        self.assertFalse(migrate.sync_asset(config.ASSETS_ROOT / "nope.json"))
+
+    def test_name_uses_meta_name_like_run_migrate(self):
+        """D14：sync_asset 的显示名口径必须与 run_migrate 一致。
+
+        缺陷背景：run_migrate 用 `meta.name or stem`，而 sync_asset 原先
+        写死 `stem`——同一文件经两条路径入库会得到**不同的 name**
+        （GUI 资产库显示名随入库路径而变）。
+        """
+        fp = config.ASSETS_ROOT / "mybook-voice-card.json"
+        fp.write_text(json.dumps({"meta": {"name": "真实书名", "genre": "xuanhuan"}}),
+                      encoding="utf-8")
+        migrate.sync_asset(fp)
+        row = db.get_conn().execute(
+            "SELECT name FROM assets WHERE asset_key LIKE 'voice:mybook-voice-card%'"
+        ).fetchone()
+        self.assertIsNotNone(row, "资产未入库")
+        self.assertEqual(row["name"], "真实书名",
+                         "sync_asset 未采用 meta.name（与 run_migrate 口径漂移）")
+
+    def test_reindex_count_excludes_failures(self):
+        """端到端：损坏文件不得计入 reindexed 计数。"""
+        from gui import builtin_sync
+        for name in ("g1-voice-card.json", "g2-voice-card.json"):
+            (config.ASSETS_ROOT / name).write_text(
+                json.dumps({"meta": {"genre": "xuanhuan"}}), encoding="utf-8")
+        (config.ASSETS_ROOT / "bad-voice-card.json").write_text(
+            "{ 坏", encoding="utf-8")
+
+        got = builtin_sync._reindex_copied(
+            config.ASSETS_ROOT,
+            ["g1-voice-card.json", "g2-voice-card.json", "bad-voice-card.json"])
+        self.assertEqual(len(got), 2, f"计数虚高（含损坏文件）: {got}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
