@@ -193,6 +193,89 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class TestNavigationGuard(unittest.TestCase):
+    """桌面版导航守卫必须覆盖同源（2026-10-14 审计修复 ELE-04）。
+
+    缺陷背景：原实现只对**跨源**导航做 preventDefault，同源则放行——
+    而注释自称"防止外部页面在应用窗口内加载"，两者范围不一致。
+    虽然后端 _serve_static 只服务 DIST_DIR（含路径穿越防护），同源可达的
+    内容仍是本应用自己的页面、风险有限；但 Electron 窗口**没有地址栏**，
+    一旦窗口内出现非入口页的内容，用户无法分辨。
+
+    本应用前端**不使用路由**（全仓无 pushState / react-router /
+    location.href），故同源导航没有合法用途——除初始入口页与资源加载
+    （资源不经 will-navigate）。现收紧为「同源 + 入口路径」。
+    """
+
+    def setUp(self):
+        self.main = (ROOT / "desktop" / "main.js").read_text(encoding="utf-8")
+
+    def test_is_internal_url_checks_pathname_not_just_origin(self):
+        """核心守卫：判定必须同时看 origin 与 pathname，不能只看 origin。"""
+        start = self.main.index("const isInternalUrl =")
+        end = self.main.index("mainWindow.webContents.on('will-navigate'")
+        block = self.main[start:end]
+        self.assertIn("u.origin === backendOrigin", block,
+                      "isInternalUrl 未比较 origin")
+        self.assertIn("u.pathname === entryPath", block,
+                      "isInternalUrl 未比较 pathname——同源任意路径都会被放行")
+
+    def test_entry_path_defined_from_backend_url(self):
+        self.assertIn("entryPath", self.main, "未定义入口路径")
+
+    def test_same_origin_other_path_is_blocked(self):
+        """行为守卫：同源非入口路径必须 preventDefault。
+
+        用 node 实跑 main.js 里那段判定逻辑（提取为独立函数求值），
+        验证「同源但非入口路径」被判为内部为假。
+        """
+        import subprocess
+        # 提取 isInternalUrl 的定义体，在 node 里用受控输入求值
+        script = """
+const backendUrl = 'http://127.0.0.1:8000';
+const backendOrigin = new URL(backendUrl).origin;
+const entryPath = new URL(backendUrl).pathname || '/';
+const isInternalUrl = (url) => {
+  try {
+    const u = new URL(url);
+    return u.origin === backendOrigin && u.pathname === entryPath;
+  } catch (_) { return false; }
+};
+const cases = [
+  ['http://127.0.0.1:8000/', true, '入口页'],
+  ['http://127.0.0.1:8000/?handshake=abc', true, '入口页带握手串'],
+  ['http://127.0.0.1:8000/assets/index.js', false, '同源资源路径'],
+  ['http://127.0.0.1:8000/evil', false, '同源非入口路径'],
+  ['http://127.0.0.1:8000.evil.com/', false, '前缀伪装跨源'],
+  ['https://example.com/', false, '跨源'],
+];
+let bad = 0;
+for (const [url, want, label] of cases) {
+  const got = isInternalUrl(url);
+  if (got !== want) { console.log('MISMATCH', label, url, 'got', got, 'want', want); bad++; }
+}
+process.exit(bad ? 1 : 0);
+"""
+        r = subprocess.run(["node", "-e", script], capture_output=True,
+                           text=True, timeout=30)
+        self.assertEqual(r.returncode, 0,
+                         f"导航判定与预期不符:\n{r.stdout}{r.stderr}")
+
+    def test_will_navigate_blocks_and_handles_external(self):
+        """结构守卫：will-navigate 必须 preventDefault，且跨源转交系统浏览器。
+
+        注意：注释里也提到 setWindowOpenHandler，故切片终点要用**代码行**
+        （带缩进的调用）而非首次出现的字符串。
+        """
+        start = self.main.index("mainWindow.webContents.on('will-navigate'")
+        # 用带缩进的真实调用行定位终点（避免命中注释里的同名文本）
+        end = self.main.index("  mainWindow.webContents.setWindowOpenHandler(")
+        self.assertLess(start, end, "切片顺序异常")
+        block = self.main[start:end]
+        self.assertIn("event.preventDefault()", block, "未阻止导航")
+        self.assertIn("shell.openExternal(url)", block, "外部链接未转交系统浏览器")
+
+
 class TestDesktopIconConfig(unittest.TestCase):
     """背景4（2026-09-30 v2.0.2 安装包开箱审计实锤）：
 

@@ -189,21 +189,38 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show())
   // 外部链接用系统浏览器打开，不在应用窗口内跳转。
   // setWindowOpenHandler 只拦截 window.open() 弹窗；will-navigate 拦截
-  // 同窗口导航（链接点击、重定向、location.href），否则外部页面会在
-  // 应用窗口内加载。
+  // 同窗口导航（链接点击、重定向、location.href）。
+  //
   // 安全：用 URL origin 严格比较，不用字符串前缀（前缀可被绕过，
   // 如 backendUrl=http://127.0.0.1:8000 时 http://127.0.0.1:8000.evil.com 也会通过）。
+  //
+  // ⚠️ 同源导航也要拦（2026-10-14 审计修复 ELE-04）：
+  // 原实现只对**跨源**导航做 preventDefault，同源则放行——而注释自称
+  // "防止外部页面在应用窗口内加载"，两者范围不一致。虽然后端
+  // _serve_static 只服务 DIST_DIR（含路径穿越防护），同源可达的内容仍是
+  // 本应用自己的页面，风险有限；但 Electron 窗口**没有地址栏**，一旦窗口内
+  // 出现非入口页的内容，用户无法分辨。
+  //
+  // 本应用前端**不使用路由**（全仓无 pushState / react-router / location.href），
+  // 故同源导航没有任何合法用途——除初始入口页与资源加载（资源不经 will-navigate）。
+  // 现收紧为：只允许加载应用入口（backendUrl + '/'，可带 handshake 查询串），
+  // 其余一律拦截（同源的开系统浏览器无意义，故直接忽略；跨源的转交系统浏览器）。
   const backendOrigin = new URL(backendUrl).origin
+  const entryPath = new URL(backendUrl).pathname || '/'
   const isInternalUrl = (url) => {
     try {
-      return new URL(url).origin === backendOrigin
+      const u = new URL(url)
+      // 只认「同源 + 入口路径」——同源的其它路径不再放行（见上方说明）。
+      return u.origin === backendOrigin && u.pathname === entryPath
     } catch (_) {
       return false
     }
   }
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (!isInternalUrl(url)) {
-      event.preventDefault()
+    if (isInternalUrl(url)) return
+    event.preventDefault()
+    // 仅跨源的转交系统浏览器；同源的其它路径直接拦掉（开浏览器无意义）。
+    if (new URL(url).origin !== backendOrigin) {
       shell.openExternal(url)
     }
   })
