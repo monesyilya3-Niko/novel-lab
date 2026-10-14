@@ -38,7 +38,9 @@ import validate as validate_mod
 ROOT = Path(__file__).resolve().parent.parent
 PROMPTS_DIR = ROOT / "prompts"
 ASSETS_DIR = ROOT / "assets"
-REPORTS_DIR = ROOT / "reports"
+# 注：pipeline **不写** reports/（2026-10-13 审计修复 CLI-16）——
+# 报告交付由 `novel 分析`（staging + 原子发布 + 铁律二闸门）与 `novel 拆书`
+# 命令负责。此前 pipeline 直写 reports/ 会让未经验收的次品报告留在交付目录。
 
 PASS_FILES = {
     "pass1_structure": "pass1_structure.md",
@@ -612,18 +614,28 @@ def main():
             cc_path.write_text(json.dumps(craft_card, ensure_ascii=False, indent=2), encoding="utf-8")
             print(f"      {cc_path.name} ({len(json.dumps(craft_card, ensure_ascii=False))//1024}K)")
 
-            # 生成笔法报告
+            # 生成笔法报告内容 + 单份字数提示（**不落盘**）
+            #
+            # ⚠️ 不再直接写 reports/（2026-10-13 审计修复 CLI-16）：
+            # 原实现把笔法分析直写 REPORTS_DIR，而「分析」命令随后会**重新生成**
+            # 一份（novel.py 用 report_craft.py 写入 staging 再原子发布）——
+            # 于是 reports/ 里先躺着一份未经验收的次品：若合计不足 10000，
+            # 「分析」的闸门正确判失败并 EXIT=1、输出明说"交付阻断（不产出
+            # 半成品）"，但用户打开 reports/ 会发现那份不达标的报告好端端
+            # 躺在交付目录里，且没有任何提示说明它未经验收。
+            #
+            # 职责划分：pipeline 是拆书引擎（产 assets/），报告交付由
+            # 「分析」（staging + 原子发布 + 铁律二闸门）与「拆书」命令负责。
+            # GUI 只调 pipeline 的函数（load_prompt/run_pass/assemble_*），
+            # 从不走 main()，故本改动不影响 GUI。
             try:
                 import report_craft as rc_mod
                 report = rc_mod.render_craft_report(craft_card)
-                report_path = REPORTS_DIR / f"{name}-笔法分析.md"
-                report_path.parent.mkdir(parents=True, exist_ok=True)
-                report_path.write_text(report, encoding="utf-8")
-                print(f"      {report_path.name}（可交付报告）")
-
-                # 铁律二：笔法分析单份字数提示（合计校验由 novel.py「分析」命令在
-                # 拆书报告 + 笔法报告都生成后统一执行）
                 report_len = len(report)
+                print(f"      笔法报告已就绪（{report_len} 字符，未落盘——"
+                      f"由 `novel 分析` 统一交付）")
+                # 铁律二：单份字数提示（合计校验由 novel.py「分析」在
+                # 拆书报告 + 笔法报告都生成后统一执行）。
                 if report_len < 10000:
                     print(f"  ⚠ 笔法分析单份 {report_len} 字符 < 10000，"
                           f"合计校验以 novel.py「分析」命令为准")

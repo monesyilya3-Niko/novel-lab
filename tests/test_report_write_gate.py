@@ -151,5 +151,45 @@ class TestReportWriteGate(unittest.TestCase):
         self.assertEqual(existing.read_text(encoding="utf-8"), before, "已有报告被半成品覆盖")
 
 
+class TestPipelineDoesNotWriteReports(unittest.TestCase):
+    """pipeline 不得直写 reports/（2026-10-13 审计修复 CLI-16）。
+
+    缺陷背景：pipeline.py 原先把笔法分析直写 REPORTS_DIR，而「分析」命令
+    随后会**重新生成**一份（用 report_craft.py 写入 staging 再原子发布）。
+    于是 reports/ 里先躺着一份未经验收的次品：若合计不足 10000，
+    「分析」的闸门正确判失败并 EXIT=1、输出明说"交付阻断（不产出半成品）"，
+    但用户打开 reports/ 会发现那份不达标的报告好端端躺在交付目录里，
+    且没有任何提示说明它未经验收——报告库被污染，下游 asset_sync_check
+    与 GUI 资产库都会把它当正式产物。
+
+    职责划分：pipeline 是拆书引擎（产 assets/），报告交付由「分析」
+    （staging + 原子发布 + 铁律二闸门）与「拆书」命令负责。
+    GUI 只调 pipeline 的函数（load_prompt/run_pass/assemble_*），
+    从不走 main()，故该约束不影响 GUI。
+    """
+
+    def setUp(self):
+        self.src = (ROOT / "scripts" / "pipeline.py").read_text(encoding="utf-8")
+
+    def test_pipeline_has_no_reports_dir_constant(self):
+        """REPORTS_DIR 常量应已移除——留着会让人以为 pipeline 会写报告。"""
+        self.assertNotIn("REPORTS_DIR = ", self.src,
+                         "pipeline 又定义了 REPORTS_DIR——它不应写 reports/")
+
+    def test_pipeline_does_not_write_markdown_reports(self):
+        """核心守卫：pipeline 不得写任何 .md 到 reports 相关路径。"""
+        import re
+        # 找 write_text 调用，看是否有指向 reports/ 或 .md 的
+        offenders = []
+        for m in re.finditer(r"\.write_text\(", self.src):
+            line_start = self.src.rfind("\n", 0, m.start()) + 1
+            line_end = self.src.find("\n", m.start())
+            line = self.src[line_start:line_end]
+            if "reports" in line.lower() or "-笔法分析" in line or "-拆书报告" in line:
+                offenders.append(line.strip())
+        self.assertEqual(offenders, [],
+                         f"pipeline 仍在写报告文件: {offenders}")
+
+
 if __name__ == "__main__":
     sys.exit(unittest.main(verbosity=2))
