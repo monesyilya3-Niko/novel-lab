@@ -1158,6 +1158,74 @@ class TestRollbackPicksTimestampedBackup(unittest.TestCase):
         self.assertEqual(row[0], "new", "恢复的内容不是最新备份的")
 
 
+class TestUpsertGenreDisplayName(unittest.TestCase):
+    """_upsert_genre 的 display_name 必须能补写（2026-10-14 审计修复 D15）。
+
+    缺陷背景：原实现把 display_name 与 kind 写在**同一条** DO UPDATE 里，
+    并带 `WHERE excluded.kind IS NOT NULL` —— 于是当新值的 kind 为 None
+    （典型场景：只想补一个 display_name）时整条 UPDATE 被跳过，
+    display_name 永远补不上。
+    实测：先 _upsert_genre('g', None, None) 再 _upsert_genre('g', '显示名', None)，
+    display_name 仍是 NULL。
+
+    修法：拆两步——display_name 只要非空就补（COALESCE 不覆盖已有值），
+    kind 仍按优先级严格高于才覆盖（保持原防后写覆盖策略）。
+    """
+
+    def setUp(self):
+        self._tmp = Path(tempfile.mkdtemp(prefix="genreup_"))
+        self._orig = {
+            "STATE_ROOT": config.STATE_ROOT,
+            "DB_PATH": config.DB_PATH,
+            "LOCK_PATH": config.LOCK_PATH,
+        }
+        config.STATE_ROOT = self._tmp / "gui_state"
+        config.DB_PATH = config.STATE_ROOT / "index.db"
+        config.LOCK_PATH = config.STATE_ROOT / ".lock"
+        config.STATE_ROOT.mkdir(parents=True, exist_ok=True)
+        db._reset_conn()
+        db.init_schema()
+        db.apply_migrations()
+
+    def tearDown(self):
+        db.close()
+        for k, v in self._orig.items():
+            setattr(config, k, v)
+        db._reset_conn()
+        _rm_tmp(self._tmp)
+
+    def _row(self, name="g"):
+        r = db.get_conn().execute(
+            "SELECT display_name, kind FROM genres WHERE name=?", (name,)).fetchone()
+        return (r["display_name"], r["kind"]) if r else None
+
+    def test_display_name_backfilled_when_kind_is_none(self):
+        """核心守卫：kind 为 None 时仍应补上 display_name。"""
+        with db.tx() as c:
+            migrate._upsert_genre(c, "g", None, None)
+        with db.tx() as c:
+            migrate._upsert_genre(c, "g", "显示名", None)
+        self.assertEqual(self._row()[0], "显示名",
+                         "kind 为 None 时 display_name 未补写")
+
+    def test_display_name_not_overwritten_by_empty(self):
+        """反向守卫：已有 display_name 不被空值覆盖。"""
+        with db.tx() as c:
+            migrate._upsert_genre(c, "g", "原名", None)
+        with db.tx() as c:
+            migrate._upsert_genre(c, "g", None, "genre_pack")
+        self.assertEqual(self._row()[0], "原名", "display_name 被空值覆盖了")
+
+    def test_kind_priority_still_enforced(self):
+        """反向守卫：kind 优先级裁决未被破坏（低优先级不得覆盖高优先级）。"""
+        with db.tx() as c:
+            migrate._upsert_genre(c, "g", None, "genre_pack")
+        with db.tx() as c:
+            migrate._upsert_genre(c, "g", None, "book")   # 更低优先级
+        self.assertEqual(self._row()[1], "genre_pack",
+                         "kind 被低优先级值覆盖（防后写覆盖策略失效）")
+
+
 class TestSyncAssetReportsSuccess(unittest.TestCase):
     """sync_asset 必须报告是否真的入库（2026-10-14 审计修复 D12）。
 

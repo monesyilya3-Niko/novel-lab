@@ -586,26 +586,46 @@ def _upsert_genre(conn: Any, name: str, display_name: str | None, kind: str | No
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     sanitized = _sanitize_genre_kind(kind)
     priority = GENRE_KIND_PRIORITY.get(sanitized or "", 0)
+    # 拆成两步（2026-10-14 审计修复 D15）：
+    #
+    # 原实现把 display_name 与 kind 写在**同一条** DO UPDATE 里，并带
+    # `WHERE excluded.kind IS NOT NULL` —— 于是当新值的 kind 为 None
+    # （典型场景：只想补一个 display_name）时整条 UPDATE 被跳过，
+    # display_name 永远补不上。实测：先 _upsert_genre('g', None, None)
+    # 再 _upsert_genre('g', '显示名', None)，display_name 仍是 NULL。
+    #
+    # 两步各自独立裁决：
+    #   ① display_name：只要新值非空就补（COALESCE 保证不覆盖已有非空值），
+    #      与 kind 的优先级无关。
+    #   ② kind：仍按优先级严格高于才覆盖（保持原防后写覆盖策略）。
+    # 先 INSERT 保证行存在，再分别 UPDATE。
     conn.execute(
-        """
-        INSERT INTO genres (name, display_name, kind, created_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(name) DO UPDATE SET
-            display_name = COALESCE(excluded.display_name, genres.display_name),
-            kind = CASE
-                       WHEN excluded.kind IS NULL THEN genres.kind
-                       ELSE excluded.kind
-                   END
-        WHERE excluded.kind IS NOT NULL
-          AND (? > CASE COALESCE(genres.kind, '')
-                        WHEN 'genre_pack' THEN 3
-                        WHEN 'book'       THEN 2
-                        WHEN 'prose_card' THEN 1
-                        ELSE 0
-                    END)
-        """,
-        (name, display_name, sanitized, now, priority),
+        "INSERT INTO genres (name, display_name, kind, created_at) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT(name) DO NOTHING",
+        (name, display_name, sanitized, now),
     )
+    # ① display_name：非空即补，不覆盖已有值。
+    if display_name:
+        conn.execute(
+            "UPDATE genres SET display_name = ? "
+            "WHERE name = ? AND (display_name IS NULL OR display_name = '')",
+            (display_name, name),
+        )
+    # ② kind：仅当优先级严格高于现有值才覆盖（防后写降级）。
+    if sanitized is not None:
+        conn.execute(
+            """
+            UPDATE genres SET kind = ?
+            WHERE name = ?
+              AND (? > CASE COALESCE(kind, '')
+                            WHEN 'genre_pack' THEN 3
+                            WHEN 'book'       THEN 2
+                            WHEN 'prose_card' THEN 1
+                            ELSE 0
+                        END)
+            """,
+            (sanitized, name, priority),
+        )
 
 
 def _report_char_count(fp: Path) -> int:
