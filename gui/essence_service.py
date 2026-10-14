@@ -1735,8 +1735,11 @@ def ensure_curated_library(clean_raw_corpus: bool = True) -> dict[str, Any]:
             cur = tx_conn.execute(
                 f"DELETE FROM essence_books WHERE book_id LIKE ? {_ESC}", (_GARBAGE,))
             cleaned_count = cur.rowcount
+            if db.table_exists("books"):
+                tx_conn.execute(
+                    f"DELETE FROM books WHERE book_id LIKE ? {_ESC}", (_GARBAGE,))
 
-        # 灌装 8 大精选神作档案
+        # 灌装精选神作档案并同步注册至书库
         now = _now_iso()
         for b in CURATED_MASTERPIECES:
             b_id = b["book_id"]
@@ -1771,6 +1774,22 @@ def ensure_curated_library(clean_raw_corpus: bool = True) -> dict[str, Any]:
                     now,
                 ),
             )
+
+            if db.table_exists("books"):
+                tx_conn.execute(
+                    """
+                    INSERT INTO books
+                        (book_id, title, source_path, genre, status, imported_at, updated_at)
+                    VALUES (?, ?, ?, ?, 'ready', ?, ?)
+                    ON CONFLICT(book_id) DO UPDATE SET
+                        title = excluded.title,
+                        source_path = excluded.source_path,
+                        genre = excluded.genre,
+                        status = 'ready',
+                        updated_at = excluded.updated_at
+                    """,
+                    (b_id, b["title"], f"curated://{b_id}", b["genre"], now, now),
+                )
 
             # 写入对应五维资产卡（存在同名则跳过）
             for asset in b.get("assets", []):

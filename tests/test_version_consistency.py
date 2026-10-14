@@ -63,6 +63,10 @@ class TestVersionConsistency(unittest.TestCase):
         data = json.loads((ROOT / "gui" / "web" / "package.json").read_text(encoding="utf-8"))
         self._assert_matches("gui/web/package.json", data["version"])
 
+    def test_desktop_package_json(self):
+        data = json.loads((ROOT / "desktop" / "package.json").read_text(encoding="utf-8"))
+        self._assert_matches("desktop/package.json", data["version"])
+
     def test_frontend_display_version(self):
         text = (ROOT / "gui" / "web" / "src" / "layout" / "WorkbenchNav.tsx").read_text(
             encoding="utf-8"
