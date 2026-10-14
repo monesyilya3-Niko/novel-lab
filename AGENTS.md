@@ -1,5 +1,6 @@
 # AGENTS.md — novel-lab 项目规约（AI 协作者必读）
 
+> 🚨 **核心理念与最高宪法**：所有 AI 协作者必须首先研读并无条件遵守根目录 [CORE_PHILOSOPHY.md](CORE_PHILOSOPHY.md)。
 > 本文件是**可执行的硬约束**，面向所有 AI 协作者。任何违反即视为 bug。
 > 生成日期：2026-09-11 ｜ 项目已从另一套 niko 实例迁移至 niko 工作区
 
@@ -233,7 +234,8 @@ AssetEditor / ChapterManager / ExportImportPanel / GlobalSearch / NotificationCe
 
 | 文件 | 用途 | 可信度 |
 |---|---|---|
-| `docs/internal/PROJECT_LAW.md` | **规则单一权威来源**（v2：三铁律 + 六条工程约束，含判定标准与事故依据） | ✅ 权威，优先于本文件 |
+| `CORE_PHILOSOPHY.md` | **项目核心理念设定与最高工程宪章**（思想基石 + 四大铁律 + 创作者主权） | 👑 最高权威，所有规则之源 |
+| `docs/internal/PROJECT_LAW.md` | **规则单一权威来源**（四铁律 + 六条工程约束，含判定标准与事故依据） | ✅ 权威，优先于本文件 |
 | `docs/internal/RULES.md` | 可执行规则全集（操作层细则） | ✅ 大体可用 |
 | `AGENTS.md` | 本文件（AI 协作者入口 + 当前实测口径） | ✅ 权威 |
 | `docs/internal/PROJECT_SUMMARY.md` | 项目总结 | ✅ 已重写（2026-09-11，基于实测） |
