@@ -493,6 +493,13 @@ def test_model(model_id: str) -> dict:
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
-        print(json.dumps(test_model(sys.argv[1]), ensure_ascii=False, indent=2))
+        _result = test_model(sys.argv[1])
+        print(json.dumps(_result, ensure_ascii=False, indent=2))
+        # 退出码反映连通性测试结果（2026-10-14 审计修复 CLI-21）：
+        # 原先只 print 不设退出码，测试失败也返回 0——而 novel.py 用
+        # run_script 透传退出码，于是 `novel 模型 --test <id>` 会把
+        # 连接失败误报成成功，CI/脚本无法据此判定。
+        sys.exit(0 if _result.get("ok") else 1)
     else:
         print("用法: python llm_client.py <model_id>   # 连通性测试")
+        sys.exit(2)

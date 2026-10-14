@@ -43,10 +43,11 @@ def _main_block_tail(text: str) -> str | None:
 
 # 明确豁免：这些文件的 __main__ 块不是「返回码语义」的 CLI 入口。
 #   - chapter_loader.py: 源码已标 `# pragma: no cover - 诊断入口`，纯打印诊断
-#   - llm_client.py    : 末尾是 print 用法提示（连通性测试入口）
-#   - secret_store.py  : 末尾是 print 密钥条目数
-# （consistency.py 已于 2026-09-21 补上退出码语义，不再豁免）
-EXEMPT = {"chapter_loader.py", "llm_client.py", "secret_store.py"}
+#   - secret_store.py  : 纯打印诊断（存储模式 + 密钥条目数），无成败语义
+# （llm_client.py 已于 2026-10-14 补上退出码语义——连通性测试失败必须
+#  非零退出，否则 `novel 模型 --test <id>` 会把连接失败误报成成功。
+#  同 consistency.py 于 2026-09-21 的先例，不再豁免。）
+EXEMPT = {"chapter_loader.py", "secret_store.py"}
 
 
 class TestCliExitCodePropagation(unittest.TestCase):
@@ -437,6 +438,46 @@ class TestSysPathHygiene(unittest.TestCase):
         """重置密码应走包路径导入，而非依赖 sys.path 技巧。"""
         src_text = (ROOT / "novel.py").read_text(encoding="utf-8")
         self.assertIn("from gui import admin", src_text)
+
+
+class TestLlmClientExitCode(unittest.TestCase):
+    """llm_client 连通性测试必须传播退出码（2026-10-14 审计修复 CLI-21）。
+
+    缺陷背景：__main__ 只 print 不设退出码，测试失败也返回 0——
+    而 novel.py 用 run_script 透传退出码，于是 `novel 模型 --test <id>`
+    会把连接失败误报成成功，CI/脚本无法据此判定。
+
+    该文件此前在 test_cli_exit_code 的 EXEMPT 名单里（原注释称"末尾是
+    print 用法提示"）——那是当时的实情，现已有退出码语义，故移出豁免。
+    """
+
+    def _run(self, *args):
+        import subprocess
+        return subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "llm_client.py"), *args],
+            cwd=str(ROOT), capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=60,
+        )
+
+    def test_no_args_exits_nonzero(self):
+        """无参数应非零退出（用法错误）。"""
+        p = self._run()
+        self.assertNotEqual(p.returncode, 0, "无参数却返回 0")
+        self.assertIn("用法", p.stdout + p.stderr)
+
+    def test_unknown_model_exits_nonzero(self):
+        """不存在的模型应非零退出（连通性测试失败）。"""
+        p = self._run("definitely-not-a-model-xyz")
+        self.assertNotEqual(p.returncode, 0, "测试失败却返回 0")
+        self.assertIn("ok", p.stdout, "未输出机器可读结果")
+
+    def test_llm_client_not_exempt_from_exit_guard(self):
+        """结构守卫：该文件不得再被豁免出退出码静态守卫。"""
+        src_text = (ROOT / "tests" / "test_cli_exit_code.py").read_text(encoding="utf-8")
+        m = __import__("re").search(r"^EXEMPT = \{([^}]*)\}", src_text, __import__("re").M)
+        self.assertIsNotNone(m, "未找到 EXEMPT 定义")
+        self.assertNotIn("llm_client.py", m.group(1),
+                         "llm_client 又被加回豁免名单——它将失去退出码守卫")
 
 
 if __name__ == "__main__":
