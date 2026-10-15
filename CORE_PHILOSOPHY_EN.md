@@ -1,8 +1,14 @@
 # Core Philosophy & Supreme Engineering Charter
+# 暮冬念春 / Exoscribe · Official Engineering Constitution
 
-> **Effective Date**: 2026-10-14  
+> **Official Brand Names (Locked)**:
+> - **Chinese Brand**: **暮冬念春** (*Mù Dōng Niàn Chūn* - Emerging from creative winter into the flourishing spring of masterpieces)
+> - **Global English Brand**: **Exoscribe** (*Exoskeleton + Scribe*; Subtitle: *The Vernal Engine for Fiction*; Tagline: *The Narrative Exoskeleton for Serious Storytellers*)
+> - **Monorepo / Engineering Codename**: `novel-lab`
+>
+> **Effective Date**: 2026-10-15  
 > **Version**: v2.2.0  
-> **Target Audience**: All Autonomous Agents and Developers maintaining or extending novel-lab  
+> **Target Audience**: All Autonomous Agents and Developers maintaining or extending novel-lab (暮冬念春 / Exoscribe)  
 > **Authority Level**: **Supreme Hard Constraint (Project Constitution)**. Any code modification, feature addition, or corpus onboarding that violates this charter is deemed a **P0 Critical Bug** requiring immediate remediation or rollback.  
 > 
 > *Corresponding Chinese Charter: [CORE_PHILOSOPHY.md](CORE_PHILOSOPHY.md)*
@@ -14,7 +20,7 @@
 ### 0.1 Ending "Slot-Machine AI Writing"
 Most contemporary AI writing solutions operate like gambling slot machines: the user inputs a vague prompt into a generic text box, and the Large Language Model regurgitates gallons of homogenous AI slop filled with stale clichés ("a flicker of complexity flashed across his eyes", "took a deep breath", "however, not only that"). The first three chapters look polished, but by chapter ten, the world-building collapses, character voices dissolve into uniformity, and the plot derails uncontrollably.
 
-**The Ultimate Vision of novel-lab (暮冬念春)**:
+**The Ultimate Vision of the System (暮冬念春 / Exoscribe)**:
 > **"To eradicate slot-machine AI generation by reverse-engineering classical web novel masterpieces into reusable structural assets, transforming AI into a high-precision creative exoskeleton and uncompromising quality inspector—never a typewriter for mediocre slop."**
 
 ```mermaid
@@ -50,11 +56,14 @@ Violation of any of the following rules immediately renders deliverables invalid
 * **【Rationale】**: Urban drama pacing must never contaminate Xianxia cultivation; traditional Wuxia prose must not bleed into Lovecraftian horror. Genre bleeding produces bizarre, bland, and disorienting prose.
 * **【Intended Effect】**: Guarantees pure, single-genre benchmark training and reference sets.
 
-### Iron Law 2 · 10,000-Character Combined Report Hard Gate
-* **【Statute】**: For every analyzed book, the **combined character count** of the Deconstruction Report and Craft Analysis **must be $\ge$ 10,000 Chinese characters** (hard minimum threshold; measured by characters, not bytes). Falling short blocks delivery.
+### Iron Law 2 · Combined Report Gate (10K Chars / 5K Words)
+* **【Statute】**: For every analyzed book, the **combined volume** of the Deconstruction Report and Craft Analysis must meet strict thresholds:
+  - **Chinese Books**: Combined character count must be $\ge$ **10,000 Chinese characters** (hard minimum threshold; measured by characters, not bytes);
+  - **English Books**: Combined word count must be $\ge$ **5,000 English Words**.
+  Falling short blocks delivery immediately.
 * **【Scope】**: All deliverable analysis reports entering the `reports/` directory.
-* **【Criteria】**: Single reports under 10k trigger only a soft warning; enforcement relies on the sum via `report.py::check_combined_report_length`. Unqualified reports are intercepted prior to disk write: **not a single byte may touch the disk**.
-* **【Rationale】**: "10,000 characters" is our contractual baseline quality promise. Superficial multi-paragraph summaries hold zero engineering value.
+* **【Criteria】**: Single reports under threshold trigger only a soft warning; enforcement relies on the sum via `report.py::check_combined_report_length`. Unqualified reports are intercepted prior to disk write: **not a single byte may touch the disk**.
+* **【Rationale】**: "10,000 characters / 5,000 words" is our contractual baseline quality promise. Superficial multi-paragraph summaries hold zero engineering value.
 * **【Intended Effect】**: Eliminates half-baked summaries; guarantees that all deconstructed assets possess actionable depth.
 
 ### Iron Law 3 · Zero Third-Party Dependencies (Pure Standard Library)
@@ -68,8 +77,10 @@ Violation of any of the following rules immediately renders deliverables invalid
 * **【Statute】**: **All books brought in and utilized must be of exceptionally high quality**. Fragmented chapters, machine translations, obscure fragments, and low-value web novel filler are strictly barred from entering the system.
 * **【Scope】**: Local corpus registration (`books` table and `corpus/` folder), Novel Essence Library (`essence_books` / `essence_assets` / `essence_chains`), and the entire deconstruction pipeline.
 * **【Criteria】**:
-  1. Books must be market-tested or critically acclaimed canonical Chinese original long-form web novels or literary milestones;
-  2. Total word count must be $\ge$ **300,000 characters**, total chapters $\ge$ **60**, with an average chapter length of **1,500 ~ 4,000 characters**;
+  1. Books must be market-tested or critically acclaimed canonical original long-form web novels or literary milestones;
+  2. **Strict Length & Volume Gates**:
+     - **Chinese Books**: Total word count must be $\ge$ **300,000 characters**, total chapters $\ge$ **60**, with an average chapter length of **1,500 ~ 4,000 characters**;
+     - **English Books**: Total word count must be $\ge$ **100,000 English words**, total chapters $\ge$ **40**, with an average chapter length of **2,000 ~ 4,000 words**;
   3. Importing unverified, fragmented text is forbidden (`book_%` garbage batches must be blocked or purged);
   4. Essence entries must provide complete 5D assets (Core Outline, Opening Hook, Contrasting Persona, Climax Trope, Anti-AI Style) and Foreshadowing Chains.
 * **【Rationale】**: Inferior web novel filler pollutes style cards and trope libraries, inducing AI models to mimic vulgar tropes and empty prose, destroying the tool's professional value.

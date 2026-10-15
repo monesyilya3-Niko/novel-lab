@@ -1,7 +1,13 @@
-# novel-lab（暮冬念春）核心理念设定、研发进度与中英文双版未来规划全书
+# 暮冬念春 / Exoscribe 核心理念设定、研发进度与中英文双版未来规划全书
+# Master Blueprint: Philosophy, Baseline Progress & Global Internationalization
 
+> **官方品牌命名（正式确立）**：
+> - **中文品牌名**：**暮冬念春**（寓意走出卡文断章与平庸 AI 的漫长寒冬，迎来传世史诗绽放的创作暖春）
+> - **全球英文品牌名**：**Exoscribe**（Exoskeleton + Scribe，叙事外骨骼；副标题：*The Vernal Engine for Fiction*；品牌主张：*The Narrative Exoskeleton for Serious Storytellers*）
+> - **工程代号 / Monorepo**：`novel-lab`
+>
 > **编制时间**：2026-10-15  
-> **当前工程基线**：v2.2.0（Commit: `6b2479b` ｜ 后端单测 1584 项全通 ｜ 前端测试 137 项全通）  
+> **当前工程基线**：v2.2.0（Commit: `bd58c75` ｜ 后端单测 1584 项全通 ｜ 前端测试 137 项全通）  
 > **文件定位**：全景式战略白皮书，涵盖**核心理念哲学**、**中英文双版规划**、**当前项目进度实录**与**全球英文书籍收录及分析路线图**。
 
 ---
@@ -9,7 +15,7 @@
 ## 目录
 1. [底层愿景与核心理念体系](#1-底层愿景与核心理念体系)
 2. [四大核心业务铁律与创作者主权](#2-四大核心业务铁律与创作者主权)
-3. [版本规划：中英文双版国际化战略](#3-版本规划中英文双版国际化战略)
+3. [版本规划：中英文双版与 Exoscribe 国际化战略](#3-版本规划中英文双版与-exoscribe-国际化战略)
 4. [项目实录：当前研发进度与落地现状](#4-项目实录当前研发进度与落地现状)
 5. [未来规划：全球英文书籍收集与深度解构体系](#5-未来规划全球英文书籍收集与深度解构体系)
 6. [演进时间表与里程碑路线图](#6-演进时间表与里程碑路线图)
@@ -63,27 +69,43 @@ graph LR
 
 ### 2.1 四大业务铁律
 1. **铁律一 · 题材隔离（Genre Isolation）**：不同题材的资产与配置必须严格物理隔离。聚合题材包时 `source_books` 的题材必须百分之百一致，严禁都市技法污染玄幻修真，严禁传统武侠混入克苏鲁怪谈。
-2. **铁律二 · 万字报告硬校验（10K Report Gate）**：每本书的“拆书报告 + 笔法分析”合计字符数必须 $\ge$ **10,000 字**。不合格者在写盘前直接拦截，磁盘上绝不写入半字节垃圾。
+2. **铁律二 · 深度报告硬校验门禁（Combined Report Gate）**：
+   - **中文书籍**：拆书报告 + 笔法分析合计字符数必须 $\ge$ **10,000 字符**；
+   - **英文书籍**：拆书报告 + 笔法分析合计词数必须 $\ge$ **5,000 英文单词（Words）**。
+   不达标者在写盘前强制硬拦截，磁盘上绝不写入半字节垃圾。
 3. **铁律三 · 纯标准库零第三方依赖（Zero Third-party Dependencies）**：后端核心代码只允许使用 Python 3.13 原生标准库（`sqlite3`、`json`、`http.server`、`pathlib`、`ctypes` 等），坚决杜绝任何第三方 pip 污染，确保桌面安装包永不因外部依赖损坏。
-4. **铁律四 · 语料极高品质准入（High-Quality Corpus Integrity）**：**所有拿过来使用的书籍，必须是质量极高的书籍**。单本字数必须 $\ge 30$ 万字，章节 $\ge 60$ 章，必须具备完备的五维解构资产与伏笔暗线，坚决清理并杜绝无名碎片垃圾语料。
+4. **铁律四 · 语料极高品质准入（High-Quality Corpus Integrity）**：**所有拿过来使用的书籍，必须是质量极高的书籍**。
+   - **中文书籍**：单本字数必须 $\ge 30$ 万字，章节 $\ge 60$ 章，平均单章 1,500 ~ 4,000 字；
+   - **英文书籍**：单本词数必须 $\ge 100,000$ 英文单词（Words），章节 $\ge 40$ 章，平均单章 2,000 ~ 4,000 单词；
+   必须具备完备的五维解构资产与伏笔暗线，坚决清理并杜绝无名碎片垃圾语料。
 
 ### 2.2 创作者主权三道红线
 - **红线一（正文神圣不可侵犯）**：任何 AI 改写、润色、排毒、扩写产物，**一律另存为草稿副本**，绝对禁止静默覆写作者的原 TXT / Markdown 稿件。
-- **红线二（本地优先与完全私有）**：数据全量存储在本地 SQLite 与磁盘，不依赖云端，不留任何数据暗门。
+- **红线二（本地优先与完全私有）**：数据全量存储在本地 SQLite 与磁盘，不依赖云端，不留任何数据暗门，绝不用创作者手稿训练任何 AI。
 - **红线三（破坏性操作显式授权）**：删除、覆盖、重置、强推前必须经创作者明确确认。
 
 ---
 
-## 3. 版本规划：中英文双版国际化战略
+## 3. 版本规划：中英文双版与 Exoscribe 国际化战略
 
 为满足全球网络文学出海与海外作者的专业创作需求，本项目正式确立**“中英文双版（Bilingual Dual Editions）”**长期版本演进战略。
+
+### 3.1 官方品牌命名正式锁定
+- **中文品牌名**：**暮冬念春**
+  - **内涵**：寓意走出卡文断章、创意枯竭与平庸 AI 泛滥的漫长寒冬，迎来传世长卷与史诗绽放的创作暖春。
+- **全球英文品牌名**：**Exoscribe**
+  - **词源**：**Exoskeleton（外骨骼）+ Scribe（著作家 / 记录史诗的书吏）**。
+  - **副标题**：*The Vernal Engine for Fiction*（承接“念春”春意复苏之意）。
+  - **品牌主张（Tagline）**：*"The Narrative Exoskeleton for Serious Storytellers."*（为严肃长篇创作者打造的叙事外骨骼）。
+  - **定位**：明确向全球作家传递信号——这不是替你敲键盘的平庸 AI 打字机，而是赋能作者掌控长篇宏观结构、防崩塌、高承载的精密动力外骨骼。
+- **工程代号 / Monorepo**：`novel-lab`。
 
 ```mermaid
 graph TD
     subgraph UI_Layer [交互层：中英双语无缝切换]
         LangSwitch[Language Switcher]
-        LangSwitch --> CN_UI[简体中文界面]
-        LangSwitch --> EN_UI[English Studio Interface]
+        LangSwitch --> CN_UI[简体中文界面：暮冬念春]
+        LangSwitch --> EN_UI[English Studio Interface: Exoscribe]
     end
 
     subgraph Core_Assets [双轨核心资产与文学工学体系]
@@ -103,14 +125,14 @@ graph TD
         Encoding[UTF-8 with GBK Fallback]
         DeslopEngine[双语去 AI 味算法]
         DeslopEngine --> CN_Deslop[中文 AI 腔排毒]
-        DeslopEngine --> EN_Deslop[English AI Slop Scanners]
+        DeslopEngine --> EN_Deslop[English AI Slop Scanners & Filter Words]
     end
 
     UI_Layer --> Core_Assets
     Core_Assets --> Engine_Layer
 ```
 
-### 3.1 界面与交互双语化（UI Internationalization）
+### 3.2 界面与交互双语化（UI Internationalization）
 - **统一轻量级 i18n 底座**：在保持纯前端零臃肿原则下，引入轻量级国际化词条管理；
 - **全工作台覆盖**：
   - 创作大盘（Dashboard & Word Count Velocity）
@@ -120,7 +142,7 @@ graph TD
   - 灵感起名工坊（Inspiration & Name Generator）
 - **一键切换**：支持在桌面端侧边栏自由无缝切换 `简体中文` 与 `English`。
 
-### 3.2 双轨文学资产与工学体系
+### 3.3 双轨文学资产与工学体系
 中文与英文网络小说的爽点机制、叙事惯性与读者审美存在显著差异，系统不搞“生硬机械翻译”，而是建立两套平行的文学工学模型：
 
 | 维度 | 中文网文模式（Chinese Edition） | 英文网络文学模式（English Edition） |
@@ -129,13 +151,27 @@ graph TD
 | **开篇结构指标** | 黄金三章、入戏危机、金手指到账、首章断章悬念 | Hook Chapter、Inciting Incident、System Awakening、Call to Adventure |
 | **高潮节拍模型** | 三段式打脸、压抑蓄水后决堤山洪爆发、反转逆袭 | Escalating Stakes、Boss Encounter、Loot / Stat Payoff、Cliffhanger |
 | **平台对标审查** | 起点（设定与逻辑）、番茄（快节奏）、晋江（人设细腻） | Royal Road（硬核升级与世界观）、Webnovel（快节奏爽文）、Wattpad（情绪与人设）、Amazon KDP |
-| **去 AI 味诊断重点** | 假大空修辞、同义反复、无来由排比、句号当顿号 | 英文大模型陈词滥调（"testament to", "delve", "tapestry", "shiver down spine", "echoed"） |
+| **去 AI 味诊断重点** | 假大空修辞、同义反复、无来由排比、句号当顿号 | 英文大模型陈词滥调（"testament to", "delve", "tapestry", "shiver down spine"）与 Filter Words |
 
-### 3.3 双版本独立发行与统一技术底座
+### 3.4 国际化工程底座补充清单
+1. **海外出版与分发格式适配**：
+   - **EPUB 3.0 原生标准容器导出**：满足 Amazon KDP 上架与个人独立出版（Self-Publishing）；
+   - **Shunn 标准文稿格式（Standard Manuscript Format）**：满足向海外出版商和文学经纪人投稿规范；
+   - **Royal Road 章节格式**：支持 Author's Notes（卷首卷尾作者说）与 BBCode / Markdown 混合排版。
+2. **LitRPG 属性面板与状态栏渲染器（Stat Box Renderer）**：
+   - 针对海外极度热门的 LitRPG / GameLit 分类，内置可视化的 Stat Box 语法解析与组件渲染，支持移动端自适应。
+3. **英文专用 Anti-Slop 诊断引擎**：
+   - **Filter Words 弱动词扫描**（*saw, felt, noticed, wondered* 等弱化代入感的过滤词）；
+   - **过度副词扫描**（`-ly` 结尾的动作副词堆砌拦截）；
+   - **典型 LLM 八股拦截**（*delve, tapestry, testament to, palpable tension* 等）。
+4. **创作者数据主权与隐私护城河（Local-First Fortress）**：
+   - 坚持“100% 本地优先、零遥测上传、绝不用创作者手稿训练 AI”，作为海外竞争的关键信任壁垒。
+
+### 3.5 双版本独立发行与统一技术底座
 - **单一代码库（Monorepo）**：后端保持纯 Python 标准库架构，统一处理中英双语的文本切分、倒排索引与数据持久化；
 - **发版产物规划**：
-  - `暮冬念春-Setup-win64.exe`：默认中文界面（内置中英一键切换）；
-  - `NovelLab-Setup-win64.exe`：面向海外用户的英文品牌打包发行。
+  - `暮冬念春-Setup-win64.exe`：面向国内创作者的中文旗舰发行包（内置中英一键切换）；
+  - `Exoscribe-Setup-win64.exe`：面向欧美与全球创作者的国际独立品牌发行包。
 
 ---
 
@@ -278,7 +314,7 @@ timeline
         英文排毒引擎 : 研发针对英文大模型的 Anti-Slop 扫描器
         出海诊断 : Royal Road / KDP 签约标准合规检查
     section Phase 4 (终极目标 v3.0.0)
-        双语独立发版 : 推出 NovelLab 官方英文桌面安装包
+        双语独立发版 : 推出 Exoscribe 官方国际桌面安装包
         跨语言同构 : 中文大纲内核一键转译地道英文网文
         全球文学智库 : 50+ 中英文传世名作知识拓扑图谱
 ```
