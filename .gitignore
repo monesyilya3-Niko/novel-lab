@@ -20,6 +20,8 @@ __pycache__/
 # 故此处只忽略依赖与增量构建缓存，不忽略 dist。
 node_modules/
 *.tsbuildinfo
+gui/web/pnpm-workspace.yaml
+gui/web/pnpm-lock.yaml
 
 # 检索倒排索引缓存（可重建，非资产）
 index/
