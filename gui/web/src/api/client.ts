@@ -1083,26 +1083,31 @@ export const essenceApi = {
     text: string
     rules?: any[]
     characters_forbidden?: Record<string, string[]>
-  }) =>
-    post<{
-      compliance_score: number
-      is_compliant: boolean
-      violations: {
-        rule_id: string
-        rule_name: string
-        matched_term: string
-        line_no: number
-        snippet: string
-        severity: string
-      }[]
-      character_voice_alerts: {
-        character: string
-        forbidden_phrase: string
-        line_no: number
-        snippet: string
-      }[]
-      summary: string
-    }>('/essence/constitution/check', body),
+  }) => post<ConstitutionCheckResult>('/essence/constitution/check', body),
+}
+
+export interface ConstitutionViolation {
+  rule_id: string
+  rule_name: string
+  matched_term: string
+  line_no: number
+  snippet: string
+  severity: string
+}
+
+export interface CharacterVoiceAlert {
+  character: string
+  forbidden_phrase: string
+  line_no: number
+  snippet: string
+}
+
+export interface ConstitutionCheckResult {
+  compliance_score: number
+  is_compliant: boolean
+  violations: ConstitutionViolation[]
+  character_voice_alerts: CharacterVoiceAlert[]
+  summary: string
 }
 
 export interface EssenceStats {

@@ -19,7 +19,15 @@ import StarterKit from '@tiptap/starter-kit'
 import CharacterCount from '@tiptap/extension-character-count'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ink } from '../ink'
-import { toolsApi, writingApi, friendlyError, type PoisonCheckResult, type DeslopResult } from '../api/client'
+import {
+  toolsApi,
+  writingApi,
+  essenceApi,
+  friendlyError,
+  type PoisonCheckResult,
+  type DeslopResult,
+  type ConstitutionCheckResult,
+} from '../api/client'
 
 interface ChapterEditorProps {
   value: string
@@ -32,6 +40,10 @@ interface ChapterEditorProps {
   enablePoisonCheck?: boolean
   /** 是否启用底栏快捷去 AI 味体检（默认启用） */
   enableDeslopCheck?: boolean
+  /** 是否启用底栏快捷设定与宪法审查（默认启用） */
+  enableConstitutionCheck?: boolean
+  constitutionRules?: any[]
+  charactersForbidden?: Record<string, string[]>
 }
 
 /** 纯文本 → 编辑器初始 HTML（转义 + 换行分段）。 */
@@ -51,6 +63,9 @@ export default function ChapterEditor({
   targetChars,
   enablePoisonCheck = true,
   enableDeslopCheck = true,
+  enableConstitutionCheck = true,
+  constitutionRules,
+  charactersForbidden,
 }: ChapterEditorProps) {
   const [poisonOpen, setPoisonOpen] = useState(false)
   const [poisonLoading, setPoisonLoading] = useState(false)
@@ -61,6 +76,11 @@ export default function ChapterEditor({
   const [deslopLoading, setDeslopLoading] = useState(false)
   const [deslopResult, setDeslopResult] = useState<DeslopResult | null>(null)
   const [deslopError, setDeslopError] = useState('')
+
+  const [constitutionOpen, setConstitutionOpen] = useState(false)
+  const [constitutionLoading, setConstitutionLoading] = useState(false)
+  const [constitutionResult, setConstitutionResult] = useState<ConstitutionCheckResult | null>(null)
+  const [constitutionError, setConstitutionError] = useState('')
 
   const editor = useEditor({
     extensions: [
@@ -147,6 +167,31 @@ export default function ChapterEditor({
     }
   }
 
+  const handleQuickConstitutionCheck = async () => {
+    const text = editor?.getText() || value
+    if (!text.trim()) {
+      setConstitutionError('正文为空，请先编写章节内容')
+      setConstitutionResult(null)
+      setConstitutionOpen(true)
+      return
+    }
+    setConstitutionLoading(true)
+    setConstitutionError('')
+    setConstitutionOpen(true)
+    try {
+      const res = await essenceApi.checkConstitution({
+        text,
+        rules: constitutionRules,
+        characters_forbidden: charactersForbidden,
+      })
+      setConstitutionResult(res)
+    } catch (e) {
+      setConstitutionError(friendlyError(e))
+    } finally {
+      setConstitutionLoading(false)
+    }
+  }
+
   const chars = editor?.storage.characterCount.characters() ?? value.length
   const targetMet = targetChars != null && chars >= targetChars
 
@@ -212,6 +257,22 @@ export default function ChapterEditor({
               }}
             >
               ✨ 去AI味体检
+            </Button>
+          )}
+          {enableConstitutionCheck && (
+            <Button
+              size="small"
+              variant="text"
+              onClick={handleQuickConstitutionCheck}
+              sx={{
+                fontSize: '0.78rem',
+                color: ink.textSecondary,
+                p: 0,
+                minWidth: 'auto',
+                '&:hover': { color: ink.accent },
+              }}
+            >
+              📜 设定宪法审查
             </Button>
           )}
         </Box>
@@ -362,6 +423,107 @@ export default function ChapterEditor({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeslopOpen(false)}>关闭并返回写作</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 快捷设定与世界观宪法审查弹窗 */}
+      <Dialog
+        open={constitutionOpen}
+        onClose={() => setConstitutionOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+          <Typography component="span" variant="h6" fontWeight={700}>
+            📜 章节设定与世界观宪法审查
+          </Typography>
+          {constitutionResult && (
+            <Chip
+              size="small"
+              label={`合规得分: ${constitutionResult.compliance_score} (${constitutionResult.is_compliant ? '正典合规' : '存在违宪风险'})`}
+              color={constitutionResult.is_compliant ? 'success' : constitutionResult.compliance_score >= 60 ? 'warning' : 'error'}
+            />
+          )}
+        </DialogTitle>
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {constitutionLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={32} />
+            </Box>
+          )}
+
+          {constitutionError && <Alert severity="error">{constitutionError}</Alert>}
+
+          {constitutionResult && !constitutionLoading && (
+            <>
+              {constitutionResult.violations.length === 0 && constitutionResult.character_voice_alerts.length === 0 ? (
+                <Alert severity="success">
+                  {constitutionResult.summary || '全章设定完美合规，未触碰世界观红线，角色声线与行为严丝合缝！'}
+                </Alert>
+              ) : (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {constitutionResult.summary}
+                  </Typography>
+
+                  {/* 世界观与违禁规则违纪项 */}
+                  {constitutionResult.violations.length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: ink.accent, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        🚫 世界观违宪项 ({constitutionResult.violations.length})
+                      </Typography>
+                      {constitutionResult.violations.map((v, i) => (
+                        <Card key={i} variant="outlined" sx={{ bgcolor: 'action.hover' }}>
+                          <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Chip
+                                size="small"
+                                label={v.rule_name}
+                                color={v.severity === 'high' ? 'error' : 'warning'}
+                              />
+                              <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                命中禁用词：【{v.matched_term}】（第 {v.line_no} 行）
+                              </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.primary" display="block">
+                              {v.snippet}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Box>
+                  )}
+
+                  {/* 角色声线脱缰警告 */}
+                  {constitutionResult.character_voice_alerts.length > 0 && (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'warning.main', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        🎭 角色声线脱缰警报 ({constitutionResult.character_voice_alerts.length})
+                      </Typography>
+                      {constitutionResult.character_voice_alerts.map((ca, i) => (
+                        <Card key={i} variant="outlined" sx={{ bgcolor: 'action.hover' }}>
+                          <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                              <Chip size="small" label={`角色: ${ca.character}`} color="info" />
+                              <Typography variant="caption" color="error" sx={{ fontWeight: 600 }}>
+                                说了禁说台词：【{ca.forbidden_phrase}】（第 {ca.line_no} 行）
+                              </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.primary" display="block">
+                              “{ca.snippet}”
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConstitutionOpen(false)}>关闭并返回写作</Button>
         </DialogActions>
       </Dialog>
     </Box>

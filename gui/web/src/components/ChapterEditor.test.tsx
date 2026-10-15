@@ -32,6 +32,15 @@ vi.mock('../api/client', () => ({
       suggestions: [],
     }),
   },
+  essenceApi: {
+    checkConstitution: vi.fn().mockResolvedValue({
+      compliance_score: 100,
+      is_compliant: true,
+      violations: [],
+      character_voice_alerts: [],
+      summary: '全章设定完美合规',
+    }),
+  },
   friendlyError: (e: unknown) => String(e),
 }))
 
@@ -122,6 +131,20 @@ describe('ChapterEditor', () => {
     await waitFor(() => {
       expect(screen.getByText('✨ 章节去 AI 味诊断')).toBeDefined()
       expect(screen.getByText(/未检测到任何程式化套路/)).toBeDefined()
+    })
+
+    const closeBtn = screen.getByText('关闭并返回写作')
+    fireEvent.click(closeBtn)
+  })
+
+  it('点击设定宪法审查按钮弹出诊断弹窗', async () => {
+    render(<ChapterEditor value="主角推开房门，点燃烛火。" onChange={noop} />)
+    const btn = await screen.findByText('📜 设定宪法审查')
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(screen.getByText('📜 章节设定与世界观宪法审查')).toBeDefined()
+      expect(screen.getByText(/全章设定完美合规/)).toBeDefined()
     })
 
     const closeBtn = screen.getByText('关闭并返回写作')
