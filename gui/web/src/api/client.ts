@@ -481,7 +481,7 @@ export const writingApi = {
     get<WritingStats>(`/writing/stats?project=${encodeURIComponent(project)}&days=${days}`),
   exportTxt: (project: string) =>
     get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}`),
-  export: (project: string, format: 'txt' | 'md' | 'docx' = 'txt') =>
+  export: (project: string, format: 'txt' | 'md' | 'docx' | 'epub' | 'shunn' = 'txt') =>
     get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}&format=${format}`),
   deslop: (text: string, lang: 'auto' | 'zh' | 'en' = 'auto') =>
     post<DeslopResult>('/writing/deslop', { text, lang }),
@@ -714,6 +714,15 @@ export const platformApi = {
     post<Record<string, unknown>>('/platform/format', body),
   export: (body: { platform_id: string; book_dir: string }) =>
     post<Record<string, unknown>>('/platform/export', body),
+  parseStatBox: (text: string) =>
+    post<{ stat_boxes: Array<Record<string, unknown>>; count: number }>('/platform/litrpg/stat-box', { text }),
+  formatRoyalRoad: (body: {
+    title: string
+    text: string
+    author_note_head?: string
+    author_note_foot?: string
+    wrap_stat_boxes?: boolean
+  }) => post<{ formatted: string; stat_boxes_found: number }>('/platform/royalroad/format', body),
 }
 
 // 管理员系统

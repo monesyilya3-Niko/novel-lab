@@ -30,6 +30,8 @@ import HubIcon from '@mui/icons-material/Hub'
 import DescriptionIcon from '@mui/icons-material/Description'
 import CodeIcon from '@mui/icons-material/Code'
 import ArticleIcon from '@mui/icons-material/Article'
+import MenuBookIcon from '@mui/icons-material/MenuBook'
+import AssignmentIcon from '@mui/icons-material/Assignment'
 import { writingApi, toolsApi, friendlyError } from '../api/client'
 import type { WritingProject } from '../types'
 import type { OutlineItem, CharacterCard, NoteItem, WritingStats, HookItem, TensionAnalysisResult } from '../api/client'
@@ -1169,13 +1171,13 @@ function ExportPanel({ project }: { project: string }) {
   const [info, setInfo] = useState('')
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
 
-  const handleExport = async (format: 'docx' | 'md' | 'txt') => {
+  const handleExport = async (format: 'docx' | 'epub' | 'shunn' | 'md' | 'txt') => {
     setError('')
     setInfo('')
     setExportingFormat(format)
     try {
       const res = await writingApi.export(project, format)
-      if (format === 'docx' && res.contentBase64) {
+      if ((format === 'docx' || format === 'epub') && res.contentBase64) {
         // Base64 解码为二进制 Blob
         const byteCharacters = atob(res.contentBase64)
         const byteNumbers = new Array(byteCharacters.length)
@@ -1183,12 +1185,14 @@ function ExportPanel({ project }: { project: string }) {
           byteNumbers[i] = byteCharacters.charCodeAt(i)
         }
         const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        })
+        const mimeType =
+          format === 'epub'
+            ? 'application/epub+zip'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        const blob = new Blob([byteArray], { type: mimeType })
         triggerDownload(blob, res.filename)
       } else {
-        // 纯文本 / Markdown
+        // 纯文本 / Markdown / Shunn 文稿
         const blob = new Blob([res.content || ''], { type: 'text/plain;charset=utf-8' })
         triggerDownload(blob, res.filename)
       }
@@ -1227,13 +1231,13 @@ function ExportPanel({ project }: { project: string }) {
 
       <Grid container spacing={2.5}>
         {/* Word docx 导出卡 */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Paper elevation={0} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', ...glassCard(isDark) }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <DescriptionIcon sx={{ color: '#2563EB', fontSize: 28 }} />
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>Word 规范文档 (.docx)</Typography>
-                <Typography variant="caption" color="text.secondary">出版/编辑首选</Typography>
+                <Typography variant="caption" color="text.secondary">国内出版 / 责编首选</Typography>
               </Box>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
@@ -1250,8 +1254,58 @@ function ExportPanel({ project }: { project: string }) {
           </Paper>
         </Grid>
 
+        {/* EPUB 3.0 电子书导出卡 */}
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper elevation={0} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', ...glassCard(isDark) }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+              <MenuBookIcon sx={{ color: '#7C3AED', fontSize: 28 }} />
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>标准电子书 (.epub)</Typography>
+                <Typography variant="caption" color="text.secondary">Kindle / Apple Books</Typography>
+              </Box>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
+              EPUB 3.0 出版规范容器，无压缩 mimetype 居首，内嵌完整目录导航与样式，适配主流电子阅读器。
+            </Typography>
+            <Button
+              variant="contained"
+              sx={{ bgcolor: '#7C3AED', '&:hover': { bgcolor: '#6D28D9' } }}
+              startIcon={<DownloadIcon />}
+              onClick={() => handleExport('epub')}
+              disabled={!!exportingFormat}
+            >
+              {exportingFormat === 'epub' ? '打包 epub 中…' : '导出 EPUB (.epub)'}
+            </Button>
+          </Paper>
+        </Grid>
+
+        {/* William Shunn 标准投稿文稿 */}
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper elevation={0} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', ...glassCard(isDark) }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+              <AssignmentIcon sx={{ color: '#0284C7', fontSize: 28 }} />
+              <Box>
+                <Typography variant="subtitle1" fontWeight={700}>国际标准文稿 (.txt)</Typography>
+                <Typography variant="caption" color="text.secondary">William Shunn SMF 规约</Typography>
+              </Box>
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
+              国际奇幻与科幻期刊通用投稿规范：页眉联系人、百字取整字数估算、居中标题与 # 场景分界符。
+            </Typography>
+            <Button
+              variant="outlined"
+              color="info"
+              startIcon={<DownloadIcon />}
+              onClick={() => handleExport('shunn')}
+              disabled={!!exportingFormat}
+            >
+              {exportingFormat === 'shunn' ? '生成文稿中…' : '导出 Shunn 文稿'}
+            </Button>
+          </Paper>
+        </Grid>
+
         {/* Markdown md 导出卡 */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={6}>
           <Paper elevation={0} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', ...glassCard(isDark) }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <CodeIcon sx={{ color: '#059669', fontSize: 28 }} />
@@ -1276,7 +1330,7 @@ function ExportPanel({ project }: { project: string }) {
         </Grid>
 
         {/* TXT 导出卡 */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={6}>
           <Paper elevation={0} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', ...glassCard(isDark) }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <ArticleIcon sx={{ color: '#D97706', fontSize: 28 }} />

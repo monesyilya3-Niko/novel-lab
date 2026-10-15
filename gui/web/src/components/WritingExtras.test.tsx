@@ -143,6 +143,8 @@ describe('WritingExtras 创作扩展工作台', () => {
     await waitFor(() => {
       expect(screen.getByText('导出全书作品')).toBeInTheDocument()
       expect(screen.getByText('导出 Word (.docx)')).toBeInTheDocument()
+      expect(screen.getByText('导出 EPUB (.epub)')).toBeInTheDocument()
+      expect(screen.getByText('导出 Shunn 文稿')).toBeInTheDocument()
       expect(screen.getByText('导出 Markdown (.md)')).toBeInTheDocument()
     })
   })

@@ -762,7 +762,7 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
   const [newProjName, setNewProjName] = useState('')
 
   const [openExportDialog, setOpenExportDialog] = useState(false)
-  const [exportFormat, setExportFormat] = useState<'docx' | 'md' | 'txt'>('docx')
+  const [exportFormat, setExportFormat] = useState<'docx' | 'epub' | 'shunn' | 'md' | 'txt'>('docx')
   const [exporting, setExporting] = useState(false)
 
   const [openNewOutline, setOpenNewOutline] = useState(false)
@@ -925,18 +925,20 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
   }
 
   // 全书导出
-  const handleExportProject = async (format: 'docx' | 'md' | 'txt') => {
+  const handleExportProject = async (format: 'docx' | 'epub' | 'shunn' | 'md' | 'txt') => {
     setExporting(true)
     setError('')
     try {
       const res = await writingApi.export(currentProject, format)
-      if (format === 'docx' && res.contentBase64) {
+      if ((format === 'docx' || format === 'epub') && res.contentBase64) {
         const bin = atob(res.contentBase64)
         const bytes = new Uint8Array(bin.length)
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-        const blob = new Blob([bytes], {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        })
+        const mimeType =
+          format === 'epub'
+            ? 'application/epub+zip'
+            : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        const blob = new Blob([bytes], { type: mimeType })
         triggerDownload(blob, res.filename)
       } else {
         const blob = new Blob([res.content || ''], { type: 'text/plain;charset=utf-8' })
@@ -2120,9 +2122,11 @@ function StudioView({ sel, onSwitchPipeline }: StudioViewProps) {
             size="small"
             label="导出排版格式"
             value={exportFormat}
-            onChange={(e) => setExportFormat(e.target.value as 'docx' | 'md' | 'txt')}
+            onChange={(e) => setExportFormat(e.target.value as 'docx' | 'epub' | 'shunn' | 'md' | 'txt')}
           >
             <MenuItem value="docx">📘 Word 文档 (.docx) — 官方标准排版稿（带标题封面）</MenuItem>
+            <MenuItem value="epub">📱 标准电子书 (.epub) — EPUB 3.0 出版容器（Kindle / Apple Books）</MenuItem>
+            <MenuItem value="shunn">📑 国际投稿文稿 (.txt) — William Shunn 标准文稿格式（带字数估算）</MenuItem>
             <MenuItem value="md">📝 Markdown 结构稿 (.md) — 适合 Obsidian/知识库</MenuItem>
             <MenuItem value="txt">📄 纯文本 (.txt) — 干净无格式，直接复制粘贴</MenuItem>
           </TextField>
