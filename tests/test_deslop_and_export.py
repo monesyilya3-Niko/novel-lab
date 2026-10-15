@@ -323,6 +323,24 @@ class TestDeslopService(unittest.TestCase):
         types = {it["type"] for it in res["issues"]}
         self.assertTrue(types & {"filter_words", "negation_flip", "adverb_tics"})
 
+    def test_english_extended_slop_patterns(self):
+        """检出扩展的英文八股指纹 (labyrinthine / resonated deeply / palpable tension / shivers / 分词悬垂)。"""
+        text = (
+            "They navigated the labyrinthine corridors beneath the castle. "
+            "Her tragic story resonated deeply with his own sorrow. "
+            "The tension was palpable between the two generals. "
+            "A dark voice sent shivers down their spines. "
+            "Looking up at the night sky, he wondered if they would survive."
+        )
+        res = deslop_service.analyze_deslop(text)
+        self.assertGreaterEqual(len(res["issues"]), 5)
+        labels = [it["label"] for it in res["issues"]]
+        self.assertTrue(any("Labyrinthine" in lb for lb in labels))
+        self.assertTrue(any("Resonated deeply" in lb for lb in labels))
+        self.assertTrue(any("Palpable tension" in lb for lb in labels))
+        self.assertTrue(any("Shiver down spine" in lb for lb in labels))
+        self.assertTrue(any("Dangling participial" in lb for lb in labels))
+
     def test_english_parallelism_starters(self):
         """连续 3 句以相同代词起句（He... He... He...）应检出句式单调排比。"""
         text = (

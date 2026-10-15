@@ -222,9 +222,24 @@ EN_HOLLOW_RHETORIC_PATTERNS = [
         "Show involuntary physical recall or lasting consequences rather than poetic claims.",
     ),
     (
-        r"(?i)\b(?:sent\s+chills?|a\s+shiver)\s+(?:down|ran\s+down)\s+(?:his|her|their|my)?\s*spine\b",
+        r"(?i)\b(?:sent\s+(?:a\s+)?chills?|a\s+shiver|shivers?)\s+(?:down|ran\s+down|coursed?\s+down)\s+(?:his|her|their|my|our)?\s*spines?\b",
         "Shiver down spine 套路",
         "Stock bodily reaction. Replace with visceral sensations like throat tightness or shallow breath.",
+    ),
+    (
+        r"(?i)\blabyrinthine\s+(?:streets|corridors|passages|network|alleys|thoughts|structure|depths)\b",
+        "Labyrinthine 虚饰词",
+        "Classic AI vocabulary tic. Use concrete spatial layouts (narrow alleys, twisting corridors) instead of decorative adjectives.",
+    ),
+    (
+        r"(?i)\bresonated?\s+deeply\s+(?:with|within|in)\b",
+        "Resonated deeply 套路",
+        "Abstract emotional cliché. Show immediate visceral reactions or specific memories rather than 'resonating'.",
+    ),
+    (
+        r"(?i)\b(?:palpable\s+tension|tension\s+was\s+palpable)\b",
+        "Palpable tension 宣称",
+        "Show characters clenching jaws, averting gaze, or breathing quietly instead of asserting tension.",
     ),
     (
         r"(?i)\bair\s+was\s+(?:thick|heavy)\s+with\b",
@@ -269,6 +284,11 @@ EN_FILTER_WORDS_PATTERNS = [
         r"(?i)\b(?:he|she|they|I)\s+(?:decided\s+to|began\s+to|started\s+to)\s+[a-z]+",
         "Indirect action initiation",
         "Strengthen prose by performing the action directly ('decided to run' -> 'ran').",
+    ),
+    (
+        r"(?i)\b(?:looking|gazing|glancing|staring|turning|peering)\s+(?:up|down|back|away|out|around|toward|towards|into)\s+[^,;.\n]{1,30},\s*(?:he|she|they|I)\s+",
+        "Dangling participial opener (分词悬垂起手)",
+        "Overused LLM participial opener. Cut the participial clause and put the subject and strong verb first.",
     ),
 ]
 
@@ -352,15 +372,8 @@ def _merge_overlapping(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     if not issues:
         return issues
-    # 用**真实匹配长度**判定覆盖范围。
-    #
-    # 曾用 len(snippet) 当覆盖终点，结果连续重复的短命中无法合并：
-    # 「不是冷漠，而是绝望。」×5 里每个匹配长 8 字符、间隔 10 字符，
-    # 8 < 10 使相邻判定失败，5 条重复全部保留（2026-10-11 实测发现）。
-    # 改用 _match_len 后，相邻命中只要起点落在上一个匹配结束前即合并。
-    #
-    # 另设「同类型相邻命中间距」兜底：正则匹配通常短于实际语段，
-    # 若两条同类型命中之间没有其他类型的命中隔开，也视为同一处聚集。
+    # 按出现位置升序排序，确保区间覆盖判定单调
+    issues = sorted(issues, key=lambda x: (x.get("index", 0), x.get("type", "")))
     out: list[dict[str, Any]] = []
     cover_end: dict[int, int] = {}
     for it in issues:

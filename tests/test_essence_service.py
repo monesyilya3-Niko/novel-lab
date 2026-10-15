@@ -542,10 +542,10 @@ class TestEssenceService(unittest.TestCase):
         self.assertFalse(resp_api["data"]["is_compliant"])
 
     def test_ensure_curated_library(self):
-        """验证 12 大传世神作编纂矩阵入库、资产与伏笔链完整绑定。"""
+        """验证 14 大传世神作编纂矩阵（含 2 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
         res = essence_service.ensure_curated_library(clean_raw_corpus=False)
         self.assertTrue(res["success"])
-        self.assertEqual(res["curated_books_seeded"], 12)
+        self.assertEqual(res["curated_books_seeded"], 14)
 
         books = essence_service.list_books()
         titles = {b["title"] for b in books}
@@ -561,6 +561,8 @@ class TestEssenceService(unittest.TestCase):
         self.assertIn("学霸的黑科技系统", titles)
         self.assertIn("惊悚乐园", titles)
         self.assertIn("全职高手", titles)
+        self.assertIn("迷雾之子：最后帝国", titles)
+        self.assertIn("玄元仙道：无魂", titles)
 
         # 验证《暮冬念春》五维资产与伏笔
         md_book = essence_service.get_book("curated_mudongnianchun")
@@ -592,6 +594,27 @@ class TestEssenceService(unittest.TestCase):
         self.assertGreaterEqual(len(qz_assets), 5)
         qz_chains = essence_service.list_chains(book_id="curated_quanzhigaoshou")
         self.assertGreaterEqual(len(qz_chains), 2)
+
+        # 验证西方先锋神作《迷雾之子：最后帝国》与《玄元仙道：无魂》
+        mb_book = essence_service.get_book("curated_mistborn")
+        self.assertEqual(mb_book["title"], "迷雾之子：最后帝国")
+        self.assertEqual(mb_book["total_chapters"], 38)
+        self.assertEqual(mb_book["genre"], "xifang-qihuan")
+        self.assertEqual(mb_book["platform"], "western_canon")
+        mb_assets = essence_service.list_assets(book_id="curated_mistborn")
+        self.assertGreaterEqual(len(mb_assets), 5)
+        mb_chains = essence_service.list_chains(book_id="curated_mistborn")
+        self.assertGreaterEqual(len(mb_chains), 2)
+
+        cd_book = essence_service.get_book("curated_cradle")
+        self.assertEqual(cd_book["title"], "玄元仙道：无魂")
+        self.assertEqual(cd_book["total_chapters"], 20)
+        self.assertEqual(cd_book["genre"], "xuanhuan")
+        self.assertEqual(cd_book["platform"], "amazon_kdp")
+        cd_assets = essence_service.list_assets(book_id="curated_cradle")
+        self.assertGreaterEqual(len(cd_assets), 5)
+        cd_chains = essence_service.list_chains(book_id="curated_cradle")
+        self.assertGreaterEqual(len(cd_chains), 2)
 
     def test_adopt_book_to_project(self):
         """验证一键转入整本神作资产到写作项目。"""
