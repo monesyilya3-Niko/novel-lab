@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { installGlobalErrorHandlers } from './globalErrorHandlers'
 import { ThemeModeProvider } from './state/ThemeModeContext'
+import { I18nProvider } from './state/I18nContext'
 import './index.css'
 
 // 全局错误兜底：ErrorBoundary 只能捕获渲染期同步错误，捕获不到 Promise
@@ -13,7 +14,9 @@ installGlobalErrorHandlers()
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeModeProvider>
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </ThemeModeProvider>
   </React.StrictMode>,
 )

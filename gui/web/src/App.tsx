@@ -18,6 +18,8 @@ import { AppProvider, useApp } from './state/AppContext'
 import { useThemeMode } from './state/ThemeModeContext'
 import { buildMuiTheme } from './theme'
 import { ink } from './ink'
+import { useI18n } from './state/I18nContext'
+import LanguageToggle from './components/common/LanguageToggle'
 import WorkbenchNav from './layout/WorkbenchNav'
 import type { WorkbenchKey } from './layout/WorkbenchNav'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -53,8 +55,14 @@ function LoadingFallback() {
 /** 主题循环切换：light → dark → system → light */
 function ModeToggle() {
   const { mode, setMode } = useThemeMode()
+  const { t } = useI18n()
   const next = mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light'
-  const label = next === 'light' ? '切换亮色' : next === 'dark' ? '切换暗色' : '切换为跟随系统'
+  const label =
+    next === 'light'
+      ? t('toggle_theme_system', '切换亮色')
+      : next === 'dark'
+        ? t('toggle_theme_light', '切换暗色')
+        : t('toggle_theme_dark', '切换为跟随系统')
   return (
     <Tooltip title={label}>
       <IconButton color="inherit" size="small" onClick={() => setMode(next)} aria-label={label}>
@@ -89,6 +97,7 @@ const WORKBENCH_ORDER: WorkbenchKey[] = [
 
 function AppShell() {
   const { workbench, setWorkbench, overview, initError, helpRequest, openHelp } = useApp()
+  const { t } = useI18n()
   const wide = useMediaQuery('(min-width: 961px)')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [onboarded, setOnboarded] = useState(isOnboarded)
@@ -147,17 +156,18 @@ function AppShell() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 700, color: '#fff', fontSize: 18,
           }}>
-            暮
+            {t('brand_initial', '暮')}
           </Box>
           <Box sx={{ flex: 1 }}>
             <Typography variant="subtitle1" sx={{ color: (theme) => theme.palette.mode === 'dark' ? ink.moonWhite : ink.text, fontWeight: 700, letterSpacing: '0.12em', lineHeight: 1.2 }}>
-              暮冬念春
+              {t('brand_name', '暮冬念春')}
             </Typography>
             <Typography variant="caption" sx={{ color: (theme) => theme.palette.mode === 'dark' ? ink.moonSoft : ink.textTertiary, letterSpacing: '0.3em', fontSize: 10 }}>
-              全功能工作台
+              {t('brand_subtitle', '全功能工作台')}
             </Typography>
           </Box>
-          <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <LanguageToggle />
             <ModeToggle />
           </Box>
           <CommandPaletteTrigger />

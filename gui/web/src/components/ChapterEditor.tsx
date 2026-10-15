@@ -19,6 +19,7 @@ import StarterKit from '@tiptap/starter-kit'
 import CharacterCount from '@tiptap/extension-character-count'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ink } from '../ink'
+import { useI18n } from '../state/I18nContext'
 import {
   toolsApi,
   writingApi,
@@ -58,7 +59,7 @@ function textToHtml(text: string): string {
 export default function ChapterEditor({
   value,
   onChange,
-  placeholder = '在此粘贴或编写章节正文……',
+  placeholder,
   minHeight = 160,
   targetChars,
   enablePoisonCheck = true,
@@ -67,6 +68,9 @@ export default function ChapterEditor({
   constitutionRules,
   charactersForbidden,
 }: ChapterEditorProps) {
+  const { t } = useI18n()
+  const effectivePlaceholder = placeholder ?? t('editor_placeholder', '在此粘贴或编写章节正文……')
+
   const [poisonOpen, setPoisonOpen] = useState(false)
   const [poisonLoading, setPoisonLoading] = useState(false)
   const [poisonResult, setPoisonResult] = useState<PoisonCheckResult | null>(null)
@@ -101,7 +105,7 @@ export default function ChapterEditor({
         gapcursor: false,
       }),
       CharacterCount,
-      Placeholder.configure({ placeholder }),
+      Placeholder.configure({ placeholder: effectivePlaceholder }),
     ],
     content: value ? textToHtml(value) : '',
     editorProps: {
@@ -240,7 +244,7 @@ export default function ChapterEditor({
                 '&:hover': { color: ink.accent },
               }}
             >
-              🛡️ 毒点避雷排查
+              {t('editor_poison_check', '🛡️ 毒点避雷排查')}
             </Button>
           )}
           {enableDeslopCheck && (
@@ -256,7 +260,7 @@ export default function ChapterEditor({
                 '&:hover': { color: ink.accent },
               }}
             >
-              ✨ 去AI味体检
+              {t('editor_deslop_check', '✨ 去AI味体检')}
             </Button>
           )}
           {enableConstitutionCheck && (
@@ -272,7 +276,7 @@ export default function ChapterEditor({
                 '&:hover': { color: ink.accent },
               }}
             >
-              📜 设定宪法审查
+              {t('editor_constitution_check', '📜 设定宪法审查')}
             </Button>
           )}
         </Box>
@@ -280,11 +284,13 @@ export default function ChapterEditor({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {targetChars != null && (
             <Typography variant="caption" sx={{ color: targetMet ? ink.success : ink.textTertiary }}>
-              {targetMet ? `已达目标 ${targetChars} 字` : `目标 ${targetChars} 字`}
+              {targetMet
+                ? `${t('editor_target_met', '已达目标')} ${targetChars} ${t('editor_word_unit', '字')}`
+                : `${t('editor_target_prefix', '目标')} ${targetChars} ${t('editor_word_unit', '字')}`}
             </Typography>
           )}
           <Typography variant="caption" sx={{ color: ink.textTertiary }}>
-            {chars} 字
+            {chars} {t('editor_word_unit', '字')}
           </Typography>
         </Box>
       </Box>
@@ -355,7 +361,7 @@ export default function ChapterEditor({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPoisonOpen(false)}>关闭并返回写作</Button>
+          <Button onClick={() => setPoisonOpen(false)}>{t('editor_close_return', '关闭并返回写作')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -422,7 +428,7 @@ export default function ChapterEditor({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeslopOpen(false)}>关闭并返回写作</Button>
+          <Button onClick={() => setDeslopOpen(false)}>{t('editor_close_return', '关闭并返回写作')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -523,7 +529,7 @@ export default function ChapterEditor({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConstitutionOpen(false)}>关闭并返回写作</Button>
+          <Button onClick={() => setConstitutionOpen(false)}>{t('editor_close_return', '关闭并返回写作')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

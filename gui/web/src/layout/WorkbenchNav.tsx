@@ -18,6 +18,7 @@ import TuneIcon from '@mui/icons-material/Tune'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
 import { ink } from '../ink'
+import { useI18n } from '../state/I18nContext'
 
 export type WorkbenchKey =
   | 'home'
@@ -35,48 +36,47 @@ export interface WorkbenchNavItem {
   key: WorkbenchKey
   label: string
   icon: React.ReactNode
-  /** 建设中占位（阶段一：写作/质检/系统/设置）。 */
-  /** 状态徽标数（可选）。 */
 }
-
-const NAV_GROUPS: { title: string; items: WorkbenchNavItem[] }[] = [
-  {
-    title: '创作',
-    items: [
-      { key: 'home', label: '首页', icon: <HomeIcon /> },
-      { key: 'analysis', label: '分析拆书', icon: <InsightsIcon /> },
-      { key: 'writing', label: '辅助写作', icon: <EditNoteIcon /> },
-      { key: 'quality', label: '质量检验', icon: <FactCheckIcon /> },
-      { key: 'assets', label: '资产库', icon: <FolderOpenIcon /> },
-      { key: 'advanced', label: '高级功能', icon: <AutoAwesomeIcon /> },
-    ],
-  },
-  {
-    title: '管理',
-    items: [
-      { key: 'system', label: '系统', icon: <TuneIcon /> },
-      { key: 'settings', label: '设置', icon: <SettingsIcon /> },
-      { key: 'admin', label: '管理后台', icon: <AdminPanelSettingsIcon /> },
-    ],
-  },
-  {
-    title: '帮助',
-    items: [
-      { key: 'help', label: '帮助中心', icon: <HelpOutlineIcon /> },
-    ],
-  },
-]
 
 export interface WorkbenchNavProps {
   active: WorkbenchKey
   onChange: (key: WorkbenchKey) => void
-  /** 各工作台徽标（key → number）。 */
 }
 
 export default function WorkbenchNav({ active, onChange }: WorkbenchNavProps) {
+  const { t } = useI18n()
+
+  const navGroups: { title: string; items: WorkbenchNavItem[] }[] = [
+    {
+      title: t('nav_group_create', '创作'),
+      items: [
+        { key: 'home', label: t('nav_home', '首页'), icon: <HomeIcon /> },
+        { key: 'analysis', label: t('nav_analysis', '分析拆书'), icon: <InsightsIcon /> },
+        { key: 'writing', label: t('nav_writing', '辅助写作'), icon: <EditNoteIcon /> },
+        { key: 'quality', label: t('nav_quality', '质量检验'), icon: <FactCheckIcon /> },
+        { key: 'assets', label: t('nav_assets', '资产库'), icon: <FolderOpenIcon /> },
+        { key: 'advanced', label: t('nav_advanced', '高级功能'), icon: <AutoAwesomeIcon /> },
+      ],
+    },
+    {
+      title: t('nav_group_manage', '管理'),
+      items: [
+        { key: 'system', label: t('nav_system', '系统'), icon: <TuneIcon /> },
+        { key: 'settings', label: t('nav_settings', '设置'), icon: <SettingsIcon /> },
+        { key: 'admin', label: t('nav_admin', '管理后台'), icon: <AdminPanelSettingsIcon /> },
+      ],
+    },
+    {
+      title: t('nav_group_help', '帮助'),
+      items: [
+        { key: 'help', label: t('nav_help', '帮助中心'), icon: <HelpOutlineIcon /> },
+      ],
+    },
+  ]
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', py: 1.5 }}>
-      {NAV_GROUPS.map((group, gi) => (
+      {navGroups.map((group, gi) => (
         <React.Fragment key={group.title}>
           {gi > 0 && <Divider sx={{ mx: 2, my: 1 }} />}
           <Typography

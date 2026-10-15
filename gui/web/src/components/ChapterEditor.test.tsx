@@ -7,6 +7,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import ChapterEditor from './ChapterEditor'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 vi.mock('../api/client', () => ({
   toolsApi: {
@@ -149,5 +151,22 @@ describe('ChapterEditor', () => {
 
     const closeBtn = screen.getByText('关闭并返回写作')
     fireEvent.click(closeBtn)
+  })
+
+  it('在 en-US 语言环境下渲染英文动作按钮与单位', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <ChapterEditor value="A cold wind howled across the frozen wasteland." onChange={noop} />
+        </I18nProvider>,
+      )
+      await screen.findByText('🛡️ Anti-Poison Check')
+      expect(screen.getByText('✨ Anti-Slop Audit')).toBeDefined()
+      expect(screen.getByText('📜 Novel Constitution')).toBeDefined()
+      expect(screen.getByText(/words/)).toBeDefined()
+    } finally {
+      removeStorage('novellab.locale')
+    }
   })
 })
