@@ -42,6 +42,24 @@ vi.mock('../api/client', () => ({
       vetoRisks: [],
       actionableFixes: ['黄金三章节奏建议：在第二章进一步抛出悬念'],
     }),
+    parseStatBox: vi.fn().mockResolvedValue({
+      stat_boxes: [
+        {
+          type: 'bracket_window',
+          title: 'Status Window',
+          fields: { Name: 'Carl', Level: '1', Strength: '14' },
+          raw_text: '[Status Window]\nName: Carl\nLevel: 1\nStrength: 14',
+          start: 0,
+          end: 50,
+          char_count: 50,
+        },
+      ],
+      count: 1,
+    }),
+    formatRoyalRoad: vi.fn().mockResolvedValue({
+      formatted: "[b]Author's Note:[/b]\nThanks for reading!\n\n---\n[spoiler=\"Status Window\"]\n[Status Window]\nName: Carl\n[/spoiler]",
+      stat_boxes_found: 1,
+    }),
   },
   friendlyError: (e: unknown) => String(e),
 }))
@@ -85,6 +103,46 @@ describe('PlatformPanel', () => {
       expect(screen.getByText(/评级 A/)).toBeDefined()
       expect(screen.getByText(/签约潜力分: 92/)).toBeDefined()
       expect(screen.getByText('黄金三章节奏建议：在第二章进一步抛出悬念')).toBeDefined()
+    })
+  })
+
+  it('切换到 LitRPG 与海外排版选项卡，能解析属性面板', async () => {
+    render(<PlatformPanel />)
+    const litrpgTab = screen.getByText(/LitRPG 属性面板与海外排版/)
+    fireEvent.click(litrpgTab)
+
+    expect(screen.getByText('LitRPG 属性面板与 Royal Road 格式化工坊')).toBeDefined()
+
+    const parseBtn = screen.getByText('解析属性面板')
+    fireEvent.click(parseBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('属性面板识别结果')).toBeDefined()
+      expect(screen.getByText('共识别 1 个面板')).toBeDefined()
+      expect(screen.getByText('Name: Carl')).toBeDefined()
+      expect(screen.getByText('Level: 1')).toBeDefined()
+      expect(screen.getByText('Strength: 14')).toBeDefined()
+    })
+  })
+
+  it('点击 Royal Road 一键排版并生成 BBCode 格式代码及支持复制', async () => {
+    render(<PlatformPanel />)
+    const litrpgTab = screen.getByText(/LitRPG 属性面板与海外排版/)
+    fireEvent.click(litrpgTab)
+
+    const formatBtn = screen.getByText('⚡ Royal Road 一键排版')
+    fireEvent.click(formatBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('Royal Road BBCode 排版稿')).toBeDefined()
+      expect(screen.getByText(/\[spoiler="Status Window"\]/)).toBeDefined()
+    })
+
+    const copyBtn = screen.getByText('复制排版代码')
+    fireEvent.click(copyBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('已复制！')).toBeDefined()
     })
   })
 })

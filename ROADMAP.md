@@ -237,10 +237,15 @@ API 端点：130 个 RESTful / SSE 路由
     - 深度编纂入库西方网络文学两大现象级神作《末日地牢卡尔》（LitRPG/末日地牢真人秀/Matt Dinniman）与《学习之母》（西幻时间循环/Domagoj Kurmaic）；
     - 解构提炼 10 张高价值五维资产卡（大纲、人设、开篇、爽点、风格）与 4 条核心暗线伏笔回收链；
     - 精选传世神作编纂矩阵扩充至 16 大神作（80 核心资产卡 + 32 暗线链），测试 1612 项保持全绿。
+12. **前端 LitRPG 属性面板与 Royal Road 格式化工坊（LitRPG Stat Box UI & BBCode Formatter）**：
+    - 在多平台工作台（`PlatformPanel.tsx`）新增 LitRPG 状态面板解析与 Royal Road 格式化选项卡；
+    - 支持一键识别 `[Status Window]`、ASCII 边框与括号标记的属性数值、技能与装备，并生成带作者说及 `[spoiler]` 折叠的 BBCode 稿件，配备一键复制能力；
+    - 优化 `vite.config.ts` 的 vitest forks 配置，前端测试提升至 146 项全绿。
 
 ### 4.3 下一阶段研发工作规划（Upcoming Milestones）
 
 - ✅ **前端写作工坊出海平台面板与 EPUB / Shunn 一键导出适配**（已落地）；
+- ✅ **前端 LitRPG 状态面板解析与 Royal Road BBCode 格式化工坊**（已落地）；
 - 🔄 **更多国际传世神作编纂收录**（已编纂收录《迷雾之子》《玄元仙道》《末日地牢卡尔》《学习之母》，持续推进）。
 
 ---
