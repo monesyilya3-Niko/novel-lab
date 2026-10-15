@@ -76,6 +76,7 @@ class TestDirtyBodiesGet400(unittest.TestCase):
         ("/api/writing/outlines", {"project": 1, "title": "t"}, "字符串"),
         ("/api/writing/characters", {"project": 1, "name": "c"}, "字符串"),
         ("/api/writing/notes", {"project": 1, "content": "n"}, "字符串"),
+        ("/api/writing/count-words", {"text": 123}, "字符串"),
         ("/api/quality/check", {"text": 123}, "字符串"),
         ("/api/quality/book", {"text": 123}, "字符串"),
         ("/api/quality/check", {"target": "C:/Windows"}, "target"),

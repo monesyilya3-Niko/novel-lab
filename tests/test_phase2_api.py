@@ -71,10 +71,11 @@ class TestRouteRegistration(unittest.TestCase):
         # 2026-09-30：写作创作页新增 14 条路由（大纲/人物/便签/统计/导出），14→28。
         # 2026-10-10：新增大纲批量重排（outlines/reorder）与去 AI 味检测（deslop），28→30。
         # 2026-10-10：新增项目元数据管理（GET/POST /api/writing/projects/.../meta），30→32。
+        # 2026-10-15：新增跨语种字数统计（POST /api/writing/count-words），32→33。
         from gui import router
         new_routes = [r for r in router.ROUTES
                       if '/api/writing/' in r[1].pattern or '/api/quality/' in r[1].pattern]
-        self.assertEqual(len(new_routes), 32, f"Expected 32 routes, got {len(new_routes)}")
+        self.assertEqual(len(new_routes), 33, f"Expected 33 routes, got {len(new_routes)}")
 
 
 class TestWritingEndpoints(unittest.TestCase):

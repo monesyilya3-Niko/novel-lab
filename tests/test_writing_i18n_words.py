@@ -110,6 +110,22 @@ class TestWritingI18nWords(unittest.TestCase):
         self.assertEqual(writing_extra.count_words("你好 \n 世界 123"), 7)
         self.assertEqual(writing_extra.count_words("Hello world"), 10)
 
+    def test_count_words_router_api(self):
+        """验证 /api/writing/count-words 路由与参数校验。"""
+        from gui import router
+        from gui.services import ServiceError
+
+        resp, _ = router.dispatch("POST", "/api/writing/count-words", {"text": "Hello world", "mode": "auto"}, {})
+        self.assertEqual(resp["code"], 0)
+        self.assertEqual(resp["data"]["en_words"], 2)
+        self.assertEqual(resp["data"]["primary_language"], "en")
+
+        # 脏参数校验抛出 400 ServiceError
+        with self.assertRaises(ServiceError):
+            router.dispatch("POST", "/api/writing/count-words", {"text": 123}, {})
+        with self.assertRaises(ServiceError):
+            router.dispatch("POST", "/api/writing/count-words", {"text": "ok", "mode": 123}, {})
+
 
 if __name__ == "__main__":
     unittest.main()

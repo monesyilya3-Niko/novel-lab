@@ -508,6 +508,18 @@ def _h_writing_deslop(_params: dict[str, Any], body: dict[str, Any]) -> dict[str
     return ok(deslop_service.analyze_deslop(text, lang=lang))
 
 
+def _h_writing_count_words(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    text = b.get("text")
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    mode = b.get("mode", "auto")
+    if not isinstance(mode, str):
+        raise ServiceError("mode 必须为字符串", 400)
+    return ok(writing_extra.count_words_i18n(text, mode=mode))
+
+
 def _h_quality_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     b = body or {}
@@ -1168,6 +1180,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/writing/stats$"), _h_writing_stats),
     ("GET", re.compile(r"^/api/writing/export$"), _h_writing_export),
     ("POST", re.compile(r"^/api/writing/deslop$"), _h_writing_deslop),
+    ("POST", re.compile(r"^/api/writing/count-words$"), _h_writing_count_words),
     # W15 阶段二：质检（M3）
     ("POST", re.compile(r"^/api/quality/check$"), _h_quality_check),
     ("POST", re.compile(r"^/api/quality/book$"), _h_quality_book),

@@ -483,8 +483,10 @@ export const writingApi = {
     get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}`),
   export: (project: string, format: 'txt' | 'md' | 'docx' = 'txt') =>
     get<ExportResult>(`/writing/export?project=${encodeURIComponent(project)}&format=${format}`),
-  deslop: (text: string) =>
-    post<DeslopResult>('/writing/deslop', { text }),
+  deslop: (text: string, lang: 'auto' | 'zh' | 'en' = 'auto') =>
+    post<DeslopResult>('/writing/deslop', { text, lang }),
+  countWords: (text: string, mode: 'auto' | 'zh' | 'cjk' | 'en' = 'auto') =>
+    post<WordCountResult>('/writing/count-words', { text, mode }),
   getProjectMeta: (project: string) =>
     get<ProjectMeta>(`/writing/projects/${encodeURIComponent(project)}/meta`),
   updateProjectMeta: (
@@ -537,9 +539,18 @@ export interface DeslopResult {
     sentenceCount: number
     issuesCount: number
     rangDensity: number
+    adverbDensity?: number
   }
   issues: DeslopIssue[]
   suggestions: string[]
+}
+
+export interface WordCountResult {
+  total: number
+  cjkChars: number
+  enWords: number
+  readingTimeMinutes: number
+  primaryLanguage: 'zh' | 'en' | 'unknown'
 }
 
 export interface OutlineItem {

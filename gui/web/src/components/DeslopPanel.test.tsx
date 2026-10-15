@@ -65,4 +65,47 @@ describe('DeslopPanel 去 AI 味诊断面板', () => {
       expect(screen.getByText(/时间凝固模板/)).toBeInTheDocument()
     })
   })
+
+  it('切换到 Exoscribe 英文模式并展示副词占比报告', async () => {
+    mockDeslop.mockResolvedValueOnce({
+      aiScore: 38.0,
+      verdict: 'MILD',
+      verdictCn: '轻度模式化（个别英文模板与修辞冗余）',
+      stats: {
+        wordCount: 320,
+        sentenceCount: 18,
+        issuesCount: 1,
+        rangDensity: 0.0,
+        adverbDensity: 5.2,
+      },
+      issues: [
+        {
+          type: 'hollow_rhetoric',
+          label: 'A testament to 虚辞',
+          snippet: 'a testament to',
+          index: 0,
+          weight: 12,
+          suggestion: 'Anchor in concrete actions.',
+        },
+      ],
+      suggestions: ['Cut abstract LLM metaphors.'],
+    })
+
+    render(<DeslopPanel />)
+    const enToggle = screen.getByText('Exoscribe 英文')
+    fireEvent.click(enToggle)
+
+    const textarea = screen.getByPlaceholderText(/粘贴待检测的章节/)
+    fireEvent.change(textarea, { target: { value: 'His bravery was a testament to courage.' } })
+
+    const btn = screen.getByText('开始去 AI 味诊断')
+    fireEvent.click(btn)
+
+    await waitFor(() => {
+      expect(mockDeslop).toHaveBeenCalledWith('His bravery was a testament to courage.', 'en')
+      expect(screen.getByText('38')).toBeInTheDocument()
+      expect(screen.getByText(/A testament to 虚辞/)).toBeInTheDocument()
+      expect(screen.getByText(/5.2%/)).toBeInTheDocument()
+    })
+  })
 })

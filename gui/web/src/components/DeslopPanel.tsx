@@ -15,6 +15,8 @@ import Grid from '@mui/material/Grid'
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
 import PsychologyIcon from '@mui/icons-material/Psychology'
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
+import ToggleButton from '@mui/material/ToggleButton'
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { writingApi, friendlyError, type DeslopResult } from '../api/client'
 import { useThemeMode } from '../state/ThemeModeContext'
 import { ink, glassCard } from '../ink'
@@ -23,6 +25,7 @@ import DiffReviewView from './DiffReviewView'
 export default function DeslopPanel() {
   const { isDark } = useThemeMode()
   const [text, setText] = useState('')
+  const [lang, setLang] = useState<'auto' | 'zh' | 'en'>('auto')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<DeslopResult | null>(null)
@@ -37,7 +40,7 @@ export default function DeslopPanel() {
     setLoading(true)
     setError('')
     try {
-      const res = await writingApi.deslop(text)
+      const res = await (lang === 'auto' ? writingApi.deslop(text) : writingApi.deslop(text, lang))
       setResult(res)
     } catch (e) {
       setError(`诊断失败: ${friendlyError(e)}`)
@@ -48,7 +51,7 @@ export default function DeslopPanel() {
 
   const handleQuickPolishSample = () => {
     if (!text.trim()) return
-    // 模拟针对检测到的问题进行规则降噪去 AI 味
+    // 针对检测到的问题进行规则降噪去 AI 味（支持中文与 Exoscribe 英文）
     let p = text
     p = p.replace(/这一刻[，,]?(?:时间|空气|呼吸)?仿佛(?:凝固|停止|静止)了?/g, '四周陷入了一片死寂')
     p = p.replace(/天地(?:之间|间)?仿佛只剩(?:下|下了)?/g, '目之所及只剩下')
@@ -62,6 +65,20 @@ export default function DeslopPanel() {
     p = p.replace(/宛如(?:一[只头尊])?断了线的风筝/g, '整个人倒飞砸落')
     p = p.replace(/(?:不可置否|毋庸置疑|显而易见地?)/g, '')
     p = p.replace(/嘴角(?:微微)?勾起(?:一抹|一丝)?(?:玩味|戏谑|冰冷|嘲讽|残忍|淡淡)?的(?:笑意|弧度|冷笑)/g, '扯了扯嘴角')
+
+    // 英文 Exoscribe 排毒替换
+    p = p.replace(/\ba testament to\b/gi, 'proof of')
+    p = p.replace(/\b(?:delve|delves|delved|delving)(?:\s+deep)?\s+into\b/gi, 'explore')
+    p = p.replace(/\b(?:rich\s+|intricate\s+)?tapestry\s+of\b/gi, 'depth of')
+    p = p.replace(/\bbeacon\s+of\s+(?:hope|light)\b/gi, 'light')
+    p = p.replace(/\bdance\s+of\s+(?:shadows|light)\b/gi, 'shadows moving')
+    p = p.replace(/\bair\s+was\s+(?:thick|heavy)\s+with\s+tension\b/gi, 'tension gripped the room')
+    p = p.replace(/\b(?:sent\s+chills?|a\s+shiver)\s+(?:down|ran\s+down)\s+(?:his|her|their|my)?\s*spine\b/gi, 'felt a sudden chill')
+    p = p.replace(/\b(?:he|she|they|I)\s+could\s+hear\b/gi, 'heard')
+    p = p.replace(/\b(?:he|she|they|I)\s+watched\s+as\b/gi, '')
+    p = p.replace(/\bsaid\s+softly\b/gi, 'whispered')
+    p = p.replace(/\breplied\s+coldly\b/gi, 'snapped')
+
     setPolishedText(p)
     setShowDiff(true)
   }
@@ -130,9 +147,30 @@ export default function DeslopPanel() {
           sx={{ mb: 1.5 }}
         />
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary">
-            当前字数：{text.length} 字
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              当前字数：{text.length} 字
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              value={lang}
+              exclusive
+              onChange={(_, newLang) => {
+                if (newLang) setLang(newLang)
+              }}
+              sx={{ height: 28 }}
+            >
+              <ToggleButton value="auto" sx={{ px: 1, py: 0, fontSize: '0.75rem' }}>
+                双语自适应
+              </ToggleButton>
+              <ToggleButton value="zh" sx={{ px: 1, py: 0, fontSize: '0.75rem' }}>
+                中文网文
+              </ToggleButton>
+              <ToggleButton value="en" sx={{ px: 1, py: 0, fontSize: '0.75rem' }}>
+                Exoscribe 英文
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button
               variant="contained"
@@ -205,9 +243,9 @@ export default function DeslopPanel() {
                       </Typography>
                     ))
                   )}
-                  <Box sx={{ display: 'flex', gap: 3, mt: 2, pt: 1.5, borderTop: `1px solid ${isDark ? ink.nightLine : ink.hairline}` }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 2, pt: 1.5, borderTop: `1px solid ${isDark ? ink.nightLine : ink.hairline}` }}>
                     <Typography variant="caption" color="text.secondary">
-                      中文字数：<b>{result.stats.wordCount}</b>
+                      {result.stats.adverbDensity !== undefined && result.stats.adverbDensity > 0 ? '西文词数' : '有效字数'}：<b>{result.stats.wordCount}</b>
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       句子总数：<b>{result.stats.sentenceCount}</b>
@@ -215,9 +253,15 @@ export default function DeslopPanel() {
                     <Typography variant="caption" color="text.secondary">
                       命中疑点：<b>{result.stats.issuesCount}</b> 处
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      「让」字千字密度：<b>{result.stats.rangDensity}</b>
-                    </Typography>
+                    {result.stats.adverbDensity !== undefined && result.stats.adverbDensity > 0 ? (
+                      <Typography variant="caption" color="text.secondary">
+                        -ly 副词占比：<b>{result.stats.adverbDensity.toFixed(1)}%</b>
+                      </Typography>
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        「让」字千字密度：<b>{result.stats.rangDensity}</b>
+                      </Typography>
+                    )}
                   </Box>
                 </CardContent>
               </Card>
