@@ -542,10 +542,10 @@ class TestEssenceService(unittest.TestCase):
         self.assertFalse(resp_api["data"]["is_compliant"])
 
     def test_ensure_curated_library(self):
-        """验证 8 大传世神作编纂矩阵入库、资产与伏笔链完整绑定。"""
+        """验证 12 大传世神作编纂矩阵入库、资产与伏笔链完整绑定。"""
         res = essence_service.ensure_curated_library(clean_raw_corpus=False)
         self.assertTrue(res["success"])
-        self.assertEqual(res["curated_books_seeded"], 8)
+        self.assertEqual(res["curated_books_seeded"], 12)
 
         books = essence_service.list_books()
         titles = {b["title"] for b in books}
@@ -557,6 +557,10 @@ class TestEssenceService(unittest.TestCase):
         self.assertIn("庆余年", titles)
         self.assertIn("雪中悍刀行", titles)
         self.assertIn("斗破苍穹", titles)
+        self.assertIn("吞噬星空", titles)
+        self.assertIn("学霸的黑科技系统", titles)
+        self.assertIn("惊悚乐园", titles)
+        self.assertIn("全职高手", titles)
 
         # 验证《暮冬念春》五维资产与伏笔
         md_book = essence_service.get_book("curated_mudongnianchun")
@@ -569,6 +573,25 @@ class TestEssenceService(unittest.TestCase):
 
         chains = essence_service.list_chains(book_id="curated_mudongnianchun")
         self.assertGreaterEqual(len(chains), 2)
+
+        # 验证新增神作《吞噬星空》与《全职高手》五维资产与伏笔链
+        ts_book = essence_service.get_book("curated_tunshixingkong")
+        self.assertEqual(ts_book["title"], "吞噬星空")
+        self.assertEqual(ts_book["total_chapters"], 1480)
+        self.assertEqual(ts_book["genre"], "kehuan")
+        ts_assets = essence_service.list_assets(book_id="curated_tunshixingkong")
+        self.assertGreaterEqual(len(ts_assets), 5)
+        ts_chains = essence_service.list_chains(book_id="curated_tunshixingkong")
+        self.assertGreaterEqual(len(ts_chains), 2)
+
+        qz_book = essence_service.get_book("curated_quanzhigaoshou")
+        self.assertEqual(qz_book["title"], "全职高手")
+        self.assertEqual(qz_book["total_chapters"], 1728)
+        self.assertEqual(qz_book["genre"], "dushi")
+        qz_assets = essence_service.list_assets(book_id="curated_quanzhigaoshou")
+        self.assertGreaterEqual(len(qz_assets), 5)
+        qz_chains = essence_service.list_chains(book_id="curated_quanzhigaoshou")
+        self.assertGreaterEqual(len(qz_chains), 2)
 
     def test_adopt_book_to_project(self):
         """验证一键转入整本神作资产到写作项目。"""
