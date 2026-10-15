@@ -165,6 +165,146 @@ DENSITY_RULES = [
     },
 ]
 
+# ==============================================================================
+# Exoscribe 英文去 AI 味规则表（English Anti-Slop Patterns）
+# ==============================================================================
+
+_EN_WORD_RE = re.compile(r"\b[a-zA-Z0-9]+(?:[-'][a-zA-Z0-9]+)*\b")
+_EN_SENT_SPLIT_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+_EN_ADVERB_RE = re.compile(r"\b[a-zA-Z]+ly\b")
+_EN_NON_ADVERB_LY = frozenset({
+    "early", "daily", "weekly", "monthly", "yearly", "friendly", "lonely",
+    "lovely", "holy", "silly", "ugly", "family", "belly", "jelly", "ally",
+    "rally", "fly", "rely", "apply", "supply", "butterfly", "italy", "only",
+    "likely", "assembly", "monopoly", "bully", "chill", "jolly",
+})
+
+# 1. 英文假大空与玄虚比喻模板（LLM Hollow Rhetoric & Clichés）
+EN_HOLLOW_RHETORIC_PATTERNS = [
+    (
+        r"(?i)\btestament\s+to\b",
+        "A testament to 虚辞",
+        "Classic LLM cliché. Anchor the achievement or consequence in concrete actions.",
+    ),
+    (
+        r"(?i)\b(?:delve|delves|delved|delving)(?:\s+deep)?\s+into\b",
+        "Delve into 滥用",
+        "Stale AI buzzword. Use explore/investigate or show character actions directly.",
+    ),
+    (
+        r"(?i)\b(?:rich\s+|intricate\s+)?tapestry\s+of\b",
+        "Tapestry of 比喻俗套",
+        "Overworked metaphorical trope. Ground descriptions in tangible sensory reality.",
+    ),
+    (
+        r"(?i)\bbeacon\s+of\s+(?:hope|light)\b",
+        "Beacon of hope 俗套",
+        "Melodramatic trope. Show characters inspiring others through deeds.",
+    ),
+    (
+        r"(?i)\bdance\s+of\s+(?:shadows|light|fire|flames)\b",
+        "Dance of shadows 模板",
+        "Overused poetic flourish. Describe the physical movement of light or shadow directly.",
+    ),
+    (
+        r"(?i)\bsymphony\s+of\s+(?:sounds|destruction|silence|colors|whispers|screams)\b",
+        "Symphony of 虚辞",
+        "Abstract musical metaphor. Specify real auditory or visual details.",
+    ),
+    (
+        r"(?i)\bwhispers\s+of\s+(?:the\s+)?(?:past|wind|doubt|shadows)\b",
+        "Whispers of 虚辞",
+        "Vague melodramatic trope. Use concrete memories or sensory cues.",
+    ),
+    (
+        r"(?i)\b(?:etched|seared)\s+into\s+(?:his|her|their|my)?\s*(?:memory|mind|soul)\b",
+        "Etched into memory 俗套",
+        "Show involuntary physical recall or lasting consequences rather than poetic claims.",
+    ),
+    (
+        r"(?i)\b(?:sent\s+chills?|a\s+shiver)\s+(?:down|ran\s+down)\s+(?:his|her|their|my)?\s*spine\b",
+        "Shiver down spine 套路",
+        "Stock bodily reaction. Replace with visceral sensations like throat tightness or shallow breath.",
+    ),
+    (
+        r"(?i)\bair\s+was\s+(?:thick|heavy)\s+with\b",
+        "Air thick with 抽象气氛",
+        "Show characters shifting weight, avoiding eye contact, or room temperature.",
+    ),
+    (
+        r"(?i)\btime\s+(?:seemed\s+to|appeared\s+to)?\s*(?:stand\s+still|freeze|stop)\b",
+        "Time stood still 模板",
+        "Show hyper-focus on specific micro-actions or sounds rather than stopping time.",
+    ),
+    (
+        r"(?i)\ba\s+palpable\s+sense\s+of\b",
+        "Palpable sense of 宣教",
+        "Abstract narrator proclamation. Show emotional atmosphere through character reactions.",
+    ),
+    (
+        r"(?i)\bunspoken\s+(?:bond|understanding|agreement)\b",
+        "Unspoken understanding 套路",
+        "Show the shared nod, exchanged glance, or synchronized motion.",
+    ),
+]
+
+# 2. 英文感知过滤词（Filter Words - 削弱代入感，隔阂读者与现场）
+EN_FILTER_WORDS_PATTERNS = [
+    (
+        r"(?i)\b(?:he|she|they|I)\s+(?:could\s+(?:hear|see|feel|smell|taste|sense))\b",
+        "Filter word (could see/hear/feel)",
+        "Remove the perceptual filter: instead of 'He could hear footsteps', write 'Footsteps echoed'.",
+    ),
+    (
+        r"(?i)\b(?:he|she|they|I)\s+(?:watched|noticed|observed)\s+as\b",
+        "Filter word (watched as)",
+        "Cut 'watched as' and let the action unfold directly before the reader.",
+    ),
+    (
+        r"(?i)\b(?:felt|feeling)\s+a\s+(?:sudden\s+)?(?:wave|surge|pang|rush)\s+of\b",
+        "Felt a surge/wave of",
+        "Telling emotions. Ground the feeling in physical sensation (heart hammering, stomach dropping).",
+    ),
+    (
+        r"(?i)\b(?:he|she|they|I)\s+(?:decided\s+to|began\s+to|started\s+to)\s+[a-z]+",
+        "Indirect action initiation",
+        "Strengthen prose by performing the action directly ('decided to run' -> 'ran').",
+    ),
+]
+
+# 3. 英文否定翻转句式（Negation Flip - LLM 标志性议论文腔调）
+EN_NEGATION_FLIP_PATTERNS = [
+    (
+        r"(?i)\b(?:it\s+was|was)\s+not\s+just\s+[^,.;\n]{1,30},\s*(?:but|it\s+was)\b",
+        "Not just X but Y 议论翻转",
+        "Cut the negative setup; present the actual state directly.",
+    ),
+    (
+        r"(?i)\bnot\s+because\s+[^,.;\n]{1,30},\s*but\s+because\b",
+        "Not because A but because B",
+        "Avoid argumentative setup; show motivation through deed.",
+    ),
+    (
+        r"(?i)\bwasn't\s+[^,.;\n]{1,30},\s*(?:but\s+rather|rather)\b",
+        "Wasn't X but rather Y",
+        "State the reality affirmatively without hedging.",
+    ),
+]
+
+# 4. 英文对白弱修饰与弱副词堆叠（Weak Dialogue Tags & Modifiers）
+EN_ADVERB_PATTERNS = [
+    (
+        r"(?i)\b(?:said|whispered|shouted|replied|asked|muttered)\s+(?:softly|angrily|coldly|quietly|firmly|nervously|hesitantly|gently|bitterly|excitedly)\b",
+        "弱对话标签挂副词",
+        "Eliminate the -ly adverb. Convey tone through dialogue content, rhythm, or an action beat.",
+    ),
+    (
+        r"(?i)\b(?:very|extremely|incredibly|utterly|absolutely|completely)\s+(?:cold|hot|angry|scared|happy|sad|dark|bright|silent|quiet)\b",
+        "虚弱副词堆砌",
+        "Replace weak modifier + weak adjective with a strong single verb/noun/adjective (e.g. 'furious', 'terrified').",
+    ),
+]
+
 _SENT_SPLIT_RE = re.compile(r"[。！？\n\r]+|[…]{2,}")
 # 句内并列分句边界（；/;）——排比同构句常以分号串联，不切开就会整段漏检。
 _CLAUSE_SPLIT_RE = re.compile(r"[；;]+")
@@ -257,13 +397,143 @@ def _locate(text: str, needle: str, start: int) -> int:
     return idx if idx >= 0 else start
 
 
-def analyze_deslop(text: str) -> dict[str, Any]:
-    """对输入文本进行全维度去 AI 味深度诊断。"""
+def _analyze_deslop_en(text: str, en_words: list[str]) -> dict[str, Any]:
+    """Exoscribe 国际版英文小说去 AI 味深度诊断引擎。"""
+    en_count = len(en_words)
+    raw_sents = [s.strip() for s in _EN_SENT_SPLIT_RE.split(text) if s.strip()]
+    sentence_count = len(raw_sents)
+
+    issues: list[dict[str, Any]] = []
+
+    # 1. 规则表驱动扫描
+    rule_groups = (
+        ("hollow_rhetoric", EN_HOLLOW_RHETORIC_PATTERNS, 12),
+        ("filter_words", EN_FILTER_WORDS_PATTERNS, 9),
+        ("negation_flip", EN_NEGATION_FLIP_PATTERNS, 14),
+        ("adverb_tics", EN_ADVERB_PATTERNS, 8),
+    )
+    for itype, patterns, weight in rule_groups:
+        for pat, label, suggestion in patterns:
+            for m in re.finditer(pat, text):
+                issues.append({
+                    "type": itype,
+                    "label": label,
+                    "snippet": m.group(0),
+                    "index": m.start(),
+                    "_match_len": m.end() - m.start(),
+                    "weight": weight,
+                    "suggestion": suggestion,
+                })
+
+    issues = _merge_overlapping(issues)
+
+    # 2. -ly 副词密度专项检测
+    all_ly = _EN_ADVERB_RE.findall(text)
+    adverb_hits = [w for w in all_ly if w.lower() not in _EN_NON_ADVERB_LY]
+    adverb_count = len(adverb_hits)
+    adverb_density = (adverb_count / max(en_count, 1)) * 100.0
+    if en_count >= 30 and adverb_density > 4.0:
+        issues.append({
+            "type": "adverb_overuse",
+            "label": "副词使用超标 (-ly adverbs)",
+            "snippet": f"全篇共检测到 {adverb_count} 个副词（占比 {adverb_density:.1f}%）",
+            "index": 0,
+            "weight": 12,
+            "suggestion": "削减 -ly 副词修饰，将弱动词+副词搭配替换为更具力量感的精准动词。",
+        })
+
+    # 3. 英文连续相同主语/代词起手检测（Monotonous Sentence Starters）
+    lead_words: list[tuple[str, str, int]] = []
+    for s in raw_sents:
+        wm = _EN_WORD_RE.search(s)
+        if wm:
+            lead_words.append((wm.group(0).lower(), s, _locate(text, s, 0)))
+        else:
+            lead_words.append(("", s, 0))
+
+    k = 0
+    n_leads = len(lead_words)
+    while k < n_leads:
+        w = lead_words[k][0]
+        if not w or w not in ("he", "she", "they", "it", "the"):
+            k += 1
+            continue
+        nxt_k = k + 1
+        while nxt_k < n_leads and lead_words[nxt_k][0] == w:
+            nxt_k += 1
+        chain_len = nxt_k - k
+        if chain_len >= 3:
+            snippets = [lead_words[idx][1] for idx in range(k, nxt_k)]
+            issues.append({
+                "type": "parallelism",
+                "label": f"连续主语起手 ('{w.capitalize()}' 句式单调)",
+                "snippet": " | ".join(snippets[:4]) + ("..." if chain_len > 4 else ""),
+                "index": lead_words[k][2],
+                "weight": 14,
+                "suggestion": f"连续多句均以 '{w}' 开头，节奏机械。倒装从句、使用分词短语或以环境/动作细节起句以打破单调。",
+            })
+        k = nxt_k if chain_len >= 3 else k + 1
+
+    # 综合计分 (0-100)
+    penalty_sum = sum(it["weight"] for it in issues)
+    # 按英文页/篇幅缩放：以 250 词为基准
+    scale_factor = 250.0 / max(en_count, 80)
+    scaled_penalty = penalty_sum * scale_factor
+    ai_score = min(100.0, max(0.0, round(scaled_penalty * 1.8, 1)))
+
+    if ai_score < 18.0:
+        verdict = "NATURAL"
+        verdict_cn = "自然流畅（英文地道，无明显 AI 痕迹）"
+    elif ai_score < 40.0:
+        verdict = "MILD"
+        verdict_cn = "轻度模式化（个别英文模板与修辞冗余）"
+    elif ai_score < 65.0:
+        verdict = "NOTICEABLE"
+        verdict_cn = "AI 腔明显（存在高频 LLM 俗套虚辞与感知过滤词）"
+    else:
+        verdict = "SEVERE"
+        verdict_cn = "重度 AI 味（需深度重塑去油）"
+
+    suggestions = []
+    if any(it["type"] == "hollow_rhetoric" for it in issues):
+        suggestions.append("警惕 'testament to'、'tapestry of' 等玄虚修辞，将描写锚定在具象触觉与现实动作。")
+    if any(it["type"] == "filter_words" for it in issues):
+        suggestions.append("清除 'could see/feel'、'watched as' 等感知过滤词，直接呈现场景动作（Show, don't tell）。")
+    if any(it["type"] in ("adverb_tics", "adverb_overuse") for it in issues):
+        suggestions.append("削减对话与动作中的 -ly 副词，选用更有画面感与表现力的动词原词。")
+    if any(it["type"] == "parallelism" for it in issues):
+        suggestions.append("丰富句式开头与长短句节奏，避免连续多句以同一代词机械铺叙。")
+
+    return {
+        "ai_score": ai_score,
+        "verdict": verdict,
+        "verdict_cn": verdict_cn,
+        "stats": {
+            "word_count": en_count,
+            "sentence_count": sentence_count,
+            "issues_count": len(issues),
+            "rang_density": 0.0,
+            "adverb_density": round(adverb_density, 1),
+        },
+        "issues": issues[:30],
+        "suggestions": suggestions,
+    }
+
+
+def analyze_deslop(text: str, lang: str = "auto") -> dict[str, Any]:
+    """对输入文本进行全维度去 AI 味深度诊断（支持中文网文与 Exoscribe 英文国际版）。"""
     if not isinstance(text, str):
         text = str(text or "")
 
-    raw_len = len(text)
+    normalized_lang = (lang or "auto").strip().lower()
     cn_count = sum(1 for ch in text if "\u4e00" <= ch <= "\u9fff")
+    en_words = _EN_WORD_RE.findall(text)
+    en_count = len(en_words)
+
+    # 英文分支判定：显式指定 en，或 auto 模式下无中文且有英文词汇
+    if normalized_lang == "en" or (normalized_lang == "auto" and cn_count == 0 and en_count > 0):
+        return _analyze_deslop_en(text, en_words)
+
     if cn_count == 0:
         return {
             "ai_score": 0.0,
@@ -273,6 +543,8 @@ def analyze_deslop(text: str) -> dict[str, Any]:
             "issues": [],
             "suggestions": [],
         }
+
+    raw_len = len(text)
 
     # 切句
     raw_sents = [s.strip() for s in _SENT_SPLIT_RE.split(text) if s.strip()]

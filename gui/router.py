@@ -504,7 +504,8 @@ def _h_writing_deslop(_params: dict[str, Any], body: dict[str, Any]) -> dict[str
     text = b.get("text")
     if not isinstance(text, str):
         raise ServiceError("text 必须为字符串", 400)
-    return ok(deslop_service.analyze_deslop(text))
+    lang = b.get("lang", "auto")
+    return ok(deslop_service.analyze_deslop(text, lang=lang))
 
 
 def _h_quality_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:

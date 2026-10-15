@@ -281,6 +281,87 @@ class TestDeslopService(unittest.TestCase):
         self.assertEqual(res["issues"], [], f"误报: {res['issues']}")
         self.assertEqual(res["verdict"], "NATURAL")
 
+    # --- Exoscribe 英文去 AI 味排毒引擎测试（International Edition） ---
+
+    def test_english_natural_text(self):
+        """反向守卫：地道自然的英文文本不得被误报。"""
+        text = (
+            "He walked through the damp alley, boots crunching on broken glass. "
+            "The cold rain seeped through his coat collar, soaking the back of his neck. "
+            "A stray cat dashed past a row of rusted trash bins."
+        )
+        res = deslop_service.analyze_deslop(text)
+        self.assertEqual(res["verdict"], "NATURAL")
+        self.assertLess(res["ai_score"], 18.0)
+        self.assertEqual(res["issues"], [])
+        self.assertGreater(res["stats"]["word_count"], 25)
+
+    def test_english_hollow_rhetoric_and_cliches(self):
+        """检出英文 LLM 高频俗套虚辞（testament to / delve into / tapestry / beacon of hope 等）。"""
+        text = (
+            "His bravery was a testament to the human spirit, a beacon of hope in the dark. "
+            "She decided to delve deep into the rich tapestry of ancient mysteries. "
+            "The dance of shadows flickered on the wall, and the air was thick with tension. "
+            "A shiver ran down his spine as he felt a palpable sense of dread."
+        )
+        res = deslop_service.analyze_deslop(text)
+        self.assertIn(res["verdict"], ("NOTICEABLE", "SEVERE"))
+        self.assertGreater(res["ai_score"], 35.0)
+        self.assertGreaterEqual(len(res["issues"]), 4)
+        issue_types = {it["type"] for it in res["issues"]}
+        self.assertIn("hollow_rhetoric", issue_types)
+
+    def test_english_filter_words_and_negation_flip(self):
+        """检出英文感知过滤词 (could see/hear, watched as) 与否定翻转句式。"""
+        text = (
+            "He could hear the distant footsteps echoing down the hall. "
+            "She watched as the dark carriage rolled away into the mist. "
+            "It was not just fear, but a desperate instinct to survive. "
+            "She whispered softly while he replied coldly."
+        )
+        res = deslop_service.analyze_deslop(text)
+        types = {it["type"] for it in res["issues"]}
+        self.assertTrue(types & {"filter_words", "negation_flip", "adverb_tics"})
+
+    def test_english_parallelism_starters(self):
+        """连续 3 句以相同代词起句（He... He... He...）应检出句式单调排比。"""
+        text = (
+            "He opened the wooden door. "
+            "He walked to the dust-covered desk. "
+            "He picked up the old brass key."
+        )
+        res = deslop_service.analyze_deslop(text)
+        parallel = [it for it in res["issues"] if it["type"] == "parallelism"]
+        self.assertEqual(len(parallel), 1)
+        self.assertIn("He", parallel[0]["label"])
+
+    def test_english_adverb_overuse_density(self):
+        """当篇幅超过 50 词且 -ly 副词比例过高时，应触发副词密度告警。"""
+        text = (
+            "He quickly ran, breathing heavily and staring wildly at the dark road. "
+            "She suddenly stopped, completely shocked and utterly confused. "
+            "They slowly walked, carefully watching, quietly waiting, deeply hoping, "
+            "nervously trembling, excitedly whispering, and terribly shaking in the cold night."
+        )
+        res = deslop_service.analyze_deslop(text)
+        types = {it["type"] for it in res["issues"]}
+        self.assertIn("adverb_overuse", types)
+        self.assertGreater(res["stats"]["adverb_density"], 4.5)
+
+    def test_english_lang_dispatch_and_router(self):
+        """验证 lang 显式分发与 router 接口连通性。"""
+        # 显式 lang="en" 即使包含少量其他字符也能进入英文管线
+        res = deslop_service.analyze_deslop("A testament to our resolve.", lang="en")
+        self.assertEqual(res["stats"]["word_count"], 5)
+        self.assertTrue(any(it["type"] == "hollow_rhetoric" for it in res["issues"]))
+
+        # router _h_writing_deslop 连通性
+        body = {"text": "She decided to delve deep into the rich tapestry of life.", "lang": "en"}
+        resp = router._h_writing_deslop({}, body)
+        self.assertEqual(resp["code"], 0)
+        self.assertIn("ai_score", resp["data"])
+        self.assertGreater(resp["data"]["stats"]["word_count"], 0)
+
 
 class TestWritingExportAndReorder(unittest.TestCase):
     def setUp(self):

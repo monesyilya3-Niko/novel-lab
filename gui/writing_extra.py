@@ -50,6 +50,83 @@ def count_words(text: str) -> int:
     return len(_WS_RE.sub("", text))
 
 
+# CJK 统一表意文字及扩展区、兼容字、假名、谚文
+_CJK_CHAR_RE = re.compile(
+    r"[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]"
+)
+# 英文/西文独立单词（支持中划线连词如 state-of-the-art，撇号缩写如 it's, don't）
+_EN_WORD_RE = re.compile(r"\b[a-zA-Z0-9]+(?:[-'][a-zA-Z0-9]+)*\b")
+
+
+def count_words_i18n(text: str, mode: str = "auto") -> dict[str, Any]:
+    """多语言 / 跨语种自适应字数与阅读时长统计引擎（Exoscribe 双语核心底座）。
+
+    参数:
+        text: 待统计文本。
+        mode: 统计模式。
+            - "auto": 默认自适应混合模式。CJK 按单字计，西文按单词正则切分计词数，
+                      总数 = CJK 字符数 + 西文单词数。
+            - "zh" / "cjk": 中文网文传统口径，全等同于 ``count_words(text)``（去空白字符数）。
+            - "en": 纯西文统计口径，仅提取有效西文单词数。
+
+    返回:
+        dict:
+            - total: int, 选定口径下的总字数/词数。
+            - cjk_chars: int, 文本包含的 CJK 字符数。
+            - en_words: int, 文本包含的英文/西文单词数。
+            - reading_time_minutes: float, 预估阅读耗时（分钟，保留 1 位小数；中文 400 字/分，英文 220 词/分）。
+            - primary_language: str, 主导语言 ("zh" | "en" | "unknown")。
+    """
+    if not text or not isinstance(text, str):
+        return {
+            "total": 0,
+            "cjk_chars": 0,
+            "en_words": 0,
+            "reading_time_minutes": 0.0,
+            "primary_language": "unknown",
+        }
+
+    cjk_matches = _CJK_CHAR_RE.findall(text)
+    cjk_count = len(cjk_matches)
+    en_matches = _EN_WORD_RE.findall(text)
+    en_count = len(en_matches)
+
+    # 确定主导语言
+    if cjk_count == 0 and en_count == 0:
+        primary_lang = "unknown"
+    elif cjk_count >= en_count:
+        primary_lang = "zh"
+    else:
+        primary_lang = "en"
+
+    normalized_mode = (mode or "auto").strip().lower()
+    if normalized_mode in ("zh", "cjk"):
+        total = count_words(text)
+        mins = total / 400.0
+    elif normalized_mode == "en":
+        total = en_count
+        mins = en_count / 220.0
+    else:  # auto
+        total = cjk_count + en_count
+        mins = (cjk_count / 400.0) + (en_count / 220.0)
+
+    # 预估阅读时间归一化：有文本时最小 0.1 分钟（约 6 秒），无内容则 0.0
+    if total > 0:
+        reading_time = round(mins, 1)
+        if reading_time == 0.0:
+            reading_time = 0.1
+    else:
+        reading_time = 0.0
+
+    return {
+        "total": total,
+        "cjk_chars": cjk_count,
+        "en_words": en_count,
+        "reading_time_minutes": reading_time,
+        "primary_language": primary_lang,
+    }
+
+
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
