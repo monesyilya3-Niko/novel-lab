@@ -7,7 +7,7 @@
 > - **工程代号 / Monorepo**：`novel-lab`
 >
 > **编制时间**：2026-10-15  
-> **当前工程基线**：v2.3.0（后端单测 1604 项全通 ｜ 前端测试 144 项全通 ｜ API 端点 128 个）  
+> **当前工程基线**：v2.2.0（后端单测 1612 项全通 ｜ 前端测试 144 项全通 ｜ API 端点 130 个）  
 > **文件定位**：全景式战略白皮书，涵盖**核心理念哲学**、**中英文双版规划**、**当前项目进度实录**与**全球英文书籍收录及分析路线图**。
 
 ---
@@ -183,10 +183,10 @@ graph TD
 
 ```
 代码版本：v2.2.0 (单向严格递增)
-后端单测：1605 项通过 (0 失败，7 skipped)
+后端单测：1612 项通过 (0 失败，7 skipped)
 前端测试：144 项通过 (26 套件全绿)
 代码规范：ruff check 100% 全绿 (纯标准库零新增依赖)
-API 端点：128 个 RESTful / SSE 路由
+API 端点：130 个 RESTful / SSE 路由
 客户端部署：本地桌面客户端已完成 v2.2.0 部署 (位于 %LOCALAPPDATA%\Programs\novel-lab-desktop，主程序实测版本 2.2.0.0)
 ```
 
@@ -227,11 +227,17 @@ API 端点：128 个 RESTful / SSE 路由
    - 针对英文大模型叙事八股，扩展高危虚饰词（`labyrinthine`、`resonated deeply`、`palpable tension`）与弱化代入感的分词悬垂起手（`Dangling participial opener`）检测；
    - 优化区间合并算法单调性排序，杜绝无序正则输入导致的跨段落误合并；
    - 后端单测提升至 1605 项全绿。
+10. **国际化出海与海外平台合规引擎（Royal Road & Amazon KDP Compliance & EPUB 3.0 / Shunn Export）**：
+    - 针对欧美网络文学平台 Royal Road 研发百科式说明文（Infodump）、断章悬念（Cliffhanger）检测，并实现 LitRPG 状态面板（`parse_stat_box`）解析与 BBCode 折叠排版（`format_royalroad_chapter`）；
+    - 针对 Amazon KDP 研发超长段落阅读窒息感（Wall of Text）排查与被动能动性诊断；
+    - 基于纯 Python 标准库零依赖实现出版级 EPUB 3.0 电子书标准容器（严格遵循 OCF 规范，无压缩 `mimetype` 居首、`content.opf`、`toc.xhtml` 完整）与 William Shunn 国际标准文稿格式（SMF）导出；
+    - 暴露 `POST /api/platform/litrpg/stat-box` 与 `POST /api/platform/royalroad/format` 路由，API 端点扩充至 130 个；
+    - 新增平台与导出回归测试，后端单测提升至 1612 项全绿。
 
-### 4.3 正在全力推进的研发工作（In Active Progress）
+### 4.3 下一阶段研发工作规划（Upcoming Milestones）
 
-- 🔄 **Royal Road 与 Amazon KDP 签约标准合规检查器研发**；
-- 🔄 **Shunn 标准文稿格式与 EPUB 3.0 出版导出容器实现**。
+- 🔄 **更多国际传世神作编纂收录**（逐步启动第 5 节的 40+ 部全球英文神作深度解构）；
+- 🔄 **前端写作工坊出海平台面板与 EPUB / Shunn 一键导出适配**。
 
 ---
 

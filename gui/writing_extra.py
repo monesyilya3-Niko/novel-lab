@@ -14,9 +14,10 @@ import base64
 import io
 import json
 import re
+import uuid
 import xml.sax.saxutils
 import zipfile
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -945,13 +946,252 @@ def export_project_docx(project: str) -> dict[str, Any]:
     }
 
 
+def export_project_epub(project: str) -> dict[str, Any]:
+    """导出全书标准 EPUB 3.0 电子书容器（纯 Python 标准库零依赖，适配 Amazon KDP / Apple Books / 各类电子阅读器）。"""
+    project = _require_project(project)
+    files = _iter_chapter_files(project)
+    if not files:
+        raise ServiceError(f"项目尚无章节可导出: {project}", 404)
+
+    buf = io.BytesIO()
+    book_uuid = str(uuid.uuid4())
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    with zipfile.ZipFile(buf, "w") as z:
+        # 1. mimetype (必须是第一个文件，且不得压缩)
+        z.writestr("mimetype", "application/epub+zip", compress_type=zipfile.ZIP_STORED)
+
+        # 2. META-INF/container.xml
+        container_xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n'
+            '  <rootfiles>\n'
+            '    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n'
+            '  </rootfiles>\n'
+            '</container>'
+        )
+        z.writestr("META-INF/container.xml", container_xml, compress_type=zipfile.ZIP_DEFLATED)
+
+        # 3. OEBPS/style.css
+        style_css = (
+            "body {\n"
+            "  margin: 5% 6%;\n"
+            "  font-family: serif, 'Times New Roman', 'Source Han Serif', 'Songti SC', 'SimSun';\n"
+            "  line-height: 1.7;\n"
+            "  color: #111;\n"
+            "}\n"
+            "h1, h2 {\n"
+            "  text-align: center;\n"
+            "  margin-top: 1.8em;\n"
+            "  margin-bottom: 1.2em;\n"
+            "  font-weight: bold;\n"
+            "}\n"
+            "p {\n"
+            "  text-indent: 2em;\n"
+            "  margin: 0.4em 0;\n"
+            "}\n"
+            ".stat-box {\n"
+            "  border: 1px solid #777;\n"
+            "  background: #fdfdfd;\n"
+            "  padding: 12px 16px;\n"
+            "  margin: 16px 0;\n"
+            "  font-family: monospace;\n"
+            "  font-size: 0.9em;\n"
+            "  text-indent: 0;\n"
+            "}\n"
+        )
+        z.writestr("OEBPS/style.css", style_css, compress_type=zipfile.ZIP_DEFLATED)
+
+        manifest_items = [
+            '<item id="style" href="style.css" media-type="text/css"/>',
+            '<item id="nav" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>',
+        ]
+        spine_items = []
+        toc_items = []
+        total_words = 0
+
+        for no, fp in files:
+            try:
+                content = _read_chapter(fp).strip()
+            except OSError:
+                continue
+            if not content:
+                continue
+            total_words += count_words(content)
+            first_line = content.split("\n", 1)[0].strip()
+            looks_like_title = bool(first_line) and len(first_line) <= 60 and "。" not in first_line and "，" not in first_line
+            if looks_like_title:
+                ch_title = first_line
+                ch_body = content[len(first_line):].strip()
+            else:
+                ch_title = f"第{no}章"
+                ch_body = content
+
+            ch_id = f"chapter_{no:03d}"
+            ch_filename = f"{ch_id}.xhtml"
+
+            # 组装段落 HTML
+            p_html = []
+            for line in ch_body.split("\n"):
+                p = line.strip()
+                if p:
+                    p_html.append(f"  <p>{_escape_xml(p)}</p>")
+
+            body_paragraphs = "\n".join(p_html)
+            chapter_xhtml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<!DOCTYPE html>\n'
+                '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="zh-CN">\n'
+                '<head>\n'
+                '  <meta charset="utf-8"/>\n'
+                f'  <title>{_escape_xml(ch_title)}</title>\n'
+                '  <link rel="stylesheet" type="text/css" href="style.css"/>\n'
+                '</head>\n'
+                '<body>\n'
+                f'  <h2>{_escape_xml(ch_title)}</h2>\n'
+                f'{body_paragraphs}\n'
+                '</body>\n'
+                '</html>'
+            )
+            z.writestr(f"OEBPS/{ch_filename}", chapter_xhtml, compress_type=zipfile.ZIP_DEFLATED)
+
+            manifest_items.append(f'<item id="{ch_id}" href="{ch_filename}" media-type="application/xhtml+xml"/>')
+            spine_items.append(f'<itemref idref="{ch_id}"/>')
+            toc_items.append(f'      <li><a href="{ch_filename}">{_escape_xml(ch_title)}</a></li>')
+
+        # 4. OEBPS/toc.xhtml (EPUB 3 导航文档)
+        toc_list_html = "\n".join(toc_items)
+        toc_xhtml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!DOCTYPE html>\n'
+            '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="zh-CN">\n'
+            '<head>\n'
+            '  <meta charset="utf-8"/>\n'
+            '  <title>目录</title>\n'
+            '  <link rel="stylesheet" type="text/css" href="style.css"/>\n'
+            '</head>\n'
+            '<body>\n'
+            '  <nav epub:type="toc" id="toc">\n'
+            f'    <h1>{_escape_xml(project)} - 目录</h1>\n'
+            '    <ol>\n'
+            f'{toc_list_html}\n'
+            '    </ol>\n'
+            '  </nav>\n'
+            '</body>\n'
+            '</html>'
+        )
+        z.writestr("OEBPS/toc.xhtml", toc_xhtml, compress_type=zipfile.ZIP_DEFLATED)
+
+        # 5. OEBPS/content.opf (包元数据与清单)
+        manifest_xml = "\n    ".join(manifest_items)
+        spine_xml = "\n    ".join(spine_items)
+        content_opf = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">\n'
+            '  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
+            f'    <dc:identifier id="pub-id">urn:uuid:{book_uuid}</dc:identifier>\n'
+            f'    <dc:title>{_escape_xml(project)}</dc:title>\n'
+            '    <dc:language>zh-CN</dc:language>\n'
+            '    <dc:creator>暮冬念春 / Exoscribe</dc:creator>\n'
+            f'    <meta property="dcterms:modified">{now_iso}</meta>\n'
+            '  </metadata>\n'
+            '  <manifest>\n'
+            f'    {manifest_xml}\n'
+            '  </manifest>\n'
+            '  <spine>\n'
+            f'    {spine_xml}\n'
+            '  </spine>\n'
+            '</package>'
+        )
+        z.writestr("OEBPS/content.opf", content_opf, compress_type=zipfile.ZIP_DEFLATED)
+
+    epub_bytes = buf.getvalue()
+    b64_content = base64.b64encode(epub_bytes).decode("ascii")
+    filename = f"{project}-全书导出-{date.today().isoformat()}.epub"
+    return {
+        "filename": filename,
+        "content_base64": b64_content,
+        "format": "epub",
+        "chapters": len(files),
+        "words": total_words,
+    }
+
+
+def export_project_shunn(
+    project: str,
+    author_name: str = "Author Name",
+    contact_info: str = "author@example.com",
+) -> dict[str, Any]:
+    """导出全书为 William Shunn 国际标准文稿投稿格式（Standard Manuscript Format）。"""
+    project = _require_project(project)
+    files = _iter_chapter_files(project)
+    if not files:
+        raise ServiceError(f"项目尚无章节可导出: {project}", 404)
+
+    lines: list[str] = []
+    total_words = 0
+    chapter_contents: list[tuple[str, str]] = []
+
+    for no, fp in files:
+        try:
+            content = _read_chapter(fp).strip()
+        except OSError:
+            continue
+        if not content:
+            continue
+        total_words += count_words(content)
+        first_line = content.split("\n", 1)[0].strip()
+        looks_like_title = bool(first_line) and len(first_line) <= 60 and "。" not in first_line and "，" not in first_line
+        if looks_like_title:
+            ch_title = first_line
+            ch_body = content[len(first_line):].strip()
+        else:
+            ch_title = f"CHAPTER {no}"
+            ch_body = content
+        chapter_contents.append((ch_title, ch_body))
+
+    # Page 1 Header
+    approx_words = max(100, int(round(total_words / 100.0) * 100))
+    lines.append(f"{author_name}\n")
+    if contact_info:
+        lines.append(f"{contact_info}\n")
+    lines.append(f"About {approx_words:,} words\n\n\n\n")
+
+    # Title Block
+    lines.append(f"{project.upper()}\n\nby {author_name}\n\n\n")
+
+    # Chapters
+    for i, (ch_title, ch_body) in enumerate(chapter_contents):
+        if i > 0:
+            lines.append("\n\n#\n\n")  # Standard Shunn scene/chapter break
+        lines.append(f"{ch_title.upper()}\n\n")
+        for para in ch_body.split("\n"):
+            p = para.strip()
+            if p:
+                lines.append(f"    {p}\n\n")  # 5-space indentation, double spaced
+
+    full_text = "".join(lines)
+    filename = f"{project}-Shunn文稿-{date.today().isoformat()}.txt"
+    return {
+        "filename": filename,
+        "content": full_text,
+        "format": "shunn",
+        "chapters": len(files),
+        "words": total_words,
+    }
+
+
 def export_project(project: str, fmt: str = "txt") -> dict[str, Any]:
-    """统一多格式导出入口：txt / md / docx。"""
+    """统一多格式导出入口：txt / md / docx / epub / shunn。"""
     fmt_clean = (fmt or "txt").lower().strip()
     if fmt_clean in ("docx", "word"):
         return export_project_docx(project)
     elif fmt_clean in ("md", "markdown"):
         return export_project_md(project)
+    elif fmt_clean in ("epub", "ebook"):
+        return export_project_epub(project)
+    elif fmt_clean in ("shunn", "manuscript"):
+        return export_project_shunn(project)
     return export_project_txt(project)
 
 

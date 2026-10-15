@@ -727,6 +727,32 @@ def _h_diagnose_chapter(_params: dict[str, Any], body: dict[str, Any]) -> dict[s
     ))
 
 
+def _h_litrpg_stat_box(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import platform_service
+    b = body or {}
+    text = b.get("text", "")
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    return ok({"stat_boxes": platform_service.parse_stat_box(text)})
+
+
+def _h_royalroad_format(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import platform_service
+    b = body or {}
+    title = b.get("title", "")
+    text = b.get("text", "")
+    head = b.get("author_note_head", "")
+    foot = b.get("author_note_foot", "")
+    wrap = b.get("wrap_stat_boxes", True)
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    return ok({
+        "formatted": platform_service.format_royalroad_chapter(
+            title, text, head, foot, wrap_stat_boxes=bool(wrap)
+        )
+    })
+
+
 
 # --- M1 高级分析 handlers ---
 
@@ -1242,6 +1268,8 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("POST", re.compile(r"^/api/platform/diagnose$"), _h_diagnose_chapter),
     ("POST", re.compile(r"^/api/platform/format$"), _h_format_chapter),
     ("POST", re.compile(r"^/api/platform/export$"), _h_export_book),
+    ("POST", re.compile(r"^/api/platform/litrpg/stat-box$"), _h_litrpg_stat_box),
+    ("POST", re.compile(r"^/api/platform/royalroad/format$"), _h_royalroad_format),
     # 管理员系统（会话鉴权由 server 层 _check_auth 完成；login 由 server 直接处理）
     ("GET", re.compile(r"^/api/admin/me$"), _h_admin_me),
     ("GET", re.compile(r"^/api/admin/dashboard$"), _h_admin_dashboard),

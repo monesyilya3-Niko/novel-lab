@@ -95,6 +95,47 @@ PLATFORMS = {
             "现实", "成长", "治愈",
         ],
     },
+    "royalroad": {
+        "name": "Royal Road",
+        "chapter_min_chars": 1500,
+        "chapter_max_chars": 6000,
+        "chapter_format": "Chapter {num}: {title}",
+        "title_max_len": 60,
+        "supports_serialization": True,
+        "climax_interval": "3-5章",
+        "dialogue_sweet_spot": (20.0, 45.0),
+        "rhythm_type": "Progression Fantasy · LitRPG · Hard Magic Rules · Stat Growth",
+        "platform_taboos": [
+            "战力设定前后矛盾 (Power retcon)",
+            "主角被动无目标 (Passive protagonist)",
+            "首章百科式大灌水 (Info dump opening)",
+            "章末无悬念平淡收尾 (No cliffhanger)",
+        ],
+        "genre_whitelist": [
+            "Progression Fantasy", "LitRPG", "Fantasy", "Sci-Fi", "Action",
+            "Adventure", "Isekai", "Supernatural", "Comedy", "Post-Apocalyptic",
+        ],
+    },
+    "amazon_kdp": {
+        "name": "Amazon KDP",
+        "chapter_min_chars": 2000,
+        "chapter_max_chars": 8000,
+        "chapter_format": "Chapter {num}: {title}",
+        "title_max_len": 80,
+        "supports_serialization": False,
+        "climax_interval": "Three-Act Arc (三幕式高潮推进)",
+        "dialogue_sweet_spot": (25.0, 50.0),
+        "rhythm_type": "Commercial Bestseller · Escalating Stakes · Character Agency",
+        "platform_taboos": [
+            "超长段落文本墙 (Wall of text formatting)",
+            "叙述者直白宣告情绪 (Telling emotion conclusions)",
+            "前三章缺乏核心触发事件 (Slow inciting incident)",
+        ],
+        "genre_whitelist": [
+            "Epic Fantasy", "Urban Fantasy", "Science Fiction", "Thriller",
+            "Romance", "Progression Fantasy", "Mystery", "Historical Fiction",
+        ],
+    },
 }
 
 
@@ -260,6 +301,8 @@ def diagnose_chapter(platform_id: str, chapter_text: str,
     is_early_chapter = c_num <= 3
     has_dialogue_or_action = any(q in opening_snippet for q in ('"', "“", "”", "：")) or any(
         act in opening_snippet for act in ("退婚", "死", "杀", "冷笑", "拔剑", "签", "跪", "滚", "跑", "巴掌", "离婚", "系统")
+    ) or any(
+        act in opening_snippet.lower() for act in ("strike", "blade", "sword", "blood", "kill", "duck", "fight", "attack", "shout", "scream", "punch", "yell", "roar", "run")
     )
     found_info_dump = [k for k in _INFO_DUMP_KEYWORDS if k in opening_snippet]
 
@@ -335,6 +378,45 @@ def diagnose_chapter(platform_id: str, chapter_text: str,
             score -= 15
             veto_risks.append("七猫爽点脱节预警：开篇主角受尽侮辱嘲讽，但前千字内未见任何反制底牌或爽点预期")
             actionable_fixes.append("下沉免费流极忌漫长憋屈，在受辱后 500 字内必须展示隐秘底牌或反打脸前置伏笔")
+    elif platform_id == "royalroad":
+        rr_infodump_words = [
+            "in this world", "thousands of years ago", "the history of", "according to ancient records",
+            "as everyone knows", "the magic system was divided into", "power levels were categorized",
+        ]
+        found_rr_dump = [k for k in rr_infodump_words if k in chapter_text[:500].lower()]
+        if is_early_chapter and found_rr_dump:
+            score -= 20
+            veto_risks.append(f"Royal Road 读者大忌：开篇陷入大段百科式世界观说明（命中：{', '.join(found_rr_dump)}）")
+            actionable_fixes.append("Royal Road 读者偏好即时行动与危机切入（In Media Res），将静态设定转化为行动中的动态发现")
+        
+        stat_boxes = parse_stat_box(chapter_text)
+        if stat_boxes:
+            box_chars = sum(len(b["raw_text"]) for b in stat_boxes)
+            if box_chars > char_count * 0.45:
+                score -= 10
+                veto_risks.append("属性面板占用篇幅过大（超过单章 45%），可能引起读者注水差评")
+                actionable_fixes.append("建议仅展示发生变动的核心属性，或使用 [spoiler=Status] 折叠完整面板")
+        
+        ending_snippet = chapter_text[-300:].strip()
+        cliffhanger_cues = ["?", "？", "!", "！", "...", "……", "suddenly", "silence", "shadow", "door", "stared", "approached", "heard"]
+        if is_early_chapter and not any(cue in ending_snippet.lower() for cue in cliffhanger_cues):
+            score -= 10
+            veto_risks.append("Royal Road 追读留存预警：首发章节结尾较为平淡，缺乏刺激下一章点击的悬念钩子")
+            actionable_fixes.append("在章末抛出新危机、突发转折或未揭晓奖励，驱动读者点击 'Next Chapter'")
+    elif platform_id == "amazon_kdp":
+        paras = [p.strip() for p in chapter_text.split("\n") if p.strip()]
+        long_paras = [p for p in paras if len(p) > 800]
+        if long_paras:
+            score -= 15
+            veto_risks.append(f"Kindle 移动端阅读排版大忌：存在 {len(long_paras)} 个超长段落（>800字），在电子阅读器上会形成窒息的“文本墙（Wall of Text）”")
+            actionable_fixes.append("将大段叙述按说话人转换、动作节奏或感官转换拆分为短段落，保持视觉呼吸感")
+        
+        passive_cues = ["he waited for someone", "she had no choice but", "nothing ever happened", "he was forced to wait", "bored"]
+        found_passive = [k for k in passive_cues if k in chapter_text[:600].lower()]
+        if is_early_chapter and found_passive:
+            score -= 15
+            veto_risks.append("KDP 商业受众劝退点：主角表现出被动无聊或缺乏主动目标")
+            actionable_fixes.append("商业畅销小说强调主角的主动能动性（Protagonist Agency），开篇即赋予其清晰的当下欲望或紧迫阻碍")
 
     score = max(20, min(100, score))
     if score >= 85:
@@ -468,3 +550,146 @@ def export_book_for_platform(platform_id: str, book_dir: str) -> dict[str, Any]:
         "chapters": chapters,
         "export_ready": non_compliant == 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# LitRPG 属性面板与 Royal Road 格式化引擎
+# ---------------------------------------------------------------------------
+
+_STAT_BOX_BRACKET_RE = re.compile(
+    r"(?m)^[ \t]*(\[|【)\s*(Status(?:\s+Window)?|Character\s+Sheet|System\s+(?:Notification|Prompt)|属性面板|角色面板|状态栏|系统提示)\s*(\]|】)[ \t]*\n(.*?)(?=(?:\n[ \t]*\n|\n[ \t]*(?:\[|【)|\Z))",
+    re.DOTALL | re.IGNORECASE,
+)
+
+_STAT_BOX_ASCII_RE = re.compile(
+    r"(?m)^[ \t]*([+┌][-+─═]+[+┐])[ \t]*\n(.*?)\n[ \t]*([+└][-+─═]+[+┘])",
+    re.DOTALL,
+)
+
+_STAT_BOX_BBCODE_RE = re.compile(
+    r"(?ms)\[spoiler=(?:\"|')?([^\"'\]]+)(?:\"|')?\](.*?)\[/spoiler\]",
+    re.IGNORECASE,
+)
+
+_STAT_FIELD_LINE_RE = re.compile(
+    r"^\s*[-*•]?\s*([A-Za-z\u4e00-\u9fff\s/]+?)\s*[:：]\s*(.+?)\s*$"
+)
+
+
+def parse_stat_box(text: str) -> list[dict[str, Any]]:
+    """解析并提取文本中的 LitRPG / Progression Fantasy 属性面板与状态栏。
+
+    支持常见格式：
+    1. 标题方括号标签块：[Status / 属性面板] ... 键值对行
+    2. ASCII/Unicode 边框字符绘制的方框：+---+ 或 ┌───┐
+    3. Royal Road 风格 BBCode：[spoiler=Status] 或 [box]
+    """
+    if not text or not isinstance(text, str):
+        return []
+
+    results: list[dict[str, Any]] = []
+    seen_spans: list[tuple[int, int]] = []
+
+    # 1. BBCode spoiler blocks [spoiler=Status]...[/spoiler]
+    for m in _STAT_BOX_BBCODE_RE.finditer(text):
+        title = m.group(1).strip()
+        body = m.group(2).strip()
+        fields: dict[str, str] = {}
+        for line in body.split("\n"):
+            fm = _STAT_FIELD_LINE_RE.match(line)
+            if fm:
+                fields[fm.group(1).strip()] = fm.group(2).strip()
+        span = (m.start(), m.end())
+        seen_spans.append(span)
+        results.append({
+            "type": "bbcode_spoiler",
+            "title": title or "Status Window",
+            "fields": fields,
+            "raw_text": m.group(0),
+            "start": m.start(),
+            "end": m.end(),
+            "char_count": len(m.group(0)),
+        })
+
+    # 2. ASCII/Unicode box borders
+    for m in _STAT_BOX_ASCII_RE.finditer(text):
+        body = m.group(2).strip()
+        if any(s <= m.start() and m.end() <= e for s, e in seen_spans):
+            continue
+        fields = {}
+        title = "Status Window"
+        for line in body.split("\n"):
+            clean_l = line.strip().strip("|│").strip()
+            if not clean_l:
+                continue
+            fm = _STAT_FIELD_LINE_RE.match(clean_l)
+            if fm:
+                fields[fm.group(1).strip()] = fm.group(2).strip()
+            elif "status" in clean_l.lower() or "面板" in clean_l or "sheet" in clean_l.lower():
+                title = clean_l
+        span = (m.start(), m.end())
+        seen_spans.append(span)
+        results.append({
+            "type": "ascii_box",
+            "title": title,
+            "fields": fields,
+            "raw_text": m.group(0),
+            "start": m.start(),
+            "end": m.end(),
+            "char_count": len(m.group(0)),
+        })
+
+    # 3. Bracketed headers [Status Window] or 【属性面板】
+    for m in _STAT_BOX_BRACKET_RE.finditer(text):
+        title = m.group(2).strip()
+        body = m.group(4).strip()
+        if any(s <= m.start() and m.end() <= e for s, e in seen_spans):
+            continue
+        fields = {}
+        for line in body.split("\n"):
+            clean_l = line.strip()
+            fm = _STAT_FIELD_LINE_RE.match(clean_l)
+            if fm:
+                fields[fm.group(1).strip()] = fm.group(2).strip()
+        span = (m.start(), m.end())
+        seen_spans.append(span)
+        results.append({
+            "type": "bracket_window",
+            "title": title,
+            "fields": fields,
+            "raw_text": m.group(0),
+            "start": m.start(),
+            "end": m.end(),
+            "char_count": len(m.group(0)),
+        })
+
+    results.sort(key=lambda x: x["start"])
+    return results
+
+
+def format_royalroad_chapter(
+    chapter_title: str,
+    chapter_text: str,
+    author_note_head: str = "",
+    author_note_foot: str = "",
+    wrap_stat_boxes: bool = True,
+) -> str:
+    """生成符合 Royal Road 规范的连载正文（支持作者说头尾注释与 BBCode 状态面板封装）。"""
+    body = (chapter_text or "").strip()
+    if wrap_stat_boxes:
+        stat_boxes = parse_stat_box(body)
+        for box in reversed(stat_boxes):
+            if box["type"] != "bbcode_spoiler" and box["fields"]:
+                wrapped = f'[spoiler="{box["title"]}"]\n{box["raw_text"].strip()}\n[/spoiler]'
+                body = body[:box["start"]] + wrapped + body[box["end"]:]
+
+    parts: list[str] = []
+    if author_note_head.strip():
+        parts.append(f"[b]Author's Note:[/b]\n{author_note_head.strip()}\n\n---")
+
+    parts.append(body)
+
+    if author_note_foot.strip():
+        parts.append(f"---\n[b]Author's Note:[/b]\n{author_note_foot.strip()}")
+
+    return "\n\n".join(parts)

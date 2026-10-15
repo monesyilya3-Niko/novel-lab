@@ -136,10 +136,83 @@ class TestDiagnoseChapter(unittest.TestCase):
 
     def test_list_platforms_includes_creative_params(self):
         platforms = platform_service.list_platforms()
-        self.assertEqual(len(platforms), 5)
+        self.assertEqual(len(platforms), 7)
+        platform_ids = {p["id"] for p in platforms}
+        self.assertIn("royalroad", platform_ids)
+        self.assertIn("amazon_kdp", platform_ids)
         for p in platforms:
             self.assertIn("climax_interval", p)
             self.assertIn("rhythm_type", p)
+
+    def test_diagnose_royalroad_infodump_and_cliffhanger(self):
+        bad_text = (
+            "In this world, thousands of years ago, the history of the ancient empire was recorded. "
+            + "He walked forward quietly into the forest. " * 80
+        )
+        res = platform_service.diagnose_chapter("royalroad", bad_text, "Chapter 1: The Beginning", chapter_num=1)
+        self.assertTrue(any("Royal Road 读者大忌" in r for r in res["veto_risks"]))
+
+        good_text = (
+            '"Look out!" Lindon yelled as the iron blade whistled past his ear. He ducked! '
+            + '"Hold the line!" the captain roared. ' * 30
+            + "He swung the wooden staff with all his might. " * 30
+            + "Suddenly, the heavy iron door creaked open, revealing a shadowy figure with glowing eyes..."
+        )
+        good_res = platform_service.diagnose_chapter("royalroad", good_text, "Chapter 1: Strike", chapter_num=1)
+        self.assertGreaterEqual(good_res["score"], 80)
+
+    def test_diagnose_amazon_kdp_wall_of_text_and_passive(self):
+        wall_of_text = "He walked into the large room and looked around. " * 40  # >800 chars in one paragraph
+        res = platform_service.diagnose_chapter("amazon_kdp", wall_of_text, "Chapter 1", chapter_num=1)
+        self.assertTrue(any("Kindle 移动端阅读排版大忌" in r for r in res["veto_risks"]))
+
+    def test_litrpg_parse_stat_box(self):
+        bracket_text = (
+            "He tapped the blue floating screen before him.\n\n"
+            "[Status Window]\n"
+            "Name: Lindon\n"
+            "Level: 14\n"
+            "Class: Void Sage\n"
+            "Health: 1,820 / 1,820\n"
+            "Mana: 950 / 950\n\n"
+            "He smiled with satisfaction."
+        )
+        boxes = platform_service.parse_stat_box(bracket_text)
+        self.assertEqual(len(boxes), 1)
+        self.assertEqual(boxes[0]["title"], "Status Window")
+        self.assertEqual(boxes[0]["fields"].get("Name"), "Lindon")
+        self.assertEqual(boxes[0]["fields"].get("Level"), "14")
+        self.assertEqual(boxes[0]["fields"].get("Class"), "Void Sage")
+
+        ascii_text = (
+            "+------------------------------------+\n"
+            "| Status: Carl                       |\n"
+            "| Level: 42                          |\n"
+            "| Strength: 85                       |\n"
+            "+------------------------------------+\n"
+        )
+        ascii_boxes = platform_service.parse_stat_box(ascii_text)
+        self.assertEqual(len(ascii_boxes), 1)
+        self.assertEqual(ascii_boxes[0]["fields"].get("Level"), "42")
+
+    def test_format_royalroad_chapter(self):
+        content = (
+            "[Status Window]\n"
+            "Level: 10\n"
+            "HP: 100/100\n\n"
+            "He charged into the dungeon."
+        )
+        formatted = platform_service.format_royalroad_chapter(
+            "Chapter 1: First Blood",
+            content,
+            author_note_head="Welcome to my new LitRPG story!",
+            author_note_foot="Thanks for reading, please favorite and rate!",
+            wrap_stat_boxes=True,
+        )
+        self.assertIn("[b]Author's Note:[/b]\nWelcome to my new LitRPG story!", formatted)
+        self.assertIn('[spoiler="Status Window"]', formatted)
+        self.assertIn("[/spoiler]", formatted)
+        self.assertIn("Thanks for reading", formatted)
 
     def test_diagnose_router_dispatch(self):
         from gui import router
@@ -152,6 +225,26 @@ class TestDiagnoseChapter(unittest.TestCase):
         self.assertEqual(resp["code"], 0)
         self.assertIn("grade", resp["data"])
         self.assertIn("score", resp["data"])
+
+        # 测试 LitRPG 解析路由
+        resp_stat, _ = router.dispatch(
+            "POST",
+            "/api/platform/litrpg/stat-box",
+            {"text": "[Status Window]\nLevel: 12\nClass: Rogue\n\nHe hid."},
+            {}
+        )
+        self.assertEqual(resp_stat["code"], 0)
+        self.assertEqual(len(resp_stat["data"]["stat_boxes"]), 1)
+
+        # 测试 Royal Road 格式化路由
+        resp_rr, _ = router.dispatch(
+            "POST",
+            "/api/platform/royalroad/format",
+            {"title": "Ch 1", "text": "He fought bravely.", "author_note_head": "Enjoy!"},
+            {}
+        )
+        self.assertEqual(resp_rr["code"], 0)
+        self.assertIn("Enjoy!", resp_rr["data"]["formatted"])
 
 
 if __name__ == "__main__":

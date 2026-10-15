@@ -478,6 +478,74 @@ class TestWritingExportAndReorder(unittest.TestCase):
             self.assertIn('xml:space="preserve"', doc_xml)
             self.assertIn('w:eastAsia="宋体"', doc_xml)
 
+    def test_export_epub_validity(self):
+        res = writing_extra.export_project(self.project, fmt="epub")
+        self.assertEqual(res["format"], "epub")
+        self.assertEqual(res["chapters"], 2)
+        self.assertTrue(res["filename"].endswith(".epub"))
+        self.assertIn("content_base64", res)
+
+        raw_epub = base64.b64decode(res["content_base64"])
+        buf = io.BytesIO(raw_epub)
+        self.assertTrue(zipfile.is_zipfile(buf))
+        with zipfile.ZipFile(buf, "r") as z:
+            infos = z.infolist()
+            # EPUB 规范硬性要求：mimetype 必须是第一个 entry 且必须无压缩 (ZIP_STORED)
+            self.assertEqual(infos[0].filename, "mimetype")
+            self.assertEqual(infos[0].compress_type, zipfile.ZIP_STORED)
+            self.assertEqual(z.read("mimetype").strip(), b"application/epub+zip")
+
+            names = z.namelist()
+            self.assertIn("META-INF/container.xml", names)
+            self.assertIn("OEBPS/content.opf", names)
+            self.assertIn("OEBPS/toc.xhtml", names)
+            self.assertIn("OEBPS/style.css", names)
+            self.assertIn("OEBPS/chapter_001.xhtml", names)
+            self.assertIn("OEBPS/chapter_002.xhtml", names)
+
+            opf_xml = z.read("OEBPS/content.opf").decode("utf-8")
+            self.assertIn("urn:uuid:", opf_xml)
+            self.assertIn("chapter_001", opf_xml)
+
+            ch1_xml = z.read("OEBPS/chapter_001.xhtml").decode("utf-8")
+            self.assertIn("第一章 问剑雪山", ch1_xml)
+            self.assertIn("寒风凛冽，少年拔剑。", ch1_xml)
+
+    def test_export_shunn_validity(self):
+        res = writing_extra.export_project_shunn(
+            self.project,
+            author_name="Lin Dong",
+            contact_info="lindong@example.com",
+        )
+        self.assertEqual(res["format"], "shunn")
+        self.assertEqual(res["chapters"], 2)
+        self.assertTrue(res["filename"].endswith(".txt"))
+        content = res["content"]
+        self.assertIn("Lin Dong", content)
+        self.assertIn("lindong@example.com", content)
+        self.assertIn("About ", content)
+        self.assertIn("words", content)
+        self.assertIn(self.project.upper(), content)
+        self.assertIn("by Lin Dong", content)
+        self.assertIn("#\n\n", content)  # Shunn 标杆分卷/章节切换符
+        self.assertIn("第一章 问剑雪山", content)
+
+        # 验证统一路由别名
+        res_alias = writing_extra.export_project(self.project, fmt="shunn")
+        self.assertEqual(res_alias["format"], "shunn")
+        res_alias_ms = writing_extra.export_project(self.project, fmt="manuscript")
+        self.assertEqual(res_alias_ms["format"], "shunn")
+
+    def test_export_empty_project_raises_404(self):
+        empty_project = "空项目测试"
+        with self.assertRaises(writing_extra.ServiceError) as cm_epub:
+            writing_extra.export_project_epub(empty_project)
+        self.assertEqual(cm_epub.exception.code, 404)
+
+        with self.assertRaises(writing_extra.ServiceError) as cm_shunn:
+            writing_extra.export_project_shunn(empty_project)
+        self.assertEqual(cm_shunn.exception.code, 404)
+
     def test_router_deslop_endpoint(self):
         res = router._h_writing_deslop({}, {"text": "这一刻时间仿佛凝固了。"})
         self.assertEqual(res["code"], 0)
