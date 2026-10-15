@@ -487,6 +487,11 @@ export const writingApi = {
     post<DeslopResult>('/writing/deslop', { text, lang }),
   countWords: (text: string, mode: 'auto' | 'zh' | 'cjk' | 'en' = 'auto') =>
     post<WordCountResult>('/writing/count-words', { text, mode }),
+  analyzeTension: (body: {
+    text: string
+    benchmark?: 'classic' | 'fast_hook' | 'steady' | 'face_slap'
+    segments_count?: number
+  }) => post<TensionAnalysisResult>('/writing/tension-analysis', body),
   getProjectMeta: (project: string) =>
     get<ProjectMeta>(`/writing/projects/${encodeURIComponent(project)}/meta`),
   updateProjectMeta: (
@@ -499,6 +504,25 @@ export const writingApi = {
       meta?: Record<string, unknown>
     }
   ) => post<ProjectMeta>(`/writing/projects/${encodeURIComponent(project)}/meta`, body),
+}
+
+export interface TensionAnalysisResult {
+  segments: string[]
+  tensionCurve: number[]
+  benchmarkCurve: number[]
+  benchmarkName: string
+  climaxIndex: number
+  climaxSegment: string
+  maxTension: number
+  avgTension: number
+  tensionVariance: number
+  benchmarkAlignmentScore: number
+  flatZones: Array<{
+    segmentIndex: number
+    label: string
+    tension: number
+  }>
+  pacingFeedback: string[]
 }
 
 export interface ProjectMeta {

@@ -520,6 +520,21 @@ def _h_writing_count_words(_params: dict[str, Any], body: dict[str, Any]) -> dic
     return ok(writing_extra.count_words_i18n(text, mode=mode))
 
 
+def _h_writing_tension_analysis(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
+    from gui import writing_extra
+    b = body or {}
+    text = b.get("text")
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+    benchmark = b.get("benchmark", "classic")
+    if not isinstance(benchmark, str):
+        raise ServiceError("benchmark 必须为字符串", 400)
+    segments_count = b.get("segments_count", 10)
+    if not isinstance(segments_count, int) or isinstance(segments_count, bool):
+        raise ServiceError("segments_count 必须为整数", 400)
+    return ok(writing_extra.analyze_tension_curve(text, benchmark=benchmark, segments_count=segments_count))
+
+
 def _h_quality_check(_params: dict[str, Any], body: dict[str, Any]) -> dict[str, Any]:
     from gui import quality_service
     b = body or {}
@@ -1181,6 +1196,7 @@ ROUTES: list[tuple[str, re.Pattern, Callable[[dict, dict], dict]]] = [
     ("GET", re.compile(r"^/api/writing/export$"), _h_writing_export),
     ("POST", re.compile(r"^/api/writing/deslop$"), _h_writing_deslop),
     ("POST", re.compile(r"^/api/writing/count-words$"), _h_writing_count_words),
+    ("POST", re.compile(r"^/api/writing/tension-analysis$"), _h_writing_tension_analysis),
     # W15 阶段二：质检（M3）
     ("POST", re.compile(r"^/api/quality/check$"), _h_quality_check),
     ("POST", re.compile(r"^/api/quality/book$"), _h_quality_book),

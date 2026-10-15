@@ -32,7 +32,7 @@ import CodeIcon from '@mui/icons-material/Code'
 import ArticleIcon from '@mui/icons-material/Article'
 import { writingApi, toolsApi, friendlyError } from '../api/client'
 import type { WritingProject } from '../types'
-import type { OutlineItem, CharacterCard, NoteItem, WritingStats, HookItem } from '../api/client'
+import type { OutlineItem, CharacterCard, NoteItem, WritingStats, HookItem, TensionAnalysisResult } from '../api/client'
 import { useThemeMode } from '../state/ThemeModeContext'
 import { ink, glassCard } from '../ink'
 import CreationRateChart from './charts/CreationRateChart'
@@ -907,6 +907,13 @@ function DashboardPanel({ project }: { project: string }) {
   const [error, setError] = useState('')
   const [days, setDays] = useState(30)
 
+  // 黄金三章与章节张力动态比对
+  const [benchmark, setBenchmark] = useState<'classic' | 'fast_hook' | 'steady' | 'face_slap'>('classic')
+  const [tensionResult, setTensionResult] = useState<TensionAnalysisResult | null>(null)
+  const [tensionLoading, setTensionLoading] = useState(false)
+  const [showTensionDialog, setShowTensionDialog] = useState(false)
+  const [draftInput, setDraftInput] = useState('')
+
   const load = useCallback(() => {
     writingApi
       .stats(project, days)
@@ -917,6 +924,30 @@ function DashboardPanel({ project }: { project: string }) {
   useEffect(() => {
     load()
   }, [load])
+
+  const runTensionAnalysis = async (text: string, bm = benchmark) => {
+    if (!text.trim()) return
+    setTensionLoading(true)
+    try {
+      const res = await writingApi.analyzeTension({
+        text,
+        benchmark: bm,
+      })
+      setTensionResult(res)
+      setShowTensionDialog(false)
+    } catch (e) {
+      setError(`张力分析失败: ${friendlyError(e)}`)
+    } finally {
+      setTensionLoading(false)
+    }
+  }
+
+  const handleBenchmarkChange = (bm: 'classic' | 'fast_hook' | 'steady' | 'face_slap') => {
+    setBenchmark(bm)
+    if (draftInput.trim()) {
+      runTensionAnalysis(draftInput, bm)
+    }
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
@@ -1003,13 +1034,72 @@ function DashboardPanel({ project }: { project: string }) {
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <Paper elevation={0} sx={{ p: 2.5, height: '100%', ...glassCard(isDark) }}>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
-                  章节情绪张力起伏波形（起承转合）
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                  <Typography variant="subtitle1" fontWeight={700}>
+                    章节情绪张力起伏波形（起承转合）
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <TextField
+                      select
+                      size="small"
+                      value={benchmark}
+                      onChange={(e) => handleBenchmarkChange(e.target.value as any)}
+                      sx={{ minWidth: 130 }}
+                      label="对标神作"
+                    >
+                      <MenuItem value="classic">经典起承转合</MenuItem>
+                      <MenuItem value="fast_hook">黄金强入局</MenuItem>
+                      <MenuItem value="steady">稳健发育流</MenuItem>
+                      <MenuItem value="face_slap">压抑打脸流</MenuItem>
+                    </TextField>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => setShowTensionDialog(true)}
+                    >
+                      测算草稿
+                    </Button>
+                  </Box>
+                </Box>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  监测剧情平淡期与高潮爆发期，避免全书持续平推无起伏
+                  监测剧情平淡期与高潮爆发期，红线为章节实测，虚线为神作对标基准
                 </Typography>
-                <EmotionWaveChart height={240} />
+                {tensionResult && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                    <Chip
+                      size="small"
+                      label={`标杆拟合度: ${tensionResult.benchmarkAlignmentScore}%`}
+                      color={tensionResult.benchmarkAlignmentScore >= 75 ? 'success' : 'primary'}
+                      variant="outlined"
+                    />
+                    <Chip
+                      size="small"
+                      label={`最高潮: ${tensionResult.climaxSegment} (${tensionResult.maxTension}分)`}
+                      sx={{ bgcolor: 'rgba(225, 29, 72, 0.1)', color: '#E11D48', fontWeight: 600 }}
+                    />
+                    <Chip
+                      size="small"
+                      label={`均值: ${tensionResult.avgTension} ｜ 波动: ±${tensionResult.tensionVariance}`}
+                      variant="outlined"
+                    />
+                  </Box>
+                )}
+                <EmotionWaveChart
+                  height={240}
+                  tensionPoints={tensionResult ? tensionResult.tensionCurve : undefined}
+                  benchmarkPoints={tensionResult ? tensionResult.benchmarkCurve : undefined}
+                  benchmarkName={tensionResult?.benchmarkName}
+                  labels={tensionResult?.segments}
+                />
+                {tensionResult?.pacingFeedback && tensionResult.pacingFeedback.length > 0 && (
+                  <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 1.5, bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
+                    {tensionResult.pacingFeedback.map((f, i) => (
+                      <Typography key={i} variant="caption" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
+                        {f}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
               </Paper>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -1026,6 +1116,45 @@ function DashboardPanel({ project }: { project: string }) {
           </Grid>
         </>
       )}
+
+      {/* 章节草稿张力测算弹窗 */}
+      <Dialog open={showTensionDialog} onClose={() => setShowTensionDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>测算章节情绪张力波形</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            粘贴当前正在创作的章节草稿，系统将通过冲突关键词、标点短句节奏、人物对峙与感官微表情，计算整章情绪起伏波形并与标杆对齐。
+          </Typography>
+          <TextField
+            label="章节正文草稿"
+            multiline
+            rows={8}
+            value={draftInput}
+            onChange={(e) => setDraftInput(e.target.value)}
+            placeholder="粘贴本章草稿内容……（建议 1,000 字以上以获得更精准波形）"
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            size="small"
+            onClick={() => {
+              const sample = '寒风呼啸，江水刺骨冰冷。红围巾在夜色中如鲜血翻飞！少年毫不犹豫甩开外套跃入刺骨冰江！\n“救命！”呼救声微弱颤抖，水花狂暴激荡。他咬紧牙关，在生死边缘拉回了下沉的躯体！\n岸边警笛骤鸣，众人骇然围拢。危机暂退，两人精疲力竭倒在雪地中，大口喘息。'
+              setDraftInput(sample)
+              runTensionAnalysis(sample)
+            }}
+          >
+            填入示范高潮草稿
+          </Button>
+          <Button onClick={() => setShowTensionDialog(false)}>取消</Button>
+          <Button
+            variant="contained"
+            disabled={!draftInput.trim() || tensionLoading}
+            onClick={() => runTensionAnalysis(draftInput)}
+          >
+            {tensionLoading ? '分析中…' : '开始比对'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

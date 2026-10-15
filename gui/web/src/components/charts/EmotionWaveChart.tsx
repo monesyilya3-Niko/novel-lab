@@ -6,6 +6,8 @@ import { ink } from '../../ink'
 
 export interface EmotionWaveChartProps {
   tensionPoints?: number[] // 0-100 的张力值列表
+  benchmarkPoints?: number[] // 可选：神作标杆张力基准曲线（重叠对比）
+  benchmarkName?: string
   labels?: string[]
   height?: number
 }
@@ -15,25 +17,36 @@ const DEFAULT_LABELS = ['开端', '伏笔', '微冲突', '试探', '积蓄', '�
 
 export default function EmotionWaveChart({
   tensionPoints = DEFAULT_WAVE,
+  benchmarkPoints,
+  benchmarkName = '神作标杆基准',
   labels = DEFAULT_LABELS,
   height = 240,
 }: EmotionWaveChartProps) {
   const { isDark } = useThemeMode()
 
   const option = useMemo(() => {
+    const hasBenchmark = Boolean(benchmarkPoints && benchmarkPoints.length > 0)
     return {
       tooltip: {
         trigger: 'axis' as const,
         formatter: (params: any) => {
-          const p = Array.isArray(params) ? params[0] : params
-          return `${p.name}<br/>情绪张力指数: <b>${p.value}</b> / 100`
+          const list = Array.isArray(params) ? params : [params]
+          const header = list[0]?.name || ''
+          const lines = list.map((p: any) => `${p.marker} ${p.seriesName}: <b>${p.value}</b> / 100`).join('<br/>')
+          return `${header}<br/>${lines}`
         },
+      },
+      legend: {
+        show: hasBenchmark,
+        top: 0,
+        right: 10,
+        textStyle: { color: isDark ? ink.moonSoft : ink.textSecondary, fontSize: 11 },
       },
       grid: {
         left: '3%',
         right: '4%',
         bottom: '8%',
-        top: '12%',
+        top: hasBenchmark ? '18%' : '12%',
         containLabel: true,
       },
       xAxis: {
@@ -52,7 +65,7 @@ export default function EmotionWaveChart({
       },
       series: [
         {
-          name: '情绪张力',
+          name: hasBenchmark ? '当前章节' : '情绪张力',
           type: 'line' as const,
           smooth: 0.35,
           symbol: 'circle',
@@ -86,9 +99,19 @@ export default function EmotionWaveChart({
           },
           data: tensionPoints,
         },
+        ...(hasBenchmark && benchmarkPoints ? [{
+          name: benchmarkName,
+          type: 'line' as const,
+          smooth: 0.35,
+          symbol: 'diamond',
+          symbolSize: 5,
+          itemStyle: { color: '#0284C7' },
+          lineStyle: { width: 2, type: 'dashed' as const, color: '#0284C7' },
+          data: benchmarkPoints,
+        }] : []),
       ],
     }
-  }, [tensionPoints, labels, isDark])
+  }, [tensionPoints, benchmarkPoints, benchmarkName, labels, isDark])
 
   return <BaseChart option={option} height={height} />
 }

@@ -127,6 +127,255 @@ def count_words_i18n(text: str, mode: str = "auto") -> dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# 章节张力与黄金三章情绪波形动态分析模型（Tension & Emotion Wave Model）
+# ---------------------------------------------------------------------------
+
+_CONFLICT_KEYWORDS = frozenset({
+    "生死", "性命", "杀", "斩", "死", "亡", "血", "逃", "截杀", "绝境", "毁灭", "危机",
+    "暴怒", "轰", "爆", "崩", "撕裂", "剧毒", "敌", "剑芒", "枪声", "炸裂", "重伤",
+    "断臂", "倒塌", "杀机", "狂暴", "破裂", "刺穿", "震颤", "怒吼", "咆哮", "搏杀",
+    "陷阱", "阴谋", "绝望", "灭门", "血泊", "伏击", "反扑", "突变", "死绝", "屠戮",
+})
+
+_EMOTION_TENSION_KEYWORDS = frozenset({
+    "冷汗", "窒息", "心脏狂跳", "剧痛", "发麻", "颤抖", "瞳孔紧缩", "目眦欲裂", "咬牙",
+    "倒吸一口凉气", "紧绷", "煞白", "狂跳", "冷笑", "杀意", "惊恐", "骇然", "惨白",
+    "青筋暴起", "汗毛倒竖", "惊悚", "心惊肉跳", "毛骨悚然", "慌乱", "狂怒", "暴躁",
+})
+
+_CONFRONTATION_DIALOGUE_KEYWORDS = frozenset({
+    "你敢", "凭什么", "找死", "休想", "住手", "滚", "闭嘴", "为何", "不可", "绝不",
+    "狂妄", "放肆", "纳命来", "受死", "交出来", "妄想", "谁给你的胆子", "饶命",
+})
+
+_BENCHMARK_PROFILES: dict[str, list[int]] = {
+    # 经典起承转合黄金波形（开局抓人、中段铺垫蓄势、后段高潮爆发、末尾强留白）
+    "classic": [35, 45, 52, 68, 60, 82, 92, 70, 86, 95],
+    # 黄金三秒强入局波形（开篇即极端生死/悬疑危机，高压推行）
+    "fast_hook": [82, 88, 65, 70, 75, 82, 90, 78, 88, 96],
+    # 稳健发育层层递进波形（凡人流/修真升级，节奏厚重扎实）
+    "steady": [25, 32, 42, 52, 62, 72, 82, 90, 95, 75],
+    # 极限压抑逆袭反杀波形（退婚/受辱/逆袭，先抑后扬大爆发）
+    "face_slap": [30, 22, 18, 28, 48, 65, 88, 96, 98, 75],
+}
+
+_BENCHMARK_NAMES = {
+    "classic": "经典起承转合标杆",
+    "fast_hook": "黄金三秒强入局标杆",
+    "steady": "稳健递进厚积薄发标杆",
+    "face_slap": "极限压抑逆袭打脸标杆",
+}
+
+_DEFAULT_10_LABELS = [
+    "开端 (0-10%)", "伏笔 (10-20%)", "微冲突 (20-30%)", "试探 (30-40%)", "积蓄 (40-50%)",
+    "爆发 (50-60%)", "高潮 (60-70%)", "喘息 (70-80%)", "反扑 (80-90%)", "收束 (90-100%)",
+]
+
+
+def _resample_curve(profile: list[int], target_len: int) -> list[int]:
+    """对标杆曲线进行线性重采样，自适应目标分段数量。"""
+    if target_len == len(profile):
+        return list(profile)
+    res: list[int] = []
+    n = len(profile)
+    for i in range(target_len):
+        pos = i * (n - 1) / max(target_len - 1, 1)
+        low = int(pos)
+        high = min(low + 1, n - 1)
+        weight = pos - low
+        val = int(round(profile[low] * (1 - weight) + profile[high] * weight))
+        res.append(max(0, min(100, val)))
+    return res
+
+
+def _split_into_segments(text: str, n: int) -> list[str]:
+    """将篇章文本均分为 n 段，优先在换行与句尾标点处安全切分。"""
+    clean_text = text.strip()
+    if not clean_text:
+        return [""] * n
+    total_len = len(clean_text)
+    if total_len <= n:
+        return [clean_text[i:i + 1] for i in range(total_len)] + [""] * (n - total_len)
+
+    step = total_len / n
+    segments: list[str] = []
+    prev_idx = 0
+    for i in range(1, n):
+        target_idx = int(round(i * step))
+        search_start = max(prev_idx + 1, target_idx - 60)
+        search_end = min(total_len - 1, target_idx + 60)
+        window = clean_text[search_start:search_end]
+        cut_candidates = [
+            m.start() + search_start + 1
+            for m in re.finditer(r"[\n。！？!?]", window)
+        ]
+        if cut_candidates:
+            best_cut = min(cut_candidates, key=lambda pos: abs(pos - target_idx))
+            if best_cut <= prev_idx or best_cut >= total_len:
+                best_cut = target_idx
+        else:
+            best_cut = target_idx
+        segments.append(clean_text[prev_idx:best_cut].strip())
+        prev_idx = best_cut
+    segments.append(clean_text[prev_idx:].strip())
+    return segments
+
+
+def _calculate_segment_tension(seg_text: str) -> int:
+    """计算单个文本切片的张力指数（15-98 分区间）。"""
+    if not seg_text or not seg_text.strip():
+        return 20
+
+    c = len(_WS_RE.sub("", seg_text))
+    if c == 0:
+        return 20
+
+    # 1. 句子节奏与长短句爆发
+    sentences = engine_adapter.split_sentences(seg_text)
+    s_count = max(len(sentences), 1)
+    avg_len = c / s_count
+
+    pace_bonus = 0.0
+    if avg_len < 12:
+        pace_bonus = 10.0
+    elif avg_len < 18:
+        pace_bonus = 5.0
+    elif avg_len > 35:
+        pace_bonus = -8.0
+
+    # 2. 感叹号与语气符号密集度
+    exc_count = seg_text.count("！") + seg_text.count("!") + seg_text.count("？") + seg_text.count("?")
+    exc_density = (exc_count / c) * 500
+    punctuation_boost = min(15.0, exc_density * 6.0)
+
+    # 3. 词汇特征命中
+    conflict_hits = sum(seg_text.count(w) for w in _CONFLICT_KEYWORDS)
+    emotion_hits = sum(seg_text.count(w) for w in _EMOTION_TENSION_KEYWORDS)
+    dialogue_hits = sum(seg_text.count(w) for w in _CONFRONTATION_DIALOGUE_KEYWORDS)
+
+    conflict_score = (conflict_hits / c) * 500 * 8.0
+    emotion_score = (emotion_hits / c) * 500 * 7.0
+    dialogue_score = (dialogue_hits / c) * 500 * 6.0
+
+    raw_tension = 35.0 + pace_bonus + punctuation_boost + conflict_score + emotion_score + dialogue_score
+    return max(15, min(98, int(round(raw_tension))))
+
+
+def analyze_tension_curve(
+    text: str,
+    benchmark: str = "classic",
+    segments_count: int = 10,
+) -> dict[str, Any]:
+    """基于网文张力数学模型分析章节情绪张力起伏波形，并与神作标杆曲线比对。"""
+    if not isinstance(text, str):
+        raise ServiceError("text 必须为字符串", 400)
+
+    # 限制切片数量范围在 3 到 20 之间
+    n = max(3, min(20, int(segments_count or 10)))
+
+    # 规范化标杆类型
+    bm_key = (benchmark or "classic").strip().lower()
+    if bm_key not in _BENCHMARK_PROFILES:
+        bm_key = "classic"
+    raw_bm_profile = _BENCHMARK_PROFILES[bm_key]
+    benchmark_curve = _resample_curve(raw_bm_profile, n)
+    bm_name = _BENCHMARK_NAMES.get(bm_key, "经典起承转合标杆")
+
+    # 构建分段标签
+    if n == 10:
+        labels = list(_DEFAULT_10_LABELS)
+    else:
+        labels = [f"第{i + 1}段 ({int(round(i * 100 / n))}-{int(round((i + 1) * 100 / n))}%)" for i in range(n)]
+
+    if not text.strip():
+        return {
+            "segments": labels,
+            "tension_curve": [0] * n,
+            "benchmark_curve": benchmark_curve,
+            "benchmark_name": bm_name,
+            "climax_index": 0,
+            "climax_segment": labels[0],
+            "max_tension": 0,
+            "avg_tension": 0.0,
+            "tension_variance": 0.0,
+            "benchmark_alignment_score": 0,
+            "flat_zones": [],
+            "pacing_feedback": ["文本内容为空，无法计算张力曲线与节奏节拍。"],
+        }
+
+    # 切分文本段落并计算张力
+    segments_text = _split_into_segments(text, n)
+    tension_curve = [_calculate_segment_tension(seg) for seg in segments_text]
+
+    # 极值与统计指标
+    climax_idx = max(range(n), key=lambda i: tension_curve[i])
+    max_t = tension_curve[climax_idx]
+    avg_t = round(sum(tension_curve) / n, 1)
+    variance = round((sum((t - avg_t) ** 2 for t in tension_curve) / n) ** 0.5, 1)
+
+    # 平淡期检测（张力 < 35 且相邻仍 < 35）
+    flat_zones = []
+    for i, t in enumerate(tension_curve):
+        is_flat = t < 35 and (
+            (i > 0 and tension_curve[i - 1] < 35) or
+            (i < n - 1 and tension_curve[i + 1] < 35)
+        )
+        if is_flat:
+            flat_zones.append({
+                "segment_index": i,
+                "label": labels[i],
+                "tension": t,
+            })
+
+    # 标杆拟合度得分 (100 - mean_absolute_error)
+    diffs = [abs(t - b) for t, b in zip(tension_curve, benchmark_curve, strict=False)]
+    mean_diff = sum(diffs) / len(diffs) if diffs else 0
+    alignment_score = max(0, min(100, int(round(100 - mean_diff))))
+
+    # 智能策展编辑建议反馈
+    feedback: list[str] = []
+
+    # 1. 开篇入局评价
+    first_t = tension_curve[0]
+    if first_t >= 65:
+        feedback.append(f"【黄金开局】开篇第 1 段张力达 {first_t} 分，危机与冲突前置，具备出色的黄金三秒抓人效应。")
+    elif first_t < 38:
+        feedback.append(f"【开局平缓】开篇第 1 段张力为 {first_t} 分，起笔较为平静。若为商业网络小说连载首章，建议适度前置微冲突或悬念钩子。")
+
+    # 2. 高潮位置评价
+    if climax_idx in (n - 4, n - 3, n - 2, n - 1):
+        feedback.append(f"【节奏合拍】全章最高潮出现在第 {climax_idx + 1} 段（{labels[climax_idx]}，张力 {max_t} 分），处于后半程蓄势爆发黄金区间。")
+    elif climax_idx <= 1:
+        feedback.append(f"【高潮前置】全章最高潮极度靠前（第 {climax_idx + 1} 段，张力 {max_t} 分），后半段若缺乏次级冲突承接，容易给读者造成'高开低走'之感。")
+
+    # 3. 平淡期警戒
+    if flat_zones:
+        flat_labels = "、".join(z["label"].split()[0] for z in flat_zones[:3])
+        feedback.append(f"【平淡区间】检测到 {len(flat_zones)} 处低张力连续平推区间（如 {flat_labels}），读者易产生疲倦，建议穿插环境压迫、人物机锋或暗线情报。")
+
+    # 4. 动态波形跨度
+    if variance < 8.0:
+        feedback.append(f"【张力平稳】全章张力波动幅度较小（起伏标准差 {variance}），波峰与波谷对比不够鲜明，建议拉大'抑'与'扬'的反差。")
+    else:
+        feedback.append(f"【起伏鲜明】全章情绪张力波动起伏鲜明（起伏标准差 {variance}），具有清晰的起承转合层次。")
+
+    return {
+        "segments": labels,
+        "tension_curve": tension_curve,
+        "benchmark_curve": benchmark_curve,
+        "benchmark_name": bm_name,
+        "climax_index": climax_idx,
+        "climax_segment": labels[climax_idx],
+        "max_tension": max_t,
+        "avg_tension": avg_t,
+        "tension_variance": variance,
+        "benchmark_alignment_score": alignment_score,
+        "flat_zones": flat_zones,
+        "pacing_feedback": feedback,
+    }
+
+
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
 

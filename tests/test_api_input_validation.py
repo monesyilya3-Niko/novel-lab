@@ -113,6 +113,10 @@ class TestDirtyBodiesGet400(unittest.TestCase):
         ("/api/system/compliance", {"voice": 12345}, "资产引用"),
         ("/api/style/save", {"name": "a" * 10000, "style_card": {}}, "过长"),
         ("/api/essence/chains", {"book_id": "b", "clue_name": "x", "category": 12345}, "字符串"),
+        ("/api/writing/tension-analysis", {"text": 12345}, "字符串"),
+        ("/api/writing/tension-analysis", {"text": "abc", "benchmark": 12345}, "字符串"),
+        ("/api/writing/tension-analysis", {"text": "abc", "segments_count": "bad"}, "整数"),
+        ("/api/writing/tension-analysis", {"text": "abc", "segments_count": True}, "整数"),
     ]
 
     def test_every_dirty_body_is_4xx_not_500(self):
