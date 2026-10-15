@@ -1,6 +1,7 @@
 // 国际化语言 Context：zh-CN / en-US，localStorage 持久化。
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -28,27 +29,30 @@ function readStoredLocale(): Locale {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale)
 
-  const setLocale = (l: Locale) => {
+  const setLocale = useCallback((l: Locale) => {
     setLocaleState(l)
     writeStorage(STORAGE_KEY, l)
-  }
+  }, [])
 
-  const toggleLocale = () => {
+  const toggleLocale = useCallback(() => {
     const next: Locale = locale === 'zh-CN' ? 'en-US' : 'zh-CN'
     setLocale(next)
-  }
+  }, [locale, setLocale])
 
-  const t = (key: string, fallback?: string): string => {
-    const entry = TRANSLATIONS[key]
-    if (entry && entry[locale]) {
-      return entry[locale]
-    }
-    return fallback ?? key
-  }
+  const t = useCallback(
+    (key: string, fallback?: string): string => {
+      const entry = TRANSLATIONS[key]
+      if (entry && entry[locale]) {
+        return entry[locale]
+      }
+      return fallback ?? key
+    },
+    [locale],
+  )
 
   const value = useMemo<I18nState>(
     () => ({ locale, setLocale, toggleLocale, t }),
-    [locale],
+    [locale, setLocale, toggleLocale, t],
   )
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
