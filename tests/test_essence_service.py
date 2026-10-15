@@ -542,10 +542,10 @@ class TestEssenceService(unittest.TestCase):
         self.assertFalse(resp_api["data"]["is_compliant"])
 
     def test_ensure_curated_library(self):
-        """验证 14 大传世神作编纂矩阵（含 2 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
+        """验证 16 大传世神作编纂矩阵（含 4 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
         res = essence_service.ensure_curated_library(clean_raw_corpus=False)
         self.assertTrue(res["success"])
-        self.assertEqual(res["curated_books_seeded"], 14)
+        self.assertEqual(res["curated_books_seeded"], 16)
 
         books = essence_service.list_books()
         titles = {b["title"] for b in books}
@@ -563,6 +563,8 @@ class TestEssenceService(unittest.TestCase):
         self.assertIn("全职高手", titles)
         self.assertIn("迷雾之子：最后帝国", titles)
         self.assertIn("玄元仙道：无魂", titles)
+        self.assertIn("末日地牢卡尔", titles)
+        self.assertIn("学习之母", titles)
 
         # 验证《暮冬念春》五维资产与伏笔
         md_book = essence_service.get_book("curated_mudongnianchun")
@@ -615,6 +617,27 @@ class TestEssenceService(unittest.TestCase):
         self.assertGreaterEqual(len(cd_assets), 5)
         cd_chains = essence_service.list_chains(book_id="curated_cradle")
         self.assertGreaterEqual(len(cd_chains), 2)
+
+        # 验证海外现象级神作《末日地牢卡尔》与《学习之母》五维资产与伏笔链
+        dcc_book = essence_service.get_book("curated_dungeon_crawler_carl")
+        self.assertEqual(dcc_book["title"], "末日地牢卡尔")
+        self.assertEqual(dcc_book["total_chapters"], 52)
+        self.assertEqual(dcc_book["genre"], "kehuan")
+        self.assertEqual(dcc_book["platform"], "royalroad")
+        dcc_assets = essence_service.list_assets(book_id="curated_dungeon_crawler_carl")
+        self.assertGreaterEqual(len(dcc_assets), 5)
+        dcc_chains = essence_service.list_chains(book_id="curated_dungeon_crawler_carl")
+        self.assertGreaterEqual(len(dcc_chains), 2)
+
+        mol_book = essence_service.get_book("curated_mother_of_learning")
+        self.assertEqual(mol_book["title"], "学习之母")
+        self.assertEqual(mol_book["total_chapters"], 108)
+        self.assertEqual(mol_book["genre"], "xifang-qihuan")
+        self.assertEqual(mol_book["platform"], "royalroad")
+        mol_assets = essence_service.list_assets(book_id="curated_mother_of_learning")
+        self.assertGreaterEqual(len(mol_assets), 5)
+        mol_chains = essence_service.list_chains(book_id="curated_mother_of_learning")
+        self.assertGreaterEqual(len(mol_chains), 2)
 
     def test_adopt_book_to_project(self):
         """验证一键转入整本神作资产到写作项目。"""
