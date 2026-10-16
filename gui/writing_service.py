@@ -629,11 +629,11 @@ def import_chapter(project: str, chapter_no: int, content: str,
     # state.json 的 current_chapter/word_count_today 已被推进——修正后重试还会重复累加字数。
     voice_data = _load_asset_of_kind(voice, "voice") if voice else None
 
-    engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
-    # 入库幂等：快照→落盘→记账三步原子化（_CHAPTER_WRITE_LOCK），防并发重复入库竞态；
+    # 入库幂等：确保目录→快照→落盘→记账四步全在 _CHAPTER_WRITE_LOCK 内，防并发重复入库与 state.json 争用竞态；
     # 重复入库只记字数增量（改短则扣减），不重复累加章节数
     from gui import writing_extra
     with _CHAPTER_WRITE_LOCK:
+        engine_adapter.ensure_novel_structure(str(novel_dir), novel_name or project)
         old_words = writing_extra.get_chapter_words(project, chapter_no)
         is_new = old_words is None
         chapter_path = engine_adapter.save_chapter(str(novel_dir), chapter_no, content)

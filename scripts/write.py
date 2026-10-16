@@ -17,7 +17,9 @@ M2.2 章节生成 + 入库 — 资产驱动创作的正式入口
 """
 import argparse
 import json
+import os
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -41,7 +43,16 @@ def ensure_novel_structure(novel_dir: Path, name: str = "新书"):
             "word_count_today": 0,
             "last_updated": "",
         }
-        state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp_file = state_file.with_name(f".state-{os.getpid()}-{threading.get_ident()}.tmp")
+        tmp_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            tmp_file.replace(state_file)
+        except OSError:
+            if tmp_file.exists():
+                try:
+                    tmp_file.unlink()
+                except OSError:
+                    pass
     return state_file
 
 
@@ -64,7 +75,16 @@ def save_chapter(novel_dir: Path, chapter_no: int, content: str) -> Path:
         state["last_write_date"] = today
     state["word_count_today"] = state.get("word_count_today", 0) + len(content)
     state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    state_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp_file = state_file.with_name(f".state-{os.getpid()}-{threading.get_ident()}.tmp")
+    tmp_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        tmp_file.replace(state_file)
+    except OSError:
+        if tmp_file.exists():
+            try:
+                tmp_file.unlink()
+            except OSError:
+                pass
     return ch_file
 
 
