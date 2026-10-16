@@ -542,10 +542,10 @@ class TestEssenceService(unittest.TestCase):
         self.assertFalse(resp_api["data"]["is_compliant"])
 
     def test_ensure_curated_library(self):
-        """验证 16 大传世神作编纂矩阵（含 4 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
+        """验证 18 大传世神作编纂矩阵（含 6 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
         res = essence_service.ensure_curated_library(clean_raw_corpus=False)
         self.assertTrue(res["success"])
-        self.assertEqual(res["curated_books_seeded"], 16)
+        self.assertEqual(res["curated_books_seeded"], 18)
 
         books = essence_service.list_books()
         titles = {b["title"] for b in books}
@@ -565,6 +565,8 @@ class TestEssenceService(unittest.TestCase):
         self.assertIn("玄元仙道：无魂", titles)
         self.assertIn("末日地牢卡尔", titles)
         self.assertIn("学习之母", titles)
+        self.assertIn("风之名", titles)
+        self.assertIn("与怪为伴", titles)
 
         # 验证《暮冬念春》五维资产与伏笔
         md_book = essence_service.get_book("curated_mudongnianchun")
@@ -638,6 +640,28 @@ class TestEssenceService(unittest.TestCase):
         self.assertGreaterEqual(len(mol_assets), 5)
         mol_chains = essence_service.list_chains(book_id="curated_mother_of_learning")
         self.assertGreaterEqual(len(mol_chains), 2)
+
+        # 验证西方诗性奇幻天花板《风之名》五维资产与伏笔链
+        notw_book = essence_service.get_book("curated_name_of_the_wind")
+        self.assertEqual(notw_book["title"], "风之名")
+        self.assertEqual(notw_book["total_chapters"], 92)
+        self.assertEqual(notw_book["genre"], "xifang-qihuan")
+        self.assertEqual(notw_book["platform"], "western_canon")
+        notw_assets = essence_service.list_assets(book_id="curated_name_of_the_wind")
+        self.assertGreaterEqual(len(notw_assets), 5)
+        notw_chains = essence_service.list_chains(book_id="curated_name_of_the_wind")
+        self.assertGreaterEqual(len(notw_chains), 2)
+
+        # 验证海外穿越升级流顶流《与怪为伴》五维资产与伏笔链
+        hwfwm_book = essence_service.get_book("curated_he_who_fights_with_monsters")
+        self.assertEqual(hwfwm_book["title"], "与怪为伴")
+        self.assertEqual(hwfwm_book["total_chapters"], 120)
+        self.assertEqual(hwfwm_book["genre"], "xifang-qihuan")
+        self.assertEqual(hwfwm_book["platform"], "royalroad")
+        hwfwm_assets = essence_service.list_assets(book_id="curated_he_who_fights_with_monsters")
+        self.assertGreaterEqual(len(hwfwm_assets), 5)
+        hwfwm_chains = essence_service.list_chains(book_id="curated_he_who_fights_with_monsters")
+        self.assertGreaterEqual(len(hwfwm_chains), 2)
 
     def test_adopt_book_to_project(self):
         """验证一键转入整本神作资产到写作项目。"""
