@@ -43,18 +43,23 @@ import {
 import type { WritingProject } from '../types'
 
 const PLATFORM_OPTIONS = [
-  { value: 'general', label: '通用网文平台' },
-  { value: 'qidian', label: '起点中文网 (大纵深世界观/严密升级/反圣母)' },
-  { value: 'fanqie', label: '番茄小说 (30秒黄金钩/每章留扣/防虐主)' },
-  { value: 'jinjiang', label: '晋江文学城 (人设细腻反差/推拉克制/微表情)' },
-  { value: 'qimao', label: '七猫中文网 (开局强冲突受辱/底牌强反制)' },
-  { value: 'zhihu', label: '知乎盐选 (第一人称高反转/三幕式快节奏)' },
+  { value: 'general', label: '通用网文平台', shortLabel: '通用平台' },
+  { value: 'qidian', label: '起点中文网 (大纵深世界观/严密升级/反圣母)', shortLabel: '起点中文网' },
+  { value: 'fanqie', label: '番茄小说 (30秒黄金钩/每章留扣/防虐主)', shortLabel: '番茄小说' },
+  { value: 'jinjiang', label: '晋江文学城 (人设细腻反差/推拉克制/微表情)', shortLabel: '晋江文学城' },
+  { value: 'qimao', label: '七猫中文网 (开局强冲突受辱/底牌强反制)', shortLabel: '七猫中文网' },
+  { value: 'zhihu', label: '知乎盐选 (第一人称高反转/三幕式快节奏)', shortLabel: '知乎盐选' },
+  { value: 'royalroad', label: 'Royal Road (欧美Progression/LitRPG/高节奏升级)', shortLabel: 'Royal Road' },
+  { value: 'amazon_kdp', label: 'Amazon KDP (全球商业电子书/多卷出版/精确定价)', shortLabel: 'Amazon KDP' },
+  { value: 'webnovel', label: 'Webnovel (阅文出海/西方化修仙/系统穿越)', shortLabel: 'Webnovel' },
+  { value: 'western_canon', label: '西方经典殿堂 (严肃奇幻/硬科幻史诗/世界观典范)', shortLabel: '西方经典' },
 ]
 
 const GENRE_OPTIONS = [
   { value: 'general', label: '通用题材' },
   { value: 'xianxia', label: '仙侠修真' },
   { value: 'xuanhuan', label: '玄幻异界' },
+  { value: 'xifang-qihuan', label: '西方奇幻/史诗' },
   { value: 'dushi', label: '都市职场/异能' },
   { value: 'kehuan', label: '科幻未来/星际' },
   { value: 'xuanyi', label: '悬疑怪谈/惊悚' },
@@ -63,6 +68,33 @@ const GENRE_OPTIONS = [
   { value: 'youxi', label: '网游竞技/电竞' },
   { value: 'wuxian', label: '诸天无限流' },
 ]
+
+const PLATFORM_LABELS: Record<string, string> = {
+  general: '通用平台',
+  qidian: '起点中文网',
+  fanqie: '番茄小说',
+  jinjiang: '晋江文学城',
+  qimao: '七猫中文网',
+  zhihu: '知乎盐选',
+  royalroad: 'Royal Road',
+  amazon_kdp: 'Amazon KDP',
+  webnovel: 'Webnovel',
+  western_canon: '西方经典',
+}
+
+const GENRE_LABELS: Record<string, string> = {
+  general: '通用题材',
+  xianxia: '仙侠修真',
+  xuanhuan: '玄幻异界',
+  'xifang-qihuan': '西方奇幻',
+  dushi: '都市职场',
+  kehuan: '科幻未来',
+  xuanyi: '悬疑怪谈',
+  yanqing: '现代/古言',
+  lishi: '历史穿越',
+  youxi: '网游竞技',
+  wuxian: '诸天无限',
+}
 
 const CATEGORY_MAP: Record<string, { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'default' | 'error' }> = {
   outline: { label: '骨架大纲', color: 'primary' },
@@ -508,7 +540,7 @@ function EssenceAssetsSection() {
         >
           <MenuItem value="all">全平台生态</MenuItem>
           {PLATFORM_OPTIONS.map((p) => (
-            <MenuItem key={p.value} value={p.value}>{p.label.split(' ')[0]}</MenuItem>
+            <MenuItem key={p.value} value={p.value}>{p.shortLabel || p.label.split(' ')[0]}</MenuItem>
           ))}
         </TextField>
 
@@ -562,8 +594,8 @@ function EssenceAssetsSection() {
                     {(item.tags || '').split(',').filter(Boolean).map((tag, idx) => (
                       <Chip key={idx} label={tag} size="small" variant="outlined" />
                     ))}
-                    <Chip label={`生态: ${item.platform}`} size="small" variant="outlined" />
-                    <Chip label={`题材: ${item.genre}`} size="small" variant="outlined" />
+                    <Chip label={`生态: ${PLATFORM_LABELS[item.platform] || item.platform}`} size="small" variant="outlined" />
+                    <Chip label={`题材: ${GENRE_LABELS[item.genre] || item.genre}`} size="small" variant="outlined" />
                   </Box>
 
                   {item.userNote && (
@@ -795,8 +827,8 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
                   </Box>
 
                   <Box sx={{ display: 'flex', gap: 0.5, my: 1 }}>
-                    <Chip size="small" label={b.genre} />
-                    <Chip size="small" label={b.platform} variant="outlined" />
+                    <Chip size="small" label={GENRE_LABELS[b.genre] || b.genre} />
+                    <Chip size="small" label={PLATFORM_LABELS[b.platform] || b.platform} variant="outlined" />
                   </Box>
 
                   <Typography variant="body2" color="text.secondary">

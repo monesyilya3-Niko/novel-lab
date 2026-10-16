@@ -542,10 +542,10 @@ class TestEssenceService(unittest.TestCase):
         self.assertFalse(resp_api["data"]["is_compliant"])
 
     def test_ensure_curated_library(self):
-        """验证 18 大传世神作编纂矩阵（含 6 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
+        """验证 20 大传世神作编纂矩阵（含 8 部西方先锋标杆）入库、资产与伏笔链完整绑定。"""
         res = essence_service.ensure_curated_library(clean_raw_corpus=False)
         self.assertTrue(res["success"])
-        self.assertEqual(res["curated_books_seeded"], 18)
+        self.assertEqual(res["curated_books_seeded"], 20)
 
         books = essence_service.list_books()
         titles = {b["title"] for b in books}
@@ -567,6 +567,8 @@ class TestEssenceService(unittest.TestCase):
         self.assertIn("学习之母", titles)
         self.assertIn("风之名", titles)
         self.assertIn("与怪为伴", titles)
+        self.assertIn("沙丘", titles)
+        self.assertIn("原始猎人", titles)
 
         # 验证《暮冬念春》五维资产与伏笔
         md_book = essence_service.get_book("curated_mudongnianchun")
@@ -662,6 +664,28 @@ class TestEssenceService(unittest.TestCase):
         self.assertGreaterEqual(len(hwfwm_assets), 5)
         hwfwm_chains = essence_service.list_chains(book_id="curated_he_who_fights_with_monsters")
         self.assertGreaterEqual(len(hwfwm_chains), 2)
+
+        # 验证世界科幻史不朽史诗《沙丘》五维资产与伏笔链
+        dune_book = essence_service.get_book("curated_dune")
+        self.assertEqual(dune_book["title"], "沙丘")
+        self.assertEqual(dune_book["total_chapters"], 52)
+        self.assertEqual(dune_book["genre"], "kehuan")
+        self.assertEqual(dune_book["platform"], "western_canon")
+        dune_assets = essence_service.list_assets(book_id="curated_dune")
+        self.assertGreaterEqual(len(dune_assets), 5)
+        dune_chains = essence_service.list_chains(book_id="curated_dune")
+        self.assertGreaterEqual(len(dune_chains), 2)
+
+        # 验证Royal Road长期霸榜神作《原始猎人》五维资产与伏笔链
+        ph_book = essence_service.get_book("curated_the_primal_hunter")
+        self.assertEqual(ph_book["title"], "原始猎人")
+        self.assertEqual(ph_book["total_chapters"], 150)
+        self.assertEqual(ph_book["genre"], "kehuan")
+        self.assertEqual(ph_book["platform"], "royalroad")
+        ph_assets = essence_service.list_assets(book_id="curated_the_primal_hunter")
+        self.assertGreaterEqual(len(ph_assets), 5)
+        ph_chains = essence_service.list_chains(book_id="curated_the_primal_hunter")
+        self.assertGreaterEqual(len(ph_chains), 2)
 
     def test_adopt_book_to_project(self):
         """验证一键转入整本神作资产到写作项目。"""
