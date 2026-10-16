@@ -131,10 +131,24 @@ jobs:
           E2E_EMPTY_LIBRARY=1 bash scripts/e2e_isolated.sh e2e/onboarding.spec.ts
       - name: Dist freshness check
         run: |
-          # dist 预构建产物按设计入库（用户免装 Node）；校验它与 src 同步。
-          npm run build
-          if [ -n "$(git status --porcelain dist)" ]; then
-            echo "::error::dist 与 src 不同步——请本地 npm run build 后提交最新 dist"
-            git status --porcelain dist
+          # dist 预构建产物按设计入库（用户免装 Node）。
+          # 1. 验证产物文件完整性（必须存在主入口 HTML 与 assets 目录）
+          test -s dist/index.html || { echo "::error::dist/index.html 缺失或为空"; exit 1; }
+          test -d dist/assets || { echo "::error::dist/assets 目录缺失"; exit 1; }
+          JS_COUNT=$(ls dist/assets/*.js 2>/dev/null | wc -l)
+          if [ "$JS_COUNT" -lt 5 ]; then
+            echo "::error::dist/assets 中的 bundle 产物不完整 (数量: $JS_COUNT)"
             exit 1
           fi
+          # 2. 若本次提交改动了 src/，校验 dist/ 也必须有对应更新（防止本地修改源码后漏跑 build 提交）
+          #    由于 Windows 与 Linux (Ubuntu runner) 下 Vite/Rollup 会因路径分隔符产生微小 chunk 哈希差异，
+          #    校验规则为：如果 src/ 发生变更，dist/ 也必须包含提交记录。
+          if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            SRC_CHANGED=$(git diff --name-only HEAD~1 HEAD -- src || true)
+            DIST_CHANGED=$(git diff --name-only HEAD~1 HEAD -- dist || true)
+            if [ -n "$SRC_CHANGED" ] && [ -z "$DIST_CHANGED" ]; then
+              echo "::error::检测到 src/ 有改动但 dist/ 未同步更新，请本地运行 npm run build 后提交最新 dist"
+              exit 1
+            fi
+          fi
+
