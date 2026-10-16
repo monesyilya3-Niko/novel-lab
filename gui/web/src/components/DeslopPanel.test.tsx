@@ -1,6 +1,8 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import DeslopPanel from './DeslopPanel'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 const mockDeslop = vi.fn()
 
@@ -107,5 +109,55 @@ describe('DeslopPanel 去 AI 味诊断面板', () => {
       expect(screen.getByText(/A testament to 虚辞/)).toBeInTheDocument()
       expect(screen.getByText(/5.2%/)).toBeInTheDocument()
     })
+  })
+
+  it('在 en-US 语言环境下渲染英文标题、按钮与诊断结果', async () => {
+    mockDeslop.mockResolvedValueOnce({
+      aiScore: 12.0,
+      verdict: 'NATURAL',
+      verdictCn: '自然生动（无明显 AI 痕迹）',
+      stats: {
+        wordCount: 150,
+        sentenceCount: 10,
+        issuesCount: 0,
+        rangDensity: 0.0,
+        adverbDensity: 0.0,
+      },
+      issues: [],
+      suggestions: [],
+    })
+
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <DeslopPanel />
+        </I18nProvider>
+      )
+
+      expect(screen.getByText('Anti-Slop Full-Spectrum Diagnostics & Polish')).toBeInTheDocument()
+      expect(screen.getByPlaceholderText(/Paste chapter or snippet to diagnose/)).toBeInTheDocument()
+      expect(screen.getByText('Start Anti-Slop Diagnosis')).toBeInTheDocument()
+      expect(screen.getByText('Bilingual Auto')).toBeInTheDocument()
+      expect(screen.getByText('Chinese Webnovel')).toBeInTheDocument()
+      expect(screen.getByText('Exoscribe English')).toBeInTheDocument()
+
+      const textarea = screen.getByPlaceholderText(/Paste chapter or snippet to diagnose/)
+      fireEvent.change(textarea, { target: { value: 'He walked into the stormy night without looking back.' } })
+
+      const btn = screen.getByText('Start Anti-Slop Diagnosis')
+      fireEvent.click(btn)
+
+      await waitFor(() => {
+        expect(mockDeslop).toHaveBeenCalledWith('He walked into the stormy night without looking back.')
+        expect(screen.getByText('12')).toBeInTheDocument()
+        expect(screen.getByText('NATURAL')).toBeInTheDocument()
+        expect(screen.getByText('Slop Index (lower is more natural)')).toBeInTheDocument()
+        expect(screen.getByText('Key Suggestions')).toBeInTheDocument()
+        expect(screen.getByText(/Prose is exceptionally natural and vivid/)).toBeInTheDocument()
+      })
+    } finally {
+      removeStorage('novellab.locale')
+    }
   })
 })

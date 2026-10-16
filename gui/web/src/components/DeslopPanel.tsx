@@ -19,11 +19,13 @@ import ToggleButton from '@mui/material/ToggleButton'
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup'
 import { writingApi, friendlyError, type DeslopResult } from '../api/client'
 import { useThemeMode } from '../state/ThemeModeContext'
+import { useI18n } from '../state/I18nContext'
 import { ink, glassCard } from '../ink'
 import DiffReviewView from './DiffReviewView'
 
 export default function DeslopPanel() {
   const { isDark } = useThemeMode()
+  const { t, locale } = useI18n()
   const [text, setText] = useState('')
   const [lang, setLang] = useState<'auto' | 'zh' | 'en'>('auto')
   const [loading, setLoading] = useState(false)
@@ -34,7 +36,7 @@ export default function DeslopPanel() {
 
   const handleAnalyze = async () => {
     if (!text.trim()) {
-      setError('请输入需要诊断的章节文本')
+      setError(t('deslop_empty_input_error'))
       return
     }
     setLoading(true)
@@ -43,7 +45,7 @@ export default function DeslopPanel() {
       const res = await (lang === 'auto' ? writingApi.deslop(text) : writingApi.deslop(text, lang))
       setResult(res)
     } catch (e) {
-      setError(`诊断失败: ${friendlyError(e)}`)
+      setError(`${t('deslop_error_prefix')}${friendlyError(e)}`)
     } finally {
       setLoading(false)
     }
@@ -112,10 +114,10 @@ export default function DeslopPanel() {
           <PsychologyIcon sx={{ color: 'primary.main', fontSize: 28 }} />
           <Box>
             <Typography variant="h6" fontWeight={700}>
-              去 AI 味全维度诊断与润色
+              {t('deslop_title')}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              精准扫描假大空修辞、同义反复、直陈式情绪喊话、机械排比与「让」字被动句
+              {t('deslop_desc')}
             </Typography>
           </Box>
         </Box>
@@ -126,7 +128,7 @@ export default function DeslopPanel() {
             startIcon={<CompareArrowsIcon />}
             onClick={handleQuickPolishSample}
           >
-            一键生成去味稿并对比
+            {t('deslop_btn_compare')}
           </Button>
         )}
       </Box>
@@ -141,7 +143,7 @@ export default function DeslopPanel() {
           fullWidth
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="在此粘贴待检测的章节或片段……（支持万字长文快速诊断）"
+          placeholder={t('deslop_placeholder')}
           variant="outlined"
           size="small"
           sx={{ mb: 1.5 }}
@@ -149,7 +151,7 @@ export default function DeslopPanel() {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              当前字数：{text.length} 字
+              {t('deslop_char_count')}{text.length} {t('deslop_chars_unit')}
             </Typography>
             <ToggleButtonGroup
               size="small"
@@ -161,13 +163,13 @@ export default function DeslopPanel() {
               sx={{ height: 28 }}
             >
               <ToggleButton value="auto" sx={{ px: 1, py: 0, fontSize: '0.75rem' }}>
-                双语自适应
+                {t('deslop_mode_auto')}
               </ToggleButton>
               <ToggleButton value="zh" sx={{ px: 1, py: 0, fontSize: '0.75rem' }}>
-                中文网文
+                {t('deslop_mode_zh')}
               </ToggleButton>
               <ToggleButton value="en" sx={{ px: 1, py: 0, fontSize: '0.75rem' }}>
-                Exoscribe 英文
+                {t('deslop_mode_en')}
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -178,7 +180,7 @@ export default function DeslopPanel() {
               onClick={handleAnalyze}
               disabled={loading}
             >
-              {loading ? '全维扫描中…' : '开始去 AI 味诊断'}
+              {loading ? t('deslop_scanning') : t('deslop_btn_diagnose')}
             </Button>
           </Box>
         </Box>
@@ -193,7 +195,7 @@ export default function DeslopPanel() {
               <Card elevation={0} sx={{ height: '100%', ...glassCard(isDark) }}>
                 <CardContent sx={{ textAlign: 'center', py: 2.5 }}>
                   <Typography variant="caption" color="text.secondary" fontWeight={600}>
-                    AI 味指数（越低越自然）
+                    {t('deslop_score_title')}
                   </Typography>
                   <Typography
                     variant="h3"
@@ -203,7 +205,7 @@ export default function DeslopPanel() {
                     {result.aiScore}
                   </Typography>
                   <Chip
-                    label={result.verdictCn}
+                    label={locale === 'en-US' && result.verdict ? result.verdict : result.verdictCn}
                     size="small"
                     sx={{
                       bgcolor: `${scoreColor(result.aiScore)}22`,
@@ -229,11 +231,11 @@ export default function DeslopPanel() {
               <Card elevation={0} sx={{ height: '100%', ...glassCard(isDark) }}>
                 <CardContent sx={{ py: 2 }}>
                   <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
-                    核心优化建议
+                    {t('deslop_suggestions_title')}
                   </Typography>
                   {result.suggestions.length === 0 ? (
                     <Typography variant="body2" color="success.main">
-                      ✓ 文风非常自然生动，未检测到典型 AI 模板句式与机械套路！
+                      {t('deslop_clean_success')}
                     </Typography>
                   ) : (
                     result.suggestions.map((s, idx) => (
@@ -245,21 +247,21 @@ export default function DeslopPanel() {
                   )}
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mt: 2, pt: 1.5, borderTop: `1px solid ${isDark ? ink.nightLine : ink.hairline}` }}>
                     <Typography variant="caption" color="text.secondary">
-                      {result.stats.adverbDensity !== undefined && result.stats.adverbDensity > 0 ? '西文词数' : '有效字数'}：<b>{result.stats.wordCount}</b>
+                      {result.stats.adverbDensity !== undefined && result.stats.adverbDensity > 0 ? t('deslop_western_word_count') : t('deslop_word_count')}：<b>{result.stats.wordCount}</b>
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      句子总数：<b>{result.stats.sentenceCount}</b>
+                      {t('deslop_sentence_count')}：<b>{result.stats.sentenceCount}</b>
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      命中疑点：<b>{result.stats.issuesCount}</b> 处
+                      {t('deslop_issues_found')}：<b>{result.stats.issuesCount}</b> {t('deslop_count_unit')}
                     </Typography>
                     {result.stats.adverbDensity !== undefined && result.stats.adverbDensity > 0 ? (
                       <Typography variant="caption" color="text.secondary">
-                        -ly 副词占比：<b>{result.stats.adverbDensity.toFixed(1)}%</b>
+                        {t('deslop_adverb_density')}：<b>{result.stats.adverbDensity.toFixed(1)}%</b>
                       </Typography>
                     ) : (
                       <Typography variant="caption" color="text.secondary">
-                        「让」字千字密度：<b>{result.stats.rangDensity}</b>
+                        {t('deslop_rang_density')}：<b>{result.stats.rangDensity}</b>
                       </Typography>
                     )}
                   </Box>
@@ -271,10 +273,10 @@ export default function DeslopPanel() {
           {/* 问题定位清单 */}
           <Paper elevation={0} sx={{ p: 2, ...glassCard(isDark) }}>
             <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>
-              问题定位与逐句优化清单 ({result.issues.length})
+              {t('deslop_issues_title')} ({result.issues.length})
             </Typography>
             {result.issues.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">未发现需整改的 AI 模板句式</Typography>
+              <Typography variant="body2" color="text.secondary">{t('deslop_no_issues')}</Typography>
             ) : (
               result.issues.map((it, idx) => (
                 <Box
@@ -294,7 +296,7 @@ export default function DeslopPanel() {
                     </Typography>
                   </Box>
                   <Typography variant="caption" color="text.secondary">
-                    💡 优化建议：{it.suggestion}
+                    {t('deslop_optimize_tip')}{it.suggestion}
                   </Typography>
                 </Box>
               ))

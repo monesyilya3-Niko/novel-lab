@@ -291,4 +291,156 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '【避雷指南】',
     'en-US': '[Avoidance Guide]',
   },
+
+  // 去 AI 味全维度诊断与润色 (DeslopPanel)
+  deslop_title: {
+    'zh-CN': '去 AI 味全维度诊断与润色',
+    'en-US': 'Anti-Slop Full-Spectrum Diagnostics & Polish',
+  },
+  deslop_desc: {
+    'zh-CN': '精准扫描假大空修辞、同义反复、直陈式情绪喊话、机械排比与「让」字被动句',
+    'en-US': 'Precision scan for LLM clichés, tautologies, filter words, mechanical parallelism, and passive phrasing',
+  },
+  deslop_btn_compare: {
+    'zh-CN': '一键生成去味稿并对比',
+    'en-US': 'Generate Polished Draft & Compare',
+  },
+  deslop_placeholder: {
+    'zh-CN': '在此粘贴待检测的章节或片段……（支持万字长文快速诊断）',
+    'en-US': 'Paste chapter or snippet to diagnose... (supports quick scan of 10k+ words)',
+  },
+  deslop_char_count: {
+    'zh-CN': '当前字数：',
+    'en-US': 'Length: ',
+  },
+  deslop_chars_unit: {
+    'zh-CN': '字',
+    'en-US': 'chars',
+  },
+  deslop_mode_auto: {
+    'zh-CN': '双语自适应',
+    'en-US': 'Bilingual Auto',
+  },
+  deslop_mode_zh: {
+    'zh-CN': '中文网文',
+    'en-US': 'Chinese Webnovel',
+  },
+  deslop_mode_en: {
+    'zh-CN': 'Exoscribe 英文',
+    'en-US': 'Exoscribe English',
+  },
+  deslop_scanning: {
+    'zh-CN': '全维扫描中…',
+    'en-US': 'Scanning...',
+  },
+  deslop_btn_diagnose: {
+    'zh-CN': '开始去 AI 味诊断',
+    'en-US': 'Start Anti-Slop Diagnosis',
+  },
+  deslop_score_title: {
+    'zh-CN': 'AI 味指数（越低越自然）',
+    'en-US': 'Slop Index (lower is more natural)',
+  },
+  deslop_suggestions_title: {
+    'zh-CN': '核心优化建议',
+    'en-US': 'Key Suggestions',
+  },
+  deslop_clean_success: {
+    'zh-CN': '✓ 文风非常自然生动，未检测到典型 AI 模板句式与机械套路！',
+    'en-US': '✓ Prose is exceptionally natural and vivid, no typical AI clichés or mechanical tropes detected!',
+  },
+  deslop_word_count: {
+    'zh-CN': '有效字数',
+    'en-US': 'Word Count',
+  },
+  deslop_western_word_count: {
+    'zh-CN': '西文词数',
+    'en-US': 'Western Words',
+  },
+  deslop_sentence_count: {
+    'zh-CN': '句子总数',
+    'en-US': 'Sentences',
+  },
+  deslop_issues_found: {
+    'zh-CN': '命中疑点',
+    'en-US': 'Issues Found',
+  },
+  deslop_count_unit: {
+    'zh-CN': '处',
+    'en-US': 'found',
+  },
+  deslop_adverb_density: {
+    'zh-CN': '-ly 副词占比',
+    'en-US': '-ly Adverb Ratio',
+  },
+  deslop_rang_density: {
+    'zh-CN': '「让」字千字密度',
+    'en-US': 'Rang Passive Density',
+  },
+  deslop_issues_title: {
+    'zh-CN': '问题定位与逐句优化清单',
+    'en-US': 'Issue Locations & Sentence Optimization Checklist',
+  },
+  deslop_no_issues: {
+    'zh-CN': '未发现需整改的 AI 模板句式',
+    'en-US': 'No AI template phrasing requiring revision found',
+  },
+  deslop_optimize_tip: {
+    'zh-CN': '💡 优化建议：',
+    'en-US': '💡 Suggestion: ',
+  },
+  deslop_empty_input_error: {
+    'zh-CN': '请输入需要诊断的章节文本',
+    'en-US': 'Please enter chapter text to diagnose',
+  },
+  deslop_error_prefix: {
+    'zh-CN': '诊断失败: ',
+    'en-US': 'Diagnosis failed: ',
+  },
+
+  // 双栏对比审校视图 (DiffReviewView)
+  diff_title: {
+    'zh-CN': '双栏对比审校',
+    'en-US': 'Side-by-Side Review',
+  },
+  diff_orig_prefix: {
+    'zh-CN': '原稿',
+    'en-US': 'Original',
+  },
+  diff_polish_prefix: {
+    'zh-CN': '润色稿',
+    'en-US': 'Polished',
+  },
+  diff_paras_unit: {
+    'zh-CN': '段',
+    'en-US': 'paras',
+  },
+  diff_copy_btn: {
+    'zh-CN': '复制润色稿',
+    'en-US': 'Copy Polished',
+  },
+  diff_copied: {
+    'zh-CN': '已复制！',
+    'en-US': 'Copied!',
+  },
+  diff_reject_btn: {
+    'zh-CN': '放弃改动',
+    'en-US': 'Discard',
+  },
+  diff_accept_btn: {
+    'zh-CN': '采纳润色稿',
+    'en-US': 'Accept Polish',
+  },
+  diff_orig_header: {
+    'zh-CN': '原稿（修改前）',
+    'en-US': 'Original Draft (Before)',
+  },
+  diff_polish_header: {
+    'zh-CN': 'AI 润色 / 去味优化稿',
+    'en-US': 'AI Polish / Anti-Slop Revision (After)',
+  },
+  diff_empty_para: {
+    'zh-CN': '（段落留白）',
+    'en-US': '(Blank paragraph)',
+  },
 }

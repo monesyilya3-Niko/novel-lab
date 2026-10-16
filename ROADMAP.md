@@ -258,6 +258,10 @@ API 端点：130 个 RESTful / SSE 路由
     - 针对欧美网络文学与出海玄幻受众痛点，全面扩充 `POISON_PATTERNS` 10 大核心毒点原生英文规则（过度憋屈受辱、圣母资敌、降智舔狗、战力断崖、长篇说教、女配送命、绿帽背叛、外挂剥夺、誓言烂尾与反派找茬）；
     - 毒点避雷面板（`PoisonCheckPanel.tsx`）全量接入 Exoscribe 国际化双语词典（中英文即时无缝切换），覆盖快速排查、规范库与结果建议；
     - 补充原生英文毒点扫描与干净英文文本单测，后端单测扩充至 1615 项全绿，前端测试扩充至 148 项全绿。
+17. **去 AI 味深度诊断与双栏对比审校双语国际化（Anti-Slop Diagnostic & Diff Review i18n）**：
+    - 去 AI 味全维度诊断面板（`DeslopPanel.tsx`）与双栏对比审校视图（`DiffReviewView.tsx`）全量接入 Exoscribe 国际化双语词典，支持中英双语无缝即时切换；
+    - 针对 Exoscribe 英文排毒模式与海外 Webnovel/Royal Road 创作者，提供原生英文指标（Western Words、-ly Adverb Ratio、Slop Index、Issue Locations & Sentence Optimization Checklist）；
+    - 新增 `DiffReviewView.test.tsx` 独立测试套件与 `DeslopPanel.test.tsx` en-US 语言回归测试，前端单测扩充至 153 项全绿（27 套件全绿）。
 
 ### 4.3 下一阶段研发工作规划（Upcoming Milestones）
 
@@ -266,6 +270,7 @@ API 端点：130 个 RESTful / SSE 路由
 - ✅ **西方奇幻与海外网文天花板神作编纂收录**（已编纂收录《迷雾之子》《玄元仙道》《末日地牢卡尔》《学习之母》《风之名》《与怪为伴》《沙丘》《原始猎人》，20 部神作达成大圆满，100 资产卡 + 40 暗线链）；
 - ✅ **Webnovel 阅文出海平台签约合规与多平台工坊双语国际化**（已落地）；
 - ✅ **中英双语核心毒点扫描引擎扩充与避雷面板双语国际化**（已落地，1615 后端测试 + 148 前端测试全绿）；
+- ✅ **去 AI 味深度诊断与双栏对比审校双语国际化**（已落地，前端单测 153 项 27 套件全绿）；
 - 🔄 **下一代写作智能辅助与全球多语言词典联动深化**（持续推进）。
 
 ---

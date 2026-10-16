@@ -10,6 +10,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows'
 import Tooltip from '@mui/material/Tooltip'
 import { useThemeMode } from '../state/ThemeModeContext'
+import { useI18n } from '../state/I18nContext'
 import { ink } from '../ink'
 
 export interface DiffReviewViewProps {
@@ -26,6 +27,7 @@ export default function DiffReviewView({
   onReject,
 }: DiffReviewViewProps) {
   const { isDark } = useThemeMode()
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   const origParas = originalText.split('\n').filter((p) => p.trim())
@@ -47,24 +49,28 @@ export default function DiffReviewView({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <CompareArrowsIcon sx={{ color: 'primary.main' }} />
           <Typography variant="subtitle1" fontWeight={700}>
-            双栏对比审校
+            {t('diff_title')}
           </Typography>
-          <Chip label={`原稿 ${origParas.length} 段 / 润色稿 ${polishParas.length} 段`} size="small" variant="outlined" />
+          <Chip
+            label={`${t('diff_orig_prefix')} ${origParas.length} ${t('diff_paras_unit')} / ${t('diff_polish_prefix')} ${polishParas.length} ${t('diff_paras_unit')}`}
+            size="small"
+            variant="outlined"
+          />
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title={copied ? '已复制！' : '复制润色稿'}>
+          <Tooltip title={copied ? t('diff_copied') : t('diff_copy_btn')}>
             <Button size="small" variant="outlined" startIcon={<ContentCopyIcon />} onClick={handleCopy}>
-              {copied ? '已复制' : '复制润色稿'}
+              {copied ? t('diff_copied') : t('diff_copy_btn')}
             </Button>
           </Tooltip>
           {onReject && (
             <Button size="small" color="inherit" onClick={onReject}>
-              放弃改动
+              {t('diff_reject_btn')}
             </Button>
           )}
           {onAccept && (
             <Button size="small" variant="contained" startIcon={<CheckCircleOutlineIcon />} onClick={() => onAccept(polishedText)}>
-              采纳润色稿
+              {t('diff_accept_btn')}
             </Button>
           )}
         </Box>
@@ -87,7 +93,7 @@ export default function DiffReviewView({
         >
           <Box sx={{ py: 1, px: 2, borderBottom: `1px solid ${isDark ? ink.nightLine : ink.hairline}`, bgcolor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}>
             <Typography variant="subtitle2" color="text.secondary" fontWeight={600}>
-              原稿（修改前）
+              {t('diff_orig_header')}
             </Typography>
           </Box>
           <Box sx={{ flex: 1, overflow: 'auto', p: 2.5, lineHeight: 1.8, fontSize: 14 }}>
@@ -106,7 +112,7 @@ export default function DiffReviewView({
                     color: isDark ? ink.moonWhite : ink.text,
                   }}
                 >
-                  {p || <Typography variant="caption" color="text.secondary">（段落留白）</Typography>}
+                  {p || <Typography variant="caption" color="text.secondary">{t('diff_empty_para')}</Typography>}
                 </Box>
               )
             })}
@@ -128,7 +134,7 @@ export default function DiffReviewView({
         >
           <Box sx={{ py: 1, px: 2, borderBottom: `1px solid ${isDark ? ink.nightLine : ink.hairline}`, bgcolor: isDark ? 'rgba(37,99,235,0.06)' : 'rgba(37,99,235,0.04)' }}>
             <Typography variant="subtitle2" color="primary.main" fontWeight={600}>
-              AI 润色 / 去味优化稿
+              {t('diff_polish_header')}
             </Typography>
           </Box>
           <Box sx={{ flex: 1, overflow: 'auto', p: 2.5, lineHeight: 1.8, fontSize: 14 }}>
@@ -147,7 +153,7 @@ export default function DiffReviewView({
                     color: isDark ? ink.moonWhite : ink.text,
                   }}
                 >
-                  {p || <Typography variant="caption" color="text.secondary">（段落留白）</Typography>}
+                  {p || <Typography variant="caption" color="text.secondary">{t('diff_empty_para')}</Typography>}
                 </Box>
               )
             })}
