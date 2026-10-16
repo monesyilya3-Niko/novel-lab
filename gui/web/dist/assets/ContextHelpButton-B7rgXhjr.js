@@ -1,1 +1,0 @@
-import{j as o,T as l,I as i}from"./vendor-B6sfoYpl.js";import{J as a,H as p}from"./index-e-lcglYC.js";function x({guideKey:t,title:e}){const n=a(),s=()=>{n?.openHelp("guides",t)};return o.jsx(l,{title:e||"查看此功能的使用指南",children:o.jsx(i,{size:"small",onClick:s,"aria-label":"查看帮助",sx:{color:"text.secondary"},children:o.jsx(p,{fontSize:"small"})})})}export{x as C};

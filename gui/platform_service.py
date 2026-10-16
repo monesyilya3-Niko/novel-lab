@@ -136,6 +136,27 @@ PLATFORMS = {
             "Romance", "Progression Fantasy", "Mystery", "Historical Fiction",
         ],
     },
+    "webnovel": {
+        "name": "Webnovel",
+        "chapter_min_chars": 1200,
+        "chapter_max_chars": 6000,
+        "chapter_format": "Chapter {num}: {title}",
+        "title_max_len": 60,
+        "supports_serialization": True,
+        "climax_interval": "3-5章",
+        "dialogue_sweet_spot": (20.0, 50.0),
+        "rhythm_type": "Global Eastern Fantasy · Fast Paced System · Face-Slapping & Power Fantasy",
+        "platform_taboos": [
+            "文化专有名词缺乏解释 (Unexplained cultural terms / Pinyin jargon)",
+            "开篇缺乏核心金手指机制 (Slow start without goldfinger)",
+            "升级断层缺乏因果代入 (Unearned power leaps)",
+            "过度生硬的机器翻译腔 (Machine translation artifacts)",
+        ],
+        "genre_whitelist": [
+            "Eastern Fantasy", "Video Games", "Sci-Fi", "Urban Life", "Fantasy",
+            "Reincarnation", "System", "Romance", "Martial Arts", "Anime & Comics",
+        ],
+    },
 }
 
 
@@ -302,7 +323,7 @@ def diagnose_chapter(platform_id: str, chapter_text: str,
     has_dialogue_or_action = any(q in opening_snippet for q in ('"', "“", "”", "：")) or any(
         act in opening_snippet for act in ("退婚", "死", "杀", "冷笑", "拔剑", "签", "跪", "滚", "跑", "巴掌", "离婚", "系统")
     ) or any(
-        act in opening_snippet.lower() for act in ("strike", "blade", "sword", "blood", "kill", "duck", "fight", "attack", "shout", "scream", "punch", "yell", "roar", "run")
+        act in opening_snippet.lower() for act in ("strike", "blade", "sword", "blood", "kill", "duck", "fight", "attack", "shout", "scream", "punch", "yell", "roar", "run", "system", "interface", "ding")
     )
     found_info_dump = [k for k in _INFO_DUMP_KEYWORDS if k in opening_snippet]
 
@@ -417,6 +438,19 @@ def diagnose_chapter(platform_id: str, chapter_text: str,
             score -= 15
             veto_risks.append("KDP 商业受众劝退点：主角表现出被动无聊或缺乏主动目标")
             actionable_fixes.append("商业畅销小说强调主角的主动能动性（Protagonist Agency），开篇即赋予其清晰的当下欲望或紧迫阻碍")
+    elif platform_id == "webnovel":
+        wn_jargon = ["dantian", "qi sea", "shifu", "martial nephew", "daoist friend", "immortal venerable", "face slapping"]
+        found_jargon = [k for k in wn_jargon if k in chapter_text[:600].lower()]
+        if is_early_chapter and len(found_jargon) >= 3:
+            score -= 15
+            veto_risks.append(f"Webnovel 出海读者门槛预警：前 600 字密集出现东方专有拼音术语（命中：{', '.join(found_jargon)}），海外新读者极易劝退")
+            actionable_fixes.append("建议对修仙术语增加西方化通用意译（如用 'Spiritual Core' 代替单纯 'Dantian'）或通过上下文白描释义")
+
+        system_cues = ["system", "interface", "ding", "panel", "awakened", "reborn", "cheat", "talent", "level", "stat"]
+        if is_early_chapter and not any(cue in chapter_text[:600].lower() for cue in system_cues):
+            score -= 10
+            veto_risks.append("Webnovel 商业流核心看点偏弱：黄金开篇未明确展示金手指、系统或独特天赋线索")
+            actionable_fixes.append("Webnovel 平台读者高度偏好快节奏爽点，开篇建议尽早亮出核心金手指机制")
 
     score = max(20, min(100, score))
     if score >= 85:

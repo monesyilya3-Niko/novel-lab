@@ -159,4 +159,46 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '搜索',
     'en-US': 'Search',
   },
+
+  // 平台与出海适配
+  platform_panel_title: {
+    'zh-CN': '多平台适配与签约诊断',
+    'en-US': 'Multi-Platform Adaptation & Submission Audit',
+  },
+  platform_tab_diagnose: {
+    'zh-CN': '多平台合规与签约诊断',
+    'en-US': 'Platform Compliance & Submission Audit',
+  },
+  platform_tab_litrpg: {
+    'zh-CN': 'LitRPG 属性面板与海外排版',
+    'en-US': 'LitRPG Stat Box & Formatter',
+  },
+  platform_check_compliance: {
+    'zh-CN': '检查合规性',
+    'en-US': 'Check Compliance',
+  },
+  platform_diagnose_action: {
+    'zh-CN': '🎯 签约过稿深度诊断',
+    'en-US': '🎯 Submission Readiness Audit',
+  },
+  platform_parse_stat_box: {
+    'zh-CN': '解析属性面板',
+    'en-US': 'Parse Stat Box',
+  },
+  platform_format_royalroad: {
+    'zh-CN': '⚡ Royal Road 一键排版',
+    'en-US': '⚡ Format for Royal Road',
+  },
+  platform_copy_code: {
+    'zh-CN': '复制排版代码',
+    'en-US': 'Copy Formatted Code',
+  },
+  platform_copied: {
+    'zh-CN': '已复制！',
+    'en-US': 'Copied!',
+  },
+  platform_load_sample: {
+    'zh-CN': '载入样例',
+    'en-US': 'Load Sample',
+  },
 }

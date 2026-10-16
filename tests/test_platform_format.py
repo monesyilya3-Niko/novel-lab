@@ -136,10 +136,11 @@ class TestDiagnoseChapter(unittest.TestCase):
 
     def test_list_platforms_includes_creative_params(self):
         platforms = platform_service.list_platforms()
-        self.assertEqual(len(platforms), 7)
+        self.assertEqual(len(platforms), 8)
         platform_ids = {p["id"] for p in platforms}
         self.assertIn("royalroad", platform_ids)
         self.assertIn("amazon_kdp", platform_ids)
+        self.assertIn("webnovel", platform_ids)
         for p in platforms:
             self.assertIn("climax_interval", p)
             self.assertIn("rhythm_type", p)
@@ -165,6 +166,26 @@ class TestDiagnoseChapter(unittest.TestCase):
         wall_of_text = "He walked into the large room and looked around. " * 40  # >800 chars in one paragraph
         res = platform_service.diagnose_chapter("amazon_kdp", wall_of_text, "Chapter 1", chapter_num=1)
         self.assertTrue(any("Kindle 移动端阅读排版大忌" in r for r in res["veto_risks"]))
+
+    def test_diagnose_webnovel_jargon_and_goldfinger(self):
+        # 东方专有名词堆砌无解释
+        jargon_text = (
+            "His dantian was shattered, his qi sea drained of all essence. "
+            "He bowed to shifu and called out to his martial nephew and daoist friend: "
+            "'I shall seek the immortal venerable!' " * 30
+        )
+        res_jargon = platform_service.diagnose_chapter("webnovel", jargon_text, "Chapter 1: The Fall", chapter_num=1)
+        self.assertTrue(any("Webnovel 出海读者门槛预警" in r for r in res_jargon["veto_risks"]))
+
+        # 具备系统金手指与健康对白比例的快节奏开篇通过
+        good_text = (
+            "[Ding! The Supreme Alchemist System has awakened.] "
+            '"Host, welcome to the mortal realm," the clear system chime echoed in his mind. '
+            'Fang Yuan smiled coldly: "Let the slaughter begin." '
+            "He drew his longsword and slashed forward with ruthless efficiency. " * 30
+        )
+        res_good = platform_service.diagnose_chapter("webnovel", good_text, "Chapter 1: Awakening", chapter_num=1)
+        self.assertGreaterEqual(res_good["score"], 80)
 
     def test_litrpg_parse_stat_box(self):
         bracket_text = (

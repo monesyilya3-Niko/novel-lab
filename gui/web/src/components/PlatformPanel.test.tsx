@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import PlatformPanel from './PlatformPanel'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 vi.mock('../api/client', () => ({
   platformApi: {
@@ -144,5 +146,22 @@ describe('PlatformPanel', () => {
     await waitFor(() => {
       expect(screen.getByText('已复制！')).toBeDefined()
     })
+  })
+
+  it('在 en-US 语言环境下渲染英文动作按钮与标签', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <PlatformPanel />
+        </I18nProvider>,
+      )
+      expect(screen.getByText('Multi-Platform Adaptation & Submission Audit')).toBeDefined()
+      expect(screen.getByText('Check Compliance')).toBeDefined()
+      expect(screen.getByText('🎯 Submission Readiness Audit')).toBeDefined()
+      expect(screen.getByText('LitRPG Stat Box & Formatter')).toBeDefined()
+    } finally {
+      removeStorage('novellab.locale')
+    }
   })
 })

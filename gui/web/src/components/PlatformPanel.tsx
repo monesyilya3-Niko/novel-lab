@@ -22,6 +22,7 @@ import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import { platformApi, SubmissionDiagnosisResult } from '../api/client'
 import { friendlyError } from '../api/client'
+import { useI18n } from '../state/I18nContext'
 
 interface Platform {
   id: string
@@ -67,6 +68,7 @@ Intelligence: 9
 He gripped the spiked wooden club tightly and moved forward into the mist.`
 
 export default function PlatformPanel() {
+  const { t } = useI18n()
   const [panelTab, setPanelTab] = useState(0)
 
   // Tab 0: 多平台合规与签约诊断
@@ -203,14 +205,14 @@ export default function PlatformPanel() {
     <Box>
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
         <Tabs value={panelTab} onChange={(_, v) => setPanelTab(v)}>
-          <Tab icon={<AssignmentTurnedInIcon fontSize="small" />} iconPosition="start" label="多平台合规与签约诊断" />
-          <Tab icon={<SportsEsportsIcon fontSize="small" />} iconPosition="start" label="LitRPG 属性面板与海外排版 (Royal Road)" />
+          <Tab icon={<AssignmentTurnedInIcon fontSize="small" />} iconPosition="start" label={t('platform_tab_diagnose', '多平台合规与签约诊断')} />
+          <Tab icon={<SportsEsportsIcon fontSize="small" />} iconPosition="start" label={t('platform_tab_litrpg', 'LitRPG 属性面板与海外排版')} />
         </Tabs>
       </Box>
 
       {panelTab === 0 && (
         <Box>
-          <Typography variant="h6" gutterBottom>多平台适配与签约诊断</Typography>
+          <Typography variant="h6" gutterBottom>{t('platform_panel_title', '多平台适配与签约诊断')}</Typography>
 
           <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap', mb: 2 }}>
             <TextField select label="目标平台" value={selected} onChange={(e) => setSelected(e.target.value)} sx={{ minWidth: 180 }} size="small">
@@ -247,10 +249,10 @@ export default function PlatformPanel() {
           />
           <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
             <Button variant="outlined" onClick={doCheck} disabled={!chapterText.trim() || loading || diagnosing}>
-              {loading ? <CircularProgress size={20} /> : '检查合规性'}
+              {loading ? <CircularProgress size={20} /> : t('platform_check_compliance', '检查合规性')}
             </Button>
             <Button variant="contained" color="secondary" onClick={doDiagnose} disabled={!chapterText.trim() || loading || diagnosing}>
-              {diagnosing ? <CircularProgress size={20} /> : '🎯 签约过稿深度诊断'}
+              {diagnosing ? <CircularProgress size={20} /> : t('platform_diagnose_action', '🎯 签约过稿深度诊断')}
             </Button>
           </Stack>
 
@@ -368,7 +370,7 @@ export default function PlatformPanel() {
               size="small"
               onClick={handleLoadSample}
             >
-              📥 填入海外爆款示例
+              📥 {t('platform_load_sample', '填入海外爆款示例')}
             </Button>
           </Box>
 
@@ -438,7 +440,7 @@ export default function PlatformPanel() {
               onClick={handleParseStatBox}
               disabled={!litrpgText.trim() || parsing || formatting}
             >
-              {parsing ? <CircularProgress size={20} /> : '解析属性面板'}
+              {parsing ? <CircularProgress size={20} /> : t('platform_parse_stat_box', '解析属性面板')}
             </Button>
             <Button
               variant="contained"
@@ -447,7 +449,7 @@ export default function PlatformPanel() {
               onClick={handleFormatRoyalRoad}
               disabled={!litrpgText.trim() || parsing || formatting}
             >
-              {formatting ? <CircularProgress size={20} /> : '⚡ Royal Road 一键排版'}
+              {formatting ? <CircularProgress size={20} /> : t('platform_format_royalroad', '⚡ Royal Road 一键排版')}
             </Button>
           </Stack>
 
@@ -521,7 +523,7 @@ export default function PlatformPanel() {
                   startIcon={copied ? <CheckCircleOutlineIcon color="success" /> : <ContentCopyIcon />}
                   onClick={() => handleCopy(formattedBBCode)}
                 >
-                  {copied ? '已复制！' : '复制排版代码'}
+                  {copied ? t('platform_copied', '已复制！') : t('platform_copy_code', '复制排版代码')}
                 </Button>
               </Box>
               {copied && (
