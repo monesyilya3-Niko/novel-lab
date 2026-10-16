@@ -18,8 +18,10 @@ import {
   type PoisonCheckResult,
   type TabooItem,
 } from '../api/client'
+import { useI18n } from '../state/I18nContext'
 
 export default function PoisonCheckPanel() {
+  const { t } = useI18n()
   const [subTab, setSubTab] = useState(0)
 
   return (
@@ -27,8 +29,8 @@ export default function PoisonCheckPanel() {
       <Paper sx={{ p: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={subTab} onChange={(_, v) => setSubTab(v)}>
-            <Tab label="毒点快速排查 (本地规则)" />
-            <Tab label="弃坑避雷规范库 (10大红线)" />
+            <Tab label={t('poison_tab_scanner', '毒点快速排查 (本地规则)')} />
+            <Tab label={t('poison_tab_library', '弃坑避雷规范库 (10大红线)')} />
           </Tabs>
         </Box>
 
@@ -44,6 +46,7 @@ export default function PoisonCheckPanel() {
 // ---------------------------------------------------------------------------
 
 function PoisonScannerSection() {
+  const { t } = useI18n()
   const [text, setText] = useState('')
   const [result, setResult] = useState<PoisonCheckResult | null>(null)
   const [loading, setLoading] = useState(false)
@@ -51,7 +54,7 @@ function PoisonScannerSection() {
 
   const handleScan = async () => {
     if (!text.trim()) {
-      setError('请输入或粘贴需要排查的正文段落')
+      setError(t('poison_placeholder', '请输入或粘贴需要排查的正文段落'))
       return
     }
     setLoading(true)
@@ -69,11 +72,11 @@ function PoisonScannerSection() {
   const getSeverityChip = (severity: string) => {
     switch (severity) {
       case 'fatal':
-        return <Chip size="small" label="致命毒点" color="error" />
+        return <Chip size="small" label={t('poison_fatal_tag', '致命毒点')} color="error" />
       case 'critical':
-        return <Chip size="small" label="严重预警" color="warning" />
+        return <Chip size="small" label={t('poison_high_tag', '严重预警')} color="warning" />
       case 'high':
-        return <Chip size="small" label="中度注意" color="info" />
+        return <Chip size="small" label={t('poison_high_tag', '中度注意')} color="info" />
       default:
         return <Chip size="small" label={severity} />
     }
@@ -82,14 +85,14 @@ function PoisonScannerSection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        基于商业网文大数据提炼的纯本地 7 大核心毒点检测器（过度憋屈、圣母资敌、降智舔狗、战力断崖、长篇说教、女配白送、绿帽擦边）。不消耗大模型 Token，零网络延迟。
+        {t('poison_desc', '基于商业网文大数据提炼的纯本地 10 大核心毒点检测器（过度憋屈、圣母资敌、降智舔狗、战力断崖、长篇说教、女配白送、绿帽擦边等）。不消耗大模型 Token，零网络延迟。')}
       </Typography>
 
       <TextField
         multiline
         rows={8}
         fullWidth
-        placeholder="请在此粘贴需要检测的章节正文或剧情草稿..."
+        placeholder={t('poison_placeholder', '请在此粘贴需要检测的章节正文或剧情草稿...')}
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
@@ -102,7 +105,7 @@ function PoisonScannerSection() {
           disabled={loading}
           sx={{ height: 40, px: 3 }}
         >
-          {loading ? <CircularProgress size={20} /> : '一键扫描毒点'}
+          {loading ? <CircularProgress size={20} /> : t('poison_scan_action', '一键扫描毒点')}
         </Button>
         <Button
           variant="outlined"
@@ -112,7 +115,7 @@ function PoisonScannerSection() {
           }}
           disabled={loading}
         >
-          清空
+          {t('poison_clear', '清空')}
         </Button>
       </Box>
 
@@ -123,7 +126,7 @@ function PoisonScannerSection() {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Typography variant="h6" fontWeight={700}>
-                检测结果：
+                {t('poison_result_title', '检测结果：')}
               </Typography>
               <Chip
                 label={result.verdict}
@@ -132,7 +135,7 @@ function PoisonScannerSection() {
               />
             </Box>
             <Typography variant="body2" color="text.secondary">
-              毒点扣分值：<strong>{result.score}</strong> 分（0分最佳） | 检出问题：<strong>{result.totalIssues}</strong> 处
+              {t('poison_score_label', '毒点扣分值：')}<strong>{result.score}</strong> {t('poison_score_unit', '分（0分最佳）')} | {t('poison_issues_count', '检出问题：')}<strong>{result.totalIssues}</strong> {t('poison_issues_unit', '处')}
             </Typography>
           </Box>
 
@@ -140,12 +143,12 @@ function PoisonScannerSection() {
 
           {result.findings.length === 0 ? (
             <Alert severity="success">
-              干得漂亮！本段正文未命中任何已知的恶性毒点或降智情节，行文节奏舒畅。
+              {t('poison_clean_alert', '干得漂亮！本段正文未命中任何已知的恶性毒点或降智情节，行文节奏舒畅。')}
             </Alert>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               <Typography variant="subtitle2" color="text.secondary">
-                检出问题清单与修改建议：
+                {t('poison_findings_title', '检出问题清单与修改建议：')}
               </Typography>
               {result.findings.map((item, idx) => (
                 <Card key={idx} variant="outlined" sx={{ bgcolor: 'background.default' }}>
@@ -157,7 +160,7 @@ function PoisonScannerSection() {
                       </Typography>
                       {getSeverityChip(item.severity)}
                       <Typography variant="caption" sx={{ ml: 'auto', bgcolor: 'action.hover', px: 1, py: 0.5, borderRadius: 1 }}>
-                        命中关键词：{item.matched}
+                        {t('poison_matched_prefix', '命中关键词：')}{item.matched}
                       </Typography>
                     </Box>
 
@@ -166,11 +169,11 @@ function PoisonScannerSection() {
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
-                      <strong>【读者痛点】</strong> {item.reason}
+                      <strong>{t('poison_reader_pain', '【读者痛点】')}</strong> {item.reason}
                     </Typography>
 
                     <Typography variant="caption" color="success.main" fontWeight={600}>
-                      <strong>【修改建议】</strong> {item.suggestion}
+                      <strong>{t('poison_fix_guide', '【修改建议】')}</strong> {item.suggestion}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -188,6 +191,7 @@ function PoisonScannerSection() {
 // ---------------------------------------------------------------------------
 
 function TabooLibrarySection() {
+  const { t } = useI18n()
   const [taboos, setTaboos] = useState<TabooItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -213,37 +217,37 @@ function TabooLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        数百万商业读者验证的 10 大弃坑毒点红线清单。下笔前对照自检，避免因为一处剧情瑕疵引发书评区差评暴动。
+        {t('poison_library_desc', '数百万商业读者验证的 10 大弃坑毒点红线清单。下笔前对照自检，避免因为一处剧情瑕疵引发书评区差评暴动。')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 2 }}>
-        {taboos.map((t) => (
-          <Card key={t.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
+        {taboos.map((item) => (
+          <Card key={item.id} variant="outlined" sx={{ display: 'flex', flexDirection: 'column' }}>
             <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  {t.name}
+                  {item.name}
                 </Typography>
                 <Chip
                   size="small"
-                  label={t.severity === 'fatal' ? '绝对红线' : '高危警报'}
-                  color={t.severity === 'fatal' ? 'error' : 'warning'}
+                  label={item.severity === 'fatal' ? t('poison_fatal_tag', '绝对红线') : t('poison_high_tag', '高危警报')}
+                  color={item.severity === 'fatal' ? 'error' : 'warning'}
                 />
               </Box>
 
               <Typography variant="caption" color="text.primary">
-                <strong>现象描述：</strong> {t.description}
+                <strong>{t('poison_phenomenon', '现象描述：')}</strong> {item.description}
               </Typography>
 
               <Typography variant="caption" color="error.main">
-                <strong>读者反应：</strong> {t.readerReaction}
+                <strong>{t('poison_reader_reaction', '读者反应：')}</strong> {item.readerReaction}
               </Typography>
 
               <Box sx={{ mt: 'auto', pt: 1, bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
                 <Typography variant="caption" color="success.main" fontWeight={600}>
-                  <strong>【避雷指南】</strong> {t.fixSuggestion}
+                  <strong>{t('poison_taboo_guide', '【避雷指南】')}</strong> {item.fixSuggestion}
                 </Typography>
               </Box>
             </CardContent>
@@ -253,3 +257,4 @@ function TabooLibrarySection() {
     </Box>
   )
 }
+

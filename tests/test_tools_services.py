@@ -189,6 +189,34 @@ class TestPoisonChecker(unittest.TestCase):
         self.assertEqual(res["score"], 0)
         self.assertEqual(res["total_issues"], 0)
 
+    def test_detect_english_poison_patterns(self):
+        # 英文毒点检测（出海网络文学反憋屈与反降智）
+        texts = [
+            ("He collapsed to the floor and begged for mercy while taking the insults.", "excessive_suffering"),
+            ("Killing you would make me no better than you. I will spare your life this once.", "enemy_mercy"),
+            ("He was willing to be her doormat, begging for a glance from the cold goddess.", "simp_behavior"),
+            ("In the new divine realm, demigods are everywhere now, and legendary weapons are now garbage.", "power_inconsistency"),
+            ("The author believes that in this capitalist society we must realize the harsh truth.", "preachy_monologue"),
+            ("She sneaked out without listening to warnings, and the bandits shouted: exchange your woman for your life!", "distress_trope"),
+            ("She cuddled in another man's arms, declaring that my body belongs to him.", "ntr_ambiguity"),
+            ("In an instant, his system was inexplicably disabled and gods stripped away his powers.", "nerfed_powers"),
+            ("He completely forgot the solemn vow and broke the sacred promise without a second thought.", "broken_promise"),
+            ("The noble heir screamed: Courting death! Do you know who my father is? Kneel and kowtow!", "brainless_antagonist"),
+        ]
+        for text, expected_type in texts:
+            res = poison_checker.check_poison(text)
+            self.assertGreater(res["score"], 0, f"Expected penalty for {expected_type}")
+            types = [i["type"] for i in res["findings"]]
+            self.assertIn(expected_type, types, f"Expected {expected_type} in {types}")
+
+    def test_clean_english_text(self):
+        clean_en = "Jake gripped his bow tightly, letting his hunter instincts guide the arrow straight into the beast's skull."
+        res = poison_checker.check_poison(clean_en)
+        self.assertEqual(res["score"], 0)
+        self.assertEqual(res["total_issues"], 0)
+        self.assertEqual(len(res["findings"]), 0)
+        self.assertIn("安全", res["verdict"])
+
 
 class TestToolsServicesAndRoutes(unittest.TestCase):
     """服务层及 API 路由分发测试。"""

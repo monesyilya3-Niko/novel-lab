@@ -201,4 +201,94 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '载入样例',
     'en-US': 'Load Sample',
   },
+
+  // 毒点排查与弃坑避雷
+  poison_tab_scanner: {
+    'zh-CN': '毒点快速排查 (本地规则)',
+    'en-US': 'Anti-Poison Scanner (Local)',
+  },
+  poison_tab_library: {
+    'zh-CN': '弃坑避雷规范库 (10大红线)',
+    'en-US': 'Fatal Taboo Library (10 Rules)',
+  },
+  poison_desc: {
+    'zh-CN': '基于商业网文大数据提炼的纯本地 10 大核心毒点检测器（过度憋屈、圣母资敌、降智舔狗、战力断崖、长篇说教、女配白送、绿帽擦边等）。不消耗大模型 Token，零网络延迟。',
+    'en-US': 'Local rule-based scanner for 10 fatal novel taboos (excessive suffering, enemy mercy, simp behavior, power collapse, preachy monologue, etc.). Zero token cost, zero latency.',
+  },
+  poison_placeholder: {
+    'zh-CN': '请在此粘贴需要检测的章节正文或剧情草稿...',
+    'en-US': 'Paste chapter draft or plot outline to inspect for fatal taboos...',
+  },
+  poison_scan_action: {
+    'zh-CN': '一键扫描毒点',
+    'en-US': 'Scan for Taboos',
+  },
+  poison_clear: {
+    'zh-CN': '清空',
+    'en-US': 'Clear',
+  },
+  poison_result_title: {
+    'zh-CN': '检测结果：',
+    'en-US': 'Audit Result:',
+  },
+  poison_score_label: {
+    'zh-CN': '毒点扣分值：',
+    'en-US': 'Penalty Score:',
+  },
+  poison_issues_count: {
+    'zh-CN': '检出问题：',
+    'en-US': 'Issues Found:',
+  },
+  poison_score_unit: {
+    'zh-CN': '分（0分最佳）',
+    'en-US': 'pts (0 is cleanest)',
+  },
+  poison_issues_unit: {
+    'zh-CN': '处',
+    'en-US': 'found',
+  },
+  poison_clean_alert: {
+    'zh-CN': '干得漂亮！本段正文未命中任何已知的恶性毒点或降智情节，行文节奏舒畅。',
+    'en-US': 'Excellent! No major narrative taboos or fatal drop-off points detected.',
+  },
+  poison_findings_title: {
+    'zh-CN': '检出问题清单与修改建议：',
+    'en-US': 'Detected Issues & Revision Guide:',
+  },
+  poison_matched_prefix: {
+    'zh-CN': '命中关键词：',
+    'en-US': 'Trigger: ',
+  },
+  poison_reader_pain: {
+    'zh-CN': '【读者痛点】',
+    'en-US': '[Reader Dropoff]',
+  },
+  poison_fix_guide: {
+    'zh-CN': '【修改建议】',
+    'en-US': '[Actionable Fix]',
+  },
+  poison_library_desc: {
+    'zh-CN': '数百万商业读者验证的 10 大弃坑毒点红线清单。下笔前对照自检，避免因为一处剧情瑕疵引发书评区差评暴动。',
+    'en-US': '10 fatal taboo rules verified by millions of webnovel readers. Review before publishing to avoid mass reader dropoffs.',
+  },
+  poison_fatal_tag: {
+    'zh-CN': '绝对红线',
+    'en-US': 'Fatal Redline',
+  },
+  poison_high_tag: {
+    'zh-CN': '高危警报',
+    'en-US': 'High Warning',
+  },
+  poison_phenomenon: {
+    'zh-CN': '现象描述：',
+    'en-US': 'Description: ',
+  },
+  poison_reader_reaction: {
+    'zh-CN': '读者反应：',
+    'en-US': 'Reader Reaction: ',
+  },
+  poison_taboo_guide: {
+    'zh-CN': '【避雷指南】',
+    'en-US': '[Avoidance Guide]',
+  },
 }

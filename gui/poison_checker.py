@@ -29,7 +29,8 @@ POISON_PATTERNS = [
         "patterns": [
             r"(跪在地上|跪下磕头|自扇耳光|扇了自己两个耳光|趴在地上学狗叫|钻过胯下)",
             r"(任凭对方羞辱|低头不敢出声|默默忍受着殴打|苦苦哀求放过|咽下耻辱不敢反抗)",
-            r"(向对方赔罪认错|卑躬屈膝地道歉|打不还手骂不还口)"
+            r"(向对方赔罪认错|卑躬屈膝地道歉|打不还手骂不还口)",
+            r"(?i)(begged for mercy|groveling on the floor|begging on (his|her) knees|endured the humiliation without resisting|took the beating without fighting back)",
         ],
         "reason": "主角遭受极端人格侮辱却没有任何反击动作或暗中布局，引起读者强烈憋屈与弃书冲动。",
         "suggestion": "缩短受辱篇幅，并当场展现反击动作（暗下死手、记下死账、布下杀局）。"
@@ -41,7 +42,8 @@ POISON_PATTERNS = [
         "weight": 25,
         "patterns": [
             r"(得饶人处且饶人|不想脏了自己的手|这次就放你一马|冤冤相报何时了|放他离去吧)",
-            r"(留你一条狗命走吧|任由仇人踉跄离去|废了修为放你走|化干戈为玉帛)"
+            r"(留你一条狗命走吧|任由仇人踉跄离去|废了修为放你走|化干戈为玉帛)",
+            r"(?i)(killing you would make me no better|spare your life this once|let the villain walk away|let him walk away free|mercy on my enemies)",
         ],
         "reason": "对曾动杀心的敌人心慈手软，违背网文斩草除根爽感铁律，极度损毁主角智商与立意。",
         "suggestion": "斩草必除根，决不可轻易放走仇敌；若受制于规矩，也应暗中补刀或借刀杀人绝后患。"
@@ -53,7 +55,8 @@ POISON_PATTERNS = [
         "weight": 20,
         "patterns": [
             r"(哪怕你多看我一眼|甘愿做牛做马|只求你不要离开我|即使你喜欢别人我也无怨无悔)",
-            r"(把全部家当拱手送给女神|跪求女神原谅|即使被当成备胎也心甘情愿|为了讨她欢心倾家荡产)"
+            r"(把全部家当拱手送给女神|跪求女神原谅|即使被当成备胎也心甘情愿|为了讨她欢心倾家荡产)",
+            r"(?i)(willing to be her doormat|gave everything to win her approval|begged for her forgiveness like a dog|begging for a glance)",
         ],
         "reason": "主角缺乏自尊，对蔑视冷落自己的异性卑躬屈膝，触碰现代读者心理底线。",
         "suggestion": "确立男女角色平等自尊，对方傲慢则主角更绝情冷淡，以实力与独立魅力反向征服。"
@@ -65,7 +68,8 @@ POISON_PATTERNS = [
         "weight": 15,
         "patterns": [
             r"(大宗师满街走|金丹多如狗|元婴遍地走|神魔不如狗|曾经以为无敌的.*如今守门)",
-            r"(原来之前的至尊强者不过是蝼蚁|前文的神级功法现在沦为废纸)"
+            r"(原来之前的至尊强者不过是蝼蚁|前文的神级功法现在沦为废纸)",
+            r"(?i)(demigods are everywhere now|divine realm guards are all archmages|legendary weapons are now (garbage|trash|worthless))",
         ],
         "reason": "跨地图后战力数值通胀严重，前期读者积累的成就感瞬间贬值破灭。",
         "suggestion": "换地图时以法则、道意或特殊维度压制保持梯度，保持高阶战力的稀缺性与庄严感。"
@@ -77,7 +81,8 @@ POISON_PATTERNS = [
         "weight": 10,
         "patterns": [
             r"(其实人生就是这样|作者认为|在这个物欲横流的社会里|我们每个人都应该明白)",
-            r"(社会现实告诉我们|人性的丑恶就在于此|大道理人人都懂)"
+            r"(社会现实告诉我们|人性的丑恶就在于此|大道理人人都懂)",
+            r"(?i)(the author believes|in this capitalist society we must realize|let this be a moral lesson to us all)",
         ],
         "reason": "作者脱离剧情亲自下场长篇大论灌输主观价值观，严重打断沉浸感与行文节奏。",
         "suggestion": "将主观议论删除或压缩为一句角色的有力对白金句，让情节事实替作者说话。"
@@ -89,7 +94,8 @@ POISON_PATTERNS = [
         "weight": 15,
         "patterns": [
             r"(不听劝告偷偷溜出|偏要任性前往|被绑架在废弃仓库|拿你的女人来换)",
-            r"(用你全家性命威胁主角自废武功|逼迫主角下跪换取人质安全)"
+            r"(用你全家性命威胁主角自废武功|逼迫主角下跪换取人质安全)",
+            r"(?i)(sneaked out without listening to warnings|exchange your woman for your life|held hostage in the warehouse|kneel and surrender to save her)",
         ],
         "reason": "工具人式送人头导致剧情狗血生硬，主角被迫受制于人，读者对拖油瓶极度反感。",
         "suggestion": "强化配角自保逻辑，或将救援情节写为主角将计就计的围猎反杀局。"
@@ -101,7 +107,8 @@ POISON_PATTERNS = [
         "weight": 30,
         "patterns": [
             r"(依偎在另一个男人怀里|衣衫不整地从房间出来|眼神迷离地拉扯|坐在了男配的腿上)",
-            r"(虽然我爱的是你但我身体属于他|为了救你我不得不委身于他)"
+            r"(虽然我爱的是你但我身体属于他|为了救你我不得不委身于他)",
+            r"(?i)(cuddled in another man's arms|my body belongs to him|cheated on him without hesitation)",
         ],
         "reason": "情感背叛或严重暧昧擦边，直接触碰读者的第一禁区，导致毁灭性差评。",
         "suggestion": "严守情感忠诚底线；若有误会，三章内必须彻底廓清并严惩造谣者。"
@@ -113,7 +120,8 @@ POISON_PATTERNS = [
         "weight": 20,
         "patterns": [
             r"(被宗门长辈强行收走|将宝物暂借给他人保管|无故被小偷盗走|金手指陷入永久休眠)",
-            r"(神级外挂被莫名封印|修为被废且金手指失灵|宝物被迫上交家族)"
+            r"(神级外挂被莫名封印|修为被废且金手指失灵|宝物被迫上交家族)",
+            r"(?i)(system was inexplicably disabled|gods stripped away his powers|forced to surrender his legendary (artifact|weapon)|powers were sealed without reason)",
         ],
         "reason": "主角已获得的底牌被生硬剥夺，剥夺感极强，读者付出沉没成本受挫弃书。",
         "suggestion": "外挂可以有冷却限制或代价，但绝对控制权必须始终在主角手中；如被夺，三章内必须作为反杀诱饵。"
@@ -125,7 +133,8 @@ POISON_PATTERNS = [
         "weight": 10,
         "patterns": [
             r"(早就把当年的誓言忘得一干二净|昔日的承诺抛诸脑后|早就忘了还要去救)",
-            r"(发过的重誓如今全当耳旁风|随口答应的事从不兑现)"
+            r"(发过的重誓如今全当耳旁风|随口答应的事从不兑现)",
+            r"(?i)(completely forgot the solemn vow|broke the sacred promise without a second thought|never intended to fulfill the oath)",
         ],
         "reason": "主角立誓后抛诸脑后毫无推进，显得人设虚伪冷血，丧失主线目标牵引力。",
         "suggestion": "建立伏笔记账本，阶段性交代主线目标的推进进度，有始有终完成承诺结算。"
@@ -137,7 +146,8 @@ POISON_PATTERNS = [
         "weight": 10,
         "patterns": [
             r"(你找死！你找死！|你这废物竟敢|给脸不要脸的小畜生|你可知我是谁|信不信我诛你九族)",
-            r"(蝼蚁也敢放肆|不知天高地厚的狗东西|跪下磕头饶你不死)"
+            r"(蝼蚁也敢放肆|不知天高地厚的狗东西|跪下磕头饶你不死)",
+            r"(?i)(courting death!|do you know who my father is\?|kneel and kowtow|you insolent ant)",
         ],
         "reason": "反派台词单一廉价复读，毫无动机地为了找茬而找茬，挨打之后毫无长进继续送人头，爽感单薄低俗。",
         "suggestion": "反派动机立足于真实利益争夺；反派反扑要有手段和层级升级，避免复读机式谩骂。"

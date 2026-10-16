@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import PoisonCheckPanel from './PoisonCheckPanel'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 vi.mock('../api/client', () => ({
   toolsApi: {
@@ -64,5 +66,22 @@ describe('PoisonCheckPanel', () => {
       expect(screen.getByText('长篇憋屈无反击 (Excessive Suffering)')).toBeDefined()
       expect(screen.getByText(/受辱必须在同一章节内完成打脸反击/)).toBeDefined()
     })
+  })
+
+  it('在 en-US 语言环境下渲染英文动作按钮与标签', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <PoisonCheckPanel />
+        </I18nProvider>,
+      )
+      expect(screen.getByText('Anti-Poison Scanner (Local)')).toBeDefined()
+      expect(screen.getByText('Fatal Taboo Library (10 Rules)')).toBeDefined()
+      expect(screen.getByText('Scan for Taboos')).toBeDefined()
+      expect(screen.getByText('Clear')).toBeDefined()
+    } finally {
+      removeStorage('novellab.locale')
+    }
   })
 })
