@@ -443,4 +443,491 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '（段落留白）',
     'en-US': '(Blank paragraph)',
   },
+
+  // 创作工作台顶栏与流水线 (WritingWorkbench)
+  workbench_mode_studio: {
+    'zh-CN': '沉浸创作室 (Studio)',
+    'en-US': 'Writing Studio',
+  },
+  workbench_mode_pipeline: {
+    'zh-CN': '工坊流水线 (Pipeline)',
+    'en-US': 'Craft Pipeline',
+  },
+  pipeline_tab_inject: {
+    'zh-CN': '资产注入',
+    'en-US': 'Asset Injection',
+  },
+  pipeline_tab_generate: {
+    'zh-CN': 'AI 章节生成',
+    'en-US': 'Chapter Generation',
+  },
+  pipeline_tab_score: {
+    'zh-CN': '单章质检打分',
+    'en-US': 'Quality Scoring',
+  },
+  pipeline_tab_assemble: {
+    'zh-CN': '拆书资产组装',
+    'en-US': 'Deconstruction Matrix',
+  },
+  pipeline_tab_style: {
+    'zh-CN': '文风模型分析',
+    'en-US': 'Voice & Style Modeling',
+  },
+  pipeline_tab_extras: {
+    'zh-CN': '创作者企划中心',
+    'en-US': 'Creator Project Hub',
+  },
+  pipeline_tab_deslop: {
+    'zh-CN': '去 AI 味实验室',
+    'en-US': 'Anti-Slop Lab',
+  },
+  pipeline_tab_poison: {
+    'zh-CN': '灵感与毒点避雷工坊',
+    'en-US': 'Inspiration & Taboo Shield',
+  },
+  pipeline_tab_essence: {
+    'zh-CN': '小说精华数据库',
+    'en-US': 'Fiction Essence Vault',
+  },
+
+  // 创作扩展企划中心 (WritingExtras)
+  extras_project_label: {
+    'zh-CN': '写作项目',
+    'en-US': 'Project',
+  },
+  extras_project_desc: {
+    'zh-CN': '大纲、人物、便签、创作者仪表盘与导出均按项目隔离',
+    'en-US': 'Outlines, characters, notes, dashboard, and exports are scoped by project',
+  },
+  extras_no_project_alert: {
+    'zh-CN': '请先在「写作」页签新建写作项目',
+    'en-US': 'Please create a writing project in the Writing Studio first',
+  },
+  extras_tab_outline: {
+    'zh-CN': '大纲架构',
+    'en-US': 'Outline & Structure',
+  },
+  extras_tab_character: {
+    'zh-CN': '人物卡与关系',
+    'en-US': 'Characters & Relations',
+  },
+  extras_tab_notes: {
+    'zh-CN': '灵感便签',
+    'en-US': 'Inspiration Notes',
+  },
+  extras_tab_dashboard: {
+    'zh-CN': '创作者仪表盘',
+    'en-US': 'Creator Dashboard',
+  },
+  extras_tab_export: {
+    'zh-CN': '规范导出',
+    'en-US': 'Manuscript Export',
+  },
+
+  // 大纲架构面板 (OutlinePanel)
+  extras_outline_volume: {
+    'zh-CN': '卷',
+    'en-US': 'Vol',
+  },
+  extras_outline_chapter: {
+    'zh-CN': '章',
+    'en-US': 'Ch',
+  },
+  extras_outline_status_planned: {
+    'zh-CN': '待写',
+    'en-US': 'Planned',
+  },
+  extras_outline_status_writing: {
+    'zh-CN': '写作中',
+    'en-US': 'Drafting',
+  },
+  extras_outline_status_done: {
+    'zh-CN': '已完成',
+    'en-US': 'Completed',
+  },
+  extras_outline_add_btn: {
+    'zh-CN': '新增分卷 / 章节',
+    'en-US': 'Add Volume / Chapter',
+  },
+  extras_outline_hook_template_btn: {
+    'zh-CN': '🚀 引用黄金三章模板',
+    'en-US': '🚀 First 3 Chapters Template',
+  },
+  extras_outline_empty: {
+    'zh-CN': '还没有大纲，先从第一卷/第一章开始规划架构吧',
+    'en-US': 'No outlines yet. Start planning from Volume 1 or Chapter 1',
+  },
+  extras_outline_edit_title: {
+    'zh-CN': '编辑大纲',
+    'en-US': 'Edit Outline',
+  },
+  extras_outline_new_title: {
+    'zh-CN': '新增大纲架构',
+    'en-US': 'New Outline Item',
+  },
+  extras_outline_kind: {
+    'zh-CN': '类型',
+    'en-US': 'Type',
+  },
+  extras_outline_kind_volume: {
+    'zh-CN': '分卷（Volume）',
+    'en-US': 'Volume',
+  },
+  extras_outline_kind_chapter: {
+    'zh-CN': '章节（Chapter）',
+    'en-US': 'Chapter',
+  },
+  extras_outline_item_title: {
+    'zh-CN': '标题',
+    'en-US': 'Title',
+  },
+  extras_outline_summary: {
+    'zh-CN': '内容概要 / 剧情线',
+    'en-US': 'Summary / Plotline',
+  },
+  extras_outline_summary_ph: {
+    'zh-CN': '这一卷/章的核心冲突、情绪线、重要伏笔……',
+    'en-US': 'Core conflict, emotional arc, key foreshadowing for this volume/chapter...',
+  },
+  extras_outline_status: {
+    'zh-CN': '状态',
+    'en-US': 'Status',
+  },
+  extras_outline_template_dialog_title: {
+    'zh-CN': '🚀 黄金三章开篇模型库',
+    'en-US': '🚀 First 3 Chapters Hook Models',
+  },
+  extras_outline_template_dialog_subtitle: {
+    'zh-CN': '内置 10 大提升留存率的成熟开篇节拍',
+    'en-US': 'Built-in 10 battle-tested beats to maximize reader retention',
+  },
+  extras_outline_template_select: {
+    'zh-CN': '选择开篇模板',
+    'en-US': 'Select Opening Template',
+  },
+  extras_outline_template_first300: {
+    'zh-CN': '🔥 前 300 字吸睛钩子：',
+    'en-US': '🔥 First 300 Words Hook:',
+  },
+  extras_outline_template_beat1: {
+    'zh-CN': '第 1 章节拍（生死危机与冲突）：',
+    'en-US': 'Chapter 1 Beat (Crisis & Immediate Conflict):',
+  },
+  extras_outline_template_beat2: {
+    'zh-CN': '第 2 章节拍（压迫激化与转机）：',
+    'en-US': 'Chapter 2 Beat (Escalation & Opportunity):',
+  },
+  extras_outline_template_beat3: {
+    'zh-CN': '第 3 章节拍（首爽破局与爽点兑现）：',
+    'en-US': 'Chapter 3 Beat (First Payoff & Breakthrough):',
+  },
+  extras_outline_template_apply: {
+    'zh-CN': '一键应用为前三章大纲',
+    'en-US': 'Apply as Chapters 1-3 Outline',
+  },
+
+  // 人物卡与关系网 (CharacterPanel)
+  extras_char_add_btn: {
+    'zh-CN': '新建人物卡',
+    'en-US': 'New Character Card',
+  },
+  extras_char_empty: {
+    'zh-CN': '还没有人物卡，先给主角建立第一张人设立体档案吧',
+    'en-US': 'No characters yet. Create a dimensional profile for your protagonist',
+  },
+  extras_char_edit_title: {
+    'zh-CN': '编辑人物卡档案',
+    'en-US': 'Edit Character Profile',
+  },
+  extras_char_new_title: {
+    'zh-CN': '新建人物卡档案',
+    'en-US': 'New Character Profile',
+  },
+  extras_char_name: {
+    'zh-CN': '姓名',
+    'en-US': 'Name',
+  },
+  extras_char_random_name: {
+    'zh-CN': '🎲 随机名',
+    'en-US': '🎲 Random Name',
+  },
+  extras_char_role: {
+    'zh-CN': '定位',
+    'en-US': 'Role',
+  },
+  extras_char_role_ph: {
+    'zh-CN': '如：男主 / 女主 / 幕后黑手 / 剑术师尊……',
+    'en-US': 'e.g. Protagonist / Deuteragonist / Hidden Master / Antagonist...',
+  },
+  extras_char_camp: {
+    'zh-CN': '所属阵营',
+    'en-US': 'Faction / Alignment',
+  },
+  extras_char_camp_protagonist: {
+    'zh-CN': '主角阵营',
+    'en-US': 'Protagonist Faction',
+  },
+  extras_char_camp_antagonist: {
+    'zh-CN': '反派宿敌',
+    'en-US': 'Antagonist / Rival',
+  },
+  extras_char_camp_neutral: {
+    'zh-CN': '中立势力',
+    'en-US': 'Neutral Power',
+  },
+  extras_char_camp_sect: {
+    'zh-CN': '宗门高层',
+    'en-US': 'Sect Leadership',
+  },
+  extras_char_camp_hermit: {
+    'zh-CN': '世外高人',
+    'en-US': 'Hermit Sage',
+  },
+  extras_char_rel_target: {
+    'zh-CN': '关系关联角色',
+    'en-US': 'Related Character',
+  },
+  extras_char_rel_target_ph: {
+    'zh-CN': '如：林天（留空则不设）',
+    'en-US': 'e.g. Lin Tian (blank if none)',
+  },
+  extras_char_rel_type: {
+    'zh-CN': '关系类型',
+    'en-US': 'Relation Type',
+  },
+  extras_char_rel_type_ph: {
+    'zh-CN': '如：宿敌 / 师徒 / 知己',
+    'en-US': 'e.g. Rival / Master / Ally',
+  },
+  extras_char_desc: {
+    'zh-CN': '性格特质、人设背景与人物弧光',
+    'en-US': 'Personality, Backstory & Character Arc',
+  },
+  extras_char_desc_ph: {
+    'zh-CN': '外貌特征、口癖、行为动机、阴暗面、核心羁绊……',
+    'en-US': 'Appearance, catchphrases, core motivation, fatal flaw, relationships...',
+  },
+
+  // 灵感便签 (NotePanel)
+  extras_note_add_btn: {
+    'zh-CN': '速记灵感',
+    'en-US': 'Quick Note',
+  },
+  extras_note_empty: {
+    'zh-CN': '灵感稍纵即逝，随时把冒出的金句、桥段、反转记在这里',
+    'en-US': 'Inspiration is fleeting. Record memorable lines, twists, and tropes here anytime',
+  },
+  extras_note_untitled: {
+    'zh-CN': '（无标题灵感）',
+    'en-US': '(Untitled Note)',
+  },
+  extras_note_edit_title: {
+    'zh-CN': '编辑灵感便签',
+    'en-US': 'Edit Note',
+  },
+  extras_note_new_title: {
+    'zh-CN': '速记一条灵感',
+    'en-US': 'New Inspiration Note',
+  },
+  extras_note_title: {
+    'zh-CN': '标题',
+    'en-US': 'Title',
+  },
+  extras_note_content: {
+    'zh-CN': '灵感详情',
+    'en-US': 'Content',
+  },
+  extras_note_content_ph: {
+    'zh-CN': '突然想到的战斗机制、反转包袱、人物对白金句……',
+    'en-US': 'Combat mechanics, reveal setups, punchlines, witty dialogue...',
+  },
+
+  // 创作者仪表盘 (DashboardPanel)
+  extras_dash_title: {
+    'zh-CN': '创作者数据大盘',
+    'en-US': 'Creator Analytics Dashboard',
+  },
+  extras_dash_timespan: {
+    'zh-CN': '时间跨度',
+    'en-US': 'Time Range',
+  },
+  extras_dash_7days: {
+    'zh-CN': '近 7 天',
+    'en-US': 'Last 7 Days',
+  },
+  extras_dash_30days: {
+    'zh-CN': '近 30 天',
+    'en-US': 'Last 30 Days',
+  },
+  extras_dash_90days: {
+    'zh-CN': '近 90 天',
+    'en-US': 'Last 90 Days',
+  },
+  extras_dash_loading: {
+    'zh-CN': '正在加载创作者大盘数据……',
+    'en-US': 'Loading analytics data...',
+  },
+  extras_dash_today_words: {
+    'zh-CN': '今日码字',
+    'en-US': "Today's Words",
+  },
+  extras_dash_words_unit: {
+    'zh-CN': '字',
+    'en-US': 'words',
+  },
+  extras_dash_total_words: {
+    'zh-CN': '全书总字数',
+    'en-US': 'Total Book Words',
+  },
+  extras_dash_chapters_unit: {
+    'zh-CN': '章已落盘',
+    'en-US': 'chapters written',
+  },
+  extras_dash_streak: {
+    'zh-CN': '连续更文',
+    'en-US': 'Writing Streak',
+  },
+  extras_dash_streak_unit: {
+    'zh-CN': '天不断更',
+    'en-US': 'day streak',
+  },
+  extras_dash_today_chapters: {
+    'zh-CN': '今日成章',
+    'en-US': "Today's Chapters",
+  },
+  extras_dash_chapters_done: {
+    'zh-CN': '章',
+    'en-US': 'chapters',
+  },
+  extras_dash_creation_chart_title: {
+    'zh-CN': '每日码字与创作速率平滑折线',
+    'en-US': 'Daily Words & Writing Rate Trajectory',
+  },
+  extras_dash_wave_chart_title: {
+    'zh-CN': '章节情绪张力起伏波形（起承转合）',
+    'en-US': 'Narrative Tension & Pacing Waveform',
+  },
+  extras_dash_benchmark: {
+    'zh-CN': '对标神作',
+    'en-US': 'Benchmark',
+  },
+  extras_dash_bm_classic: {
+    'zh-CN': '经典起承转合',
+    'en-US': 'Classic 4-Act Pacing',
+  },
+  extras_dash_bm_fast_hook: {
+    'zh-CN': '黄金强入局',
+    'en-US': 'Golden In Medias Res',
+  },
+  extras_dash_bm_steady: {
+    'zh-CN': '稳健发育流',
+    'en-US': 'Steady Progression',
+  },
+  extras_dash_bm_face_slap: {
+    'zh-CN': '压抑打脸流',
+    'en-US': 'Tension & Reversal',
+  },
+  extras_dash_btn_analyze: {
+    'zh-CN': '测算草稿',
+    'en-US': 'Analyze Draft',
+  },
+  extras_dash_radar_title: {
+    'zh-CN': '网文爽点节奏多维雷达图',
+    'en-US': 'Narrative Rhythm & Payoff Radar',
+  },
+  extras_dash_radar_subtitle: {
+    'zh-CN': '爽点推进、打脸期待、信息密度、金手指进化、章末钩子全维扫描',
+    'en-US': 'Payoff velocity, anticipation, information density, power progression, end-of-chapter hooks',
+  },
+
+  // 规范多格式导出 (ExportPanel)
+  extras_export_title: {
+    'zh-CN': '导出全书作品',
+    'en-US': 'Export Entire Book',
+  },
+  extras_export_desc: {
+    'zh-CN': '纯 Python 标准库零依赖规范导出，支持直接交付排版、投稿或本地备份',
+    'en-US': 'Zero-dependency pure standard library export for publishing, submission, or backup',
+  },
+  extras_export_docx_title: {
+    'zh-CN': 'Word 规范文档 (.docx)',
+    'en-US': 'Standard Word Document (.docx)',
+  },
+  extras_export_docx_tag: {
+    'zh-CN': '国内出版 / 责编首选',
+    'en-US': 'Industry Standard Submission',
+  },
+  extras_export_docx_desc: {
+    'zh-CN': '符合网文投稿与出版规约，标题居中、章节居左、正文首行缩进 2 字符、1.5 倍行距，Word / WPS 秒开。',
+    'en-US': 'Standard formatting: centered title, left-aligned chapters, indented paragraphs, 1.5 line spacing. Compatible with Word/WPS.',
+  },
+  extras_export_docx_btn: {
+    'zh-CN': '导出 Word (.docx)',
+    'en-US': 'Export Word (.docx)',
+  },
+  extras_export_epub_title: {
+    'zh-CN': '标准电子书 (.epub)',
+    'en-US': 'Standard eBook (.epub)',
+  },
+  extras_export_epub_tag: {
+    'zh-CN': 'Kindle / Apple Books',
+    'en-US': 'Kindle / Apple Books',
+  },
+  extras_export_epub_desc: {
+    'zh-CN': 'EPUB 3.0 出版规范容器，无压缩 mimetype 居首，内嵌完整目录导航与样式，适配主流电子阅读器。',
+    'en-US': 'EPUB 3.0 container with uncompressed mimetype, embedded navigation index, and responsive styling for e-readers.',
+  },
+  extras_export_epub_btn: {
+    'zh-CN': '导出 EPUB (.epub)',
+    'en-US': 'Export EPUB (.epub)',
+  },
+  extras_export_shunn_title: {
+    'zh-CN': '国际标准文稿 (.txt)',
+    'en-US': 'International Standard Manuscript (.txt)',
+  },
+  extras_export_shunn_tag: {
+    'zh-CN': 'William Shunn SMF 规约',
+    'en-US': 'William Shunn SMF Format',
+  },
+  extras_export_shunn_desc: {
+    'zh-CN': '国际奇幻与科幻期刊通用投稿规范：页眉联系人、百字取整字数估算、居中标题与 # 场景分界符。',
+    'en-US': 'Standard Manuscript Format (SMF) for English speculative fiction: contact block, word count rounding, centered header, # breaks.',
+  },
+  extras_export_shunn_btn: {
+    'zh-CN': '导出 Shunn 文稿',
+    'en-US': 'Export Shunn Manuscript',
+  },
+  extras_export_md_title: {
+    'zh-CN': 'Markdown 结构化 (.md)',
+    'en-US': 'Structured Markdown (.md)',
+  },
+  extras_export_md_tag: {
+    'zh-CN': '跨平台排版首选',
+    'en-US': 'Cross-platform Markdown',
+  },
+  extras_export_md_desc: {
+    'zh-CN': '规范二级标题与元数据，适合导入 Obsidian、Typora、Notion 或多平台分发工具。',
+    'en-US': 'Clean headings and metadata, ideal for Obsidian, Typora, Notion, or multi-platform distribution.',
+  },
+  extras_export_md_btn: {
+    'zh-CN': '导出 Markdown (.md)',
+    'en-US': 'Export Markdown (.md)',
+  },
+  extras_export_txt_title: {
+    'zh-CN': '纯文本格式 (.txt)',
+    'en-US': 'Plain Text Format (.txt)',
+  },
+  extras_export_txt_tag: {
+    'zh-CN': '通用无格式备份',
+    'en-US': 'Universal Plain Text',
+  },
+  extras_export_txt_desc: {
+    'zh-CN': 'UTF-8 标准编码，按章号纯净拼接，各大网文作家后台直接全选粘贴无格式污染。',
+    'en-US': 'UTF-8 standard encoding, clean chapter stitching without formatting artifacts. Direct paste ready.',
+  },
+  extras_export_txt_btn: {
+    'zh-CN': '导出纯文本 (.txt)',
+    'en-US': 'Export Plain Text (.txt)',
+  },
 }
+

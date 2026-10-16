@@ -1,6 +1,8 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import WritingExtras from './WritingExtras'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 const mockOutlines = vi.fn()
 const mockCharacters = vi.fn()
@@ -189,4 +191,64 @@ describe('WritingExtras 创作扩展工作台', () => {
       expect(nameInput.value).toBe('叶凌云')
     })
   })
+
+  it('在 en-US 语言环境下渲染英文项目标签、仪表盘与多格式导出卡片', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <WritingExtras />
+        </I18nProvider>
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('Outline & Structure')).toBeInTheDocument()
+        expect(screen.getByText('Characters & Relations')).toBeInTheDocument()
+        expect(screen.getByText('Inspiration Notes')).toBeInTheDocument()
+        expect(screen.getByText('Creator Dashboard')).toBeInTheDocument()
+        expect(screen.getByText('Manuscript Export')).toBeInTheDocument()
+        expect(screen.getByText('Add Volume / Chapter')).toBeInTheDocument()
+        expect(screen.getByText('🚀 First 3 Chapters Template')).toBeInTheDocument()
+      })
+
+      // 切换到 Characters & Relations
+      fireEvent.click(screen.getByText('Characters & Relations'))
+      await waitFor(() => {
+        expect(screen.getByText('New Character Card')).toBeInTheDocument()
+        expect(screen.getByText('林凡')).toBeInTheDocument()
+      })
+
+      // 切换到 Inspiration Notes
+      fireEvent.click(screen.getByText('Inspiration Notes'))
+      await waitFor(() => {
+        expect(screen.getByText('Quick Note')).toBeInTheDocument()
+        expect(screen.getByText('金手指伏笔')).toBeInTheDocument()
+      })
+
+      // 切换到 Creator Dashboard
+      fireEvent.click(screen.getByText('Creator Dashboard'))
+      await waitFor(() => {
+        expect(screen.getByText('Creator Analytics Dashboard')).toBeInTheDocument()
+        expect(screen.getByText("Today's Words")).toBeInTheDocument()
+        expect(screen.getByText('Total Book Words')).toBeInTheDocument()
+        expect(screen.getByText('Writing Streak')).toBeInTheDocument()
+        expect(screen.getByText("Today's Chapters")).toBeInTheDocument()
+        expect(screen.getByTestId('creation-rate-chart')).toBeInTheDocument()
+      })
+
+      // 切换到 Manuscript Export
+      fireEvent.click(screen.getByText('Manuscript Export'))
+      await waitFor(() => {
+        expect(screen.getByText('Export Entire Book')).toBeInTheDocument()
+        expect(screen.getByText('Export Word (.docx)')).toBeInTheDocument()
+        expect(screen.getByText('Export EPUB (.epub)')).toBeInTheDocument()
+        expect(screen.getByText('Export Shunn Manuscript')).toBeInTheDocument()
+        expect(screen.getByText('Export Markdown (.md)')).toBeInTheDocument()
+        expect(screen.getByText('Export Plain Text (.txt)')).toBeInTheDocument()
+      })
+    } finally {
+      removeStorage('novellab.locale')
+    }
+  })
 })
+

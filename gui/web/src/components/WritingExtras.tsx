@@ -36,13 +36,12 @@ import { writingApi, toolsApi, friendlyError } from '../api/client'
 import type { WritingProject } from '../types'
 import type { OutlineItem, CharacterCard, NoteItem, WritingStats, HookItem, TensionAnalysisResult } from '../api/client'
 import { useThemeMode } from '../state/ThemeModeContext'
+import { useI18n } from '../state/I18nContext'
 import { ink, glassCard } from '../ink'
 import CreationRateChart from './charts/CreationRateChart'
 import EmotionWaveChart from './charts/EmotionWaveChart'
 import RhythmRadarChart from './charts/RhythmRadarChart'
 
-const OUTLINE_KIND_LABEL: Record<string, string> = { volume: '卷', chapter: '章' }
-const OUTLINE_STATUS_LABEL: Record<string, string> = { planned: '待写', writing: '写作中', done: '已完成' }
 const OUTLINE_STATUS_COLOR: Record<string, 'default' | 'primary' | 'success'> = {
   planned: 'default',
   writing: 'primary',
@@ -50,6 +49,7 @@ const OUTLINE_STATUS_COLOR: Record<string, 'default' | 'primary' | 'success'> = 
 }
 
 export default function WritingExtras() {
+  const { t } = useI18n()
   const [tab, setTab] = useState(0)
   const [projects, setProjects] = useState<WritingProject[]>([])
   const [project, setProject] = useState('')
@@ -76,7 +76,7 @@ export default function WritingExtras() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <TextField
           select
-          label="写作项目"
+          label={t('extras_project_label')}
           value={project}
           onChange={(e) => setProject(e.target.value)}
           sx={{ minWidth: 220 }}
@@ -89,20 +89,20 @@ export default function WritingExtras() {
           ))}
         </TextField>
         <Typography variant="body2" color="text.secondary">
-          大纲、人物、便签、创作者仪表盘与导出均按项目隔离
+          {t('extras_project_desc')}
         </Typography>
       </Box>
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {!project ? (
-        <Alert severity="info">请先在「写作」页签新建写作项目</Alert>
+        <Alert severity="info">{t('extras_no_project_alert')}</Alert>
       ) : (
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tab label="大纲架构" />
-            <Tab label="人物卡与关系" />
-            <Tab label="灵感便签" />
-            <Tab label="创作者仪表盘" />
-            <Tab label="规范导出" />
+            <Tab label={t('extras_tab_outline')} />
+            <Tab label={t('extras_tab_character')} />
+            <Tab label={t('extras_tab_notes')} />
+            <Tab label={t('extras_tab_dashboard')} />
+            <Tab label={t('extras_tab_export')} />
           </Tabs>
           <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', py: 2 }}>
             {tab === 0 && <OutlinePanel project={project} />}
@@ -123,6 +123,7 @@ export default function WritingExtras() {
 
 function OutlinePanel({ project }: { project: string }) {
   const { isDark } = useThemeMode()
+  const { t } = useI18n()
   const [items, setItems] = useState<OutlineItem[]>([])
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -136,6 +137,14 @@ function OutlinePanel({ project }: { project: string }) {
   const [templates, setTemplates] = useState<HookItem[]>([])
   const [templateLoading, setTemplateLoading] = useState(false)
   const [selectedHook, setSelectedHook] = useState<HookItem | null>(null)
+
+  const kindLabel = (k: string) => (k === 'volume' ? t('extras_outline_volume') : t('extras_outline_chapter'))
+  const statusLabel = (s: string) => {
+    if (s === 'planned') return t('extras_outline_status_planned')
+    if (s === 'writing') return t('extras_outline_status_writing')
+    if (s === 'done') return t('extras_outline_status_done')
+    return s
+  }
 
   const openHookTemplateDialog = async () => {
     setTemplateOpen(true)
@@ -284,20 +293,20 @@ function OutlinePanel({ project }: { project: string }) {
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-            新增分卷 / 章节
+            {t('extras_outline_add_btn')}
           </Button>
           <Button variant="outlined" color="primary" onClick={openHookTemplateDialog}>
-            🚀 引用黄金三章模板
+            {t('extras_outline_hook_template_btn')}
           </Button>
         </Box>
         <Typography variant="caption" color="text.secondary">
-          共 {items.filter((i) => i.kind === 'volume').length} 卷 / {items.filter((i) => i.kind === 'chapter').length} 章 ｜ 支持上下微移原子重排
+          共 {items.filter((i) => i.kind === 'volume').length} {t('extras_outline_volume')} / {items.filter((i) => i.kind === 'chapter').length} {t('extras_outline_chapter')} ｜ 支持上下微移原子重排
         </Typography>
       </Box>
 
       {items.length === 0 ? (
         <Paper elevation={0} sx={{ p: 4, textAlign: 'center', ...glassCard(isDark) }}>
-          <Typography color="text.secondary">还没有大纲，先从第一卷/第一章开始规划架构吧</Typography>
+          <Typography color="text.secondary">{t('extras_outline_empty')}</Typography>
         </Paper>
       ) : (
         items.map((it, idx) => {
@@ -316,7 +325,7 @@ function OutlinePanel({ project }: { project: string }) {
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Chip
-                  label={OUTLINE_KIND_LABEL[it.kind] ?? it.kind}
+                  label={kindLabel(it.kind)}
                   size="small"
                   color={isVolume ? 'primary' : 'default'}
                   variant={isVolume ? 'filled' : 'outlined'}
@@ -325,7 +334,7 @@ function OutlinePanel({ project }: { project: string }) {
                   {it.title}
                 </Typography>
                 <Chip
-                  label={OUTLINE_STATUS_LABEL[it.status] ?? it.status}
+                  label={statusLabel(it.status)}
                   size="small"
                   color={OUTLINE_STATUS_COLOR[it.status] ?? 'default'}
                   onClick={() => doToggleStatus(it)}
@@ -366,31 +375,31 @@ function OutlinePanel({ project }: { project: string }) {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? '编辑大纲' : '新增大纲架构'}</DialogTitle>
+        <DialogTitle>{editing ? t('extras_outline_edit_title') : t('extras_outline_new_title')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField select label="类型" value={kind} onChange={(e) => setKind(e.target.value)}>
-            <MenuItem value="volume">分卷（Volume）</MenuItem>
-            <MenuItem value="chapter">章节（Chapter）</MenuItem>
+          <TextField select label={t('extras_outline_kind')} value={kind} onChange={(e) => setKind(e.target.value)}>
+            <MenuItem value="volume">{t('extras_outline_kind_volume')}</MenuItem>
+            <MenuItem value="chapter">{t('extras_outline_kind_chapter')}</MenuItem>
           </TextField>
-          <TextField label="标题" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
+          <TextField label={t('extras_outline_item_title')} value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
           <TextField
-            label="内容概要 / 剧情线"
+            label={t('extras_outline_summary')}
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             fullWidth
             multiline
             rows={4}
-            placeholder="这一卷/章的核心冲突、情绪线、重要伏笔……"
+            placeholder={t('extras_outline_summary_ph')}
           />
-          <TextField select label="状态" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <MenuItem value="planned">待写</MenuItem>
-            <MenuItem value="writing">写作中</MenuItem>
-            <MenuItem value="done">已完成</MenuItem>
+          <TextField select label={t('extras_outline_status')} value={status} onChange={(e) => setStatus(e.target.value)}>
+            <MenuItem value="planned">{t('extras_outline_status_planned')}</MenuItem>
+            <MenuItem value="writing">{t('extras_outline_status_writing')}</MenuItem>
+            <MenuItem value="done">{t('extras_outline_status_done')}</MenuItem>
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>取消</Button>
-          <Button variant="contained" onClick={doSave}>保存</Button>
+          <Button onClick={() => setDialogOpen(false)}>{t('action_cancel')}</Button>
+          <Button variant="contained" onClick={doSave}>{t('action_save')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -403,10 +412,10 @@ function OutlinePanel({ project }: { project: string }) {
       >
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
           <Typography component="span" variant="h6" fontWeight={700}>
-            🚀 黄金三章开篇模型库
+            {t('extras_outline_template_dialog_title')}
           </Typography>
           <Typography component="span" variant="caption" color="text.secondary">
-            内置 10 大提升留存率的成熟开篇节拍
+            {t('extras_outline_template_dialog_subtitle')}
           </Typography>
         </DialogTitle>
         <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -418,17 +427,17 @@ function OutlinePanel({ project }: { project: string }) {
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <TextField
                 select
-                label="选择开篇模板"
+                label={t('extras_outline_template_select')}
                 value={selectedHook?.id || ''}
                 onChange={(e) => {
-                  const target = templates.find((t) => t.id === e.target.value)
+                  const target = templates.find((tmp) => tmp.id === e.target.value)
                   if (target) setSelectedHook(target)
                 }}
                 fullWidth
               >
-                {templates.map((t) => (
-                  <MenuItem key={t.id} value={t.id}>
-                    [{t.genre}] {t.name}
+                {templates.map((tmpl) => (
+                  <MenuItem key={tmpl.id} value={tmpl.id}>
+                    [{tmpl.genre}] {tmpl.name}
                   </MenuItem>
                 ))}
               </TextField>
@@ -437,7 +446,7 @@ function OutlinePanel({ project }: { project: string }) {
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                   <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
                     <Typography variant="subtitle2" color="primary" fontWeight={700} gutterBottom>
-                      🔥 前 300 字吸睛钩子：
+                      {t('extras_outline_template_first300')}
                     </Typography>
                     <Typography variant="body2" sx={{ lineHeight: 1.7 }}>
                       {selectedHook.first300Words}
@@ -446,7 +455,7 @@ function OutlinePanel({ project }: { project: string }) {
 
                   <Paper variant="outlined" sx={{ p: 1.5 }}>
                     <Typography variant="subtitle2" fontWeight={700} color="text.primary" gutterBottom>
-                      第 1 章节拍（生死危机与冲突）：
+                      {t('extras_outline_template_beat1')}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
                       {selectedHook.chapter1Beat}
@@ -455,7 +464,7 @@ function OutlinePanel({ project }: { project: string }) {
 
                   <Paper variant="outlined" sx={{ p: 1.5 }}>
                     <Typography variant="subtitle2" fontWeight={700} color="text.primary" gutterBottom>
-                      第 2 章节拍（压迫激化与转机）：
+                      {t('extras_outline_template_beat2')}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
                       {selectedHook.chapter2Beat}
@@ -464,7 +473,7 @@ function OutlinePanel({ project }: { project: string }) {
 
                   <Paper variant="outlined" sx={{ p: 1.5 }}>
                     <Typography variant="subtitle2" fontWeight={700} color="text.primary" gutterBottom>
-                      第 3 章节拍（首爽破局与爽点兑现）：
+                      {t('extras_outline_template_beat3')}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
                       {selectedHook.chapter3Beat}
@@ -476,14 +485,14 @@ function OutlinePanel({ project }: { project: string }) {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTemplateOpen(false)}>取消</Button>
+          <Button onClick={() => setTemplateOpen(false)}>{t('action_cancel')}</Button>
           <Button
             variant="contained"
             color="primary"
             onClick={doApplyTemplate}
             disabled={!selectedHook}
           >
-            一键应用为前三章大纲
+            {t('extras_outline_template_apply')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -497,6 +506,7 @@ function OutlinePanel({ project }: { project: string }) {
 
 function CharacterPanel({ project }: { project: string }) {
   const { isDark } = useThemeMode()
+  const { t } = useI18n()
   const [items, setItems] = useState<CharacterCard[]>([])
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -609,7 +619,7 @@ function CharacterPanel({ project }: { project: string }) {
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          新建人物卡
+          {t('extras_char_add_btn')}
         </Button>
         <Typography variant="caption" color="text.secondary">
           当前共 {items.length} 位角色 ｜ 支持人物阵营与人物关系网络关联
@@ -618,7 +628,7 @@ function CharacterPanel({ project }: { project: string }) {
 
       {items.length === 0 ? (
         <Paper elevation={0} sx={{ p: 4, textAlign: 'center', ...glassCard(isDark) }}>
-          <Typography color="text.secondary">还没有人物卡，先给主角建立第一张人设立体档案吧</Typography>
+          <Typography color="text.secondary">{t('extras_char_empty')}</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -683,61 +693,61 @@ function CharacterPanel({ project }: { project: string }) {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? '编辑人物卡档案' : '新建人物卡档案'}</DialogTitle>
+        <DialogTitle>{editing ? t('extras_char_edit_title') : t('extras_char_new_title')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-            <TextField label="姓名" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+            <TextField label={t('extras_char_name')} value={name} onChange={(e) => setName(e.target.value)} fullWidth />
             <Button
               variant="outlined"
               onClick={handleRandomName}
               sx={{ minWidth: 96, height: 40, whiteSpace: 'nowrap' }}
             >
-              🎲 随机名
+              {t('extras_char_random_name')}
             </Button>
           </Box>
           <TextField
-            label="定位"
+            label={t('extras_char_role')}
             value={role}
             onChange={(e) => setRole(e.target.value)}
             fullWidth
-            placeholder="如：男主 / 女主 / 幕后黑手 / 剑术师尊……"
+            placeholder={t('extras_char_role_ph')}
           />
-          <TextField select label="所属阵营" value={camp} onChange={(e) => setCamp(e.target.value)} fullWidth>
-            <MenuItem value="主角阵营">主角阵营</MenuItem>
-            <MenuItem value="反派宿敌">反派宿敌</MenuItem>
-            <MenuItem value="中立势力">中立势力</MenuItem>
-            <MenuItem value="宗门高层">宗门高层</MenuItem>
-            <MenuItem value="世外高人">世外高人</MenuItem>
+          <TextField select label={t('extras_char_camp')} value={camp} onChange={(e) => setCamp(e.target.value)} fullWidth>
+            <MenuItem value="主角阵营">{t('extras_char_camp_protagonist')}</MenuItem>
+            <MenuItem value="反派宿敌">{t('extras_char_camp_antagonist')}</MenuItem>
+            <MenuItem value="中立势力">{t('extras_char_camp_neutral')}</MenuItem>
+            <MenuItem value="宗门高层">{t('extras_char_camp_sect')}</MenuItem>
+            <MenuItem value="世外高人">{t('extras_char_camp_hermit')}</MenuItem>
           </TextField>
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <TextField
-              label="关系关联角色"
+              label={t('extras_char_rel_target')}
               value={relationTarget}
               onChange={(e) => setRelationTarget(e.target.value)}
               sx={{ flex: 1 }}
-              placeholder="如：林天（留空则不设）"
+              placeholder={t('extras_char_rel_target_ph')}
             />
             <TextField
-              label="关系类型"
+              label={t('extras_char_rel_type')}
               value={relationType}
               onChange={(e) => setRelationType(e.target.value)}
               sx={{ width: 140 }}
-              placeholder="如：宿敌 / 师徒 / 知己"
+              placeholder={t('extras_char_rel_type_ph')}
             />
           </Box>
           <TextField
-            label="性格特质、人设背景与人物弧光"
+            label={t('extras_char_desc')}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             fullWidth
             multiline
             rows={5}
-            placeholder="外貌特征、口癖、行为动机、阴暗面、核心羁绊……"
+            placeholder={t('extras_char_desc_ph')}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>取消</Button>
-          <Button variant="contained" onClick={doSave}>保存</Button>
+          <Button onClick={() => setDialogOpen(false)}>{t('action_cancel')}</Button>
+          <Button variant="contained" onClick={doSave}>{t('action_save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -750,6 +760,7 @@ function CharacterPanel({ project }: { project: string }) {
 
 function NotePanel({ project }: { project: string }) {
   const { isDark } = useThemeMode()
+  const { t } = useI18n()
   const [items, setItems] = useState<NoteItem[]>([])
   const [error, setError] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -816,12 +827,12 @@ function NotePanel({ project }: { project: string }) {
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       <Box sx={{ mb: 2 }}>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          速记灵感
+          {t('extras_note_add_btn')}
         </Button>
       </Box>
       {items.length === 0 ? (
         <Paper elevation={0} sx={{ p: 4, textAlign: 'center', ...glassCard(isDark) }}>
-          <Typography color="text.secondary">灵感稍纵即逝，随时把冒出的金句、桥段、反转记在这里</Typography>
+          <Typography color="text.secondary">{t('extras_note_empty')}</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -841,7 +852,7 @@ function NotePanel({ project }: { project: string }) {
               >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1 }}>
-                    {it.title || '（无标题灵感）'}
+                    {it.title || t('extras_note_untitled')}
                   </Typography>
                   <IconButton
                     size="small"
@@ -877,22 +888,22 @@ function NotePanel({ project }: { project: string }) {
       )}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? '编辑灵感便签' : '速记一条灵感'}</DialogTitle>
+        <DialogTitle>{editing ? t('extras_note_edit_title') : t('extras_note_new_title')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField label="标题" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
+          <TextField label={t('extras_note_title')} value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
           <TextField
-            label="灵感详情"
+            label={t('extras_note_content')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             fullWidth
             multiline
             rows={6}
-            placeholder="突然想到的战斗机制、反转包袱、人物对白金句……"
+            placeholder={t('extras_note_content_ph')}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>取消</Button>
-          <Button variant="contained" onClick={doSave}>保存</Button>
+          <Button onClick={() => setDialogOpen(false)}>{t('action_cancel')}</Button>
+          <Button variant="contained" onClick={doSave}>{t('action_save')}</Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -905,6 +916,7 @@ function NotePanel({ project }: { project: string }) {
 
 function DashboardPanel({ project }: { project: string }) {
   const { isDark } = useThemeMode()
+  const { t } = useI18n()
   const [stats, setStats] = useState<WritingStats | null>(null)
   const [error, setError] = useState('')
   const [days, setDays] = useState(30)
@@ -956,24 +968,24 @@ function DashboardPanel({ project }: { project: string }) {
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="h6" fontWeight={700}>
-          创作者数据大盘
+          {t('extras_dash_title')}
         </Typography>
         <TextField
           select
-          label="时间跨度"
+          label={t('extras_dash_timespan')}
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
           size="small"
           sx={{ minWidth: 130 }}
         >
-          <MenuItem value={7}>近 7 天</MenuItem>
-          <MenuItem value={30}>近 30 天</MenuItem>
-          <MenuItem value={90}>近 90 天</MenuItem>
+          <MenuItem value={7}>{t('extras_dash_7days')}</MenuItem>
+          <MenuItem value={30}>{t('extras_dash_30days')}</MenuItem>
+          <MenuItem value={90}>{t('extras_dash_90days')}</MenuItem>
         </TextField>
       </Box>
 
       {!stats ? (
-        <Typography color="text.secondary">正在加载创作者大盘数据……</Typography>
+        <Typography color="text.secondary">{t('extras_dash_loading')}</Typography>
       ) : (
         <>
           {/* 四大指标卡 */}
@@ -981,44 +993,44 @@ function DashboardPanel({ project }: { project: string }) {
             <Grid item xs={6} sm={3}>
               <Card elevation={0} sx={glassCard(isDark)}>
                 <CardContent>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>今日码字</Typography>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>{t('extras_dash_today_words')}</Typography>
                   <Typography variant="h4" fontWeight={800} sx={{ color: '#2563EB', my: 0.5 }}>
                     {stats.todayWords.toLocaleString()}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">字</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('extras_dash_words_unit')}</Typography>
                 </CardContent>
               </Card>
             </Grid>
             <Grid item xs={6} sm={3}>
               <Card elevation={0} sx={glassCard(isDark)}>
                 <CardContent>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>全书总字数</Typography>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>{t('extras_dash_total_words')}</Typography>
                   <Typography variant="h4" fontWeight={800} sx={{ color: '#059669', my: 0.5 }}>
                     {stats.totalWords.toLocaleString()}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">{stats.totalChapters} 章已落盘</Typography>
+                  <Typography variant="caption" color="text.secondary">{stats.totalChapters} {t('extras_dash_chapters_unit')}</Typography>
                 </CardContent>
               </Card>
             </Grid>
             <Grid item xs={6} sm={3}>
               <Card elevation={0} sx={glassCard(isDark)}>
                 <CardContent>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>连续更文</Typography>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>{t('extras_dash_streak')}</Typography>
                   <Typography variant="h4" fontWeight={800} sx={{ color: '#D97706', my: 0.5 }}>
                     {stats.streakDays}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">天不断更</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('extras_dash_streak_unit')}</Typography>
                 </CardContent>
               </Card>
             </Grid>
             <Grid item xs={6} sm={3}>
               <Card elevation={0} sx={glassCard(isDark)}>
                 <CardContent>
-                  <Typography variant="caption" color="text.secondary" fontWeight={600}>今日成章</Typography>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600}>{t('extras_dash_today_chapters')}</Typography>
                   <Typography variant="h4" fontWeight={800} sx={{ color: '#8B5CF6', my: 0.5 }}>
                     {stats.todayChapters}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">章</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('extras_dash_chapters_done')}</Typography>
                 </CardContent>
               </Card>
             </Grid>
@@ -1027,7 +1039,7 @@ function DashboardPanel({ project }: { project: string }) {
           {/* 创作速率与字数走势折线图 */}
           <Paper elevation={0} sx={{ p: 2.5, ...glassCard(isDark) }}>
             <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
-              每日码字与创作速率平滑折线
+              {t('extras_dash_creation_chart_title')}
             </Typography>
             <CreationRateChart data={stats.history} height={260} />
           </Paper>
@@ -1038,7 +1050,7 @@ function DashboardPanel({ project }: { project: string }) {
               <Paper elevation={0} sx={{ p: 2.5, height: '100%', ...glassCard(isDark) }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, flexWrap: 'wrap', gap: 1 }}>
                   <Typography variant="subtitle1" fontWeight={700}>
-                    章节情绪张力起伏波形（起承转合）
+                    {t('extras_dash_wave_chart_title')}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <TextField
@@ -1047,19 +1059,19 @@ function DashboardPanel({ project }: { project: string }) {
                       value={benchmark}
                       onChange={(e) => handleBenchmarkChange(e.target.value as any)}
                       sx={{ minWidth: 130 }}
-                      label="对标神作"
+                      label={t('extras_dash_benchmark')}
                     >
-                      <MenuItem value="classic">经典起承转合</MenuItem>
-                      <MenuItem value="fast_hook">黄金强入局</MenuItem>
-                      <MenuItem value="steady">稳健发育流</MenuItem>
-                      <MenuItem value="face_slap">压抑打脸流</MenuItem>
+                      <MenuItem value="classic">{t('extras_dash_bm_classic')}</MenuItem>
+                      <MenuItem value="fast_hook">{t('extras_dash_bm_fast_hook')}</MenuItem>
+                      <MenuItem value="steady">{t('extras_dash_bm_steady')}</MenuItem>
+                      <MenuItem value="face_slap">{t('extras_dash_bm_face_slap')}</MenuItem>
                     </TextField>
                     <Button
                       variant="outlined"
                       size="small"
                       onClick={() => setShowTensionDialog(true)}
                     >
-                      测算草稿
+                      {t('extras_dash_btn_analyze')}
                     </Button>
                   </Box>
                 </Box>
@@ -1107,10 +1119,10 @@ function DashboardPanel({ project }: { project: string }) {
             <Grid item xs={12} md={6}>
               <Paper elevation={0} sx={{ p: 2.5, height: '100%', ...glassCard(isDark) }}>
                 <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
-                  网文爽点节奏多维雷达图
+                  {t('extras_dash_radar_title')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                  爽点推进、打脸期待、信息密度、金手指进化、章末钩子全维扫描
+                  {t('extras_dash_radar_subtitle')}
                 </Typography>
                 <RhythmRadarChart height={240} />
               </Paper>
@@ -1147,7 +1159,7 @@ function DashboardPanel({ project }: { project: string }) {
           >
             填入示范高潮草稿
           </Button>
-          <Button onClick={() => setShowTensionDialog(false)}>取消</Button>
+          <Button onClick={() => setShowTensionDialog(false)}>{t('action_cancel')}</Button>
           <Button
             variant="contained"
             disabled={!draftInput.trim() || tensionLoading}
@@ -1167,6 +1179,7 @@ function DashboardPanel({ project }: { project: string }) {
 
 function ExportPanel({ project }: { project: string }) {
   const { isDark } = useThemeMode()
+  const { t } = useI18n()
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [exportingFormat, setExportingFormat] = useState<string | null>(null)
@@ -1222,10 +1235,10 @@ function ExportPanel({ project }: { project: string }) {
 
       <Box>
         <Typography variant="h6" fontWeight={700}>
-          导出全书作品
+          {t('extras_export_title')}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          纯 Python 标准库零依赖规范导出，支持直接交付排版、投稿或本地备份
+          {t('extras_export_desc')}
         </Typography>
       </Box>
 
@@ -1236,12 +1249,12 @@ function ExportPanel({ project }: { project: string }) {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <DescriptionIcon sx={{ color: '#2563EB', fontSize: 28 }} />
               <Box>
-                <Typography variant="subtitle1" fontWeight={700}>Word 规范文档 (.docx)</Typography>
-                <Typography variant="caption" color="text.secondary">国内出版 / 责编首选</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>{t('extras_export_docx_title')}</Typography>
+                <Typography variant="caption" color="text.secondary">{t('extras_export_docx_tag')}</Typography>
               </Box>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
-              符合网文投稿与出版规约，标题居中、章节居左、正文首行缩进 2 字符、1.5 倍行距，Word / WPS 秒开。
+              {t('extras_export_docx_desc')}
             </Typography>
             <Button
               variant="contained"
@@ -1249,7 +1262,7 @@ function ExportPanel({ project }: { project: string }) {
               onClick={() => handleExport('docx')}
               disabled={!!exportingFormat}
             >
-              {exportingFormat === 'docx' ? '生成 docx 中…' : '导出 Word (.docx)'}
+              {exportingFormat === 'docx' ? '生成 docx 中…' : t('extras_export_docx_btn')}
             </Button>
           </Paper>
         </Grid>
@@ -1260,12 +1273,12 @@ function ExportPanel({ project }: { project: string }) {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <MenuBookIcon sx={{ color: '#7C3AED', fontSize: 28 }} />
               <Box>
-                <Typography variant="subtitle1" fontWeight={700}>标准电子书 (.epub)</Typography>
-                <Typography variant="caption" color="text.secondary">Kindle / Apple Books</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>{t('extras_export_epub_title')}</Typography>
+                <Typography variant="caption" color="text.secondary">{t('extras_export_epub_tag')}</Typography>
               </Box>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
-              EPUB 3.0 出版规范容器，无压缩 mimetype 居首，内嵌完整目录导航与样式，适配主流电子阅读器。
+              {t('extras_export_epub_desc')}
             </Typography>
             <Button
               variant="contained"
@@ -1274,7 +1287,7 @@ function ExportPanel({ project }: { project: string }) {
               onClick={() => handleExport('epub')}
               disabled={!!exportingFormat}
             >
-              {exportingFormat === 'epub' ? '打包 epub 中…' : '导出 EPUB (.epub)'}
+              {exportingFormat === 'epub' ? '打包 epub 中…' : t('extras_export_epub_btn')}
             </Button>
           </Paper>
         </Grid>
@@ -1285,12 +1298,12 @@ function ExportPanel({ project }: { project: string }) {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <AssignmentIcon sx={{ color: '#0284C7', fontSize: 28 }} />
               <Box>
-                <Typography variant="subtitle1" fontWeight={700}>国际标准文稿 (.txt)</Typography>
-                <Typography variant="caption" color="text.secondary">William Shunn SMF 规约</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>{t('extras_export_shunn_title')}</Typography>
+                <Typography variant="caption" color="text.secondary">{t('extras_export_shunn_tag')}</Typography>
               </Box>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
-              国际奇幻与科幻期刊通用投稿规范：页眉联系人、百字取整字数估算、居中标题与 # 场景分界符。
+              {t('extras_export_shunn_desc')}
             </Typography>
             <Button
               variant="outlined"
@@ -1299,7 +1312,7 @@ function ExportPanel({ project }: { project: string }) {
               onClick={() => handleExport('shunn')}
               disabled={!!exportingFormat}
             >
-              {exportingFormat === 'shunn' ? '生成文稿中…' : '导出 Shunn 文稿'}
+              {exportingFormat === 'shunn' ? '生成文稿中…' : t('extras_export_shunn_btn')}
             </Button>
           </Paper>
         </Grid>
@@ -1310,12 +1323,12 @@ function ExportPanel({ project }: { project: string }) {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <CodeIcon sx={{ color: '#059669', fontSize: 28 }} />
               <Box>
-                <Typography variant="subtitle1" fontWeight={700}>Markdown 结构化 (.md)</Typography>
-                <Typography variant="caption" color="text.secondary">跨平台排版首选</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>{t('extras_export_md_title')}</Typography>
+                <Typography variant="caption" color="text.secondary">{t('extras_export_md_tag')}</Typography>
               </Box>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
-              规范二级标题与元数据，适合导入 Obsidian、Typora、Notion 或多平台分发工具。
+              {t('extras_export_md_desc')}
             </Typography>
             <Button
               variant="outlined"
@@ -1324,7 +1337,7 @@ function ExportPanel({ project }: { project: string }) {
               onClick={() => handleExport('md')}
               disabled={!!exportingFormat}
             >
-              {exportingFormat === 'md' ? '生成 md 中…' : '导出 Markdown (.md)'}
+              {exportingFormat === 'md' ? '生成 md 中…' : t('extras_export_md_btn')}
             </Button>
           </Paper>
         </Grid>
@@ -1335,12 +1348,12 @@ function ExportPanel({ project }: { project: string }) {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
               <ArticleIcon sx={{ color: '#D97706', fontSize: 28 }} />
               <Box>
-                <Typography variant="subtitle1" fontWeight={700}>纯文本格式 (.txt)</Typography>
-                <Typography variant="caption" color="text.secondary">通用无格式备份</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>{t('extras_export_txt_title')}</Typography>
+                <Typography variant="caption" color="text.secondary">{t('extras_export_txt_tag')}</Typography>
               </Box>
             </Box>
             <Typography variant="body2" color="text.secondary" sx={{ flex: 1, mb: 2, lineHeight: 1.6 }}>
-              UTF-8 标准编码，按章号纯净拼接，各大网文作家后台直接全选粘贴无格式污染。
+              {t('extras_export_txt_desc')}
             </Typography>
             <Button
               variant="outlined"
@@ -1349,7 +1362,7 @@ function ExportPanel({ project }: { project: string }) {
               onClick={() => handleExport('txt')}
               disabled={!!exportingFormat}
             >
-              {exportingFormat === 'txt' ? '拼接 txt 中…' : '导出纯文本 (.txt)'}
+              {exportingFormat === 'txt' ? '拼接 txt 中…' : t('extras_export_txt_btn')}
             </Button>
           </Paper>
         </Grid>

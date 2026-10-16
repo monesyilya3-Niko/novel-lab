@@ -61,6 +61,7 @@ import {
 } from '../api/client'
 import type { WritingProject, WritingTaskState, ScoreResult } from '../types'
 import { useApp } from '../state/AppContext'
+import { useI18n } from '../state/I18nContext'
 import StylePanel from './StylePanel'
 import WritingExtras from './WritingExtras'
 import DeslopPanel from './DeslopPanel'
@@ -88,6 +89,7 @@ export default function WritingWorkbench({
   initialMode,
   initialPipelineTab = 0,
 }: WritingWorkbenchProps = {}) {
+  const { t } = useI18n()
   // 若环境未提供 getProjectMeta（如仅针对资产注入面板的遗留测试），自动以工坊流水线模式运行保持兼容
   const defaultMode =
     initialMode ?? (typeof writingApi?.getProjectMeta === 'function' ? 'studio' : 'pipeline')
@@ -123,13 +125,13 @@ export default function WritingWorkbench({
               value="studio"
               icon={<EditNoteIcon fontSize="small" />}
               iconPosition="start"
-              label="沉浸创作室 (Studio)"
+              label={t('workbench_mode_studio')}
             />
             <Tab
               value="pipeline"
               icon={<TuneIcon fontSize="small" />}
               iconPosition="start"
-              label="工坊流水线 (Pipeline)"
+              label={t('workbench_mode_pipeline')}
             />
           </Tabs>
         </Box>
@@ -153,15 +155,15 @@ export default function WritingWorkbench({
                 variant="scrollable"
                 scrollButtons="auto"
               >
-                <Tab label="资产注入" />
-                <Tab label="AI 章节生成" />
-                <Tab label="单章质检打分" />
-                <Tab label="拆书资产组装" />
-                <Tab label="文风模型分析" />
-                <Tab label="创作者企划中心" />
-                <Tab label="去 AI 味实验室" />
-                <Tab label="灵感与毒点避雷工坊" />
-                <Tab label="小说精华数据库" />
+                <Tab label={t('pipeline_tab_inject')} />
+                <Tab label={t('pipeline_tab_generate')} />
+                <Tab label={t('pipeline_tab_score')} />
+                <Tab label={t('pipeline_tab_assemble')} />
+                <Tab label={t('pipeline_tab_style')} />
+                <Tab label={t('pipeline_tab_extras')} />
+                <Tab label={t('pipeline_tab_deslop')} />
+                <Tab label={t('pipeline_tab_poison')} />
+                <Tab label={t('pipeline_tab_essence')} />
               </Tabs>
             </Box>
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', p: 2 }}>
