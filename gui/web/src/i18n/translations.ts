@@ -929,5 +929,411 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '导出纯文本 (.txt)',
     'en-US': 'Export Plain Text (.txt)',
   },
+
+  // 灵感工坊 (InspirationWorkbench) - 8大标签页与各子模块
+  inspiration_tab_name: {
+    'zh-CN': '起名工坊 (离线智能)',
+    'en-US': 'Smart Name Generator (Offline AI)',
+  },
+  inspiration_tab_hook: {
+    'zh-CN': '开篇钩子库 (黄金三章)',
+    'en-US': 'Opening Hooks (First 3 Chapters)',
+  },
+  inspiration_tab_goldfinger: {
+    'zh-CN': '金手指机制库 (12大外挂)',
+    'en-US': 'Power & Cheat Mechanics (12 Archetypes)',
+  },
+  inspiration_tab_shuangdian: {
+    'zh-CN': '爽点打脸设计 (三段闭环)',
+    'en-US': 'Trope & Climax Catharsis (3-Stage Loop)',
+  },
+  inspiration_tab_world: {
+    'zh-CN': '世界观体系 (力量阶梯)',
+    'en-US': 'Worldbuilding Systems (Power Ladder)',
+  },
+  inspiration_tab_dialogue: {
+    'zh-CN': '名场面台词库 (反AI对话)',
+    'en-US': 'Signature Dialogue & Anti-Slop (Spoken)',
+  },
+  inspiration_tab_character: {
+    'zh-CN': '爆款人设矩阵 (反差弧光)',
+    'en-US': 'Character Persona & Contrast Matrix',
+  },
+  inspiration_tab_emotion: {
+    'zh-CN': '情绪高潮演出 (五感通感)',
+    'en-US': 'Emotional Climax & Sensory Show-Don\'t-Tell',
+  },
+
+  // 1. 起名工坊
+  inspiration_name_desc: {
+    'zh-CN': '纯本地离线起名算法：自动结合古典意象与现代网感，规避烂大街套路名（如林动、萧炎式流水线），点击药丸直接复制到剪贴板。',
+    'en-US': 'Pure local offline naming algorithm: fuses classical imagery and modern web feel, avoids generic cliché names. Click any chip to copy directly to clipboard.',
+  },
+  inspiration_name_kind_label: {
+    'zh-CN': '生成类别',
+    'en-US': 'Category',
+  },
+  inspiration_name_kind_character: {
+    'zh-CN': '人物角色',
+    'en-US': 'Character',
+  },
+  inspiration_name_kind_title: {
+    'zh-CN': '爆款书名 (网文标题)',
+    'en-US': 'Catchy Book Title',
+  },
+  inspiration_name_kind_sect: {
+    'zh-CN': '宗门 / 仙门',
+    'en-US': 'Sect / Clan',
+  },
+  inspiration_name_kind_corp: {
+    'zh-CN': '集团 / 财阀',
+    'en-US': 'Corporation / Conglomerate',
+  },
+  inspiration_name_kind_team: {
+    'zh-CN': '电竞 / 战队',
+    'en-US': 'Esports Team',
+  },
+  inspiration_name_kind_shelter: {
+    'zh-CN': '末世 / 避难所',
+    'en-US': 'Apocalyptic Shelter',
+  },
+  inspiration_name_kind_org: {
+    'zh-CN': '怪谈 / 收容机构',
+    'en-US': 'SCP / Anomaly Agency',
+  },
+  inspiration_name_kind_skill: {
+    'zh-CN': '功法 / 战技',
+    'en-US': 'Cultivation Art / Martial Skill',
+  },
+  inspiration_name_kind_artifact: {
+    'zh-CN': '神兵 / 法宝',
+    'en-US': 'Artifact / Divine Relic',
+  },
+  inspiration_name_novel_genre: {
+    'zh-CN': '小说题材',
+    'en-US': 'Novel Genre',
+  },
+  inspiration_genre_xianxia: {
+    'zh-CN': '仙侠修真',
+    'en-US': 'Xianxia / Cultivation',
+  },
+  inspiration_genre_dushi: {
+    'zh-CN': '都市神豪',
+    'en-US': 'Urban / Tycoon',
+  },
+  inspiration_genre_kehuan: {
+    'zh-CN': '科幻末日',
+    'en-US': 'Sci-Fi / Apocalypse',
+  },
+  inspiration_genre_xuanyi: {
+    'zh-CN': '悬疑怪谈',
+    'en-US': 'Suspense / Mystery',
+  },
+  inspiration_genre_duanpian: {
+    'zh-CN': '知乎反转短篇',
+    'en-US': 'Twist Short Story',
+  },
+  inspiration_name_style_label: {
+    'zh-CN': '题材风格',
+    'en-US': 'Theme Style',
+  },
+  inspiration_style_xianxia: {
+    'zh-CN': '仙侠古典',
+    'en-US': 'Classical Xianxia',
+  },
+  inspiration_style_dushi: {
+    'zh-CN': '都市现代',
+    'en-US': 'Modern Urban',
+  },
+  inspiration_style_kehuan: {
+    'zh-CN': '科幻末世',
+    'en-US': 'Sci-Fi Apocalypse',
+  },
+  inspiration_style_lishi: {
+    'zh-CN': '历史争霸',
+    'en-US': 'Historical Hegemony',
+  },
+  inspiration_style_wuxia: {
+    'zh-CN': '传统武侠',
+    'en-US': 'Traditional Wuxia',
+  },
+  inspiration_name_gender_label: {
+    'zh-CN': '角色性别',
+    'en-US': 'Gender',
+  },
+  inspiration_gender_all: {
+    'zh-CN': '通用 / 随机',
+    'en-US': 'Unisex / Random',
+  },
+  inspiration_gender_male: {
+    'zh-CN': '男性',
+    'en-US': 'Male',
+  },
+  inspiration_gender_female: {
+    'zh-CN': '女性',
+    'en-US': 'Female',
+  },
+  inspiration_gender_neutral: {
+    'zh-CN': '中性 / 出尘',
+    'en-US': 'Neutral / Ethereal',
+  },
+  inspiration_name_count_label: {
+    'zh-CN': '生成数量',
+    'en-US': 'Count',
+  },
+  inspiration_count_items: {
+    'zh-CN': '个',
+    'en-US': 'items',
+  },
+  inspiration_name_btn_generate: {
+    'zh-CN': '换一批 (离线随机)',
+    'en-US': 'Reroll (Offline Random)',
+  },
+  inspiration_name_empty: {
+    'zh-CN': '暂无生成结果，请点击「换一批」生成。',
+    'en-US': 'No generation results yet. Click "Reroll" to generate.',
+  },
+  inspiration_chip_tooltip: {
+    'zh-CN': '点击复制到剪贴板',
+    'en-US': 'Click to copy to clipboard',
+  },
+  inspiration_copied_prefix: {
+    'zh-CN': '已复制: ',
+    'en-US': 'Copied: ',
+  },
+
+  // 2. 开篇钩子库
+  inspiration_hook_desc: {
+    'zh-CN': '黄金三章节奏拍点公式库：精选 10 款经实战检验的起步钩子，点击卡片右上角可直接复制前三章节奏模板。',
+    'en-US': 'First-Three-Chapters Pacing Formula: 10 battle-tested opening hooks. Click the card button to copy the 3-chapter beat outline.',
+  },
+  inspiration_hook_first_300: {
+    'zh-CN': '前 300 字切入：',
+    'en-US': 'First 300 words hook: ',
+  },
+  inspiration_hook_ch1: {
+    'zh-CN': '第 1 章钩子：',
+    'en-US': 'Chapter 1 Hook: ',
+  },
+  inspiration_hook_ch2: {
+    'zh-CN': '第 2 章反转：',
+    'en-US': 'Chapter 2 Twist: ',
+  },
+  inspiration_hook_ch3: {
+    'zh-CN': '第 3 章高潮：',
+    'en-US': 'Chapter 3 Climax: ',
+  },
+  inspiration_hook_btn_copy: {
+    'zh-CN': '复制本套三章细纲',
+    'en-US': 'Copy 3-Chapter Beat Outline',
+  },
+
+  // 3. 金手指机制库
+  inspiration_gf_desc: {
+    'zh-CN': '12 大经典外挂设定库：包含触发机制、成长曲线、使用限制与防战力崩坏铁律，帮助设定有代偿、有深度、不廉价的核心金手指。',
+    'en-US': '12 Classic Cheat Mechanics: trigger mechanisms, progression curves, limitations, and power-creep iron rules for deep, non-trivial core setups.',
+  },
+  inspiration_gf_trigger: {
+    'zh-CN': '触发机制：',
+    'en-US': 'Trigger Mechanism: ',
+  },
+  inspiration_gf_curve: {
+    'zh-CN': '成长曲线：',
+    'en-US': 'Progression Curve: ',
+  },
+  inspiration_gf_cost: {
+    'zh-CN': '代价与限制：',
+    'en-US': 'Costs & Limits: ',
+  },
+  inspiration_gf_anticollapse: {
+    'zh-CN': '防崩盘铁律：',
+    'en-US': 'Anti-Collapse Iron Rule: ',
+  },
+  inspiration_gf_btn_copy: {
+    'zh-CN': '复制金手指设定',
+    'en-US': 'Copy Cheat Setup',
+  },
+
+  // 4. 爽点打脸设计库
+  inspiration_sd_desc: {
+    'zh-CN': '网文爽点与打脸逆袭闭环设计库：覆盖 12 大成熟爽点模式，包含三段式闭环（压抑-蓄势-释放）、打脸四拍（嘲讽-沉默-碾压-围观）及升级防疲劳链。',
+    'en-US': 'Webnovel Catharsis & Climax Design: 12 mature catharsis tropes, 3-stage loop (Suppression-Buildup-Release), 4-beat execution, and anti-fatigue escalation chains.',
+  },
+  inspiration_sd_suppression: {
+    'zh-CN': '【压抑前奏】',
+    'en-US': '[Suppression Prelude]',
+  },
+  inspiration_sd_buildup: {
+    'zh-CN': '【暗中蓄势】',
+    'en-US': '[Hidden Buildup]',
+  },
+  inspiration_sd_fourbeats: {
+    'zh-CN': '打脸四拍执行节拍：',
+    'en-US': 'Catharsis 4-Beat Pacing:',
+  },
+  inspiration_sd_upgradepath: {
+    'zh-CN': '升级路径：',
+    'en-US': 'Escalation Path: ',
+  },
+  inspiration_sd_antifatigue: {
+    'zh-CN': '防疲劳提示：',
+    'en-US': 'Anti-Fatigue Tip: ',
+  },
+  inspiration_sd_btn_copy: {
+    'zh-CN': '复制本套爽点模型',
+    'en-US': 'Copy Trope Model',
+  },
+
+  // 5. 世界观体系库
+  inspiration_wd_desc: {
+    'zh-CN': '多题材世界观与力量体系设定库：包含清晰境界阶梯、三大不可违背法则铁律、货币资源兑换链及战力防崩红线。',
+    'en-US': 'Multigenre Worldbuilding & Power Systems: clear progression tiers, unbreakable iron laws, currency/resource conversion, and power creep safeguards.',
+  },
+  inspiration_wd_ladder: {
+    'zh-CN': '境界进阶阶梯：',
+    'en-US': 'Progression Ladder:',
+  },
+  inspiration_wd_power: {
+    'zh-CN': '能力：',
+    'en-US': 'Power: ',
+  },
+  inspiration_wd_cost: {
+    'zh-CN': '代价：',
+    'en-US': 'Cost: ',
+  },
+  inspiration_wd_ironrules: {
+    'zh-CN': '法则铁律：',
+    'en-US': 'Iron Rules:',
+  },
+  inspiration_wd_currency: {
+    'zh-CN': '货币与资源：',
+    'en-US': 'Currencies & Resources: ',
+  },
+  inspiration_wd_collapsewarning: {
+    'zh-CN': '防崩红线：',
+    'en-US': 'Power Creep Warning Line: ',
+  },
+  inspiration_wd_btn_copy: {
+    'zh-CN': '复制世界观设定',
+    'en-US': 'Copy World Setting',
+  },
+
+  // 6. 名场面台词库
+  inspiration_dlg_desc: {
+    'zh-CN': '名场面金句与反AI台词设计库：精选 12 大经典高频交锋场景，提供【AI书面腔反例】与【真人网文口语台词】对照，拆解潜台词、动作节拍与语言指纹。',
+    'en-US': 'Signature Dialogue & Anti-Slop Library: 12 classic confrontational scenes contrasting AI expository clichés against vivid humanized spoken dialogue, with subtext, action beats, and speech profiles.',
+  },
+  inspiration_dlg_ai_bad: {
+    'zh-CN': '❌ AI说明文书面腔（反例）：',
+    'en-US': '❌ AI Expository Cliche (Negative Example):',
+  },
+  inspiration_dlg_human_good: {
+    'zh-CN': '✅ 顶级网文口语台词（推荐）：',
+    'en-US': '✅ Vivid Spoken Dialogue (Recommended):',
+  },
+  inspiration_dlg_subtext: {
+    'zh-CN': '【潜台词拆解】',
+    'en-US': '[Subtext Breakdown]',
+  },
+  inspiration_dlg_actions: {
+    'zh-CN': '【神态动作搭配】',
+    'en-US': '[Action & Facial Beats]',
+  },
+  inspiration_dlg_speechtip: {
+    'zh-CN': '【语言指纹建议】',
+    'en-US': '[Speech Profile Tip]',
+  },
+  inspiration_dlg_btn_copy: {
+    'zh-CN': '复制台词与动作',
+    'en-US': 'Copy Dialogue & Beats',
+  },
+
+  // 7. 爆款人设矩阵
+  inspiration_chr_desc: {
+    'zh-CN': '爆款人设反差矩阵：提炼 12 大成熟立体的网文角色原型，以表面伪装 vs 隐藏反差构筑张力，防脸谱化、降智与人设崩塌。',
+    'en-US': 'Viral Character Persona Matrix: 12 multi-dimensional character archetypes utilizing surface mask vs hidden contrast to prevent flat stereotypes and out-of-character drift.',
+  },
+  inspiration_chr_surface: {
+    'zh-CN': '【表面标签】',
+    'en-US': '[Surface Persona]',
+  },
+  inspiration_chr_contrast: {
+    'zh-CN': '【隐藏反差】',
+    'en-US': '[Hidden Contrast]',
+  },
+  inspiration_chr_desire: {
+    'zh-CN': '【核心欲望】',
+    'en-US': '[Core Motivation]',
+  },
+  inspiration_chr_flaw: {
+    'zh-CN': '【致命弱点】',
+    'en-US': '[Fatal Flaw]',
+  },
+  inspiration_chr_anticollapse: {
+    'zh-CN': '【防崩铁律】',
+    'en-US': '[Anti-OOC Iron Rule]',
+  },
+  inspiration_chr_action: {
+    'zh-CN': '【高光动作】',
+    'en-US': '[Signature Action / Catchphrase]',
+  },
+  inspiration_chr_arc: {
+    'zh-CN': '【成长轨迹】',
+    'en-US': '[Character Arc]',
+  },
+  inspiration_chr_btn_copy: {
+    'zh-CN': '复制完整人设卡',
+    'en-US': 'Copy Full Persona Card',
+  },
+  inspiration_chr_copied_card: {
+    'zh-CN': '已复制人设卡: ',
+    'en-US': 'Copied Persona Card: ',
+  },
+
+  // 8. 情绪高潮演出
+  inspiration_emt_desc: {
+    'zh-CN': '情绪高潮演出与五感通感库：专治网文 AI 味直白喊情绪（他很愤怒/我好难过），以微表情、心跳冷汗、环境共鸣将情绪演出来。',
+    'en-US': 'Emotional Climax & Sensory Show-Don\'t-Tell: cures AI-style blunt emotion telling through micro-expressions, visceral physiological reactions, and atmospheric resonance.',
+  },
+  inspiration_emt_ai_bad: {
+    'zh-CN': '❌ AI直白喊情绪（反例）：',
+    'en-US': '❌ AI Blunt Telling (Negative Example):',
+  },
+  inspiration_emt_human_good: {
+    'zh-CN': '✅ 顶级网文高潮演出正文（示范）：',
+    'en-US': '✅ Evocative Scene Show-Don\'t-Tell (Recommended):',
+  },
+  inspiration_emt_vision: {
+    'zh-CN': '【视觉微表情】',
+    'en-US': '[Visual & Micro-Expressions]',
+  },
+  inspiration_emt_physio: {
+    'zh-CN': '【生理本能反应】',
+    'en-US': '[Physiological Reactions]',
+  },
+  inspiration_emt_touch: {
+    'zh-CN': '【触觉与温感】',
+    'en-US': '[Touch & Temperature]',
+  },
+  inspiration_emt_sound: {
+    'zh-CN': '【听觉与空白】',
+    'en-US': '[Sound & Silence]',
+  },
+  inspiration_emt_env: {
+    'zh-CN': '【环境通感渲染】',
+    'en-US': '[Atmospheric Resonance]',
+  },
+  inspiration_emt_rhythm: {
+    'zh-CN': '【节拍秘籍】',
+    'en-US': '[Pacing & Rhythm Secret]',
+  },
+  inspiration_emt_btn_copy: {
+    'zh-CN': '复制范例与五感细节',
+    'en-US': 'Copy Sample & Sensory Details',
+  },
+  inspiration_emt_copied_scene: {
+    'zh-CN': '已复制情绪范例: ',
+    'en-US': 'Copied Emotion Sample: ',
+  },
 }
 

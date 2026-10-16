@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import InspirationWorkbench from './InspirationWorkbench'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 vi.mock('../api/client', () => ({
   toolsApi: {
@@ -211,4 +213,74 @@ describe('InspirationWorkbench', () => {
       expect(screen.getByText(/瞳孔骤然凝缩如针尖/)).toBeDefined()
     })
   })
+
+  it('在英文 en-US 语言环境下正确渲染所有 8 大标签页与核心操作按钮', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <InspirationWorkbench />
+        </I18nProvider>
+      )
+
+      // Tab 0: Smart Name Generator
+      expect(screen.getByText('Smart Name Generator (Offline AI)')).toBeDefined()
+      await waitFor(() => {
+        expect(screen.getByText('林清绝')).toBeDefined()
+        expect(screen.getByText('Reroll (Offline Random)')).toBeDefined()
+      })
+
+      // Tab 1: Opening Hooks
+      fireEvent.click(screen.getByText('Opening Hooks (First 3 Chapters)'))
+      await waitFor(() => {
+        expect(screen.getByText('Copy 3-Chapter Beat Outline')).toBeDefined()
+        expect(screen.getByText('First 300 words hook:')).toBeDefined()
+      })
+
+      // Tab 2: Power & Cheat Mechanics
+      fireEvent.click(screen.getByText('Power & Cheat Mechanics (12 Archetypes)'))
+      await waitFor(() => {
+        expect(screen.getByText('Copy Cheat Setup')).toBeDefined()
+        expect(screen.getByText('Trigger Mechanism:')).toBeDefined()
+      })
+
+      // Tab 3: Trope & Climax Catharsis
+      fireEvent.click(screen.getByText('Trope & Climax Catharsis (3-Stage Loop)'))
+      await waitFor(() => {
+        expect(screen.getByText('Copy Trope Model')).toBeDefined()
+        expect(screen.getByText('Catharsis 4-Beat Pacing:')).toBeDefined()
+      })
+
+      // Tab 4: Worldbuilding Systems
+      fireEvent.click(screen.getByText('Worldbuilding Systems (Power Ladder)'))
+      await waitFor(() => {
+        expect(screen.getByText('Copy World Setting')).toBeDefined()
+        expect(screen.getByText('Progression Ladder:')).toBeDefined()
+      })
+
+      // Tab 5: Signature Dialogue & Anti-Slop
+      fireEvent.click(screen.getByText('Signature Dialogue & Anti-Slop (Spoken)'))
+      await waitFor(() => {
+        expect(screen.getByText('Copy Dialogue & Beats')).toBeDefined()
+        expect(screen.getByText(/AI Expository Cliche/)).toBeDefined()
+      })
+
+      // Tab 6: Character Persona & Contrast Matrix
+      fireEvent.click(screen.getByText('Character Persona & Contrast Matrix'))
+      await waitFor(() => {
+        expect(screen.getByText('Copy Full Persona Card')).toBeDefined()
+        expect(screen.getByText('[Surface Persona]')).toBeDefined()
+      })
+
+      // Tab 7: Emotional Climax & Sensory Show-Don't-Tell
+      fireEvent.click(screen.getByText("Emotional Climax & Sensory Show-Don't-Tell"))
+      await waitFor(() => {
+        expect(screen.getByText('Copy Sample & Sensory Details')).toBeDefined()
+        expect(screen.getByText(/Evocative Scene Show-Don't-Tell/)).toBeDefined()
+      })
+    } finally {
+      removeStorage('novellab.locale')
+    }
+  })
 })
+

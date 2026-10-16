@@ -25,8 +25,10 @@ import {
   type CharacterPersonaItem,
   type EmotionItem,
 } from '../api/client'
+import { useI18n } from '../state/I18nContext'
 
 export default function InspirationWorkbench() {
+  const { t } = useI18n()
   const [subTab, setSubTab] = useState(0)
 
   return (
@@ -34,14 +36,14 @@ export default function InspirationWorkbench() {
       <Paper sx={{ p: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={subTab} onChange={(_, v) => setSubTab(v)} variant="scrollable" scrollButtons="auto">
-            <Tab label="起名工坊 (离线智能)" />
-            <Tab label="开篇钩子库 (黄金三章)" />
-            <Tab label="金手指机制库 (12大外挂)" />
-            <Tab label="爽点打脸设计 (三段闭环)" />
-            <Tab label="世界观体系 (力量阶梯)" />
-            <Tab label="名场面台词库 (反AI对话)" />
-            <Tab label="爆款人设矩阵 (反差弧光)" />
-            <Tab label="情绪高潮演出 (五感通感)" />
+            <Tab label={t('inspiration_tab_name')} />
+            <Tab label={t('inspiration_tab_hook')} />
+            <Tab label={t('inspiration_tab_goldfinger')} />
+            <Tab label={t('inspiration_tab_shuangdian')} />
+            <Tab label={t('inspiration_tab_world')} />
+            <Tab label={t('inspiration_tab_dialogue')} />
+            <Tab label={t('inspiration_tab_character')} />
+            <Tab label={t('inspiration_tab_emotion')} />
           </Tabs>
         </Box>
 
@@ -63,6 +65,7 @@ export default function InspirationWorkbench() {
 // ---------------------------------------------------------------------------
 
 function NameGeneratorSection() {
+  const { t } = useI18n()
   const [kind, setKind] = useState('character')
   const [style, setStyle] = useState('xianxia')
   const [gender, setGender] = useState('all')
@@ -92,49 +95,49 @@ function NameGeneratorSection() {
 
   const copyName = (name: string) => {
     navigator.clipboard.writeText(name)
-    setCopied(`已复制: ${name}`)
+    setCopied(`${t('inspiration_copied_prefix')}${name}`)
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        纯本地离线起名算法：自动结合古典意象与现代网感，规避烂大街套路名（如林动、萧炎式流水线），点击药丸直接复制到剪贴板。
+        {t('inspiration_name_desc')}
       </Typography>
 
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           select
           size="small"
-          label="生成类别"
+          label={t('inspiration_name_kind_label')}
           value={kind}
           onChange={(e) => setKind(e.target.value)}
           sx={{ minWidth: 140 }}
         >
-          <MenuItem value="character">人物角色</MenuItem>
-          <MenuItem value="title">爆款书名 (网文标题)</MenuItem>
-          <MenuItem value="sect">宗门 / 仙门</MenuItem>
-          <MenuItem value="corp">集团 / 财阀</MenuItem>
-          <MenuItem value="team">电竞 / 战队</MenuItem>
-          <MenuItem value="shelter">末世 / 避难所</MenuItem>
-          <MenuItem value="org">怪谈 / 收容机构</MenuItem>
-          <MenuItem value="skill">功法 / 战技</MenuItem>
-          <MenuItem value="artifact">神兵 / 法宝</MenuItem>
+          <MenuItem value="character">{t('inspiration_name_kind_character')}</MenuItem>
+          <MenuItem value="title">{t('inspiration_name_kind_title')}</MenuItem>
+          <MenuItem value="sect">{t('inspiration_name_kind_sect')}</MenuItem>
+          <MenuItem value="corp">{t('inspiration_name_kind_corp')}</MenuItem>
+          <MenuItem value="team">{t('inspiration_name_kind_team')}</MenuItem>
+          <MenuItem value="shelter">{t('inspiration_name_kind_shelter')}</MenuItem>
+          <MenuItem value="org">{t('inspiration_name_kind_org')}</MenuItem>
+          <MenuItem value="skill">{t('inspiration_name_kind_skill')}</MenuItem>
+          <MenuItem value="artifact">{t('inspiration_name_kind_artifact')}</MenuItem>
         </TextField>
 
         {kind === 'title' && (
           <TextField
             select
             size="small"
-            label="小说题材"
+            label={t('inspiration_name_novel_genre')}
             value={style}
             onChange={(e) => setStyle(e.target.value)}
             sx={{ minWidth: 140 }}
           >
-            <MenuItem value="xianxia">仙侠修真</MenuItem>
-            <MenuItem value="dushi">都市神豪</MenuItem>
-            <MenuItem value="kehuan">科幻末日</MenuItem>
-            <MenuItem value="xuanyi">悬疑怪谈</MenuItem>
-            <MenuItem value="duanpian">知乎反转短篇</MenuItem>
+            <MenuItem value="xianxia">{t('inspiration_genre_xianxia')}</MenuItem>
+            <MenuItem value="dushi">{t('inspiration_genre_dushi')}</MenuItem>
+            <MenuItem value="kehuan">{t('inspiration_genre_kehuan')}</MenuItem>
+            <MenuItem value="xuanyi">{t('inspiration_genre_xuanyi')}</MenuItem>
+            <MenuItem value="duanpian">{t('inspiration_genre_duanpian')}</MenuItem>
           </TextField>
         )}
 
@@ -143,30 +146,30 @@ function NameGeneratorSection() {
             <TextField
               select
               size="small"
-              label="题材风格"
+              label={t('inspiration_name_style_label')}
               value={style}
               onChange={(e) => setStyle(e.target.value)}
               sx={{ minWidth: 140 }}
             >
-              <MenuItem value="xianxia">仙侠古典</MenuItem>
-              <MenuItem value="dushi">都市现代</MenuItem>
-              <MenuItem value="kehuan">科幻末世</MenuItem>
-              <MenuItem value="lishi">历史争霸</MenuItem>
-              <MenuItem value="wuxia">传统武侠</MenuItem>
+              <MenuItem value="xianxia">{t('inspiration_style_xianxia')}</MenuItem>
+              <MenuItem value="dushi">{t('inspiration_style_dushi')}</MenuItem>
+              <MenuItem value="kehuan">{t('inspiration_style_kehuan')}</MenuItem>
+              <MenuItem value="lishi">{t('inspiration_style_lishi')}</MenuItem>
+              <MenuItem value="wuxia">{t('inspiration_style_wuxia')}</MenuItem>
             </TextField>
 
             <TextField
               select
               size="small"
-              label="角色性别"
+              label={t('inspiration_name_gender_label')}
               value={gender}
               onChange={(e) => setGender(e.target.value)}
               sx={{ minWidth: 110 }}
             >
-              <MenuItem value="all">通用 / 随机</MenuItem>
-              <MenuItem value="male">男性</MenuItem>
-              <MenuItem value="female">女性</MenuItem>
-              <MenuItem value="neutral">中性 / 出尘</MenuItem>
+              <MenuItem value="all">{t('inspiration_gender_all')}</MenuItem>
+              <MenuItem value="male">{t('inspiration_gender_male')}</MenuItem>
+              <MenuItem value="female">{t('inspiration_gender_female')}</MenuItem>
+              <MenuItem value="neutral">{t('inspiration_gender_neutral')}</MenuItem>
             </TextField>
           </>
         )}
@@ -174,15 +177,15 @@ function NameGeneratorSection() {
         <TextField
           select
           size="small"
-          label="生成数量"
+          label={t('inspiration_name_count_label')}
           value={count}
           onChange={(e) => setCount(Number(e.target.value))}
           sx={{ minWidth: 100 }}
         >
-          <MenuItem value={6}>6 个</MenuItem>
-          <MenuItem value={12}>12 个</MenuItem>
-          <MenuItem value={24}>24 个</MenuItem>
-          <MenuItem value={36}>36 个</MenuItem>
+          <MenuItem value={6}>6 {t('inspiration_count_items')}</MenuItem>
+          <MenuItem value={12}>12 {t('inspiration_count_items')}</MenuItem>
+          <MenuItem value={24}>24 {t('inspiration_count_items')}</MenuItem>
+          <MenuItem value={36}>36 {t('inspiration_count_items')}</MenuItem>
         </TextField>
 
         <Button
@@ -191,7 +194,7 @@ function NameGeneratorSection() {
           disabled={loading}
           sx={{ height: 40 }}
         >
-          {loading ? <CircularProgress size={20} /> : '换一批 (离线随机)'}
+          {loading ? <CircularProgress size={20} /> : t('inspiration_name_btn_generate')}
         </Button>
       </Box>
 
@@ -200,12 +203,12 @@ function NameGeneratorSection() {
       <Paper variant="outlined" sx={{ p: 2, minHeight: 120 }}>
         {names.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            暂无生成结果，请点击「换一批」生成。
+            {t('inspiration_name_empty')}
           </Typography>
         ) : (
           <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
             {names.map((n) => (
-              <Tooltip key={n} title="点击复制到剪贴板">
+              <Tooltip key={n} title={t('inspiration_chip_tooltip')}>
                 <Chip
                   label={n}
                   clickable
@@ -241,6 +244,7 @@ function NameGeneratorSection() {
 // ---------------------------------------------------------------------------
 
 function HookLibrarySection() {
+  const { t } = useI18n()
   const [hooks, setHooks] = useState<HookItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -258,7 +262,7 @@ function HookLibrarySection() {
 
   const copyText = (txt: string, tip: string) => {
     navigator.clipboard.writeText(txt)
-    setCopied(`已复制: ${tip}`)
+    setCopied(`${t('inspiration_copied_prefix')}${tip}`)
   }
 
   if (loading) {
@@ -272,7 +276,7 @@ function HookLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        黄金三章节奏拍点公式库：精选 10 款经实战检验的起步钩子，点击卡片右上角可直接复制前三章节奏模板。
+        {t('inspiration_hook_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -289,7 +293,7 @@ function HookLibrarySection() {
               </Box>
 
               <Typography variant="caption" color="primary.main" fontWeight={600}>
-                前 300 字切入：
+                {t('inspiration_hook_first_300')}
               </Typography>
               <Typography variant="body2" sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
                 {h.first300Words}
@@ -297,13 +301,13 @@ function HookLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>第 1 章钩子：</strong> {h.chapter1Beat}
+                  <strong>{t('inspiration_hook_ch1')}</strong> {h.chapter1Beat}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>第 2 章反转：</strong> {h.chapter2Beat}
+                  <strong>{t('inspiration_hook_ch2')}</strong> {h.chapter2Beat}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>第 3 章高潮：</strong> {h.chapter3Beat}
+                  <strong>{t('inspiration_hook_ch3')}</strong> {h.chapter3Beat}
                 </Typography>
               </Box>
 
@@ -318,7 +322,7 @@ function HookLibrarySection() {
                     )
                   }
                 >
-                  复制本套三章细纲
+                  {t('inspiration_hook_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
@@ -341,6 +345,7 @@ function HookLibrarySection() {
 // ---------------------------------------------------------------------------
 
 function GoldfingerLibrarySection() {
+  const { t } = useI18n()
   const [goldfingers, setGoldfingers] = useState<GoldfingerItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -358,7 +363,7 @@ function GoldfingerLibrarySection() {
 
   const copyText = (txt: string, tip: string) => {
     navigator.clipboard.writeText(txt)
-    setCopied(`已复制: ${tip}`)
+    setCopied(`${t('inspiration_copied_prefix')}${tip}`)
   }
 
   if (loading) {
@@ -372,7 +377,7 @@ function GoldfingerLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        12 大经典外挂设定库：包含触发机制、成长曲线、使用限制与防战力崩坏铁律，帮助设定有代偿、有深度、不廉价的核心金手指。
+        {t('inspiration_gf_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -389,19 +394,19 @@ function GoldfingerLibrarySection() {
               </Box>
 
               <Typography variant="caption" color="text.secondary">
-                <strong>触发机制：</strong> {g.triggerMechanism}
+                <strong>{t('inspiration_gf_trigger')}</strong> {g.triggerMechanism}
               </Typography>
 
               <Typography variant="caption" color="text.secondary">
-                <strong>成长曲线：</strong> {g.progressionCurve}
+                <strong>{t('inspiration_gf_curve')}</strong> {g.progressionCurve}
               </Typography>
 
               <Typography variant="caption" color="warning.main">
-                <strong>代价与限制：</strong> {g.costAndLimits?.join('； ')}
+                <strong>{t('inspiration_gf_cost')}</strong> {g.costAndLimits?.join('； ')}
               </Typography>
 
               <Typography variant="caption" color="error.main">
-                <strong>防崩盘铁律：</strong> {g.antiCollapseRule}
+                <strong>{t('inspiration_gf_anticollapse')}</strong> {g.antiCollapseRule}
               </Typography>
 
               <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
@@ -415,7 +420,7 @@ function GoldfingerLibrarySection() {
                     )
                   }
                 >
-                  复制金手指设定
+                  {t('inspiration_gf_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
@@ -438,6 +443,7 @@ function GoldfingerLibrarySection() {
 // ---------------------------------------------------------------------------
 
 function ShuangdianLibrarySection() {
+  const { t } = useI18n()
   const [shuangdians, setShuangdians] = useState<ShuangdianItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -455,7 +461,7 @@ function ShuangdianLibrarySection() {
 
   const copyText = (txt: string, tip: string) => {
     navigator.clipboard.writeText(txt)
-    setCopied(`已复制: ${tip}`)
+    setCopied(`${t('inspiration_copied_prefix')}${tip}`)
   }
 
   if (loading) {
@@ -469,7 +475,7 @@ function ShuangdianLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        网文爽点与打脸逆袭闭环设计库：覆盖 12 大成熟爽点模式，包含三段式闭环（压抑-蓄势-释放）、打脸四拍（嘲讽-沉默-碾压-围观）及升级防疲劳链。
+        {t('inspiration_sd_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -487,16 +493,16 @@ function ShuangdianLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 <Typography variant="caption" color="error.main">
-                  <strong>【压抑前奏】</strong> {s.suppression}
+                  <strong>{t('inspiration_sd_suppression')}</strong> {s.suppression}
                 </Typography>
                 <Typography variant="caption" color="primary.main">
-                  <strong>【暗中蓄势】</strong> {s.buildUp}
+                  <strong>{t('inspiration_sd_buildup')}</strong> {s.buildUp}
                 </Typography>
               </Box>
 
               <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1, display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
                 <Typography variant="caption" fontWeight={600} color="text.secondary">
-                  打脸四拍执行节拍：
+                  {t('inspiration_sd_fourbeats')}
                 </Typography>
                 <Typography variant="caption">{s.mockery}</Typography>
                 <Typography variant="caption">{s.silence}</Typography>
@@ -506,10 +512,10 @@ function ShuangdianLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>升级路径：</strong> {s.upgradePath}
+                  <strong>{t('inspiration_sd_upgradepath')}</strong> {s.upgradePath}
                 </Typography>
                 <Typography variant="caption" color="info.main">
-                  <strong>防疲劳提示：</strong> {s.antiFatigueTip}
+                  <strong>{t('inspiration_sd_antifatigue')}</strong> {s.antiFatigueTip}
                 </Typography>
               </Box>
 
@@ -524,7 +530,7 @@ function ShuangdianLibrarySection() {
                     )
                   }
                 >
-                  复制本套爽点模型
+                  {t('inspiration_sd_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
@@ -547,6 +553,7 @@ function ShuangdianLibrarySection() {
 // ---------------------------------------------------------------------------
 
 function WorldLibrarySection() {
+  const { t } = useI18n()
   const [worlds, setWorlds] = useState<WorldSystemItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -564,7 +571,7 @@ function WorldLibrarySection() {
 
   const copyText = (txt: string, tip: string) => {
     navigator.clipboard.writeText(txt)
-    setCopied(`已复制: ${tip}`)
+    setCopied(`${t('inspiration_copied_prefix')}${tip}`)
   }
 
   if (loading) {
@@ -578,7 +585,7 @@ function WorldLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        多题材世界观与力量体系设定库：包含清晰境界阶梯、三大不可违背法则铁律、货币资源兑换链及战力防崩红线。
+        {t('inspiration_wd_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -595,19 +602,19 @@ function WorldLibrarySection() {
               </Box>
 
               <Typography variant="caption" fontWeight={600} color="primary.main">
-                境界进阶阶梯：
+                {t('inspiration_wd_ladder')}
               </Typography>
               <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1, display: 'flex', flexDirection: 'column', gap: 0.5, maxHeight: 180, overflowY: 'auto' }}>
-                {w.tierLadder?.map((t, idx) => (
+                {w.tierLadder?.map((tItem, idx) => (
                   <Box key={idx} sx={{ borderBottom: idx < w.tierLadder.length - 1 ? '1px dashed rgba(0,0,0,0.1)' : 'none', pb: 0.5 }}>
                     <Typography variant="caption" fontWeight={700} color="text.primary">
-                      {t.tier}
+                      {tItem.tier}
                     </Typography>
                     <Typography variant="caption" display="block" color="text.secondary">
-                      能力：{t.powerDesc}
+                      {t('inspiration_wd_power')}{tItem.powerDesc}
                     </Typography>
                     <Typography variant="caption" display="block" color="warning.main">
-                      代价：{t.breakthroughCost}
+                      {t('inspiration_wd_cost')}{tItem.breakthroughCost}
                     </Typography>
                   </Box>
                 ))}
@@ -615,7 +622,7 @@ function WorldLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
                 <Typography variant="caption" fontWeight={600} color="error.main">
-                  法则铁律：
+                  {t('inspiration_wd_ironrules')}
                 </Typography>
                 {w.ironRules?.map((rule, idx) => (
                   <Typography key={idx} variant="caption" color="text.secondary">
@@ -626,10 +633,10 @@ function WorldLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>货币与资源：</strong> {w.currencyAndResources}
+                  <strong>{t('inspiration_wd_currency')}</strong> {w.currencyAndResources}
                 </Typography>
                 <Typography variant="caption" color="error.dark">
-                  <strong>防崩红线：</strong> {w.powerCollapseWarning}
+                  <strong>{t('inspiration_wd_collapsewarning')}</strong> {w.powerCollapseWarning}
                 </Typography>
               </Box>
 
@@ -638,7 +645,7 @@ function WorldLibrarySection() {
                   size="small"
                   variant="outlined"
                   onClick={() => {
-                    const tiersStr = w.tierLadder?.map((t) => `${t.tier}: ${t.powerDesc} (晋阶: ${t.breakthroughCost})`).join('\n') || ''
+                    const tiersStr = w.tierLadder?.map((tItem) => `${tItem.tier}: ${tItem.powerDesc} (晋阶: ${tItem.breakthroughCost})`).join('\n') || ''
                     const rulesStr = w.ironRules?.join('\n') || ''
                     copyText(
                       `【${w.name}】（${w.genre}）\n境界阶梯：\n${tiersStr}\n法则铁律：\n${rulesStr}\n货币资源：${w.currencyAndResources}\n防崩红线：${w.powerCollapseWarning}`,
@@ -646,7 +653,7 @@ function WorldLibrarySection() {
                     )
                   }}
                 >
-                  复制世界观设定
+                  {t('inspiration_wd_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
@@ -669,6 +676,7 @@ function WorldLibrarySection() {
 // ---------------------------------------------------------------------------
 
 function DialogueLibrarySection() {
+  const { t } = useI18n()
   const [dialogues, setDialogues] = useState<DialogueItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -686,7 +694,7 @@ function DialogueLibrarySection() {
 
   const copyText = (txt: string, tip: string) => {
     navigator.clipboard.writeText(txt)
-    setCopied(`已复制: ${tip}`)
+    setCopied(`${t('inspiration_copied_prefix')}${tip}`)
   }
 
   if (loading) {
@@ -700,7 +708,7 @@ function DialogueLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        名场面金句与反AI台词设计库：精选 12 大经典高频交锋场景，提供【AI书面腔反例】与【真人网文口语台词】对照，拆解潜台词、动作节拍与语言指纹。
+        {t('inspiration_dlg_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -718,7 +726,7 @@ function DialogueLibrarySection() {
 
               <Box sx={{ bgcolor: 'error.50', borderLeft: 3, borderColor: 'error.main', p: 1, borderRadius: '0 4px 4px 0' }}>
                 <Typography variant="caption" color="error.dark" fontWeight={700} display="block">
-                  ❌ AI说明文书面腔（反例）：
+                  {t('inspiration_dlg_ai_bad')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
                   {d.aiSlopBad}
@@ -727,7 +735,7 @@ function DialogueLibrarySection() {
 
               <Box sx={{ bgcolor: 'success.50', borderLeft: 3, borderColor: 'success.main', p: 1, borderRadius: '0 4px 4px 0' }}>
                 <Typography variant="caption" color="success.dark" fontWeight={700} display="block">
-                  ✅ 顶级网文口语台词（推荐）：
+                  {t('inspiration_dlg_human_good')}
                 </Typography>
                 <Typography variant="body2" fontWeight={700} color="text.primary">
                   {d.humanGood}
@@ -736,13 +744,13 @@ function DialogueLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>【潜台词拆解】</strong> {d.subtext}
+                  <strong>{t('inspiration_dlg_subtext')}</strong> {d.subtext}
                 </Typography>
                 <Typography variant="caption" color="primary.main">
-                  <strong>【神态动作搭配】</strong> {d.actionBeats}
+                  <strong>{t('inspiration_dlg_actions')}</strong> {d.actionBeats}
                 </Typography>
                 <Typography variant="caption" color="info.main">
-                  <strong>【语言指纹建议】</strong> {d.speechProfileTip}
+                  <strong>{t('inspiration_dlg_speechtip')}</strong> {d.speechProfileTip}
                 </Typography>
               </Box>
 
@@ -757,7 +765,7 @@ function DialogueLibrarySection() {
                     )
                   }
                 >
-                  复制台词与动作
+                  {t('inspiration_dlg_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
@@ -780,6 +788,7 @@ function DialogueLibrarySection() {
 // ---------------------------------------------------------------------------
 
 function CharacterLibrarySection() {
+  const { t } = useI18n()
   const [characters, setCharacters] = useState<CharacterPersonaItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -798,7 +807,7 @@ function CharacterLibrarySection() {
   const copyCharacter = (c: CharacterPersonaItem) => {
     const text = `【角色模型】：${c.name}（${c.roleType} · ${c.genre}）\n【表面标签】：${c.surfaceMask}\n【隐藏反差】：${c.hiddenContrast}\n【核心欲望】：${c.coreMotivation}\n【致命弱点】：${c.fatalFlaw}\n【防崩铁律】：${c.antiCollapseRule}\n【高光口头禅】：${c.catchphrase}\n【成长弧光】：${c.arcProgression}`
     navigator.clipboard.writeText(text)
-    setCopied(`已复制人设卡: ${c.name}`)
+    setCopied(`${t('inspiration_chr_copied_card')}${c.name}`)
   }
 
   if (loading) {
@@ -812,7 +821,7 @@ function CharacterLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        爆款人设反差矩阵：提炼 12 大成熟立体的网文角色原型，以表面伪装 vs 隐藏反差构筑张力，防脸谱化、降智与人设崩塌。
+        {t('inspiration_chr_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -833,34 +842,34 @@ function CharacterLibrarySection() {
 
               <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
                 <Typography variant="caption" color="text.secondary" display="block">
-                  <strong>【表面标签】</strong> {c.surfaceMask}
+                  <strong>{t('inspiration_chr_surface')}</strong> {c.surfaceMask}
                 </Typography>
                 <Typography variant="caption" color="secondary.main" display="block" sx={{ mt: 0.5, fontWeight: 600 }}>
-                  <strong>【隐藏反差】</strong> {c.hiddenContrast}
+                  <strong>{t('inspiration_chr_contrast')}</strong> {c.hiddenContrast}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 <Typography variant="caption" color="text.primary">
-                  <strong>【核心欲望】</strong> {c.coreMotivation}
+                  <strong>{t('inspiration_chr_desire')}</strong> {c.coreMotivation}
                 </Typography>
                 <Typography variant="caption" color="warning.main">
-                  <strong>【致命弱点】</strong> {c.fatalFlaw}
+                  <strong>{t('inspiration_chr_flaw')}</strong> {c.fatalFlaw}
                 </Typography>
                 <Typography variant="caption" color="error.main">
-                  <strong>【防崩铁律】</strong> {c.antiCollapseRule}
+                  <strong>{t('inspiration_chr_anticollapse')}</strong> {c.antiCollapseRule}
                 </Typography>
                 <Typography variant="caption" color="info.main">
-                  <strong>【高光动作】</strong> {c.catchphrase}
+                  <strong>{t('inspiration_chr_action')}</strong> {c.catchphrase}
                 </Typography>
                 <Typography variant="caption" color="success.main">
-                  <strong>【成长轨迹】</strong> {c.arcProgression}
+                  <strong>{t('inspiration_chr_arc')}</strong> {c.arcProgression}
                 </Typography>
               </Box>
 
               <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
                 <Button size="small" variant="outlined" onClick={() => copyCharacter(c)}>
-                  复制完整人设卡
+                  {t('inspiration_chr_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
@@ -883,6 +892,7 @@ function CharacterLibrarySection() {
 // ---------------------------------------------------------------------------
 
 function EmotionLibrarySection() {
+  const { t } = useI18n()
   const [emotions, setEmotions] = useState<EmotionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -901,7 +911,7 @@ function EmotionLibrarySection() {
   const copyProse = (e: EmotionItem) => {
     const text = `【高潮演出】：${e.emotionScene}\n【正文范例】：\n${e.masterProseSample}\n【五感细节】：\n视觉：${e.sensoryBreakdown.vision}\n生理：${e.sensoryBreakdown.physiology}\n触觉：${e.sensoryBreakdown.touchAndTemp}\n听觉：${e.sensoryBreakdown.soundAndSilence}\n环境：${e.environmentalResonance}\n【节拍秘籍】：${e.writingRhythmTip}`
     navigator.clipboard.writeText(text)
-    setCopied(`已复制情绪范例: ${e.emotionScene}`)
+    setCopied(`${t('inspiration_emt_copied_scene')}${e.emotionScene}`)
   }
 
   if (loading) {
@@ -915,7 +925,7 @@ function EmotionLibrarySection() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2" color="text.secondary">
-        情绪高潮演出与五感通感库：专治网文 AI 味直白喊情绪（他很愤怒/我好难过），以微表情、心跳冷汗、环境共鸣将情绪演出来。
+        {t('inspiration_emt_desc')}
       </Typography>
 
       {error && <Alert severity="error">{error}</Alert>}
@@ -933,7 +943,7 @@ function EmotionLibrarySection() {
 
               <Box sx={{ bgcolor: 'error.50', borderLeft: 3, borderColor: 'error.main', p: 1, borderRadius: '0 4px 4px 0' }}>
                 <Typography variant="caption" color="error.dark" fontWeight={700} display="block">
-                  ❌ AI直白喊情绪（反例）：
+                  {t('inspiration_dlg_ai_bad')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ textDecoration: 'line-through' }}>
                   {e.aiClicheExample}
@@ -942,7 +952,7 @@ function EmotionLibrarySection() {
 
               <Box sx={{ bgcolor: 'success.50', borderLeft: 3, borderColor: 'success.main', p: 1, borderRadius: '0 4px 4px 0' }}>
                 <Typography variant="caption" color="success.dark" fontWeight={700} display="block">
-                  ✅ 顶级网文高潮演出正文（示范）：
+                  {t('inspiration_emt_human_good')}
                 </Typography>
                 <Typography variant="body2" fontWeight={500} color="text.primary">
                   {e.masterProseSample}
@@ -951,28 +961,28 @@ function EmotionLibrarySection() {
 
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 0.5 }}>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>【视觉微表情】</strong> {e.sensoryBreakdown.vision}
+                  <strong>{t('inspiration_emt_vision')}</strong> {e.sensoryBreakdown.vision}
                 </Typography>
                 <Typography variant="caption" color="primary.main">
-                  <strong>【生理本能反应】</strong> {e.sensoryBreakdown.physiology}
+                  <strong>{t('inspiration_emt_physio')}</strong> {e.sensoryBreakdown.physiology}
                 </Typography>
                 <Typography variant="caption" color="info.main">
-                  <strong>【触觉与温感】</strong> {e.sensoryBreakdown.touchAndTemp}
+                  <strong>{t('inspiration_emt_touch')}</strong> {e.sensoryBreakdown.touchAndTemp}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  <strong>【听觉与空白】</strong> {e.sensoryBreakdown.soundAndSilence}
+                  <strong>{t('inspiration_emt_sound')}</strong> {e.sensoryBreakdown.soundAndSilence}
                 </Typography>
                 <Typography variant="caption" color="warning.main">
-                  <strong>【环境通感渲染】</strong> {e.environmentalResonance}
+                  <strong>{t('inspiration_emt_env')}</strong> {e.environmentalResonance}
                 </Typography>
                 <Typography variant="caption" color="success.main" sx={{ fontWeight: 600 }}>
-                  <strong>【节拍秘籍】</strong> {e.writingRhythmTip}
+                  <strong>{t('inspiration_emt_rhythm')}</strong> {e.writingRhythmTip}
                 </Typography>
               </Box>
 
               <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'flex-end' }}>
                 <Button size="small" variant="outlined" onClick={() => copyProse(e)}>
-                  复制范例与五感细节
+                  {t('inspiration_emt_btn_copy')}
                 </Button>
               </Box>
             </CardContent>
