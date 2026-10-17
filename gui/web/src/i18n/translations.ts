@@ -1932,5 +1932,79 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '历史报告',
     'en-US': 'Historical QC Reports',
   },
+
+  // =========================================================================
+  // AssetLibrary 资产库与资产全品类矩阵浏览双语国际化词典 (Milestone 22)
+  // =========================================================================
+  asset_lib_title: {
+    'zh-CN': '资产库',
+    'en-US': 'Asset Library & Matrix',
+  },
+  asset_lib_filter_all: {
+    'zh-CN': '全部',
+    'en-US': 'All',
+  },
+  asset_lib_load_failed: {
+    'zh-CN': '加载失败：',
+    'en-US': 'Failed to load assets: ',
+  },
+  asset_lib_empty: {
+    'zh-CN': '暂无资产',
+    'en-US': 'No assets found',
+  },
+  asset_lib_select_hint: {
+    'zh-CN': '从左侧选择一个资产查看详情',
+    'en-US': 'Select an asset from the list to view details',
+  },
+  asset_lib_raw_data: {
+    'zh-CN': '高级 · 查看原始数据',
+    'en-US': 'Advanced · View Raw Data',
+  },
+
+  // 11 大核心资产类型标签
+  asset_kind_voice: {
+    'zh-CN': '声线卡',
+    'en-US': 'Voice Card',
+  },
+  asset_kind_structure: {
+    'zh-CN': '结构观测',
+    'en-US': 'Structure Observation',
+  },
+  asset_kind_commercial: {
+    'zh-CN': '商业观测',
+    'en-US': 'Commercial Observation',
+  },
+  asset_kind_craft: {
+    'zh-CN': '笔法卡',
+    'en-US': 'Craft Card',
+  },
+  asset_kind_genre_pack: {
+    'zh-CN': '题材包',
+    'en-US': 'Genre Pack',
+  },
+  asset_kind_prose_card: {
+    'zh-CN': '文风卡',
+    'en-US': 'Prose Card',
+  },
+  asset_kind_distilled: {
+    'zh-CN': '蒸馏规则',
+    'en-US': 'Distilled Rule',
+  },
+  asset_kind_prose_card_index: {
+    'zh-CN': '题材文风卡索引',
+    'en-US': 'Genre Prose Index',
+  },
+  asset_kind_trope: {
+    'zh-CN': '桥段',
+    'en-US': 'Trope',
+  },
+  asset_kind_report: {
+    'zh-CN': '报告',
+    'en-US': 'Report',
+  },
+  asset_kind_book: {
+    'zh-CN': '语料',
+    'en-US': 'Corpus Book',
+  },
 }
 

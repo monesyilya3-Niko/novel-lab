@@ -21,6 +21,11 @@ import * as api from '../api/client'
 import type { AssetItem, AssetKind } from '../types'
 import { KIND_LABELS } from '../assetKindLabels'
 import { friendlyError } from '../api/client'
+import { useI18n } from '../state/I18nContext'
+
+const getKindLabel = (k: AssetKind, t: (k: string, fb?: string) => string) => {
+  return t(`asset_kind_${k}`, KIND_LABELS[k])
+}
 
 const ALL_KINDS: AssetKind[] = [
   'voice',
@@ -118,6 +123,7 @@ function SummaryView({ text }: { text: string }) {
 }
 
 export default function AssetLibrary() {
+  const { t } = useI18n()
   const [kind, setKind] = useState<AssetKind | null>(null)
   const [items, setItems] = useState<AssetItem[]>([])
   const [total, setTotal] = useState(0)
@@ -176,7 +182,7 @@ export default function AssetLibrary() {
     <Box sx={{ p: 3, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
-          资产库
+          {t('asset_lib_title')}
         </Typography>
         <ContextHelpButton guideKey="assets" />
       </Box>
@@ -187,7 +193,7 @@ export default function AssetLibrary() {
           <Card variant="outlined" sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <Box sx={{ p: 1.5, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', flexWrap: 'wrap', gap: 1 }}>
               <Chip
-                label="全部"
+                label={t('asset_lib_filter_all')}
                 variant={kind === null ? 'filled' : 'outlined'}
                 color={kind === null ? 'primary' : 'default'}
                 onClick={() => setKind(null)}
@@ -195,7 +201,7 @@ export default function AssetLibrary() {
               {ALL_KINDS.map((k) => (
                 <Chip
                   key={k}
-                  label={KIND_LABELS[k]}
+                  label={getKindLabel(k, t)}
                   variant={kind === k ? 'filled' : 'outlined'}
                   color={kind === k ? 'primary' : 'default'}
                   onClick={() => setKind(k)}
@@ -205,7 +211,7 @@ export default function AssetLibrary() {
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
               {error ? (
                 <Typography variant="body2" color="error" sx={{ p: 3, textAlign: 'center' }}>
-                  加载失败：{error}
+                  {t('asset_lib_load_failed')}{error}
                 </Typography>
               ) : loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -213,7 +219,7 @@ export default function AssetLibrary() {
                 </Box>
               ) : items.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ p: 3, textAlign: 'center' }}>
-                  暂无资产
+                  {t('asset_lib_empty')}
                 </Typography>
               ) : (
                 <List dense disablePadding>
@@ -225,7 +231,7 @@ export default function AssetLibrary() {
                     >
                       <ListItemText
                         primary={it.name}
-                        secondary={`${KIND_LABELS[it.kind]} · ${(it.size / 1024).toFixed(1)} KB`}
+                        secondary={`${getKindLabel(it.kind, t)} · ${(it.size / 1024).toFixed(1)} KB`}
                         primaryTypographyProps={{ fontSize: 14 }}
                       />
                     </ListItemButton>
@@ -253,7 +259,7 @@ export default function AssetLibrary() {
             <CardContent>
               {!selected ? (
                 <Typography variant="body2" color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>
-                  从左侧选择一个资产查看详情
+                  {t('asset_lib_select_hint')}
                 </Typography>
               ) : detailLoading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -265,7 +271,7 @@ export default function AssetLibrary() {
                     {selected.name}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1, mt: 0.5, mb: 1 }}>
-                    <Chip label={KIND_LABELS[selected.kind]} size="small" color="primary" />
+                    <Chip label={getKindLabel(selected.kind, t)} size="small" color="primary" />
                     <Chip label={selected.path} size="small" variant="outlined" />
                   </Box>
                   <Divider sx={{ mb: 1.5 }} />
@@ -292,7 +298,7 @@ export default function AssetLibrary() {
                       <Accordion key={selected.id} sx={{ mt: 2 }} disableGutters>
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                           <Typography variant="body2" color="text.secondary">
-                            高级 · 查看原始数据
+                            {t('asset_lib_raw_data')}
                           </Typography>
                         </AccordionSummary>
                         <AccordionDetails>
