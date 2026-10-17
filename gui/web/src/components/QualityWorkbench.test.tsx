@@ -12,6 +12,8 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QualityWorkbench from './QualityWorkbench'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 const { bookMock } = vi.hoisted(() => ({ bookMock: vi.fn() }))
 
@@ -250,5 +252,77 @@ describe('BookQualityPanel 截断提示', () => {
     const hint = screen.getByText('共 30 条，仅显示前 20 条')
     expect(hint).toBeInTheDocument()
     expect(screen.getAllByText(ISSUE_ROW)).toHaveLength(VISIBLE_ROWS)
+  })
+})
+
+describe('QualityWorkbench i18n 双语支持', () => {
+  beforeEach(() => {
+    bookMock.mockReset()
+  })
+
+  it('en-US 环境下全量渲染英文文案与截断提示', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      bookMock.mockResolvedValue({
+        total_chapters: 60,
+        total_issues: 61,
+        severity: { critical: 0, high: 3, medium: 58 },
+        types: {},
+        verdict: 'WARN',
+        issues: makeIssues(50),
+        issues_truncated: true,
+        issues_limit: 50,
+      })
+
+      render(
+        <I18nProvider>
+          <QualityWorkbench />
+        </I18nProvider>
+      )
+
+      // 验证四大顶层 Tab 英文名称
+      expect(screen.getByRole('tab', { name: 'Chapter Check' })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Full Book Inspection' })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Comprehensive QC' })).toBeInTheDocument()
+      expect(screen.getByRole('tab', { name: 'Poison & Trope Defense' })).toBeInTheDocument()
+
+      // Tab 0: Chapter Check
+      expect(screen.getByRole('heading', { name: 'Single Chapter Quality Check' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Chapter Path (or Paste Draft)')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Check' })).toBeInTheDocument()
+
+      // Tab 1: Full Book Inspection
+      fireEvent.click(screen.getByRole('tab', { name: 'Full Book Inspection' }))
+      expect(screen.getByRole('heading', { name: 'Full Book Quality Inspection' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Chapters Directory Path')).toBeInTheDocument()
+      const inspectBtn = screen.getByRole('button', { name: 'Inspect' })
+      expect(inspectBtn).toBeInTheDocument()
+
+      fireEvent.change(screen.getByLabelText('Chapters Directory Path'), { target: { value: 'chapters' } })
+      fireEvent.click(inspectBtn)
+
+      await screen.findByText('Total 61 issues')
+      expect(screen.getByText('Verdict:')).toBeInTheDocument()
+      expect(screen.getByText('WARN')).toBeInTheDocument()
+      expect(screen.getByText('Total 61 issue(s), showing first 20 (response limit: 50)')).toBeInTheDocument()
+
+      const expandBtn = screen.getByRole('button', { name: 'Expand All (Total 50)' })
+      expect(expandBtn).toBeInTheDocument()
+      fireEvent.click(expandBtn)
+
+      expect(screen.getByRole('button', { name: 'Collapse' })).toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Total 61 issue(s), showing all 50 in response (response limit: 50). For remainder, please check via CLI or JSON output.'
+        )
+      ).toBeInTheDocument()
+
+      // Tab 2: Comprehensive QC
+      fireEvent.click(screen.getByRole('tab', { name: 'Comprehensive QC' }))
+      expect(screen.getByRole('heading', { name: 'Comprehensive QC (4-Layer 12-Dimensional)' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Start QC' })).toBeInTheDocument()
+    } finally {
+      removeStorage('novellab.locale')
+    }
   })
 })

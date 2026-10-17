@@ -1753,5 +1753,184 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '✨ 未检测到任何角色人设禁语冲突。',
     'en-US': '✨ No character voice violations detected.',
   },
+
+  // =========================================================================
+  // QualityWorkbench 质检工作台双语国际化词典 (Milestone 21)
+  // =========================================================================
+  // 顶层标签页
+  quality_tab_check: {
+    'zh-CN': '单章检查',
+    'en-US': 'Chapter Check',
+  },
+  quality_tab_book: {
+    'zh-CN': '全书质检',
+    'en-US': 'Full Book Inspection',
+  },
+  quality_tab_qc: {
+    'zh-CN': 'QC 综合',
+    'en-US': 'Comprehensive QC',
+  },
+  quality_tab_poison: {
+    'zh-CN': '毒点避雷',
+    'en-US': 'Poison & Trope Defense',
+  },
+
+  // 判定与状态枚举
+  quality_verdict_pass: {
+    'zh-CN': '通过',
+    'en-US': 'PASS',
+  },
+  quality_verdict_warn: {
+    'zh-CN': '警告',
+    'en-US': 'WARN',
+  },
+  quality_verdict_fail: {
+    'zh-CN': '不通过',
+    'en-US': 'FAIL',
+  },
+  quality_status_pending: {
+    'zh-CN': '等待中',
+    'en-US': 'Pending',
+  },
+  quality_status_running: {
+    'zh-CN': '运行中',
+    'en-US': 'Running',
+  },
+  quality_status_done: {
+    'zh-CN': '已完成',
+    'en-US': 'Completed',
+  },
+  quality_status_error: {
+    'zh-CN': '失败',
+    'en-US': 'Failed',
+  },
+
+  // 桌面端路径选择
+  quality_btn_pick_dir: {
+    'zh-CN': '选择目录…',
+    'en-US': 'Select Directory…',
+  },
+  quality_btn_pick_file: {
+    'zh-CN': '选择文件…',
+    'en-US': 'Select File…',
+  },
+
+  // 1. 单章检查
+  quality_check_title: {
+    'zh-CN': '单章检查',
+    'en-US': 'Single Chapter Quality Check',
+  },
+  quality_check_target_label: {
+    'zh-CN': '章节路径（或粘贴文本）',
+    'en-US': 'Chapter Path (or Paste Draft)',
+  },
+  quality_check_voice_label: {
+    'zh-CN': 'voice-card（可选）',
+    'en-US': 'Voice Card (Optional)',
+  },
+  quality_check_genre_label: {
+    'zh-CN': 'genre-pack（可选）',
+    'en-US': 'Genre Pack (Optional)',
+  },
+  quality_check_option_none: {
+    'zh-CN': '无',
+    'en-US': 'None',
+  },
+  quality_check_btn_start: {
+    'zh-CN': '检查',
+    'en-US': 'Check',
+  },
+  quality_check_btn_checking: {
+    'zh-CN': '检查中...',
+    'en-US': 'Checking...',
+  },
+  quality_check_text_label: {
+    'zh-CN': '或粘贴章节正文',
+    'en-US': 'Or Paste Chapter Text',
+  },
+  quality_check_score_quality: {
+    'zh-CN': '章节质量：',
+    'en-US': 'Chapter Quality: ',
+  },
+  quality_check_score_consistency: {
+    'zh-CN': '一致性：',
+    'en-US': 'Consistency: ',
+  },
+  quality_check_load_asset_failed: {
+    'zh-CN': '加载资产失败: ',
+    'en-US': 'Failed to load assets: ',
+  },
+
+  // 2. 全书质检
+  quality_book_title: {
+    'zh-CN': '全书质检',
+    'en-US': 'Full Book Quality Inspection',
+  },
+  quality_book_target_label: {
+    'zh-CN': '章节目录路径',
+    'en-US': 'Chapters Directory Path',
+  },
+  quality_book_btn_start: {
+    'zh-CN': '质检',
+    'en-US': 'Inspect',
+  },
+  quality_book_btn_inspecting: {
+    'zh-CN': '质检中...',
+    'en-US': 'Inspecting...',
+  },
+  quality_book_verdict_label: {
+    'zh-CN': '判定：',
+    'en-US': 'Verdict: ',
+  },
+  quality_book_collapse: {
+    'zh-CN': '收起',
+    'en-US': 'Collapse',
+  },
+
+  // 3. QC 综合
+  quality_qc_title: {
+    'zh-CN': 'QC 综合质检（四层十二维）',
+    'en-US': 'Comprehensive QC (4-Layer 12-Dimensional)',
+  },
+  quality_qc_target_label: {
+    'zh-CN': '章节目录路径',
+    'en-US': 'Chapters Directory Path',
+  },
+  quality_qc_btn_start: {
+    'zh-CN': '开始 QC',
+    'en-US': 'Start QC',
+  },
+  quality_qc_btn_running: {
+    'zh-CN': 'QC 运行中...',
+    'en-US': 'QC Running...',
+  },
+  quality_qc_status_label: {
+    'zh-CN': '状态：',
+    'en-US': 'Status: ',
+  },
+  quality_qc_verdict_label: {
+    'zh-CN': '判定：',
+    'en-US': 'Verdict: ',
+  },
+  quality_qc_score_label: {
+    'zh-CN': '总分 ',
+    'en-US': 'Total Score: ',
+  },
+  quality_qc_layer_suffix: {
+    'zh-CN': ' 维',
+    'en-US': ' Dim',
+  },
+  quality_qc_score_suffix: {
+    'zh-CN': '分',
+    'en-US': ' pts',
+  },
+  quality_qc_report_saved: {
+    'zh-CN': '报告已落盘：',
+    'en-US': 'Report saved to disk: ',
+  },
+  quality_qc_history_title: {
+    'zh-CN': '历史报告',
+    'en-US': 'Historical QC Reports',
+  },
 }
 

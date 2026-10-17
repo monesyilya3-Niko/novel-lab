@@ -19,6 +19,7 @@ import type { QualityTaskState, QcReportItem } from '../types'
 import { friendlyError } from '../api/client'
 import QcVisuals from './QcVisuals'
 import PoisonCheckPanel from './PoisonCheckPanel'
+import { useI18n } from '../state/I18nContext'
 
 /**
  * 桌面版（Electron）才出现的"选择…"按钮。
@@ -27,6 +28,7 @@ import PoisonCheckPanel from './PoisonCheckPanel'
  * 所以非桌面环境下这个按钮干脆不渲染，而不是渲染一个点了没反应的。
  */
 function PathPickerButton({ kind, onPicked }: { kind: PickKind; onPicked: (path: string) => void }) {
+  const { t } = useI18n()
   if (!hasDesktopBridge()) return null
   return (
     <Button
@@ -36,25 +38,24 @@ function PathPickerButton({ kind, onPicked }: { kind: PickKind; onPicked: (path:
         if (picked) onPicked(picked)
       }}
     >
-      {kind === 'dir' ? '选择目录…' : '选择文件…'}
+      {kind === 'dir' ? t('quality_btn_pick_dir') : t('quality_btn_pick_file')}
     </Button>
   )
 }
 
-const VERDICT_LABELS: Record<string, string> = {
-  PASS: '通过',
-  WARN: '警告',
-  FAIL: '不通过',
+const verdictLabel = (v: string | null | undefined, t: (k: string) => string) => {
+  if (!v) return v
+  const key = `quality_verdict_${v.toLowerCase()}`
+  const translated = t(key)
+  return translated === key ? v : translated
 }
-const verdictLabel = (v: string | null | undefined) => (v ? VERDICT_LABELS[v] ?? v : v)
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: '等待中',
-  running: '运行中',
-  done: '已完成',
-  error: '失败',
+const statusLabel = (s: string | null | undefined, t: (k: string) => string) => {
+  if (!s) return s
+  const key = `quality_status_${s.toLowerCase()}`
+  const translated = t(key)
+  return translated === key ? s : translated
 }
-const statusLabel = (s: string | null | undefined) => (s ? STATUS_LABELS[s] ?? s : s)
 
 // 全书质检面板「收起」时最多渲染的问题行数。注意它与后端响应体的 issues_limit（50）不是
 // 同一个数：响应体可能在 50 条处截断，而面板收起时只渲染 20 行。只要「屏幕条数 < 声称的
@@ -65,15 +66,16 @@ const statusLabel = (s: string | null | undefined) => (s ? STATUS_LABELS[s] ?? s
 const ISSUE_ROWS = 20
 
 export default function QualityWorkbench() {
+  const { t } = useI18n()
   const [tab, setTab] = useState(0)
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider', pr: 1 }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ flex: 1, px: 2 }}>
-        <Tab label="单章检查" />
-        <Tab label="全书质检" />
-        <Tab label="QC 综合" />
-        <Tab label="毒点避雷" />
+        <Tab label={t('quality_tab_check')} />
+        <Tab label={t('quality_tab_book')} />
+        <Tab label={t('quality_tab_qc')} />
+        <Tab label={t('quality_tab_poison')} />
       </Tabs>
         <ContextHelpButton guideKey="quality" />
       </Box>
@@ -92,6 +94,7 @@ export default function QualityWorkbench() {
 // ---------------------------------------------------------------------------
 
 function CheckPanel() {
+  const { t } = useI18n()
   const [target, setTarget] = useState('')
   const [text, setText] = useState('')
   const [voice, setVoice] = useState('')
@@ -110,7 +113,7 @@ function CheckPanel() {
         setAssets(items)
         if (items.length > 0) setVoice(items[0].id)
       })
-      .catch((e) => setError(`加载资产失败: ${e}`))
+      .catch((e) => setError(`${t('quality_check_load_asset_failed')}${e}`))
     // genre-pack 可选：默认不选，保持与之前一致的行为（不传即不用题材包）。
     assetApi.list({ kind: 'genre_pack', limit: 50 })
       .then((j) => {
@@ -118,7 +121,7 @@ function CheckPanel() {
         setGenrePacks(items)
       })
       .catch(() => setGenrePacks([]))
-  }, [])
+  }, [t])
 
   const doCheck = async () => {
     setLoading(true)
@@ -143,25 +146,25 @@ function CheckPanel() {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>单章检查</Typography>
+      <Typography variant="h6" gutterBottom>{t('quality_check_title')}</Typography>
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
-        <TextField label="章节路径（或粘贴文本）" value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 280 }} size="small" />
+        <TextField label={t('quality_check_target_label')} value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 280 }} size="small" />
         <PathPickerButton kind="file" onPicked={setTarget} />
-        <TextField select label="voice-card（可选）" value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
-          <MenuItem value="">无</MenuItem>
+        <TextField select label={t('quality_check_voice_label')} value={voice} onChange={(e) => setVoice(e.target.value)} sx={{ minWidth: 200 }} size="small">
+          <MenuItem value="">{t('quality_check_option_none')}</MenuItem>
           {assets.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
-        <TextField select label="genre-pack（可选）" value={genrePack} onChange={(e) => setGenrePack(e.target.value)} sx={{ minWidth: 200 }} size="small">
-          <MenuItem value="">无</MenuItem>
+        <TextField select label={t('quality_check_genre_label')} value={genrePack} onChange={(e) => setGenrePack(e.target.value)} sx={{ minWidth: 200 }} size="small">
+          <MenuItem value="">{t('quality_check_option_none')}</MenuItem>
           {genrePacks.map((a) => <MenuItem key={a.id} value={a.id}>{a.name}</MenuItem>)}
         </TextField>
         <Button variant="contained" onClick={doCheck} disabled={loading || (!target.trim() && !text.trim())}>
-          {loading ? <CircularProgress size={20} /> : '检查'}
+          {loading ? <CircularProgress size={20} /> : t('quality_check_btn_start')}
         </Button>
       </Box>
       {!target.trim() && (
         <TextField
-          label="或粘贴章节正文" multiline rows={5} fullWidth value={text}
+          label={t('quality_check_text_label')} multiline rows={5} fullWidth value={text}
           onChange={(e) => setText(e.target.value)} sx={{ mb: 2 }} size="small"
         />
       )}
@@ -171,7 +174,7 @@ function CheckPanel() {
           {quality && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle1">
-                章节质量：{quality.score}/100 <Chip label={verdictLabel(quality.verdict)} size="small" color={quality.verdict === 'PASS' ? 'success' : quality.verdict === 'WARN' ? 'warning' : 'error'} />
+                {t('quality_check_score_quality')}{quality.score}/100 <Chip label={verdictLabel(quality.verdict, t)} size="small" color={quality.verdict === 'PASS' ? 'success' : quality.verdict === 'WARN' ? 'warning' : 'error'} />
               </Typography>
               {(quality.details ?? []).slice(0, 10).map((d, i) => (
                 <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>{d}</Typography>
@@ -180,7 +183,7 @@ function CheckPanel() {
           )}
           {consistency && (
             <Box>
-              <Typography variant="subtitle1">一致性：{consistency.score?.toFixed(1)}/100</Typography>
+              <Typography variant="subtitle1">{t('quality_check_score_consistency')}{consistency.score?.toFixed(1)}/100</Typography>
               {(consistency.details ?? []).slice(0, 8).map((d, i) => (
                 <Typography key={i} variant="body2" sx={{ fontSize: 12 }}>{d}</Typography>
               ))}
@@ -197,6 +200,7 @@ function CheckPanel() {
 // ---------------------------------------------------------------------------
 
 function BookQualityPanel() {
+  const { t, locale } = useI18n()
   const [target, setTarget] = useState('')
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
@@ -242,31 +246,41 @@ function BookQualityPanel() {
   const issuesCutShort = issuesTruncated || canExpand
   // 提示行必须与屏幕一致：展开且未截断时说明「已显示全部」，不得再说「仅显示前」；
   // 响应体被截断时，即使展开也要保留「响应上限 M 条」并指出去处。
-  const cutShortHint = issuesTruncated
-    ? isExpanded
-      ? `共 ${totalIssues} 条，已显示响应内全部 ${visibleIssues} 条（响应上限 ${issuesLimit} 条），超出部分请用 CLI 或 JSON 输出查看`
-      : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条（响应上限 ${issuesLimit} 条）`
-    : isExpanded
-      ? `共 ${totalIssues} 条，已显示全部 ${visibleIssues} 条`
-      : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条`
+  const cutShortHint = locale === 'en-US'
+    ? issuesTruncated
+      ? isExpanded
+        ? `Total ${totalIssues} issue(s), showing all ${visibleIssues} in response (response limit: ${issuesLimit}). For remainder, please check via CLI or JSON output.`
+        : `Total ${totalIssues} issue(s), showing first ${visibleIssues} (response limit: ${issuesLimit})`
+      : isExpanded
+        ? `Total ${totalIssues} issue(s), showing all ${visibleIssues}`
+        : `Total ${totalIssues} issue(s), showing first ${visibleIssues}`
+    : issuesTruncated
+      ? isExpanded
+        ? `共 ${totalIssues} 条，已显示响应内全部 ${visibleIssues} 条（响应上限 ${issuesLimit} 条），超出部分请用 CLI 或 JSON 输出查看`
+        : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条（响应上限 ${issuesLimit} 条）`
+      : isExpanded
+        ? `共 ${totalIssues} 条，已显示全部 ${visibleIssues} 条`
+        : `共 ${totalIssues} 条，仅显示前 ${visibleIssues} 条`
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>全书质检</Typography>
+      <Typography variant="h6" gutterBottom>{t('quality_book_title')}</Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <TextField label="章节目录路径" value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 320 }} size="small" />
+        <TextField label={t('quality_book_target_label')} value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 320 }} size="small" />
         <PathPickerButton kind="dir" onPicked={setTarget} />
         <Button variant="contained" onClick={doBook} disabled={!target.trim() || loading}>
-          {loading ? <CircularProgress size={20} /> : '质检'}
+          {loading ? <CircularProgress size={20} /> : t('quality_book_btn_start')}
         </Button>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {result && (
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle1">
-            判定：<Chip label={verdictLabel(verdict)} size="small" color={verdict === 'PASS' ? 'success' : verdict === 'WARN' ? 'warning' : 'error'} />
+            {t('quality_book_verdict_label')}<Chip label={verdictLabel(verdict, t)} size="small" color={verdict === 'PASS' ? 'success' : verdict === 'WARN' ? 'warning' : 'error'} />
           </Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>共 {totalIssues} 个问题</Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>
+            {locale === 'en-US' ? `Total ${totalIssues} issues` : `共 ${totalIssues} 个问题`}
+          </Typography>
           {issuesCutShort && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
               {cutShortHint}
@@ -279,7 +293,11 @@ function BookQualityPanel() {
           ))}
           {canExpand && (
             <Button size="small" variant="text" onClick={() => setExpanded((v) => !v)} sx={{ mt: 0.5 }}>
-              {isExpanded ? '收起' : `展开全部（共 ${issues.length} 条）`}
+              {isExpanded
+                ? t('quality_book_collapse')
+                : locale === 'en-US'
+                  ? `Expand All (Total ${issues.length})`
+                  : `展开全部（共 ${issues.length} 条）`}
             </Button>
           )}
         </Paper>
@@ -293,6 +311,7 @@ function BookQualityPanel() {
 // ---------------------------------------------------------------------------
 
 function QcPanel() {
+  const { t } = useI18n()
   const [target, setTarget] = useState('')
   const [running, setRunning] = useState(false)
   const [taskState, setTaskState] = useState<QualityTaskState | null>(null)
@@ -338,12 +357,12 @@ function QcPanel() {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom>QC 综合质检（四层十二维）</Typography>
+      <Typography variant="h6" gutterBottom>{t('quality_qc_title')}</Typography>
       <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-        <TextField label="章节目录路径" value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 320 }} size="small" />
+        <TextField label={t('quality_qc_target_label')} value={target} onChange={(e) => setTarget(e.target.value)} sx={{ minWidth: 320 }} size="small" />
         <PathPickerButton kind="dir" onPicked={setTarget} />
         <Button variant="contained" onClick={doQc} disabled={!target.trim() || running}>
-          {running ? <CircularProgress size={20} /> : '开始 QC'}
+          {running ? <CircularProgress size={20} /> : t('quality_qc_btn_start')}
         </Button>
       </Box>
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -351,9 +370,9 @@ function QcPanel() {
       {taskState && (
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1">
-            状态：{statusLabel(taskState.status)}
-            {taskState.verdict && <> | 判定：<Chip label={verdictLabel(taskState.verdict)} size="small" color={taskState.verdict === 'PASS' ? 'success' : taskState.verdict === 'WARN' ? 'warning' : 'error'} /></>}
-            {taskState.totalScore != null && <> | 总分 {taskState.totalScore.toFixed(1)}</>}
+            {t('quality_qc_status_label')}{statusLabel(taskState.status, t)}
+            {taskState.verdict && <> | {t('quality_qc_verdict_label')}<Chip label={verdictLabel(taskState.verdict, t)} size="small" color={taskState.verdict === 'PASS' ? 'success' : taskState.verdict === 'WARN' ? 'warning' : 'error'} /></>}
+            {taskState.totalScore != null && <> | {t('quality_qc_score_label')}{taskState.totalScore.toFixed(1)}</>}
           </Typography>
           {(taskState.status === 'running' || taskState.status === 'pending') && <LinearProgress sx={{ mt: 1 }} />}
           {taskState.status === 'error' && <Alert severity="error" sx={{ mt: 1 }}>{taskState.error}</Alert>}
@@ -361,7 +380,7 @@ function QcPanel() {
             <Box sx={{ mt: 1 }}>
               {taskState.layers.map((layer) => (
                 <Typography key={layer.layer} variant="body2">
-                  {layer.layer} {layer.label}：{layer.score?.toFixed(1)}分（{layer.dimensions.length} 维）
+                  {layer.layer} {layer.label}：{layer.score?.toFixed(1)}{t('quality_qc_score_suffix')}（{layer.dimensions.length}{t('quality_qc_layer_suffix')}）
                 </Typography>
               ))}
             </Box>
@@ -371,13 +390,13 @@ function QcPanel() {
               <QcVisuals layers={taskState.layers ?? []} issues={taskState.issues ?? []} />
             </Box>
           )}
-          {taskState.reportMd && <Alert severity="success" sx={{ mt: 1 }}>报告已落盘：{taskState.reportMd}</Alert>}
+          {taskState.reportMd && <Alert severity="success" sx={{ mt: 1 }}>{t('quality_qc_report_saved')}{taskState.reportMd}</Alert>}
         </Paper>
       )}
 
       {reports.length > 0 && (
         <Box>
-          <Typography variant="subtitle2" gutterBottom>历史报告</Typography>
+          <Typography variant="subtitle2" gutterBottom>{t('quality_qc_history_title')}</Typography>
           {reports.slice(0, 10).map((r) => (
             <Typography key={r.name} variant="body2" sx={{ fontSize: 12 }}>
               {r.name} — {r.verdict} {r.totalScore != null ? `(${r.totalScore.toFixed(1)})` : ''}
