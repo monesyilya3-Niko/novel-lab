@@ -2510,6 +2510,159 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': 'A：',
     'en-US': 'A: ',
   },
+  advanced_tab_distill: {
+    'zh-CN': '蒸馏',
+    'en-US': 'Distillation',
+  },
+  advanced_tab_batch: {
+    'zh-CN': '批量状态',
+    'en-US': 'Batch Status',
+  },
+  advanced_tab_edit: {
+    'zh-CN': '资产编辑',
+    'en-US': 'Asset Editor',
+  },
+  advanced_tab_platform: {
+    'zh-CN': '平台适配',
+    'en-US': 'Platform Adaptation',
+  },
+  distill_title: {
+    'zh-CN': '题材蒸馏',
+    'en-US': 'Genre Distillation',
+  },
+  distill_genre_label: {
+    'zh-CN': '题材',
+    'en-US': 'Genre',
+  },
+  distill_btn_execute: {
+    'zh-CN': '执行蒸馏',
+    'en-US': 'Execute Distillation',
+  },
+  distill_status_available: {
+    'zh-CN': '可蒸馏书目：',
+    'en-US': 'Available Books: ',
+  },
+  distill_status_books_unit: {
+    'zh-CN': ' 本 — ',
+    'en-US': ' books — ',
+  },
+  distill_status_existing: {
+    'zh-CN': '已有蒸馏产物：',
+    'en-US': 'Existing Distilled Assets: ',
+  },
+  distill_status_assets_unit: {
+    'zh-CN': ' 个',
+    'en-US': ' items',
+  },
+  distill_chip_ready: {
+    'zh-CN': '可蒸馏',
+    'en-US': 'Ready to Distill',
+  },
+  distill_chip_insufficient: {
+    'zh-CN': '书目不足（需≥2本）',
+    'en-US': 'Insufficient Books (>=2 required)',
+  },
+  distill_result_success: {
+    'zh-CN': '蒸馏完成',
+    'en-US': 'Distillation Complete',
+  },
+  distill_result_books_prefix: {
+    'zh-CN': ' 本书目 · ',
+    'en-US': ' books · ',
+  },
+  distill_result_outputs_suffix: {
+    'zh-CN': ' 个产出',
+    'en-US': ' outputs',
+  },
+  distill_section_books: {
+    'zh-CN': '参与书目',
+    'en-US': 'Participating Books',
+  },
+  distill_section_dims: {
+    'zh-CN': '蒸馏维度',
+    'en-US': 'Distillation Dimensions',
+  },
+  distill_section_files: {
+    'zh-CN': '产出文件（已入库）',
+    'en-US': 'Generated Files (Persisted)',
+  },
+  distill_btn_hide_raw: {
+    'zh-CN': '收起原始 JSON',
+    'en-US': 'Hide Raw JSON',
+  },
+  distill_btn_view_raw: {
+    'zh-CN': '查看原始 JSON',
+    'en-US': 'View Raw JSON',
+  },
+  batch_status_title: {
+    'zh-CN': '批量拆书状态',
+    'en-US': 'Batch Deconstruction Status',
+  },
+  batch_status_empty: {
+    'zh-CN': '暂无拆书数据',
+    'en-US': 'No deconstruction data yet',
+  },
+  batch_chip_has_assets: {
+    'zh-CN': '已有资产',
+    'en-US': 'Assets Present',
+  },
+  asset_edit_title: {
+    'zh-CN': '资产编辑',
+    'en-US': 'Asset Editor',
+  },
+  asset_edit_select_label: {
+    'zh-CN': '选择资产',
+    'en-US': 'Select Asset',
+  },
+  asset_edit_btn_load: {
+    'zh-CN': '加载',
+    'en-US': 'Load',
+  },
+  asset_edit_btn_save: {
+    'zh-CN': '保存',
+    'en-US': 'Save',
+  },
+  asset_edit_readonly_hint: {
+    'zh-CN': '题材文风卡索引（prose_card_index）为只读寻址表，不在可编辑列表中，请在「资产库」中查看。',
+    'en-US': 'Genre style card index (prose_card_index) is a read-only index table and not editable; view in Asset Library.',
+  },
+  asset_edit_chip_json_valid: {
+    'zh-CN': '✓ JSON 合法',
+    'en-US': '✓ Valid JSON',
+  },
+  asset_edit_chip_json_invalid: {
+    'zh-CN': '✗ JSON 错误',
+    'en-US': '✗ JSON Error',
+  },
+  asset_edit_chip_unsaved: {
+    'zh-CN': '未保存修改',
+    'en-US': 'Unsaved Changes',
+  },
+  asset_edit_json_empty: {
+    'zh-CN': '内容为空',
+    'en-US': 'Content is empty',
+  },
+  asset_edit_json_top_object: {
+    'zh-CN': '顶层必须是 JSON 对象',
+    'en-US': 'Top level must be a JSON object',
+  },
+  asset_edit_json_error_prefix: {
+    'zh-CN': 'JSON 错误：',
+    'en-US': 'JSON Error: ',
+  },
+  asset_edit_json_valid: {
+    'zh-CN': 'JSON 合法',
+    'en-US': 'Valid JSON',
+  },
+  asset_edit_save_success: {
+    'zh-CN': '保存成功',
+    'en-US': 'Saved successfully',
+  },
+  asset_edit_content_label: {
+    'zh-CN': '资产 JSON 内容',
+    'en-US': 'Asset JSON Content',
+  },
 }
+
 
 
