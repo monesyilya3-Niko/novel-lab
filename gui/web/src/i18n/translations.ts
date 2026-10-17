@@ -2006,5 +2006,119 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '语料',
     'en-US': 'Corpus Book',
   },
+
+  // =========================================================================
+  // HomeDashboard 首页仪表盘与系统全景矩阵双语国际化词典 (Milestone 23)
+  // =========================================================================
+  home_empty_title: {
+    'zh-CN': '还没有任何书籍数据',
+    'en-US': 'No book data yet',
+  },
+  home_empty_hint: {
+    'zh-CN': '从「分析」页导入一本 TXT 开始拆书',
+    'en-US': 'Import a TXT file from Deconstruct to begin analysis',
+  },
+  home_empty_cta: {
+    'zh-CN': '去分析拆书',
+    'en-US': 'Go to Deconstruct',
+  },
+  home_brand_title: {
+    'zh-CN': '暮冬念春工作台',
+    'en-US': 'Exoscribe Studio',
+  },
+  home_brand_subtitle: {
+    'zh-CN': '中文书籍创作辅助系统',
+    'en-US': 'Bilingual Narrative Exoskeleton & Writing Engine',
+  },
+  home_help_tooltip: {
+    'zh-CN': '新手上路：从这里开始',
+    'en-US': 'Quick Start Guide: Start Here',
+  },
+  home_help_aria: {
+    'zh-CN': '新手上路',
+    'en-US': 'Quick Start',
+  },
+  home_model_configured: {
+    'zh-CN': '模型已配置',
+    'en-US': 'Model Configured',
+  },
+  home_model_not_configured: {
+    'zh-CN': '模型未配置',
+    'en-US': 'Model Unconfigured',
+  },
+  home_model_alert: {
+    'zh-CN': '尚未配置外部模型，请先运行 model_config.py 配置。',
+    'en-US': 'External model not configured yet. Please run model_config.py to configure.',
+  },
+
+  // KPI 指标卡
+  home_kpi_books: {
+    'zh-CN': '已拆书',
+    'en-US': 'Deconstructed Books',
+  },
+  home_kpi_genre_packs: {
+    'zh-CN': '题材包',
+    'en-US': 'Genre Packs',
+  },
+  home_kpi_reports: {
+    'zh-CN': '报告',
+    'en-US': 'Analysis Reports',
+  },
+  home_kpi_assets: {
+    'zh-CN': '资产总数',
+    'en-US': 'Total Assets',
+  },
+
+  // 资产分布
+  home_asset_dist_title: {
+    'zh-CN': '资产类型分布',
+    'en-US': 'Asset Distribution',
+  },
+  home_asset_dist_empty: {
+    'zh-CN': '暂无资产数据',
+    'en-US': 'No asset data yet',
+  },
+  home_asset_dist_empty_sub: {
+    'zh-CN': '拆书分析后自动生成',
+    'en-US': 'Generated automatically after analysis',
+  },
+
+  // 快速操作
+  home_quick_start_title: {
+    'zh-CN': '开始创作',
+    'en-US': 'Start Writing',
+  },
+  home_quick_action_analysis_title: {
+    'zh-CN': '分析拆书',
+    'en-US': 'Deconstruct',
+  },
+  home_quick_action_analysis_desc: {
+    'zh-CN': '导入 TXT，全链路拆解',
+    'en-US': 'Import TXT & full-pipeline deconstruction',
+  },
+  home_quick_action_assets_title: {
+    'zh-CN': '资产库',
+    'en-US': 'Asset Matrix',
+  },
+  home_quick_action_assets_desc: {
+    'zh-CN': '浏览题材包与笔法卡',
+    'en-US': 'Browse genre packs & craft cards',
+  },
+  home_quick_action_writing_title: {
+    'zh-CN': '沉浸创作室',
+    'en-US': 'Immersion Studio',
+  },
+  home_quick_action_writing_desc: {
+    'zh-CN': '一屏三栏·副驾伴写',
+    'en-US': '3-Column Workspace · AI Copilot',
+  },
+  home_quick_action_enter: {
+    'zh-CN': '进入',
+    'en-US': 'Enter',
+  },
+  home_recent_activity_title: {
+    'zh-CN': '最近动态',
+    'en-US': 'Recent Activity',
+  },
 }
 

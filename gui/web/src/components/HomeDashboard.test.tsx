@@ -7,6 +7,8 @@ import { describe, expect, it, vi } from 'vitest'
 import HomeDashboard from './HomeDashboard'
 import { KIND_LABELS, kindLabel } from '../assetKindLabels'
 import { ThemeModeProvider } from '../state/ThemeModeContext'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 // HomeDashboard 依赖 useThemeMode，测试需包裹 Provider。
 // ThemeModeProvider 内部用 window.matchMedia，jsdom 无此 API，先 mock。
@@ -97,6 +99,58 @@ describe('HomeDashboard 资产类型分布标签', () => {
     for (const [camelKey, value] of Object.entries(OVERVIEW.assetsByKind)) {
       if (camelKey === 'report' || camelKey === 'book') continue
       expect(slices).toContain(`${kindLabel(camelKey)}=${value}`)
+    }
+  })
+})
+
+describe('HomeDashboard 双语国际化支持', () => {
+  it('en-US 环境下全量渲染英文标题、KPI卡片、饼图切片与快捷入口', async () => {
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <ThemeModeProvider>
+            <HomeDashboard />
+          </ThemeModeProvider>
+        </I18nProvider>
+      )
+
+      // 品牌标题与副标题
+      expect(screen.getByText('Exoscribe Studio')).toBeInTheDocument()
+      expect(screen.getByText('Bilingual Narrative Exoskeleton & Writing Engine')).toBeInTheDocument()
+      expect(screen.getByText('Model Configured')).toBeInTheDocument()
+      expect(screen.getByLabelText('Quick Start')).toBeInTheDocument()
+
+      // 四大 KPI 卡片
+      expect(screen.getByText('Deconstructed Books')).toBeInTheDocument()
+      expect(screen.getByText('Genre Packs')).toBeInTheDocument()
+      expect(screen.getByText('Analysis Reports')).toBeInTheDocument()
+      expect(screen.getByText('Total Assets')).toBeInTheDocument()
+
+      // 资产分布标题与统计
+      expect(screen.getByText('Asset Distribution')).toBeInTheDocument()
+      expect(screen.getByText('Total 9 items')).toBeInTheDocument()
+
+      // 饼图切片英文标签
+      const slices = (await screen.findByTestId('pie-slices')).textContent ?? ''
+      expect(slices).toContain('Voice Card=2')
+      expect(slices).toContain('Craft Card=1')
+      expect(slices).toContain('Genre Pack=1')
+      expect(slices).toContain('Prose Card=1')
+      expect(slices).toContain('Distilled Rule=2')
+      expect(slices).toContain('Genre Prose Index=1')
+
+      // 快捷操作入口卡片
+      expect(screen.getByText('Start Writing')).toBeInTheDocument()
+      expect(screen.getByText('Deconstruct')).toBeInTheDocument()
+      expect(screen.getByText('Import TXT & full-pipeline deconstruction')).toBeInTheDocument()
+      expect(screen.getByText('Asset Matrix')).toBeInTheDocument()
+      expect(screen.getByText('Browse genre packs & craft cards')).toBeInTheDocument()
+      expect(screen.getByText('Immersion Studio')).toBeInTheDocument()
+      expect(screen.getByText('3-Column Workspace · AI Copilot')).toBeInTheDocument()
+      expect(screen.getAllByText(/Enter/)).toHaveLength(3)
+    } finally {
+      removeStorage('novellab.locale')
     }
   })
 })
