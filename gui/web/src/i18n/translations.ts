@@ -2414,5 +2414,102 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '商业评估',
     'en-US': 'Commercial Pass',
   },
+  help_title: {
+    'zh-CN': '帮助中心',
+    'en-US': 'Help Center',
+  },
+  help_subtitle: {
+    'zh-CN': '术语解释、操作指南、工作流、常见问题——都在这里。',
+    'en-US': 'Terminology, user guides, workflows, and FAQs — all in one place.',
+  },
+  help_tab_start: {
+    'zh-CN': '新手上路',
+    'en-US': 'Quick Start',
+  },
+  help_tab_glossary: {
+    'zh-CN': '术语表',
+    'en-US': 'Glossary',
+  },
+  help_tab_guides: {
+    'zh-CN': '功能指南',
+    'en-US': 'Feature Guides',
+  },
+  help_tab_faq: {
+    'zh-CN': '常见问题',
+    'en-US': 'FAQ',
+  },
+  help_start_eco_title: {
+    'zh-CN': '生态全景：数据是怎么流动的',
+    'en-US': 'Ecosystem Overview: How Data Flows',
+  },
+  help_start_eco_summary_1: {
+    'zh-CN': '记住这个顺序：',
+    'en-US': 'Remember the pipeline order: ',
+  },
+  help_start_eco_summary_highlight: {
+    'zh-CN': '先拆书，再蒸馏，最后用资产辅助写作',
+    'en-US': 'Analyze first, Distill next, and then power Assisted Writing with assets',
+  },
+  help_start_eco_summary_2: {
+    'zh-CN': '。质检贯穿全程——写完一章用单章检查，完稿用全书QC。',
+    'en-US': '. Quality check is continuous — inspect chapters as you write, and run full book QC on final manuscripts.',
+  },
+  help_start_workflows_title: {
+    'zh-CN': '四个典型工作流',
+    'en-US': 'Four Canonical Workflows',
+  },
+  help_glossary_search: {
+    'zh-CN': '搜索术语…',
+    'en-US': 'Search terms…',
+  },
+  help_cat_all: {
+    'zh-CN': '全部',
+    'en-US': 'All',
+  },
+  help_cat_concept: {
+    'zh-CN': '概念',
+    'en-US': 'Concepts',
+  },
+  help_cat_asset: {
+    'zh-CN': '资产',
+    'en-US': 'Assets',
+  },
+  help_cat_feature: {
+    'zh-CN': '功能',
+    'en-US': 'Features',
+  },
+  help_glossary_example_prefix: {
+    'zh-CN': '举例：',
+    'en-US': 'Example: ',
+  },
+  help_glossary_empty: {
+    'zh-CN': '没有找到匹配的术语，换个关键词试试。',
+    'en-US': 'No matching terms found. Try another search term.',
+  },
+  help_guides_subtitle: {
+    'zh-CN': '每个功能模块的详细操作步骤。点击展开查看。',
+    'en-US': 'Detailed walkthroughs for each module. Click to expand.',
+  },
+  help_guides_steps_header: {
+    'zh-CN': '操作步骤',
+    'en-US': 'Step-by-Step Instructions',
+  },
+  help_guides_tips_header: {
+    'zh-CN': '💡 提示',
+    'en-US': '💡 Tips',
+  },
+  help_guides_faq_header: {
+    'zh-CN': '常见问题',
+    'en-US': 'Frequently Asked Questions',
+  },
+  help_guides_q_prefix: {
+    'zh-CN': 'Q：',
+    'en-US': 'Q: ',
+  },
+  help_guides_a_prefix: {
+    'zh-CN': 'A：',
+    'en-US': 'A: ',
+  },
 }
+
 

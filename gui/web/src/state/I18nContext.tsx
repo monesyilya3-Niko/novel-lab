@@ -9,6 +9,8 @@ import {
 } from 'react'
 import { readStorage, writeStorage } from '../safeStorage'
 import { TRANSLATIONS, type Locale } from '../i18n/translations'
+export type { Locale }
+
 
 const STORAGE_KEY = 'novellab.locale'
 
