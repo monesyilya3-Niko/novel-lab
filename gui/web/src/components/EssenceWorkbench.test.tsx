@@ -1,6 +1,8 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import EssenceWorkbench from './EssenceWorkbench'
+import { I18nProvider } from '../state/I18nContext'
+import { writeStorage, removeStorage } from '../safeStorage'
 
 const mockAnalyzeMacro = vi.fn()
 const mockListAssets = vi.fn()
@@ -302,6 +304,80 @@ describe('EssenceWorkbench', () => {
     expect(screen.getByText('合规得分: 90 / 100')).toBeInTheDocument()
     expect(screen.getByText('严禁时代脱节或现代高科技穿越')).toBeInTheDocument()
     expect(screen.getByText('角色: 苏念')).toBeInTheDocument()
+  })
+
+  it('在英文 en-US 语言环境下正确渲染五大标签页及核心交互元素', async () => {
+    mockListChains.mockResolvedValue({
+      chains: [
+        {
+          id: 101,
+          bookId: 'book_01',
+          title: '九品功法残卷',
+          category: '力量伏笔',
+          plantChapter: 3,
+          revealChapter: 25,
+          climaxChapter: 60,
+          description: '第三章主角偶然在藏经阁角落拾取，实为无上心法残卷。',
+          status: 'planted',
+        },
+      ],
+    })
+
+    writeStorage('novellab.locale', 'en-US')
+    try {
+      render(
+        <I18nProvider>
+          <EssenceWorkbench />
+        </I18nProvider>
+      )
+
+      // 验证五大顶层标签页英文名称
+      expect(screen.getByText('Offline Deep Read & Extraction')).toBeInTheDocument()
+      expect(screen.getByText('5D Essence Asset Matrix')).toBeInTheDocument()
+      expect(screen.getByText('Foreshadowing & Plot Chains')).toBeInTheDocument()
+      expect(screen.getByText('Archived Masterpiece Books')).toBeInTheDocument()
+      expect(screen.getByText('Canon Guard & Constitution')).toBeInTheDocument()
+
+      // Tab 0: Macro extraction controls
+      expect(screen.getByRole('button', { name: 'Start Deep Read & Extraction' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Sample Book Name')).toBeInTheDocument()
+
+      // Tab 1: 5D Essence Asset Matrix
+      fireEvent.click(screen.getByText('5D Essence Asset Matrix'))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Adopt to Project' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Adopt to Project' }))
+      expect(await screen.findByText('Adopt Asset to Writing Project')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Confirm Adoption' })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+
+      // Tab 2: Foreshadowing & Plot Chains
+      fireEvent.click(screen.getByText('Foreshadowing & Plot Chains'))
+      await waitFor(() => {
+        expect(screen.getByText('九品功法残卷')).toBeInTheDocument()
+        expect(screen.getByText('🌱 Planted')).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'New Plot Chain' })).toBeInTheDocument()
+      })
+
+      // Tab 3: Archived Masterpiece Books
+      fireEvent.click(screen.getByText('Archived Masterpiece Books'))
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Refresh Archives' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Export Outline' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Export Beats' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Adopt Entire Book' })).toBeInTheDocument()
+      })
+
+      // Tab 4: Canon Guard & Constitution
+      fireEvent.click(screen.getByText('Canon Guard & Constitution'))
+      expect(await screen.findByText('Novel Constitution & Canon Guard')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Run Canon Guard Check' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Draft Text or Chapter to Audit')).toBeInTheDocument()
+    } finally {
+      removeStorage('novellab.locale')
+    }
   })
 })
 

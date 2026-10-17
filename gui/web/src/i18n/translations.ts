@@ -1335,5 +1335,423 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '已复制情绪范例: ',
     'en-US': 'Copied Emotion Sample: ',
   },
+
+  // 小说精华数据库 (EssenceWorkbench) - 五大顶层标签页
+  essence_tab_macro: {
+    'zh-CN': '离线精读与解构提炼',
+    'en-US': 'Offline Deep Read & Extraction',
+  },
+  essence_tab_assets: {
+    'zh-CN': '五维精华资产库',
+    'en-US': '5D Essence Asset Matrix',
+  },
+  essence_tab_chains: {
+    'zh-CN': '伏笔暗线图谱',
+    'en-US': 'Foreshadowing & Plot Chains',
+  },
+  essence_tab_books: {
+    'zh-CN': '已精读书籍档案',
+    'en-US': 'Archived Masterpiece Books',
+  },
+  essence_tab_constitution: {
+    'zh-CN': '宪法正典审查',
+    'en-US': 'Canon Guard & Constitution',
+  },
+
+  // 五维分类
+  essence_cat_all: {
+    'zh-CN': '全部五维分类',
+    'en-US': 'All 5D Categories',
+  },
+  essence_cat_outline: {
+    'zh-CN': '骨架大纲',
+    'en-US': 'Structural Outline',
+  },
+  essence_cat_hook: {
+    'zh-CN': '开篇钩子',
+    'en-US': 'Opening Hook',
+  },
+  essence_cat_character: {
+    'zh-CN': '人设反差',
+    'en-US': 'Character Persona',
+  },
+  essence_cat_trope: {
+    'zh-CN': '爆款桥段',
+    'en-US': 'Viral Trope',
+  },
+  essence_cat_style: {
+    'zh-CN': '反AI口语',
+    'en-US': 'Anti-Slop Dialogue',
+  },
+
+  // 1. 离线精读与宏观解构提炼
+  essence_macro_desc: {
+    'zh-CN': '100% 纯本地离线精读引擎：对长篇正文进行章节切片、黄金三章钩子探测、对白与叙述比例核算、高频反 AI 口语词频统计，提炼出可直接反哺创作的五维结构化资产。',
+    'en-US': '100% pure local offline deep reading engine: parses chapters, detects opening hooks, calculates dialogue ratios, and identifies anti-slop patterns to distill 5D reusable assets.',
+  },
+  essence_macro_title_label: {
+    'zh-CN': '精图书籍/样本名称',
+    'en-US': 'Sample Book Name',
+  },
+  essence_macro_title_placeholder: {
+    'zh-CN': '例如：《宿命之环》《我在精神病院学斩神》',
+    'en-US': 'e.g. Mistborn, Cradle, Lord of the Mysteries',
+  },
+  essence_macro_platform_label: {
+    'zh-CN': '目标平台生态',
+    'en-US': 'Target Platform Ecosystem',
+  },
+  essence_macro_genre_label: {
+    'zh-CN': '所属题材类别',
+    'en-US': 'Genre Category',
+  },
+  essence_macro_text_label: {
+    'zh-CN': '输入精读正文（支持多章连粘，自动识别章节序号）',
+    'en-US': 'Input Draft/Sample Text (multiple chapters supported)',
+  },
+  essence_macro_text_placeholder: {
+    'zh-CN': '粘贴小说样本文字...',
+    'en-US': 'Paste novel draft or sample text...',
+  },
+  essence_macro_btn_start: {
+    'zh-CN': '开始深度精读与宏观解构',
+    'en-US': 'Start Deep Read & Extraction',
+  },
+  essence_macro_btn_analyzing: {
+    'zh-CN': '离线深度精读分析中...',
+    'en-US': 'Analyzing offline...',
+  },
+  essence_macro_report_chip: {
+    'zh-CN': '精读提炼报告',
+    'en-US': 'Extraction Report',
+  },
+  essence_macro_metric_chapters: {
+    'zh-CN': '总解析章节',
+    'en-US': 'Parsed Chapters',
+  },
+  essence_macro_metric_words: {
+    'zh-CN': '总精读字数',
+    'en-US': 'Total Word Count',
+  },
+  essence_macro_metric_avg_words: {
+    'zh-CN': '平均章字数',
+    'en-US': 'Avg Chapter Words',
+  },
+  essence_macro_metric_dialogue_ratio: {
+    'zh-CN': '对白占比',
+    'en-US': 'Dialogue Ratio',
+  },
+  essence_macro_metric_climax_interval: {
+    'zh-CN': '高潮节奏周期',
+    'en-US': 'Climax Pacing Interval',
+  },
+  essence_macro_metric_ai_slop: {
+    'zh-CN': 'AI 味指数 (0-10)',
+    'en-US': 'AI Slop Index (0-10)',
+  },
+  essence_macro_h3_opening: {
+    'zh-CN': '黄金三章开篇解构（抓人感与钩子演进）',
+    'en-US': 'First 3 Chapters Hook Deconstruction',
+  },
+  essence_macro_h3_speech: {
+    'zh-CN': '高频真实网感口语 / 特色句式',
+    'en-US': 'Vivid Humanized Dialogue Patterns',
+  },
+  essence_macro_h3_suggested: {
+    'zh-CN': '结构化资产建议（点击一键沉淀入库）',
+    'en-US': 'Suggested Structured Assets',
+  },
+  essence_macro_btn_save_asset: {
+    'zh-CN': '沉淀入库',
+    'en-US': 'Save Asset',
+  },
+  essence_macro_toast_done: {
+    'zh-CN': '深度精读与宏观提炼完成，已建立书籍档案！',
+    'en-US': 'Deep reading and macro extraction complete. Book archive created!',
+  },
+  essence_macro_toast_saved: {
+    'zh-CN': '已成功入库资产：',
+    'en-US': 'Asset saved successfully: ',
+  },
+
+  // 2. 五维精华资产库
+  essence_assets_category_filter: {
+    'zh-CN': '五维分类',
+    'en-US': '5D Category',
+  },
+  essence_assets_platform_filter: {
+    'zh-CN': '生态平台',
+    'en-US': 'Platform Ecosystem',
+  },
+  essence_assets_all_platforms: {
+    'zh-CN': '全平台生态',
+    'en-US': 'All Platforms',
+  },
+  essence_assets_search_placeholder: {
+    'zh-CN': '模糊检索 (标题/标签/摘要)',
+    'en-US': 'Search (Title, Tags, Summary)',
+  },
+  essence_assets_btn_refresh: {
+    'zh-CN': '刷新',
+    'en-US': 'Refresh',
+  },
+  essence_assets_empty: {
+    'zh-CN': '暂无符合条件的精读资产。可在「离线精读与解构提炼」页签粘贴正文进行智能分析萃取。',
+    'en-US': 'No matching essence assets found. Extract from sample texts in the extraction tab.',
+  },
+  essence_assets_platform_prefix: {
+    'zh-CN': '生态: ',
+    'en-US': 'Platform: ',
+  },
+  essence_assets_genre_prefix: {
+    'zh-CN': '题材: ',
+    'en-US': 'Genre: ',
+  },
+  essence_assets_note_prefix: {
+    'zh-CN': '创作者感悟: ',
+    'en-US': 'Creator Note: ',
+  },
+  essence_assets_btn_delete: {
+    'zh-CN': '删除',
+    'en-US': 'Delete',
+  },
+  essence_assets_btn_adopt: {
+    'zh-CN': '一键反哺创作',
+    'en-US': 'Adopt to Project',
+  },
+  essence_assets_adopt_title: {
+    'zh-CN': '一键反哺至写作工坊',
+    'en-US': 'Adopt Asset to Writing Project',
+  },
+  essence_assets_adopt_target_project: {
+    'zh-CN': '目标项目',
+    'en-US': 'Target Project',
+  },
+  essence_assets_adopt_target_kind: {
+    'zh-CN': '反哺转存形态',
+    'en-US': 'Target Entity',
+  },
+  essence_assets_adopt_kind_outline: {
+    'zh-CN': '转入写作大纲 (writing_outlines)',
+    'en-US': 'Inject as Outline (writing_outlines)',
+  },
+  essence_assets_adopt_kind_character: {
+    'zh-CN': '转入人物卡片 (writing_characters)',
+    'en-US': 'Inject as Character (writing_characters)',
+  },
+  essence_assets_adopt_kind_note: {
+    'zh-CN': '转入灵感便签 (writing_notes)',
+    'en-US': 'Inject as Inspiration Note (writing_notes)',
+  },
+  essence_assets_adopt_btn_cancel: {
+    'zh-CN': '取消',
+    'en-US': 'Cancel',
+  },
+  essence_assets_adopt_btn_confirm: {
+    'zh-CN': '确认反哺',
+    'en-US': 'Confirm Adoption',
+  },
+
+  // 3. 已精读书籍档案
+  essence_books_desc: {
+    'zh-CN': '本地精读档案库：沉淀每部精读长篇的字数、对白率、节奏模型，支持全生命周期管理与结构化提纲导出。',
+    'en-US': 'Local Masterpiece Archive: records word count, dialogue ratios, and rhythm models, supporting lifecycle management and outline export.',
+  },
+  essence_books_btn_refresh: {
+    'zh-CN': '刷新档案',
+    'en-US': 'Refresh Archives',
+  },
+  essence_books_empty: {
+    'zh-CN': '暂无已精读的书籍档案。请先在「离线精读与解构提炼」页签输入样本进行解析。',
+    'en-US': 'No archived books found. Extract sample text first.',
+  },
+  essence_books_dialogue_ratio: {
+    'zh-CN': '对白占比: ',
+    'en-US': 'Dialogue Ratio: ',
+  },
+  essence_books_climax_interval: {
+    'zh-CN': '高潮间隔: ',
+    'en-US': 'Climax Interval: ',
+  },
+  essence_books_ai_slop: {
+    'zh-CN': 'AI 味道评分: ',
+    'en-US': 'AI Slop Score: ',
+  },
+  essence_books_btn_export_outline: {
+    'zh-CN': '导出大纲',
+    'en-US': 'Export Outline',
+  },
+  essence_books_btn_export_beats: {
+    'zh-CN': '导出节拍',
+    'en-US': 'Export Beats',
+  },
+  essence_books_btn_adopt_book: {
+    'zh-CN': '整本反哺',
+    'en-US': 'Adopt Entire Book',
+  },
+  essence_books_adopt_title: {
+    'zh-CN': '一键整本反哺到写作工坊',
+    'en-US': 'Adopt Full Book Assets to Writing Project',
+  },
+  essence_books_adopt_target: {
+    'zh-CN': '目标创作项目',
+    'en-US': 'Target Writing Project',
+  },
+  essence_books_adopt_btn_confirm: {
+    'zh-CN': '确认注入',
+    'en-US': 'Confirm Injection',
+  },
+  essence_books_adopt_btn_adopting: {
+    'zh-CN': '正在注入...',
+    'en-US': 'Injecting...',
+  },
+
+  // 4. 伏笔暗线图谱
+  essence_chains_filter_book: {
+    'zh-CN': '筛选书籍档案',
+    'en-US': 'Filter by Book',
+  },
+  essence_chains_all_books: {
+    'zh-CN': '全部书籍暗线',
+    'en-US': 'All Book Plot Chains',
+  },
+  essence_chains_btn_refresh: {
+    'zh-CN': '刷新',
+    'en-US': 'Refresh',
+  },
+  essence_chains_btn_create: {
+    'zh-CN': '录入伏笔暗线',
+    'en-US': 'New Plot Chain',
+  },
+  essence_chains_empty: {
+    'zh-CN': '暂无伏笔暗线数据。点击右上角「录入伏笔暗线」，建立长篇小说的草蛇灰线与回收图谱。',
+    'en-US': 'No plot chains found. Click "New Plot Chain" to record foreshadowing loops.',
+  },
+  essence_chains_plant_ch: {
+    'zh-CN': '🌱 埋设：',
+    'en-US': '🌱 Plant: ',
+  },
+  essence_chains_reveal_ch: {
+    'zh-CN': '🔍 揭晓：',
+    'en-US': '🔍 Reveal: ',
+  },
+  essence_chains_climax_ch: {
+    'zh-CN': '💥 高潮回收：',
+    'en-US': '💥 Climax Payoff: ',
+  },
+  essence_chains_dialog_title: {
+    'zh-CN': '录入伏笔暗线与收敛图谱',
+    'en-US': 'Record Plot Chain & Foreshadowing Loop',
+  },
+  essence_chains_form_book: {
+    'zh-CN': '所属书籍',
+    'en-US': 'Book',
+  },
+  essence_chains_form_title: {
+    'zh-CN': '伏笔暗线名称',
+    'en-US': 'Chain Title',
+  },
+  essence_chains_form_category: {
+    'zh-CN': '伏笔类型',
+    'en-US': 'Category',
+  },
+  essence_chains_form_plant: {
+    'zh-CN': '埋下章节 (Plant)',
+    'en-US': 'Plant Chapter',
+  },
+  essence_chains_form_reveal: {
+    'zh-CN': '显露章节 (Reveal)',
+    'en-US': 'Reveal Chapter',
+  },
+  essence_chains_form_climax: {
+    'zh-CN': '高潮章节 (Climax)',
+    'en-US': 'Climax Chapter',
+  },
+  essence_chains_form_status: {
+    'zh-CN': '当前状态',
+    'en-US': 'Current Status',
+  },
+  essence_chains_form_desc: {
+    'zh-CN': '暗线铺设逻辑与爽点释放机制',
+    'en-US': 'Foreshadowing & Payoff Mechanism',
+  },
+  essence_chains_status_planted: {
+    'zh-CN': '🌱 已埋下',
+    'en-US': '🌱 Planted',
+  },
+  essence_chains_status_developing: {
+    'zh-CN': '⏳ 推进发酵',
+    'en-US': '⏳ Developing',
+  },
+  essence_chains_status_revealed: {
+    'zh-CN': '🔍 已显露',
+    'en-US': '🔍 Revealed',
+  },
+  essence_chains_status_recycled: {
+    'zh-CN': '✅ 闭环回收',
+    'en-US': '✅ Recycled / Paid Off',
+  },
+
+  // 5. 小说宪法正典审查
+  essence_const_title: {
+    'zh-CN': '小说宪法正典审查 (Canon Guard)',
+    'en-US': 'Novel Constitution & Canon Guard',
+  },
+  essence_const_desc: {
+    'zh-CN': '审查世界观底线（严禁修仙/灵气/系统等超自然穿帮、严禁时代脱节科技词、严禁恶俗网文毒点台词），并可校验角色声线禁语（该角色绝不应说的话）。',
+    'en-US': 'Audits core canon boundaries (anti-anachronism, supernatural slips, immersion-breaking tropes) and character voice taboo constraints.',
+  },
+  essence_const_text_label: {
+    'zh-CN': '待审查小说正文或章节文本',
+    'en-US': 'Draft Text or Chapter to Audit',
+  },
+  essence_const_text_placeholder: {
+    'zh-CN': '粘贴待审查的段落或完整章节内容...',
+    'en-US': 'Paste chapter draft or passage to audit...',
+  },
+  essence_const_voice_label: {
+    'zh-CN': '自定义角色声线禁语 (可选，每行一条: 角色名: 禁语1, 禁语2)',
+    'en-US': 'Custom Character Voice Taboos (Optional, e.g. Name: taboo1, taboo2)',
+  },
+  essence_const_voice_helper: {
+    'zh-CN': '配置特定角色绝不会说的词汇或口癖，防止人设塌房与语调失真',
+    'en-US': 'Defines words that specific characters would never say to prevent OOC voice drift',
+  },
+  essence_const_btn_check: {
+    'zh-CN': '开始宪法正典审查',
+    'en-US': 'Run Canon Guard Check',
+  },
+  essence_const_btn_checking: {
+    'zh-CN': '审查中...',
+    'en-US': 'Auditing...',
+  },
+  essence_const_chip_compliant: {
+    'zh-CN': '✅ 宪法正典合规',
+    'en-US': '✅ Canon Compliant',
+  },
+  essence_const_chip_violation: {
+    'zh-CN': '⚠️ 存在违宪/破格隐患',
+    'en-US': '⚠️ Canon Violations Detected',
+  },
+  essence_const_score_label: {
+    'zh-CN': '合规得分: ',
+    'en-US': 'Compliance Score: ',
+  },
+  essence_const_violations_h: {
+    'zh-CN': '世界观与底线偏离列表',
+    'en-US': 'Canon & Worldbuilding Violations',
+  },
+  essence_const_no_violations: {
+    'zh-CN': '🎉 未发现任何超自然穿帮、时代脱节或毒点台词！',
+    'en-US': '🎉 No canon violations or anachronisms found!',
+  },
+  essence_const_voice_h: {
+    'zh-CN': '角色声线禁语冲突',
+    'en-US': 'Character Voice Taboo Alerts',
+  },
+  essence_const_no_voice_alerts: {
+    'zh-CN': '✨ 未检测到任何角色人设禁语冲突。',
+    'en-US': '✨ No character voice violations detected.',
+  },
 }
 

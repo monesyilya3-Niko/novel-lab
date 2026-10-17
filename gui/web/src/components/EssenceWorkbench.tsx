@@ -31,6 +31,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree'
 import AddIcon from '@mui/icons-material/Add'
 import GavelIcon from '@mui/icons-material/Gavel'
 import DownloadIcon from '@mui/icons-material/Download'
+import { useI18n } from '../state/I18nContext'
 import {
   essenceApi,
   writingApi,
@@ -96,17 +97,24 @@ const GENRE_LABELS: Record<string, string> = {
   wuxian: '诸天无限',
 }
 
-const CATEGORY_MAP: Record<string, { label: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'default' | 'error' }> = {
-  outline: { label: '骨架大纲', color: 'primary' },
-  hook: { label: '开篇钩子', color: 'error' },
-  opening: { label: '开篇钩子', color: 'error' },
-  character: { label: '人设反差', color: 'secondary' },
-  persona: { label: '人设反差', color: 'secondary' },
-  trope: { label: '爆款桥段', color: 'success' },
-  style: { label: '反AI口语', color: 'warning' },
+const CATEGORY_MAP: Record<string, { key: string; defaultLabel: string; color: 'primary' | 'secondary' | 'success' | 'warning' | 'info' | 'default' | 'error' }> = {
+  outline: { key: 'essence_cat_outline', defaultLabel: '骨架大纲', color: 'primary' },
+  hook: { key: 'essence_cat_hook', defaultLabel: '开篇钩子', color: 'error' },
+  opening: { key: 'essence_cat_hook', defaultLabel: '开篇钩子', color: 'error' },
+  character: { key: 'essence_cat_character', defaultLabel: '人设反差', color: 'secondary' },
+  persona: { key: 'essence_cat_character', defaultLabel: '人设反差', color: 'secondary' },
+  trope: { key: 'essence_cat_trope', defaultLabel: '爆款桥段', color: 'success' },
+  style: { key: 'essence_cat_style', defaultLabel: '反AI口语', color: 'warning' },
+}
+
+function getCategoryInfo(category: string, t: (k: string, fb?: string) => string) {
+  const item = CATEGORY_MAP[category]
+  if (!item) return { label: category, color: 'default' as const }
+  return { label: t(item.key, item.defaultLabel), color: item.color }
 }
 
 export default function EssenceWorkbench() {
+  const { t } = useI18n()
   const [tab, setTab] = useState(0)
   const [globalToast, setGlobalToast] = useState('')
 
@@ -115,11 +123,11 @@ export default function EssenceWorkbench() {
       <Paper sx={{ p: 2 }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
-            <Tab icon={<AutoAwesomeIcon fontSize="small" />} iconPosition="start" label="离线精读与解构提炼" />
-            <Tab icon={<LayersIcon fontSize="small" />} iconPosition="start" label="五维精华资产库" />
-            <Tab icon={<AccountTreeIcon fontSize="small" />} iconPosition="start" label="伏笔暗线图谱" />
-            <Tab icon={<MenuBookIcon fontSize="small" />} iconPosition="start" label="已精读书籍档案" />
-            <Tab icon={<GavelIcon fontSize="small" />} iconPosition="start" label="宪法正典审查" />
+            <Tab icon={<AutoAwesomeIcon fontSize="small" />} iconPosition="start" label={t('essence_tab_macro')} />
+            <Tab icon={<LayersIcon fontSize="small" />} iconPosition="start" label={t('essence_tab_assets')} />
+            <Tab icon={<AccountTreeIcon fontSize="small" />} iconPosition="start" label={t('essence_tab_chains')} />
+            <Tab icon={<MenuBookIcon fontSize="small" />} iconPosition="start" label={t('essence_tab_books')} />
+            <Tab icon={<GavelIcon fontSize="small" />} iconPosition="start" label={t('essence_tab_constitution')} />
           </Tabs>
         </Box>
 
@@ -145,6 +153,7 @@ export default function EssenceWorkbench() {
 // ---------------------------------------------------------------------------
 
 function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
+  const { t } = useI18n()
   const [title, setTitle] = useState('')
   const [platform, setPlatform] = useState('fanqie')
   const [genre, setGenre] = useState('xianxia')
@@ -173,7 +182,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
         genre,
       })
       setResult(res)
-      setToast('深度精读与宏观提炼完成，已建立书籍档案！')
+      setToast(t('essence_macro_toast_done'))
     } catch (e) {
       setError(friendlyError(e))
     } finally {
@@ -195,7 +204,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
         rating: 5,
         tags: `${result.title},${item.category}`,
       })
-      setToast(`已成功入库资产：${item.title}`)
+      setToast(`${t('essence_macro_toast_saved')}${item.title}`)
       onAssetSaved()
     } catch (e) {
       setError(friendlyError(e))
@@ -205,7 +214,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
       <Typography variant="body2" color="text.secondary">
-        100% 纯本地离线精读引擎：对长篇正文进行章节切片、黄金三章钩子探测、对白与叙述比例核算、高频反 AI 口语词频统计，提炼出可直接反哺创作的五维结构化资产。
+        {t('essence_macro_desc')}
       </Typography>
 
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
@@ -213,16 +222,16 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
       <Paper variant="outlined" sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <TextField
-            label="精图书籍/样本名称"
+            label={t('essence_macro_title_label')}
             size="small"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例如：《宿命之环》《我在精神病院学斩神》"
+            placeholder={t('essence_macro_title_placeholder')}
             sx={{ flex: 1, minWidth: 220 }}
           />
           <TextField
             select
-            label="目标平台生态"
+            label={t('essence_macro_platform_label')}
             size="small"
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
@@ -234,7 +243,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
           </TextField>
           <TextField
             select
-            label="所属题材类别"
+            label={t('essence_macro_genre_label')}
             size="small"
             value={genre}
             onChange={(e) => setGenre(e.target.value)}
@@ -247,12 +256,12 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
         </Box>
 
         <TextField
-          label="输入精读正文（支持多章连粘，自动识别章节序号）"
+          label={t('essence_macro_text_label')}
           multiline
           rows={6}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="粘贴小说样本文字..."
+          placeholder={t('essence_macro_text_placeholder')}
           fullWidth
         />
 
@@ -264,7 +273,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
             onClick={handleAnalyze}
             disabled={analyzing}
           >
-            {analyzing ? '离线深度精读分析中...' : '开始深度精读与宏观解构'}
+            {analyzing ? t('essence_macro_btn_analyzing') : t('essence_macro_btn_start')}
           </Button>
         </Box>
       </Paper>
@@ -272,32 +281,32 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
       {result && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Divider>
-            <Chip label="精读提炼报告" color="primary" variant="outlined" />
+            <Chip label={t('essence_macro_report_chip')} color="primary" variant="outlined" />
           </Divider>
 
           {/* 宏观指标卡 */}
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">总解析章节</Typography>
+                <Typography variant="caption" color="text.secondary">{t('essence_macro_metric_chapters')}</Typography>
                 <Typography variant="h6">{result.totalChapters ?? 0} 章</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">总精读字数</Typography>
+                <Typography variant="caption" color="text.secondary">{t('essence_macro_metric_words')}</Typography>
                 <Typography variant="h6">{(result.totalChars ?? 0).toLocaleString()} 字</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">平均章字数</Typography>
+                <Typography variant="caption" color="text.secondary">{t('essence_macro_metric_avg_words')}</Typography>
                 <Typography variant="h6">{result.avgChapterLen ?? 0} 字</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">对白占比</Typography>
+                <Typography variant="caption" color="text.secondary">{t('essence_macro_metric_dialogue_ratio')}</Typography>
                 <Typography variant="h6" color={(result.dialogueRatio ?? 0) >= 0.25 && (result.dialogueRatio ?? 0) <= 0.45 ? 'success.main' : 'warning.main'}>
                   {((result.dialogueRatio ?? 0) * 100).toFixed(1)}%
                 </Typography>
@@ -305,13 +314,13 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">高潮节奏周期</Typography>
+                <Typography variant="caption" color="text.secondary">{t('essence_macro_metric_climax_interval')}</Typography>
                 <Typography variant="h6">{result.rhythmClimaxInterval ?? 5} 章/次</Typography>
               </Paper>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
               <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="caption" color="text.secondary">AI 味指数 (0-10)</Typography>
+                <Typography variant="caption" color="text.secondary">{t('essence_macro_metric_ai_slop')}</Typography>
                 <Typography variant="h6" color={(result.aiSlopScore ?? 0) < 3.0 ? 'success.main' : 'error.main'}>
                   {result.aiSlopScore ?? 1.5} 分
                 </Typography>
@@ -323,7 +332,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
           {result.openingThreeChapters && result.openingThreeChapters.length > 0 && (
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold' }}>
-                黄金三章开篇解构（抓人感与钩子演进）
+                {t('essence_macro_h3_opening')}
               </Typography>
               <Grid container spacing={2}>
                 {result.openingThreeChapters.map((ch) => (
@@ -354,7 +363,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
           {result.highFrequencySpeechPatterns && result.highFrequencySpeechPatterns.length > 0 && (
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                高频真实网感口语 / 特色句式
+                {t('essence_macro_h3_speech')}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {result.highFrequencySpeechPatterns.map((pat, idx) => (
@@ -374,36 +383,39 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
           {result.suggestedAssets && result.suggestedAssets.length > 0 && (
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold' }}>
-                结构化资产建议（点击一键沉淀入库）
+                {t('essence_macro_h3_suggested')}
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                {result.suggestedAssets.map((asset, idx) => (
-                  <Card key={idx} variant="outlined" sx={{ p: 1.5 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
+                {result.suggestedAssets.map((asset, idx) => {
+                  const catInfo = getCategoryInfo(asset.category, t)
+                  return (
+                    <Card key={idx} variant="outlined" sx={{ p: 1.5 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Chip
+                            size="small"
+                            label={catInfo.label}
+                            color={catInfo.color}
+                          />
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                            {asset.title}
+                          </Typography>
+                        </Box>
+                        <Button
                           size="small"
-                          label={CATEGORY_MAP[asset.category]?.label || asset.category}
-                          color={CATEGORY_MAP[asset.category]?.color || 'default'}
-                        />
-                        <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                          {asset.title}
-                        </Typography>
+                          variant="outlined"
+                          startIcon={<BookmarkAddIcon />}
+                          onClick={() => handleSaveSuggestedAsset(asset)}
+                        >
+                          {t('essence_macro_btn_save_asset')}
+                        </Button>
                       </Box>
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<BookmarkAddIcon />}
-                        onClick={() => handleSaveSuggestedAsset(asset)}
-                      >
-                        沉淀入库
-                      </Button>
-                    </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      {asset.summary}
-                    </Typography>
-                  </Card>
-                ))}
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        {asset.summary}
+                      </Typography>
+                    </Card>
+                  )
+                })}
               </Box>
             </Paper>
           )}
@@ -425,6 +437,7 @@ function MacroExtractSection({ onAssetSaved }: { onAssetSaved: () => void }) {
 // ---------------------------------------------------------------------------
 
 function EssenceAssetsSection() {
+  const { t } = useI18n()
   const [assets, setAssets] = useState<EssenceAsset[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -516,36 +529,36 @@ function EssenceAssetsSection() {
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           select
-          label="五维分类"
+          label={t('essence_assets_category_filter')}
           size="small"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
           sx={{ width: 160 }}
         >
-          <MenuItem value="all">全部五维分类</MenuItem>
-          <MenuItem value="outline">骨架大纲</MenuItem>
-          <MenuItem value="hook">开篇钩子</MenuItem>
-          <MenuItem value="character">人设反差</MenuItem>
-          <MenuItem value="trope">爆款桥段</MenuItem>
-          <MenuItem value="style">反AI口语</MenuItem>
+          <MenuItem value="all">{t('essence_cat_all')}</MenuItem>
+          <MenuItem value="outline">{t('essence_cat_outline')}</MenuItem>
+          <MenuItem value="hook">{t('essence_cat_hook')}</MenuItem>
+          <MenuItem value="character">{t('essence_cat_character')}</MenuItem>
+          <MenuItem value="trope">{t('essence_cat_trope')}</MenuItem>
+          <MenuItem value="style">{t('essence_cat_style')}</MenuItem>
         </TextField>
 
         <TextField
           select
-          label="生态平台"
+          label={t('essence_assets_platform_filter')}
           size="small"
           value={selectedPlatform}
           onChange={(e) => setSelectedPlatform(e.target.value)}
           sx={{ width: 160 }}
         >
-          <MenuItem value="all">全平台生态</MenuItem>
+          <MenuItem value="all">{t('essence_assets_all_platforms')}</MenuItem>
           {PLATFORM_OPTIONS.map((p) => (
             <MenuItem key={p.value} value={p.value}>{p.shortLabel || p.label.split(' ')[0]}</MenuItem>
           ))}
         </TextField>
 
         <TextField
-          label="模糊检索 (标题/标签/摘要)"
+          label={t('essence_assets_search_placeholder')}
           size="small"
           value={searchKw}
           onChange={(e) => setSearchKw(e.target.value)}
@@ -553,7 +566,7 @@ function EssenceAssetsSection() {
         />
 
         <Button variant="outlined" onClick={loadAssets}>
-          刷新
+          {t('essence_assets_btn_refresh')}
         </Button>
       </Box>
 
@@ -564,91 +577,94 @@ function EssenceAssetsSection() {
         </Box>
       ) : filtered.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-          暂无符合条件的精读资产。可在「离线精读与解构提炼」页签粘贴正文进行智能分析萃取。
+          {t('essence_assets_empty')}
         </Paper>
       ) : (
         <Grid container spacing={2}>
-          {filtered.map((item) => (
-            <Grid item xs={12} md={6} key={item.id}>
-              <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                      <Chip
-                        size="small"
-                        label={CATEGORY_MAP[item.category]?.label || item.category}
-                        color={CATEGORY_MAP[item.category]?.color || 'default'}
-                      />
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                        {item.title}
-                      </Typography>
+          {filtered.map((item) => {
+            const catInfo = getCategoryInfo(item.category, t)
+            return (
+              <Grid item xs={12} md={6} key={item.id}>
+                <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Chip
+                          size="small"
+                          label={catInfo.label}
+                          color={catInfo.color}
+                        />
+                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                          {item.title}
+                        </Typography>
+                      </Box>
+                      <Rating value={item.rating} size="small" readOnly />
                     </Box>
-                    <Rating value={item.rating} size="small" readOnly />
-                  </Box>
 
-                  <Typography variant="body2" color="text.secondary">
-                    {item.summary || item.content.slice(0, 100) + '...'}
-                  </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.summary || item.content.slice(0, 100) + '...'}
+                    </Typography>
 
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', my: 0.5 }}>
-                    {(item.tags || '').split(',').filter(Boolean).map((tag, idx) => (
-                      <Chip key={idx} label={tag} size="small" variant="outlined" />
-                    ))}
-                    <Chip label={`生态: ${PLATFORM_LABELS[item.platform] || item.platform}`} size="small" variant="outlined" />
-                    <Chip label={`题材: ${GENRE_LABELS[item.genre] || item.genre}`} size="small" variant="outlined" />
-                  </Box>
-
-                  {item.userNote && (
-                    <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
-                      <Typography variant="caption" color="text.secondary">
-                        创作者感悟: {item.userNote}
-                      </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', my: 0.5 }}>
+                      {(item.tags || '').split(',').filter(Boolean).map((tag, idx) => (
+                        <Chip key={idx} label={tag} size="small" variant="outlined" />
+                      ))}
+                      <Chip label={`${t('essence_assets_platform_prefix')}${PLATFORM_LABELS[item.platform] || item.platform}`} size="small" variant="outlined" />
+                      <Chip label={`${t('essence_assets_genre_prefix')}${GENRE_LABELS[item.genre] || item.genre}`} size="small" variant="outlined" />
                     </Box>
-                  )}
-                </CardContent>
 
-                <Divider />
+                    {item.userNote && (
+                      <Box sx={{ bgcolor: 'action.hover', p: 1, borderRadius: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {t('essence_assets_note_prefix')}{item.userNote}
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
 
-                <Box sx={{ p: 1, px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Button
-                    size="small"
-                    color="error"
-                    startIcon={<DeleteOutlineIcon />}
-                    onClick={() => handleDelete(item.id)}
-                  >
-                    删除
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="success"
-                    startIcon={<CheckCircleOutlineIcon />}
-                    onClick={() => {
-                      setAdoptDialog(item)
-                      if (item.category === 'outline') setAdoptTarget('outline')
-                      else if (item.category === 'character' || item.category === 'persona') setAdoptTarget('character')
-                      else setAdoptTarget('note')
-                    }}
-                  >
-                    一键反哺创作
-                  </Button>
-                </Box>
-              </Card>
-            </Grid>
-          ))}
+                  <Divider />
+
+                  <Box sx={{ p: 1, px: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<DeleteOutlineIcon />}
+                      onClick={() => handleDelete(item.id)}
+                    >
+                      {t('essence_assets_btn_delete')}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      startIcon={<CheckCircleOutlineIcon />}
+                      onClick={() => {
+                        setAdoptDialog(item)
+                        if (item.category === 'outline') setAdoptTarget('outline')
+                        else if (item.category === 'character' || item.category === 'persona') setAdoptTarget('character')
+                        else setAdoptTarget('note')
+                      }}
+                    >
+                      {t('essence_assets_btn_adopt')}
+                    </Button>
+                  </Box>
+                </Card>
+              </Grid>
+            )
+          })}
         </Grid>
       )}
 
       {/* 反哺对话框 */}
       <Dialog open={Boolean(adoptDialog)} onClose={() => setAdoptDialog(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>一键反哺至写作工坊</DialogTitle>
+        <DialogTitle>{t('essence_assets_adopt_title')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             将资产「{adoptDialog?.title}」直接注入到你当前的创作项目中，作为大纲节点、人物卡或灵感便签。
           </Typography>
           <TextField
             select
-            label="目标项目"
+            label={t('essence_assets_adopt_target_project')}
             size="small"
             value={adoptProject}
             onChange={(e) => setAdoptProject(e.target.value)}
@@ -660,20 +676,20 @@ function EssenceAssetsSection() {
           </TextField>
           <TextField
             select
-            label="反哺转存形态"
+            label={t('essence_assets_adopt_target_kind')}
             size="small"
             value={adoptTarget}
             onChange={(e) => setAdoptTarget(e.target.value)}
             fullWidth
           >
-            <MenuItem value="outline">转入写作大纲 (writing_outlines)</MenuItem>
-            <MenuItem value="character">转入人物卡片 (writing_characters)</MenuItem>
-            <MenuItem value="note">转入灵感便签 (writing_notes)</MenuItem>
+            <MenuItem value="outline">{t('essence_assets_adopt_kind_outline')}</MenuItem>
+            <MenuItem value="character">{t('essence_assets_adopt_kind_character')}</MenuItem>
+            <MenuItem value="note">{t('essence_assets_adopt_kind_note')}</MenuItem>
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAdoptDialog(null)}>取消</Button>
-          <Button variant="contained" color="primary" onClick={handleAdopt}>确认反哺</Button>
+          <Button onClick={() => setAdoptDialog(null)}>{t('essence_assets_adopt_btn_cancel')}</Button>
+          <Button variant="contained" color="primary" onClick={handleAdopt}>{t('essence_assets_adopt_btn_confirm')}</Button>
         </DialogActions>
       </Dialog>
 
@@ -692,6 +708,7 @@ function EssenceAssetsSection() {
 // ---------------------------------------------------------------------------
 
 function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
+  const { t } = useI18n()
   const [books, setBooks] = useState<EssenceBook[]>([])
   const [projects, setProjects] = useState<string[]>([])
   const [adoptBookDialog, setAdoptBookDialog] = useState<EssenceBook | null>(null)
@@ -796,10 +813,10 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          本地精读档案库：沉淀每部精读长篇的字数、对白率、节奏模型，支持全生命周期管理与结构化提纲导出。
+          {t('essence_books_desc')}
         </Typography>
         <Button variant="outlined" size="small" onClick={loadBooks}>
-          刷新档案
+          {t('essence_books_btn_refresh')}
         </Button>
       </Box>
 
@@ -809,7 +826,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
         </Box>
       ) : books.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-          暂无已精读的书籍档案。请先在「离线精读与解构提炼」页签输入样本进行解析。
+          {t('essence_books_empty')}
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -837,13 +854,13 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
 
                   <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                     <Typography variant="caption" color="text.secondary">
-                      对白占比: {((b.dialogueRatio ?? 0) * 100).toFixed(1)}%
+                      {t('essence_books_dialogue_ratio')}{((b.dialogueRatio ?? 0) * 100).toFixed(1)}%
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      高潮间隔: {b.rhythmClimaxInterval ?? 0} 章/次
+                      {t('essence_books_climax_interval')}{b.rhythmClimaxInterval ?? 0} 章/次
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      AI 味道评分: {b.aiSlopScore ?? 0} / 10
+                      {t('essence_books_ai_slop')}{b.aiSlopScore ?? 0} / 10
                     </Typography>
                   </Box>
 
@@ -856,7 +873,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
                       startIcon={<DownloadIcon fontSize="small" />}
                       onClick={() => handleExportOutline(b)}
                     >
-                      导出大纲
+                      {t('essence_books_btn_export_outline')}
                     </Button>
                     <Button
                       size="small"
@@ -864,7 +881,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
                       startIcon={<DownloadIcon fontSize="small" />}
                       onClick={() => handleExportBeats(b)}
                     >
-                      导出节拍
+                      {t('essence_books_btn_export_beats')}
                     </Button>
                     <Button
                       size="small"
@@ -873,7 +890,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
                       startIcon={<BookmarkAddIcon fontSize="small" />}
                       onClick={() => setAdoptBookDialog(b)}
                     >
-                      整本反哺
+                      {t('essence_books_btn_adopt_book')}
                     </Button>
                   </Box>
                 </CardContent>
@@ -885,7 +902,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
 
       {/* 整本反哺对话框 */}
       <Dialog open={Boolean(adoptBookDialog)} onClose={() => setAdoptBookDialog(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>一键整本反哺到写作工坊</DialogTitle>
+        <DialogTitle>{t('essence_books_adopt_title')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <Typography variant="body2" color="text.secondary">
             将《{adoptBookDialog?.title}》沉淀的全部五维资产（核心大纲、原型人设、爆款桥段、反AI文风）一键注入到目标项目中。
@@ -897,7 +914,7 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
           ) : (
             <TextField
               select
-              label="目标创作项目"
+              label={t('essence_books_adopt_target')}
               size="small"
               value={adoptProject}
               onChange={(e) => setAdoptProject(e.target.value)}
@@ -910,14 +927,14 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAdoptBookDialog(null)}>取消</Button>
+          <Button onClick={() => setAdoptBookDialog(null)}>{t('essence_assets_adopt_btn_cancel')}</Button>
           <Button
             variant="contained"
             color="secondary"
             disabled={adopting || projects.length === 0 || !adoptProject}
             onClick={handleExecuteAdoptBook}
           >
-            {adopting ? '正在注入...' : '确认注入'}
+            {adopting ? t('essence_books_adopt_btn_adopting') : t('essence_books_adopt_btn_confirm')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -936,14 +953,15 @@ function EssenceBooksSection({ onToast }: { onToast?: (msg: string) => void }) {
 // 4. 伏笔暗线图谱 (Foreshadowing Matrix)
 // ---------------------------------------------------------------------------
 
-const CHAIN_STATUS_MAP: Record<string, { label: string; color: 'default' | 'primary' | 'warning' | 'success' }> = {
-  planted: { label: '🌱 已埋下', color: 'default' },
-  developing: { label: '⏳ 推进发酵', color: 'warning' },
-  revealed: { label: '🔍 已显露', color: 'primary' },
-  recycled: { label: '✅ 闭环回收', color: 'success' },
+const CHAIN_STATUS_MAP: Record<string, { key: string; defaultLabel: string; color: 'default' | 'primary' | 'warning' | 'success' }> = {
+  planted: { key: 'essence_chains_status_planted', defaultLabel: '🌱 已埋下', color: 'default' },
+  developing: { key: 'essence_chains_status_developing', defaultLabel: '⏳ 推进发酵', color: 'warning' },
+  revealed: { key: 'essence_chains_status_revealed', defaultLabel: '🔍 已显露', color: 'primary' },
+  recycled: { key: 'essence_chains_status_recycled', defaultLabel: '✅ 闭环回收', color: 'success' },
 }
 
 function EssenceChainsSection() {
+  const { t } = useI18n()
   const [chains, setChains] = useState<EssenceChain[]>([])
   const [books, setBooks] = useState<EssenceBook[]>([])
   const [selectedBook, setSelectedBook] = useState<string>('')
@@ -1044,12 +1062,12 @@ function EssenceChainsSection() {
           <TextField
             select
             size="small"
-            label="筛选书籍档案"
+            label={t('essence_chains_filter_book')}
             value={selectedBook}
             onChange={(e) => setSelectedBook(e.target.value)}
             sx={{ minWidth: 200 }}
           >
-            <MenuItem value="">全部书籍暗线</MenuItem>
+            <MenuItem value="">{t('essence_chains_all_books')}</MenuItem>
             {books.map((b) => (
               <MenuItem key={b.bookId} value={b.bookId}>
                 {b.title}
@@ -1063,7 +1081,7 @@ function EssenceChainsSection() {
 
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button variant="outlined" size="small" onClick={loadData}>
-            刷新
+            {t('essence_chains_btn_refresh')}
           </Button>
           <Button
             variant="contained"
@@ -1071,7 +1089,7 @@ function EssenceChainsSection() {
             startIcon={<AddIcon />}
             onClick={() => setOpenCreate(true)}
           >
-            录入伏笔暗线
+            {t('essence_chains_btn_create')}
           </Button>
         </Box>
       </Box>
@@ -1082,7 +1100,7 @@ function EssenceChainsSection() {
         </Box>
       ) : chains.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', color: 'text.secondary' }}>
-          暂无伏笔暗线数据。点击右上角「录入伏笔暗线」，建立长篇小说的草蛇灰线与回收图谱。
+          {t('essence_chains_empty')}
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -1103,7 +1121,7 @@ function EssenceChainsSection() {
                         <Chip size="small" label={c.category} variant="outlined" />
                         <Chip
                           size="small"
-                          label={statusConfig.label}
+                          label={t(statusConfig.key, statusConfig.defaultLabel)}
                           color={statusConfig.color}
                         />
                       </Box>
@@ -1116,13 +1134,13 @@ function EssenceChainsSection() {
                     <Box sx={{ my: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 1.5 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          🌱 埋设：<b>第 {c.plantChapter} 章</b>
+                          {t('essence_chains_plant_ch')}<b>第 {c.plantChapter} 章</b>
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          🔍 揭晓：<b>第 {c.revealChapter} 章</b>
+                          {t('essence_chains_reveal_ch')}<b>第 {c.revealChapter} 章</b>
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                          💥 高潮回收：<b>第 {c.climaxChapter} 章</b>
+                          {t('essence_chains_climax_ch')}<b>第 {c.climaxChapter} 章</b>
                         </Typography>
                       </Box>
 
@@ -1205,13 +1223,13 @@ function EssenceChainsSection() {
 
       {/* 新建暗线对话框 */}
       <Dialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>录入伏笔暗线图谱</DialogTitle>
+        <DialogTitle>{t('essence_chains_dialog_title')}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
           <TextField
             select
             fullWidth
             size="small"
-            label="所属书籍"
+            label={t('essence_chains_form_book')}
             value={formBookId}
             onChange={(e) => setFormBookId(e.target.value)}
           >
@@ -1226,7 +1244,7 @@ function EssenceChainsSection() {
           <TextField
             fullWidth
             size="small"
-            label="暗线 / 伏笔名称"
+            label={t('essence_chains_form_title')}
             placeholder="例如：男主身世玉佩、九品功法残卷、反派隐藏心腹"
             value={formTitle}
             onChange={(e) => setFormTitle(e.target.value)}
@@ -1236,7 +1254,7 @@ function EssenceChainsSection() {
             select
             fullWidth
             size="small"
-            label="暗线类型"
+            label={t('essence_chains_form_category')}
             value={formCategory}
             onChange={(e) => setFormCategory(e.target.value)}
           >
@@ -1251,7 +1269,7 @@ function EssenceChainsSection() {
             <TextField
               type="number"
               size="small"
-              label="埋下章节 (Plant)"
+              label={t('essence_chains_form_plant')}
               value={formPlant}
               onChange={(e) => setFormPlant(Number(e.target.value))}
               fullWidth
@@ -1259,7 +1277,7 @@ function EssenceChainsSection() {
             <TextField
               type="number"
               size="small"
-              label="显露章节 (Reveal)"
+              label={t('essence_chains_form_reveal')}
               value={formReveal}
               onChange={(e) => setFormReveal(Number(e.target.value))}
               fullWidth
@@ -1267,7 +1285,7 @@ function EssenceChainsSection() {
             <TextField
               type="number"
               size="small"
-              label="高潮章节 (Climax)"
+              label={t('essence_chains_form_climax')}
               value={formClimax}
               onChange={(e) => setFormClimax(Number(e.target.value))}
               fullWidth
@@ -1278,14 +1296,14 @@ function EssenceChainsSection() {
             select
             fullWidth
             size="small"
-            label="当前状态"
+            label={t('essence_chains_form_status')}
             value={formStatus}
             onChange={(e) => setFormStatus(e.target.value as any)}
           >
-            <MenuItem value="planted">🌱 已埋下 (埋点刚出现，读者留有浅印象)</MenuItem>
-            <MenuItem value="developing">⏳ 推进发酵 (多次侧面呼应，悬念升级)</MenuItem>
-            <MenuItem value="revealed">🔍 已显露 (真相浮出水面，即将引爆大冲突)</MenuItem>
-            <MenuItem value="recycled">✅ 闭环回收 (高潮引爆完成，伏笔爽点收束)</MenuItem>
+            <MenuItem value="planted">{t('essence_chains_status_planted')}</MenuItem>
+            <MenuItem value="developing">{t('essence_chains_status_developing')}</MenuItem>
+            <MenuItem value="revealed">{t('essence_chains_status_revealed')}</MenuItem>
+            <MenuItem value="recycled">{t('essence_chains_status_recycled')}</MenuItem>
           </TextField>
 
           <TextField
@@ -1293,16 +1311,16 @@ function EssenceChainsSection() {
             multiline
             rows={3}
             size="small"
-            label="暗线铺设逻辑与爽点释放机制"
+            label={t('essence_chains_form_desc')}
             placeholder="说明此伏笔如何前后呼应，为何能抓住读者注意力，高潮时如何反转或打脸"
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreate(false)}>取消</Button>
+          <Button onClick={() => setOpenCreate(false)}>{t('essence_assets_adopt_btn_cancel')}</Button>
           <Button variant="contained" onClick={handleCreate} disabled={saving}>
-            {saving ? '保存中...' : '录入图谱'}
+            {saving ? '保存中...' : t('essence_chains_btn_create')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1322,6 +1340,7 @@ function EssenceChainsSection() {
 // ---------------------------------------------------------------------------
 
 function ConstitutionCheckSection() {
+  const { t } = useI18n()
   const [text, setText] = useState('')
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState('')
@@ -1387,10 +1406,10 @@ function ConstitutionCheckSection() {
 
       <Box>
         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-          小说宪法正典审查 (Canon Guard)
+          {t('essence_const_title')}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          审查世界观底线（严禁修仙/灵气/系统等超自然穿帮、严禁时代脱节科技词、严禁恶俗网文毒点台词），并可校验角色声线禁语（该角色绝不应说的话）。
+          {t('essence_const_desc')}
         </Typography>
       </Box>
 
@@ -1398,8 +1417,8 @@ function ConstitutionCheckSection() {
         <TextField
           multiline
           rows={7}
-          label="待审查小说正文或章节文本"
-          placeholder="粘贴待审查的段落或完整章节内容..."
+          label={t('essence_const_text_label')}
+          placeholder={t('essence_const_text_placeholder')}
           value={text}
           onChange={(e) => setText(e.target.value)}
           fullWidth
@@ -1407,12 +1426,12 @@ function ConstitutionCheckSection() {
 
         <TextField
           size="small"
-          label="自定义角色声线禁语 (可选，每行一条: 角色名: 禁语1, 禁语2)"
+          label={t('essence_const_voice_label')}
           placeholder="例如: 陆沉: 遵命, 绝望&#10;林清雪: 粗鄙"
           value={charVoiceInput}
           onChange={(e) => setCharVoiceInput(e.target.value)}
           fullWidth
-          helperText="配置特定角色绝不会说的词汇或口癖，防止人设塌房与语调失真"
+          helperText={t('essence_const_voice_helper')}
         />
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1423,7 +1442,7 @@ function ConstitutionCheckSection() {
             onClick={handleCheck}
             disabled={checking}
           >
-            {checking ? '审查中...' : '开始宪法正典审查'}
+            {checking ? t('essence_const_btn_checking') : t('essence_const_btn_check')}
           </Button>
         </Box>
       </Paper>
@@ -1433,12 +1452,12 @@ function ConstitutionCheckSection() {
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Chip
-                label={result.is_compliant ? '✅ 宪法正典合规' : '⚠️ 存在违宪/破格隐患'}
+                label={result.is_compliant ? t('essence_const_chip_compliant') : t('essence_const_chip_violation')}
                 color={result.is_compliant ? 'success' : 'error'}
                 sx={{ fontWeight: 'bold' }}
               />
               <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                合规得分: {result.compliance_score} / 100
+                {t('essence_const_score_label')}{result.compliance_score} / 100
               </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary">
@@ -1451,11 +1470,11 @@ function ConstitutionCheckSection() {
           {/* 违规项列表 */}
           <Box>
             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              世界观与底线偏离列表 ({result.violations.length} 项)
+              {t('essence_const_violations_h')} ({result.violations.length} 项)
             </Typography>
             {result.violations.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                🎉 未发现任何超自然穿帮、时代脱节或毒点台词！
+                {t('essence_const_no_violations')}
               </Typography>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1488,11 +1507,11 @@ function ConstitutionCheckSection() {
           {/* 角色声线冲突列表 */}
           <Box sx={{ mt: 1 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              角色声线禁语冲突 ({result.character_voice_alerts.length} 项)
+              {t('essence_const_voice_h')} ({result.character_voice_alerts.length} 项)
             </Typography>
             {result.character_voice_alerts.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                ✨ 未检测到任何角色人设禁语冲突。
+                {t('essence_const_no_voice_alerts')}
               </Typography>
             ) : (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
