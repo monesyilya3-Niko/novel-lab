@@ -10,10 +10,12 @@ import ChapterList from './ChapterList'
 import ProgressPanel from './ProgressPanel'
 import AnalysisResultView from './AnalysisResultView'
 import AnalysisControlBar from './AnalysisControlBar'
+import { useI18n } from '../state/I18nContext'
 
 type SubTab = 'import' | 'progress' | 'result'
 
 export default function AnalysisView() {
+  const { t } = useI18n()
   const [subTab, setSubTab] = useState<SubTab>('import')
 
   return (
@@ -52,12 +54,12 @@ export default function AnalysisView() {
           }}
         >
           <Tabs value={subTab} onChange={(_e, v) => setSubTab(v as SubTab)} sx={{ minHeight: 40 }}>
-            <Tab value="import" label="导入" sx={{ minHeight: 40 }} />
-            <Tab value="progress" label="进度" sx={{ minHeight: 40 }} />
-            <Tab value="result" label="结果" sx={{ minHeight: 40 }} />
+            <Tab value="import" label={t('analysis_tab_import')} sx={{ minHeight: 40 }} />
+            <Tab value="progress" label={t('analysis_tab_progress')} sx={{ minHeight: 40 }} />
+            <Tab value="result" label={t('analysis_tab_result')} sx={{ minHeight: 40 }} />
           </Tabs>
           <Box sx={{ flex: 1 }} />
-          <ContextHelpButton guideKey="analysis" title="查看拆书指南" />
+          <ContextHelpButton guideKey="analysis" title={t('analysis_help_title')} />
           {/* 一键分析：直接在当前工作台内触发，完成后切到结果页（由 SSE done 自动刷新） */}
           <AnalysisControlBar onGoResult={() => setSubTab('result')} />
         </Box>

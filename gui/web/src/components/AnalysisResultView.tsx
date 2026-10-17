@@ -22,10 +22,12 @@ const RadarChart = lazy(() => import('./charts/RadarChart'))
 import MarkdownReport from './MarkdownReport'
 import { chartSeries, palette } from '../theme'
 import { useThemeMode } from '../state/ThemeModeContext'
+import { useI18n } from '../state/I18nContext'
 import { friendlyError } from '../api/client'
 
 // 资产卡展示（字段级键值对，避免裸 JSON 堆叠）。
 function AssetCard({ title, data, color }: { title: string; data: Record<string, unknown>; color: string }) {
+  const { t } = useI18n()
   const entries = useMemo(() => {
     if (!data) return []
     return Object.entries(data)
@@ -44,7 +46,7 @@ function AssetCard({ title, data, color }: { title: string; data: Record<string,
         </Box>
         {entries.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            暂无数据
+            {t('analysis_card_empty')}
           </Typography>
         ) : (
           <Box component="dl" sx={{ m: 0 }}>
@@ -80,6 +82,7 @@ function AssetCard({ title, data, color }: { title: string; data: Record<string,
 
 // 单个报告：加载后以 Markdown 渲染。
 function ReportSection({ reportId }: { reportId: string }) {
+  const { t } = useI18n()
   const [report, setReport] = useState<{ id: string; name: string; markdown: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -100,7 +103,7 @@ function ReportSection({ reportId }: { reportId: string }) {
 
   if (error) {
     return (
-      <AlertBox severity="error">报告加载失败：{error}</AlertBox>
+      <AlertBox severity="error">{t('analysis_report_load_error')}：{error}</AlertBox>
     )
   }
   if (!report) {
@@ -134,6 +137,7 @@ function AlertBox({ severity, children }: { severity: 'error' | 'info' | 'warnin
 type ResultTab = 'overview' | 'scores' | 'reports'
 
 export default function AnalysisResultView() {
+  const { t } = useI18n()
   const { isDark } = useThemeMode()
   const series = chartSeries(isDark)
   const { book, bookResults, loadBookResults } = useApp()
@@ -167,33 +171,33 @@ export default function AnalysisResultView() {
   }, [bookId, loadBookResults])
 
   const scoreCategories = useMemo(
-    () => bookResults?.chapterScores.map((s) => s.title || `第${s.chapterIndex}章`) ?? [],
-    [bookResults],
+    () => bookResults?.chapterScores.map((s) => s.title || `${t('analysis_chap_prefix')}${s.chapterIndex}${t('analysis_chap_suffix')}`) ?? [],
+    [bookResults, t],
   )
 
   const barSeries = useMemo(
     () => [
       {
-        name: '一致性',
+        name: t('analysis_chart_consistency'),
         data: bookResults?.chapterScores.map((s) => s.consistency) ?? [],
         color: palette.consistency,
       },
       {
-        name: '质量',
+        name: t('analysis_chart_quality'),
         data: bookResults?.chapterScores.map((s) => s.quality) ?? [],
         color: palette.quality,
       },
     ],
-    [bookResults],
+    [bookResults, t],
   )
 
   // 雷达图：取各章节均分为一个综合能力面。
   const radarIndicators = useMemo(
     () => [
-      { name: '一致性', max: 100 },
-      { name: '质量', max: 100 },
+      { name: t('analysis_chart_consistency'), max: 100 },
+      { name: t('analysis_chart_quality'), max: 100 },
     ],
-    [],
+    [t],
   )
 
   const radarSeries = useMemo(() => {
@@ -201,13 +205,13 @@ export default function AnalysisResultView() {
     const n = bookResults.chapterScores.length
     const avgConsistency = bookResults.chapterScores.reduce((a, s) => a + s.consistency, 0) / n
     const avgQuality = bookResults.chapterScores.reduce((a, s) => a + s.quality, 0) / n
-    return [{ name: '综合均分', value: [Number(avgConsistency.toFixed(1)), Number(avgQuality.toFixed(1))] }]
-  }, [bookResults])
+    return [{ name: t('analysis_chart_avg'), value: [Number(avgConsistency.toFixed(1)), Number(avgQuality.toFixed(1))] }]
+  }, [bookResults, t])
 
   if (!bookId) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="text.secondary">请先在首页/控制栏导入并拆书，完成后在此查看结果</Typography>
+        <Typography color="text.secondary">{t('analysis_no_book_hint')}</Typography>
       </Box>
     )
   }
@@ -215,9 +219,9 @@ export default function AnalysisResultView() {
   if (error) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography color="error" sx={{ mb: 2 }}>加载失败：{error}</Typography>
+        <Typography color="error" sx={{ mb: 2 }}>{t('analysis_load_failed')}：{error}</Typography>
         <Button variant="outlined" onClick={() => { setError(''); setLoading(true); loadBookResults(bookId).catch((e) => setError(friendlyError(e))).finally(() => setLoading(false)) }}>
-          重试
+          {t('analysis_retry')}
         </Button>
       </Box>
     )
@@ -235,9 +239,9 @@ export default function AnalysisResultView() {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
         <Typography variant="h6" sx={{ mb: 1 }}>
-          {bookResults?.title ?? book?.title ?? '当前书籍'}
+          {bookResults?.title ?? book?.title ?? t('analysis_current_book')}
         </Typography>
-        <Typography color="text.secondary">尚未生成拆书结果，请先运行「一键分析」</Typography>
+        <Typography color="text.secondary">{t('analysis_not_generated')}</Typography>
       </Box>
     )
   }
@@ -248,28 +252,28 @@ export default function AnalysisResultView() {
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           {bookResults.title}
         </Typography>
-        <Chip label="拆书结果" size="small" color="success" sx={{ ml: 1.5 }} />
+        <Chip label={t('analysis_result_chip')} size="small" color="success" sx={{ ml: 1.5 }} />
       </Box>
 
       <Tabs value={tab} onChange={(_e, v) => setTab(v as ResultTab)} sx={{ mb: 2 }}>
-        <Tab value="overview" label="资产卡" />
-        <Tab value="scores" label="章节打分" />
-        <Tab value="reports" label="报告" />
+        <Tab value="overview" label={t('analysis_res_tab_overview')} />
+        <Tab value="scores" label={t('analysis_res_tab_scores')} />
+        <Tab value="reports" label={t('analysis_res_tab_reports')} />
       </Tabs>
 
       {tab === 'overview' && (
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
-            <AssetCard title="声线卡" data={bookResults.voiceCard} color={series[0]} />
+            <AssetCard title={t('analysis_card_voice')} data={bookResults.voiceCard} color={series[0]} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <AssetCard title="结构观测" data={bookResults.structure} color={series[1]} />
+            <AssetCard title={t('analysis_card_structure')} data={bookResults.structure} color={series[1]} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <AssetCard title="商业观测" data={bookResults.commercial} color={series[2]} />
+            <AssetCard title={t('analysis_card_commercial')} data={bookResults.commercial} color={series[2]} />
           </Grid>
           <Grid item xs={12} md={6}>
-            <AssetCard title="笔法卡" data={bookResults.craftCard} color={series[3]} />
+            <AssetCard title={t('analysis_card_craft')} data={bookResults.craftCard} color={series[3]} />
           </Grid>
         </Grid>
       )}
@@ -278,7 +282,7 @@ export default function AnalysisResultView() {
         <Grid container spacing={2}>
           {bookResults.chapterScores.length === 0 ? (
             <Grid item xs={12}>
-              <AlertBox severity="info">暂无章节打分数据</AlertBox>
+              <AlertBox severity="info">{t('analysis_score_empty')}</AlertBox>
             </Grid>
           ) : (
             <>
@@ -286,7 +290,7 @@ export default function AnalysisResultView() {
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                      章节打分对比
+                      {t('analysis_score_bar_title')}
                     </Typography>
                     <Suspense fallback={<ChartSkeleton height={320} />}>
                       <BarChart categories={scoreCategories} series={barSeries} height={320} />
@@ -298,7 +302,7 @@ export default function AnalysisResultView() {
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                      综合能力雷达
+                      {t('analysis_score_radar_title')}
                     </Typography>
                     <Suspense fallback={<ChartSkeleton height={320} />}>
                       <RadarChart indicators={radarIndicators} series={radarSeries} height={320} />
@@ -314,12 +318,12 @@ export default function AnalysisResultView() {
       {tab === 'reports' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {bookResults.reportIds.length === 0 ? (
-            <AlertBox severity="info">暂无报告</AlertBox>
+            <AlertBox severity="info">{t('analysis_reports_empty')}</AlertBox>
           ) : (
             bookResults.reportIds.map((rid) => (
               <Accordion key={rid} defaultExpanded={bookResults.reportIds.length === 1}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle2">报告 · {rid}</Typography>
+                  <Typography variant="subtitle2">{t('analysis_report_item')} · {rid}</Typography>
                 </AccordionSummary>
                 <AccordionDetails>
                   <ReportSection reportId={rid} />

@@ -11,14 +11,15 @@ import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import { useApp } from '../state/AppContext'
 import { getGenres } from '../api/client'
+import { useI18n } from '../state/I18nContext'
 import type { TaskStatus } from '../types'
 
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  idle: '空闲',
-  running: '运行中',
-  paused: '已暂停',
-  done: '已完成',
-  error: '出错',
+const STATUS_KEYS: Record<TaskStatus, string> = {
+  idle: 'analysis_status_idle',
+  running: 'analysis_status_running',
+  paused: 'analysis_status_paused',
+  done: 'analysis_status_done',
+  error: 'analysis_status_error',
 }
 
 const STATUS_COLOR: Record<TaskStatus, 'default' | 'primary' | 'success' | 'error' | 'warning'> = {
@@ -35,11 +36,13 @@ export interface AnalysisControlBarProps {
 }
 
 export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarProps) {
+  const { t } = useI18n()
   const { book, status, runFullAnalysis } = useApp()
   const [genres, setGenres] = useState<string[]>([])
   const [genre, setGenre] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [errorKey, setErrorKey] = useState<string | null>(null)
+  const [rawError, setRawError] = useState<string | null>(null)
 
   // P0-4：题材列表来自后端注册表（与后端校验同源），必填，无"未知"默认值。
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarPro
         // P0-4：不自动选中，用户必须显式选择题材（必填）
       })
       .catch(() => {
-        if (!cancelled) setError('题材列表加载失败，请刷新重试')
+        if (!cancelled) setErrorKey('analysis_err_load_genres')
       })
     return () => {
       cancelled = true
@@ -63,44 +66,47 @@ export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarPro
 
   const doRun = async () => {
     if (!genre) {
-      setError('请选择题材')
+      setErrorKey('analysis_err_select_genre')
       return
     }
     setBusy(true)
-    setError(null)
+    setErrorKey(null)
+    setRawError(null)
     try {
       await runFullAnalysis(genre)
       onGoResult()
     } catch (e) {
-      setError((e as Error).message)
+      setRawError((e as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
+  const errorMessage = errorKey ? t(errorKey) : rawError
+
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', py: 0.5 }}>
       {status && (
-        <Chip size="small" label={STATUS_LABEL[taskStatus]} color={STATUS_COLOR[taskStatus]} />
+        <Chip size="small" label={t(STATUS_KEYS[taskStatus] ?? 'analysis_status_idle')} color={STATUS_COLOR[taskStatus]} />
       )}
       {status && (status.done > 0 || status.total > 0) && (
         <Typography variant="caption" color="text.secondary">
-          {status.done}/{status.total} 批
+          {status.done}/{status.total} {t('analysis_batches_unit')}
         </Typography>
       )}
 
       {!book ? (
         <Typography variant="caption" color="text.secondary">
-          请先导入书籍
+          {t('analysis_need_book')}
         </Typography>
       ) : (
         <>
           <FormControl size="small" sx={{ minWidth: 150 }} required>
-            <InputLabel id="genre-select-label">题材 *</InputLabel>
+            <InputLabel id="genre-select-label">{t('analysis_genre_label')}</InputLabel>
             <Select
               labelId="genre-select-label"
               value={genre}
-              label="题材 *"
+              label={t('analysis_genre_label')}
               onChange={(e) => setGenre(e.target.value)}
               sx={{ fontSize: 13 }}
             >
@@ -118,14 +124,14 @@ export default function AnalysisControlBar({ onGoResult }: AnalysisControlBarPro
             onClick={doRun}
             startIcon={busy ? <CircularProgress size={14} color="inherit" /> : undefined}
           >
-            {isRunning ? '分析中…' : '一键分析'}
+            {isRunning ? t('analysis_btn_running') : t('analysis_btn_start')}
           </Button>
         </>
       )}
 
-      {error && (
+      {errorMessage && (
         <Typography variant="caption" color="error.main">
-          {error}
+          {errorMessage}
         </Typography>
       )}
     </Box>

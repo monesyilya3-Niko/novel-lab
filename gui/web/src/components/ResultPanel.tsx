@@ -14,18 +14,20 @@ import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import { useApp } from '../state/AppContext'
+import { useI18n } from '../state/I18nContext'
 import * as api from '../api/client'
 
 const PASS_ORDER = ['pass1_structure', 'pass2_character', 'pass3_style', 'pass4_commercial'] as const
 
-const PASS_LABEL: Record<string, string> = {
-  pass1_structure: '结构拆解',
-  pass2_character: '人物弧光',
-  pass3_style: '文风指纹',
-  pass4_commercial: '商业评估',
+const PASS_KEYS: Record<string, string> = {
+  pass1_structure: 'analysis_pass_structure',
+  pass2_character: 'analysis_pass_character',
+  pass3_style: 'analysis_pass_style',
+  pass4_commercial: 'analysis_pass_commercial',
 }
 
 export default function ResultPanel() {
+  const { t, locale } = useI18n()
   const { book, selectedChapter, currentChapter, batchStates } = useApp()
   const [batchIndex, setBatchIndex] = useState(0)
   const [passName, setPassName] = useState<string>('pass1_structure')
@@ -83,7 +85,7 @@ export default function ResultPanel() {
   if (!book || chapterIndex == null) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography color="text.secondary">请先选择章节查看分析结果</Typography>
+        <Typography color="text.secondary">{t('analysis_detail_need_select')}</Typography>
       </Box>
     )
   }
@@ -91,23 +93,26 @@ export default function ResultPanel() {
   return (
     <Box sx={{ p: 3, height: '100%', overflow: 'auto' }}>
       <Typography variant="h6" gutterBottom>
-        分析结果 · 第{chapterIndex}章
+        {t('analysis_detail_title')} · {t('analysis_chap_prefix')}{chapterIndex}{t('analysis_chap_suffix')}
       </Typography>
 
       {/* 选择器 */}
       <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <FormControl size="small" sx={{ minWidth: 140 }}>
-          <InputLabel>批次</InputLabel>
+          <InputLabel>{t('analysis_detail_batch_label')}</InputLabel>
           <Select
             value={batchIndex}
-            label="批次"
+            label={t('analysis_detail_batch_label')}
             onChange={(e) => setBatchIndex(Number(e.target.value))}
           >
             {batchOptions.map((bi) => {
               const st = batchStates[`c${chapterIndex}-b${bi}`]?.status
+              const label = locale === 'en-US'
+                ? `Batch ${bi} ${st ? `· ${st}` : ''}`
+                : `第 ${bi} 批 ${st ? `· ${st}` : ''}`
               return (
                 <MenuItem key={bi} value={bi}>
-                  第 {bi} 批 {st ? `· ${st}` : ''}
+                  {label}
                 </MenuItem>
               )
             })}
@@ -122,7 +127,7 @@ export default function ResultPanel() {
           sx={{ minHeight: 40 }}
         >
           {PASS_ORDER.map((p) => (
-            <Tab key={p} value={p} label={PASS_LABEL[p]} sx={{ minHeight: 40 }} />
+            <Tab key={p} value={p} label={t(PASS_KEYS[p])} sx={{ minHeight: 40 }} />
           ))}
         </Tabs>
 
@@ -132,7 +137,7 @@ export default function ResultPanel() {
           onClick={() => { if (chapterIndex != null) load(chapterIndex, batchIndex, passName) }}
           disabled={loading}
         >
-          刷新
+          {t('analysis_detail_refresh')}
         </Button>
       </Box>
 
@@ -163,7 +168,7 @@ export default function ResultPanel() {
       ) : (
         <Box sx={{ p: 3, textAlign: 'center' }}>
           <Typography color="text.secondary">
-            该批次尚未生成此 pass 的结果（请先运行分析）
+            {t('analysis_detail_not_generated')}
           </Typography>
         </Box>
       )}

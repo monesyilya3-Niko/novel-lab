@@ -49,4 +49,33 @@ describe('AnalysisControlBar 题材必填', () => {
       expect(screen.getByText(/题材列表加载失败/)).toBeInTheDocument()
     })
   })
+
+  it('在 en-US 语言环境下正确渲染英文标签与按钮', async () => {
+    const { I18nProvider } = await import('../state/I18nContext')
+    render(
+      <I18nProvider initialLocale="en-US">
+        <AnalysisControlBar onGoResult={() => {}} />
+      </I18nProvider>,
+    )
+    await waitFor(() => {
+      expect(mockGetGenres).toHaveBeenCalled()
+    })
+    expect(screen.getByLabelText(/Genre/i)).toBeInTheDocument()
+    const btn = screen.getByRole('button', { name: /One-Click Analysis/i })
+    expect(btn).toBeDisabled()
+  })
+
+  it('在 en-US 语言环境下题材加载失败显示英文错误', async () => {
+    const { I18nProvider } = await import('../state/I18nContext')
+    mockGetGenres.mockRejectedValueOnce(new Error('Network error'))
+    render(
+      <I18nProvider initialLocale="en-US">
+        <AnalysisControlBar onGoResult={() => {}} />
+      </I18nProvider>,
+    )
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to load genres/i)).toBeInTheDocument()
+    })
+  })
 })
+

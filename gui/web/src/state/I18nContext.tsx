@@ -26,8 +26,14 @@ function readStoredLocale(): Locale {
   return v === 'en-US' || v === 'zh-CN' ? v : 'zh-CN'
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(readStoredLocale)
+export function I18nProvider({
+  children,
+  initialLocale,
+}: {
+  children: ReactNode
+  initialLocale?: Locale
+}) {
+  const [locale, setLocaleState] = useState<Locale>(() => initialLocale ?? readStoredLocale())
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l)

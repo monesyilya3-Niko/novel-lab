@@ -60,6 +60,12 @@ export function ThemeModeProvider({ children }: { children: ReactNode }) {
 
 export function useThemeMode(): ThemeModeState {
   const ctx = useContext(ThemeModeContext)
-  if (!ctx) throw new Error('useThemeMode 必须在 ThemeModeProvider 内使用')
+  if (!ctx) {
+    return {
+      mode: 'system',
+      setMode: () => {},
+      isDark: false,
+    }
+  }
   return ctx
 }

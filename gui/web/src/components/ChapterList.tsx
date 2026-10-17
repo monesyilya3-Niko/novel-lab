@@ -7,8 +7,10 @@ import Box from '@mui/material/Box'
 import Chip from '@mui/material/Chip'
 import Typography from '@mui/material/Typography'
 import { useApp } from '../state/AppContext'
+import { useI18n } from '../state/I18nContext'
 
 export default function ChapterList() {
+  const { t } = useI18n()
   const { book, selectedChapter, selectChapter, batchStates } = useApp()
 
   const chapterStatus = useCallback(
@@ -23,20 +25,20 @@ export default function ChapterList() {
         else if (st === 'running') running++
       }
       if (failed > 0 && success + failed === batchCount && running === 0) {
-        return { label: '失败', color: 'red' }
+        return { label: t('analysis_chap_status_failed'), color: 'red' }
       }
-      if (success === batchCount && batchCount > 0) return { label: '完成', color: 'green' }
-      if (success > 0 || running > 0) return { label: '部分', color: 'orange' }
-      return { label: '待处理', color: 'gray' }
+      if (success === batchCount && batchCount > 0) return { label: t('analysis_chap_status_done'), color: 'green' }
+      if (success > 0 || running > 0) return { label: t('analysis_chap_status_partial'), color: 'orange' }
+      return { label: t('analysis_chap_status_pending'), color: 'gray' }
     },
-    [batchStates],
+    [batchStates, t],
   )
 
   if (!book) {
     return (
       <Box sx={{ p: 2 }}>
         <Typography variant="caption" color="text.secondary">
-          尚未导入书籍
+          {t('analysis_chap_not_imported')}
         </Typography>
       </Box>
     )
@@ -56,7 +58,7 @@ export default function ChapterList() {
             <ListItemText
               primary={
                 <Typography variant="body2" noWrap>
-                  第{ch.index}章 {ch.title.replace(/^第[一二三四五六七八九十百千零0-9]+[章回节卷]\s*/, '')}
+                  {t('analysis_chap_prefix')}{ch.index}{t('analysis_chap_suffix')} {ch.title.replace(/^第[一二三四五六七八九十百千零0-9]+[章回节卷]\s*/, '')}
                 </Typography>
               }
               secondary={
@@ -72,7 +74,7 @@ export default function ChapterList() {
                     }}
                   />
                   <Typography variant="caption" color="text.secondary">
-                    {ch.batchCount} 批
+                    {ch.batchCount} {t('analysis_batches_unit')}
                   </Typography>
                 </Box>
               }

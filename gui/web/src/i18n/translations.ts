@@ -2120,5 +2120,299 @@ export const TRANSLATIONS: Record<string, Record<Locale, string>> = {
     'zh-CN': '最近动态',
     'en-US': 'Recent Activity',
   },
+
+  // 拆书分析工坊 (Analysis View / Story Deconstruction)
+  analysis_tab_import: {
+    'zh-CN': '导入',
+    'en-US': 'Import',
+  },
+  context_help_default: {
+    'zh-CN': '查看此功能的使用指南',
+    'en-US': 'View guide for this feature',
+  },
+  analysis_tab_progress: {
+    'zh-CN': '进度',
+    'en-US': 'Progress',
+  },
+  analysis_tab_result: {
+    'zh-CN': '结果',
+    'en-US': 'Results',
+  },
+  analysis_help_title: {
+    'zh-CN': '查看拆书指南',
+    'en-US': 'View Deconstruction Guide',
+  },
+  analysis_status_idle: {
+    'zh-CN': '空闲',
+    'en-US': 'Idle',
+  },
+  analysis_status_running: {
+    'zh-CN': '运行中',
+    'en-US': 'Running',
+  },
+  analysis_status_paused: {
+    'zh-CN': '已暂停',
+    'en-US': 'Paused',
+  },
+  analysis_status_done: {
+    'zh-CN': '已完成',
+    'en-US': 'Completed',
+  },
+  analysis_status_error: {
+    'zh-CN': '出错',
+    'en-US': 'Error',
+  },
+  analysis_batches_unit: {
+    'zh-CN': '批',
+    'en-US': 'batches',
+  },
+  analysis_need_book: {
+    'zh-CN': '请先导入书籍',
+    'en-US': 'Please import a book first',
+  },
+  analysis_genre_label: {
+    'zh-CN': '题材 *',
+    'en-US': 'Genre *',
+  },
+  analysis_err_load_genres: {
+    'zh-CN': '题材列表加载失败，请刷新重试',
+    'en-US': 'Failed to load genres, please refresh',
+  },
+  analysis_err_select_genre: {
+    'zh-CN': '请选择题材',
+    'en-US': 'Please select a genre',
+  },
+  analysis_btn_running: {
+    'zh-CN': '分析中…',
+    'en-US': 'Analyzing...',
+  },
+  analysis_btn_start: {
+    'zh-CN': '一键分析',
+    'en-US': 'One-Click Analysis',
+  },
+  analysis_card_empty: {
+    'zh-CN': '暂无数据',
+    'en-US': 'No data available',
+  },
+  analysis_report_load_error: {
+    'zh-CN': '报告加载失败',
+    'en-US': 'Failed to load report',
+  },
+  analysis_res_tab_overview: {
+    'zh-CN': '资产卡',
+    'en-US': 'Asset Cards',
+  },
+  analysis_res_tab_scores: {
+    'zh-CN': '章节打分',
+    'en-US': 'Chapter Scores',
+  },
+  analysis_res_tab_reports: {
+    'zh-CN': '报告',
+    'en-US': 'Reports',
+  },
+  analysis_card_voice: {
+    'zh-CN': '声线卡',
+    'en-US': 'Voice Card',
+  },
+  analysis_card_structure: {
+    'zh-CN': '结构观测',
+    'en-US': 'Structure Observation',
+  },
+  analysis_card_commercial: {
+    'zh-CN': '商业观测',
+    'en-US': 'Commercial Observation',
+  },
+  analysis_card_craft: {
+    'zh-CN': '笔法卡',
+    'en-US': 'Craft Card',
+  },
+  analysis_chart_consistency: {
+    'zh-CN': '一致性',
+    'en-US': 'Consistency',
+  },
+  analysis_chart_quality: {
+    'zh-CN': '质量',
+    'en-US': 'Quality',
+  },
+  analysis_chart_avg: {
+    'zh-CN': '综合均分',
+    'en-US': 'Overall Average',
+  },
+  analysis_score_bar_title: {
+    'zh-CN': '章节打分对比',
+    'en-US': 'Chapter Score Comparison',
+  },
+  analysis_score_radar_title: {
+    'zh-CN': '综合能力雷达',
+    'en-US': 'Comprehensive Ability Radar',
+  },
+  analysis_score_empty: {
+    'zh-CN': '暂无章节打分数据',
+    'en-US': 'No chapter score data',
+  },
+  analysis_no_book_hint: {
+    'zh-CN': '请先在首页/控制栏导入并拆书，完成后在此查看结果',
+    'en-US': 'Please import and analyze a book first to view results here',
+  },
+  analysis_load_failed: {
+    'zh-CN': '加载失败',
+    'en-US': 'Failed to load',
+  },
+  analysis_retry: {
+    'zh-CN': '重试',
+    'en-US': 'Retry',
+  },
+  analysis_current_book: {
+    'zh-CN': '当前书籍',
+    'en-US': 'Current Book',
+  },
+  analysis_not_generated: {
+    'zh-CN': '尚未生成拆书结果，请先运行「一键分析」',
+    'en-US': 'No analysis results generated yet. Please run "One-Click Analysis" first',
+  },
+  analysis_result_chip: {
+    'zh-CN': '拆书结果',
+    'en-US': 'Analysis Result',
+  },
+  analysis_reports_empty: {
+    'zh-CN': '暂无报告',
+    'en-US': 'No reports available',
+  },
+  analysis_report_item: {
+    'zh-CN': '报告',
+    'en-US': 'Report',
+  },
+  analysis_import_only_txt: {
+    'zh-CN': '仅支持 .txt 文件导入',
+    'en-US': 'Only .txt files are supported',
+  },
+  analysis_import_title: {
+    'zh-CN': '导入 .txt 书籍',
+    'en-US': 'Import .txt Book',
+  },
+  analysis_import_drag_hint: {
+    'zh-CN': '拖拽到此处，或点击选择文件',
+    'en-US': 'Drag & drop here, or click to choose file',
+  },
+  analysis_import_btn_pick: {
+    'zh-CN': '选择文件',
+    'en-US': 'Choose File',
+  },
+  analysis_import_success_prefix: {
+    'zh-CN': '已导入《',
+    'en-US': 'Imported "',
+  },
+  analysis_import_success_middle: {
+    'zh-CN': '》 · ',
+    'en-US': '" · ',
+  },
+  analysis_import_success_suffix: {
+    'zh-CN': ' 章',
+    'en-US': ' chapters',
+  },
+  analysis_sample_title: {
+    'zh-CN': '内置示例语料',
+    'en-US': 'Built-in Sample Corpus',
+  },
+  analysis_sample_subtitle: {
+    'zh-CN': '（新手试手，一键导入）',
+    'en-US': '(Beginner trial, one-click import)',
+  },
+  analysis_sample_help_title: {
+    'zh-CN': '查看导入与拆书指南',
+    'en-US': 'View Import & Deconstruction Guide',
+  },
+  analysis_prog_title: {
+    'zh-CN': '分析进度',
+    'en-US': 'Analysis Progress',
+  },
+  analysis_prog_status_current: {
+    'zh-CN': '当前状态',
+    'en-US': 'Current Status',
+  },
+  analysis_prog_checkpoint: {
+    'zh-CN': '断点',
+    'en-US': 'Checkpoint',
+  },
+  analysis_status_pending: {
+    'zh-CN': '等待',
+    'en-US': 'Pending',
+  },
+  analysis_status_success: {
+    'zh-CN': '成功',
+    'en-US': 'Success',
+  },
+  analysis_status_failed: {
+    'zh-CN': '失败',
+    'en-US': 'Failed',
+  },
+  analysis_status_skipped: {
+    'zh-CN': '跳过',
+    'en-US': 'Skipped',
+  },
+  analysis_chap_not_imported: {
+    'zh-CN': '尚未导入书籍',
+    'en-US': 'No book imported yet',
+  },
+  analysis_chap_prefix: {
+    'zh-CN': '第',
+    'en-US': 'Ch.',
+  },
+  analysis_chap_suffix: {
+    'zh-CN': '章',
+    'en-US': '',
+  },
+  analysis_chap_status_failed: {
+    'zh-CN': '失败',
+    'en-US': 'Failed',
+  },
+  analysis_chap_status_done: {
+    'zh-CN': '完成',
+    'en-US': 'Done',
+  },
+  analysis_chap_status_partial: {
+    'zh-CN': '部分',
+    'en-US': 'Partial',
+  },
+  analysis_chap_status_pending: {
+    'zh-CN': '待处理',
+    'en-US': 'Pending',
+  },
+  analysis_detail_title: {
+    'zh-CN': '分析结果',
+    'en-US': 'Analysis Result',
+  },
+  analysis_detail_need_select: {
+    'zh-CN': '请先选择章节查看分析结果',
+    'en-US': 'Please select a chapter to view analysis results',
+  },
+  analysis_detail_batch_label: {
+    'zh-CN': '批次',
+    'en-US': 'Batch',
+  },
+  analysis_detail_refresh: {
+    'zh-CN': '刷新',
+    'en-US': 'Refresh',
+  },
+  analysis_detail_not_generated: {
+    'zh-CN': '该批次尚未生成此 pass 的结果（请先运行分析）',
+    'en-US': 'No pass results generated for this batch yet (please run analysis first)',
+  },
+  analysis_pass_structure: {
+    'zh-CN': '结构拆解',
+    'en-US': 'Structure Pass',
+  },
+  analysis_pass_character: {
+    'zh-CN': '人物弧光',
+    'en-US': 'Character Pass',
+  },
+  analysis_pass_style: {
+    'zh-CN': '文风指纹',
+    'en-US': 'Style Pass',
+  },
+  analysis_pass_commercial: {
+    'zh-CN': '商业评估',
+    'en-US': 'Commercial Pass',
+  },
 }
 

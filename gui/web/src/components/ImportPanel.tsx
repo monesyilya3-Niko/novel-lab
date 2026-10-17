@@ -10,12 +10,14 @@ import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import { useApp } from '../state/AppContext'
 import { listSamples, type SampleInfo } from '../api/client'
+import { useI18n } from '../state/I18nContext'
 
 interface Props {
   compact?: boolean
 }
 
 export default function ImportPanel({ compact }: Props) {
+  const { t } = useI18n()
   const { uploadBook, book } = useApp()
   const [dragging, setDragging] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -25,7 +27,7 @@ export default function ImportPanel({ compact }: Props) {
   const doUpload = useCallback(
     async (file: File) => {
       if (!file.name.toLowerCase().endsWith('.txt')) {
-        setError('仅支持 .txt 文件导入')
+        setError(t('analysis_import_only_txt'))
         return
       }
       setLoading(true)
@@ -38,7 +40,7 @@ export default function ImportPanel({ compact }: Props) {
         setLoading(false)
       }
     },
-    [uploadBook],
+    [uploadBook, t],
   )
 
   const onDrop = useCallback(
@@ -97,10 +99,10 @@ export default function ImportPanel({ compact }: Props) {
         ) : (
           <>
             <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              导入 .txt 书籍
+              {t('analysis_import_title')}
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-              拖拽到此处，或点击选择文件
+              {t('analysis_import_drag_hint')}
             </Typography>
           </>
         )}
@@ -108,7 +110,7 @@ export default function ImportPanel({ compact }: Props) {
       {!compact && (
         <Box sx={{ mt: 2 }}>
           <Button variant="contained" onClick={onPick} disabled={loading} fullWidth>
-            选择文件
+            {t('analysis_import_btn_pick')}
           </Button>
         </Box>
       )}
@@ -119,7 +121,7 @@ export default function ImportPanel({ compact }: Props) {
       )}
       {book && (
         <Alert severity="success" sx={{ mt: 1.5 }}>
-          已导入《{book.title}》 · {book.totalChapters} 章
+          {t('analysis_import_success_prefix')}{book.title}{t('analysis_import_success_middle')}{book.totalChapters}{t('analysis_import_success_suffix')}
         </Alert>
       )}
       {/* 内置示例语料：一键导入试手 */}
@@ -130,6 +132,7 @@ export default function ImportPanel({ compact }: Props) {
 
 /** 内置示例语料列表（一键导入）。 */
 function SampleList({ onImported }: { onImported: () => void }) {
+  const { t, locale } = useI18n()
   const { importSampleBook } = useApp()
   const [samples, setSamples] = useState<SampleInfo[] | null>(null)
   const [importing, setImporting] = useState<string | null>(null)
@@ -164,15 +167,15 @@ function SampleList({ onImported }: { onImported: () => void }) {
       <Divider sx={{ mb: 2 }} />
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600, flex: 1 }}>
-          📦 内置示例语料 <Typography component="span" variant="caption" color="text.secondary">（新手试手，一键导入）</Typography>
+          📦 {t('analysis_sample_title')} <Typography component="span" variant="caption" color="text.secondary">{t('analysis_sample_subtitle')}</Typography>
         </Typography>
-        <ContextHelpButton guideKey="analysis" title="查看导入与拆书指南" />
+        <ContextHelpButton guideKey="analysis" title={t('analysis_sample_help_title')} />
       </Box>
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {samples.map(s => (
           <Chip
             key={s.name}
-            label={`${s.genre} · ${s.chapters}章`}
+            label={`${s.genre} · ${s.chapters} ${locale === 'en-US' ? 'ch.' : '章'}`}
             clickable
             disabled={importing !== null}
             onClick={() => void doImportSample(s.name)}
